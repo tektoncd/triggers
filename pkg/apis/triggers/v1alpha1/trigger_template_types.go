@@ -22,21 +22,15 @@ import (
 //var _ apis.Validatable = (*TriggerTemplate)(nil)
 
 type TriggerTemplateSpec struct {
-	Params            []Param `json:"params,omitempty"`
-	ResourceTemplates []TriggerResourceTemplates
-	Triggers          []TriggerTemplateResource
+	Params            []Param                   `json:"params,omitempty"`
+	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
-type TriggerResourceTemplates struct {
-	metav1.TypeMeta `json:",inline"`
-
+//TODO: Implement real TriggerResourceTemplates
+//TODO: This type handles creating various resources types and their various Specs
+type TriggerResourceTemplate struct {
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-}
-
-type TriggerTemplateResource struct {
-	Kind     string
-	Metadata runtime.TypeMeta
-	Spec     interface{}
 }
 
 type TriggerTemplateStatus struct{}
