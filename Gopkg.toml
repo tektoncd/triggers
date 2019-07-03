@@ -3,7 +3,14 @@
 
 required = [
   "github.com/tektoncd/plumbing/scripts",
+  "github.com/knative/test-infra/scripts",
   "github.com/knative/test-infra/tools/dep-collector",
+  "k8s.io/gengo/examples/defaulter-gen/generators",
+  "k8s.io/gengo/args",
+  "k8s.io/gengo/generator",
+  "k8s.io/gengo/namer",
+  "k8s.io/gengo/types",
+  "k8s.io/gengo/examples/deepcopy-gen/generators",
 ]
 
 [[constraint]]
@@ -23,4 +30,8 @@ required = [
 
 [[prune.project]]
   name = "github.com/tektoncd/plumbing"
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/knative/test-infra"
   non-go = false
