@@ -30,8 +30,7 @@ type TriggerTemplateRef struct {
 	Params      []Param `json:"params,omitempty"` // TODO: do we need default params?
 }
 
-type TriggerBindingStatus struct {
-}
+type TriggerBindingStatus struct{}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

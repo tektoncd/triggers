@@ -22,7 +22,7 @@ import (
 var _ apis.Validatable = (*EventListener)(nil)
 
 type EventListenerSpec struct {
-	TriggerBindingRefs []TriggerBindingRef
+	TriggerBindingRefs []TriggerBindingRef `json:"triggerbindingrefs,omitempty"`
 }
 
 type TriggerBindingRef struct {
