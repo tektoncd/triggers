@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"knative.dev/pkg/kmp"
+	"github.com/knative/pkg/kmp"
 )
 
 // CurrentField is a constant to supply as a fieldPath for when there is
