@@ -20,10 +20,12 @@ import (
 // Check that TriggerBinding may be validated and defaulted.
 //var _ apis.Validatable = (*TriggerBinding)(nil)
 
+// +k8s:deepcopy-gen=true
 type TriggerBindingSpec struct {
 	Templates []TriggerTemplateRef `json:"templates,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 type TriggerTemplateRef struct {
 	TemplateRef string  `json:"templateref,omitempty"`
 	Event       string  `json:"event,omitempty"`
@@ -37,6 +39,7 @@ type TriggerBindingStatus struct{}
 
 // TriggerBinding
 // +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 type TriggerBinding struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -46,4 +49,15 @@ type TriggerBinding struct {
 	Spec TriggerBindingSpec `json:"spec"`
 	// +optional
 	Status TriggerBindingStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TriggerBindingList contains a list of TriggerBinding
+// +k8s:deepcopy-gen=true
+type TriggerBindingList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []TriggerBinding `json:"items"`
 }

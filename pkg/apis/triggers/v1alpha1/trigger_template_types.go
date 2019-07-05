@@ -15,22 +15,21 @@ limitations under the License.
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Check that TriggerTemplate may be validated and defaulted.
 //var _ apis.Validatable = (*TriggerTemplate)(nil)
 
+// +k8s:deepcopy-gen=true
 type TriggerTemplateSpec struct {
 	Params            []Param                   `json:"params,omitempty"`
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
-//TODO: Implement real TriggerResourceTemplates
-//TODO: This type handles creating various resources types and their various Specs
+//TODO: This type will need to handle creating various resource types and inlining their Specs
 type TriggerResourceTemplate struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	//	metav1.TypeMeta   `json:",inline"`
+	//	metav1.ObjectMeta `json:"metadata,omitempty"`
 }
 
 type TriggerTemplateStatus struct{}
@@ -40,6 +39,7 @@ type TriggerTemplateStatus struct{}
 
 // TriggerTemplate takes parameters and uses them to create CRDs
 // +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 type TriggerTemplate struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -49,4 +49,15 @@ type TriggerTemplate struct {
 	Spec TriggerTemplateSpec `json:"spec"`
 	// +optional
 	Status TriggerTemplateStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TriggerTemplateList contains a list of TriggerTemplate
+// +k8s:deepcopy-gen=true
+type TriggerTemplateList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []TriggerTemplate `json:"items"`
 }

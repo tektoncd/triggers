@@ -21,10 +21,12 @@ import (
 // Check that EventListener may be validated and defaulted.
 var _ apis.Validatable = (*EventListener)(nil)
 
+// +k8s:deepcopy-gen=true
 type EventListenerSpec struct {
 	TriggerBindingRefs []TriggerBindingRef `json:"triggerbindingrefs,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 type TriggerBindingRef struct {
 	Name       string `json:"name,omitempty"`
 	Namespace  string `json:"namespace,omitempty"`
@@ -38,6 +40,7 @@ type EventListenerStatus struct{}
 
 // EventListener exposes a service to accept webhook events.
 // +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 type EventListener struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -54,4 +57,15 @@ type Param struct {
 	Name    string `json:"name"`
 	Value   string `json:"value"`
 	Default string `json:"default"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// EventListenerList contains a list of TriggerBinding
+// +k8s:deepcopy-gen=true
+type EventListenerList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []EventListener `json:"items"`
 }

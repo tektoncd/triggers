@@ -66,10 +66,3 @@ type Listable interface {
 // The webhook functionality for this has been turned down, which is why this
 // interface is empty.
 type Annotatable interface{}
-
-// HasSpec indicates that a particular type has a specification information
-// and that information is retrievable.
-type HasSpec interface {
-	// GetUntypedSpec returns the spec of the resource.
-	GetUntypedSpec() interface{}
-}

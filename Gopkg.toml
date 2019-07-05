@@ -23,6 +23,31 @@ required = [
   # HEAD as of 2019-06-25
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
 
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  version = "v2.2.1"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.15.0"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.15.0"
+
+[[override]]
+  name = "k8s.io/code-generator"
+  version = "kubernetes-1.15.0"
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.15.0"
+
+[[override]]
+  name = "github.com/knative/pkg"
+  # HEAD as of 2019-06-14 💖
+  revision = "68737b1b4e03d9a888e89ee2a44714a56eefd539"
+
 [prune]
   go-tests = true
   unused-packages = true
