@@ -27,7 +27,7 @@ func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
 
 func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
 	if len(s.TriggerBindingRefs) == 0 {
-		apis.ErrMultipleOneOf("spec.triggerbindingrefs")
+		return apis.ErrMultipleOneOf("spec.triggerbindingrefs")
 	}
 	return nil
 }
