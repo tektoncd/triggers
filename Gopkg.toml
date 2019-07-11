@@ -60,3 +60,7 @@ required = [
 [[prune.project]]
   name = "github.com/knative/test-infra"
   non-go = false
+
+[[constraint]]
+  name = "github.com/tektoncd/pipeline"
+  version = "0.5.0"

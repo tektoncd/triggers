@@ -14,6 +14,7 @@ limitations under the License.
 */
 
 import (
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,9 +28,9 @@ type TriggerBindingSpec struct {
 
 // +k8s:deepcopy-gen=true
 type TriggerTemplateRef struct {
-	TemplateRef string  `json:"templateref,omitempty"`
-	Event       string  `json:"event,omitempty"`
-	Params      []Param `json:"params,omitempty"` // TODO: do we need default params?
+	TemplateRef string             `json:"templateref,omitempty"`
+	Event       string             `json:"event,omitempty"`
+	Params      []pipelinev1.Param `json:"params,omitempty"` // TODO: do we need default params?
 }
 
 type TriggerBindingStatus struct{}
@@ -44,7 +45,7 @@ type TriggerBinding struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	// Spec holds the desired state of the EventListener from the client
+	// Spec holds the desired state of the TriggerBinding
 	// +optional
 	Spec TriggerBindingSpec `json:"spec"`
 	// +optional
