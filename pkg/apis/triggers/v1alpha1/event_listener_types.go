@@ -52,13 +52,6 @@ type EventListener struct {
 	Status EventListenerStatus `json:"status"`
 }
 
-// Param declares a value to use for the Param called Name.
-type Param struct {
-	Name    string `json:"name"`
-	Value   string `json:"value"`
-	Default string `json:"default"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EventListenerList contains a list of TriggerBinding

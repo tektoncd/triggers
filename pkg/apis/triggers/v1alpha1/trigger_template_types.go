@@ -14,6 +14,7 @@ limitations under the License.
 */
 
 import (
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,7 +23,7 @@ import (
 
 // +k8s:deepcopy-gen=true
 type TriggerTemplateSpec struct {
-	Params            []Param                   `json:"params,omitempty"`
+	Params            []pipelinev1.ParamSpec    `json:"params,omitempty"`
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 

@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -56,7 +57,7 @@ func (in *EventListener) DeepCopyObject() runtime.Object {
 func (in *EventListenerList) DeepCopyInto(out *EventListenerList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]EventListener, len(*in))
@@ -138,7 +139,7 @@ func (in *TriggerBinding) DeepCopyObject() runtime.Object {
 func (in *TriggerBindingList) DeepCopyInto(out *TriggerBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerBinding, len(*in))
@@ -238,7 +239,7 @@ func (in *TriggerTemplate) DeepCopyObject() runtime.Object {
 func (in *TriggerTemplateList) DeepCopyInto(out *TriggerTemplateList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerTemplate, len(*in))
@@ -272,7 +273,7 @@ func (in *TriggerTemplateRef) DeepCopyInto(out *TriggerTemplateRef) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make([]pipelinev1alpha1.Param, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -293,7 +294,7 @@ func (in *TriggerTemplateSpec) DeepCopyInto(out *TriggerTemplateSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make([]pipelinev1alpha1.ParamSpec, len(*in))
 		copy(*out, *in)
 	}
 	if in.ResourceTemplates != nil {
