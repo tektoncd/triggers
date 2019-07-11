@@ -30,7 +30,7 @@ type EventListenerSpec struct {
 type TriggerBindingRef struct {
 	Name       string `json:"name,omitempty"`
 	Namespace  string `json:"namespace,omitempty"`
-	ApiVersion string `json:"apiversion,omitempty"`
+	APIVersion string `json:"apiversion,omitempty"`
 }
 
 type EventListenerStatus struct{}

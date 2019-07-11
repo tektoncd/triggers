@@ -23,7 +23,7 @@ import (
 
 // +k8s:deepcopy-gen=true
 type TriggerBindingSpec struct {
-	Templates []TemplateBinding `json:"templates,omitempty"`
+	TemplateBindings []TemplateBinding `json:"templatebindings,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
@@ -36,7 +36,7 @@ type TemplateBinding struct {
 type TriggerTemplateRef struct {
 	Name       string `json:"name,omitempty"`
 	Namespace  string `json:"namespace,omitempty"`
-	ApiVersion string `json:"apiversion,omitempty"`
+	APIVersion string `json:"apiversion,omitempty"`
 }
 
 type TriggerTemplateEvent struct {
