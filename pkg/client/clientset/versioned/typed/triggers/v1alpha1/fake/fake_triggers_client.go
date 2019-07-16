@@ -36,6 +36,10 @@ func (c *FakeTriggersV1alpha1) TriggerBindings(namespace string) v1alpha1.Trigge
 	return &FakeTriggerBindings{c, namespace}
 }
 
+func (c *FakeTriggersV1alpha1) TriggerTemplates(namespace string) v1alpha1.TriggerTemplateInterface {
+	return &FakeTriggerTemplates{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeTriggersV1alpha1) RESTClient() rest.Interface {

@@ -35,7 +35,7 @@ type TriggerResourceTemplate struct {
 
 type TriggerTemplateStatus struct{}
 
-// genclient
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TriggerTemplate takes parameters and uses them to create CRDs

@@ -28,6 +28,7 @@ type TriggersV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	EventListenersGetter
 	TriggerBindingsGetter
+	TriggerTemplatesGetter
 }
 
 // TriggersV1alpha1Client is used to interact with features provided by the triggers group.
@@ -41,6 +42,10 @@ func (c *TriggersV1alpha1Client) EventListeners(namespace string) EventListenerI
 
 func (c *TriggersV1alpha1Client) TriggerBindings(namespace string) TriggerBindingInterface {
 	return newTriggerBindings(c, namespace)
+}
+
+func (c *TriggersV1alpha1Client) TriggerTemplates(namespace string) TriggerTemplateInterface {
+	return newTriggerTemplates(c, namespace)
 }
 
 // NewForConfig creates a new TriggersV1alpha1Client for the given config.

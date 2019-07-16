@@ -33,3 +33,11 @@ type TriggerBindingListerExpansion interface{}
 // TriggerBindingNamespaceListerExpansion allows custom methods to be added to
 // TriggerBindingNamespaceLister.
 type TriggerBindingNamespaceListerExpansion interface{}
+
+// TriggerTemplateListerExpansion allows custom methods to be added to
+// TriggerTemplateLister.
+type TriggerTemplateListerExpansion interface{}
+
+// TriggerTemplateNamespaceListerExpansion allows custom methods to be added to
+// TriggerTemplateNamespaceLister.
+type TriggerTemplateNamespaceListerExpansion interface{}
