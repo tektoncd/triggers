@@ -28,6 +28,8 @@ type Interface interface {
 	EventListeners() EventListenerInformer
 	// TriggerBindings returns a TriggerBindingInformer.
 	TriggerBindings() TriggerBindingInformer
+	// TriggerTemplates returns a TriggerTemplateInformer.
+	TriggerTemplates() TriggerTemplateInformer
 }
 
 type version struct {
@@ -49,4 +51,9 @@ func (v *version) EventListeners() EventListenerInformer {
 // TriggerBindings returns a TriggerBindingInformer.
 func (v *version) TriggerBindings() TriggerBindingInformer {
 	return &triggerBindingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TriggerTemplates returns a TriggerTemplateInformer.
+func (v *version) TriggerTemplates() TriggerTemplateInformer {
+	return &triggerTemplateInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

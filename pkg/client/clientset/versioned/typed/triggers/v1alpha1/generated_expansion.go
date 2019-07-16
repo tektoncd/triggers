@@ -21,3 +21,5 @@ package v1alpha1
 type EventListenerExpansion interface{}
 
 type TriggerBindingExpansion interface{}
+
+type TriggerTemplateExpansion interface{}
