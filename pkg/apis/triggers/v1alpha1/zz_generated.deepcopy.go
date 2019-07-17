@@ -57,7 +57,7 @@ func (in *EventListener) DeepCopyObject() runtime.Object {
 func (in *EventListenerList) DeepCopyInto(out *EventListenerList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]EventListener, len(*in))
@@ -162,7 +162,7 @@ func (in *TriggerBinding) DeepCopyObject() runtime.Object {
 func (in *TriggerBindingList) DeepCopyInto(out *TriggerBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerBinding, len(*in))
@@ -262,7 +262,7 @@ func (in *TriggerTemplate) DeepCopyObject() runtime.Object {
 func (in *TriggerTemplateList) DeepCopyInto(out *TriggerTemplateList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerTemplate, len(*in))

@@ -28,6 +28,8 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TriggersV1alpha1() triggersv1alpha1.TriggersV1alpha1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Triggers() triggersv1alpha1.TriggersV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -39,6 +41,12 @@ type Clientset struct {
 
 // TriggersV1alpha1 retrieves the TriggersV1alpha1Client
 func (c *Clientset) TriggersV1alpha1() triggersv1alpha1.TriggersV1alpha1Interface {
+	return c.triggersV1alpha1
+}
+
+// Deprecated: Triggers retrieves the default version of TriggersClient.
+// Please explicitly pick a version.
+func (c *Clientset) Triggers() triggersv1alpha1.TriggersV1alpha1Interface {
 	return c.triggersV1alpha1
 }
 
