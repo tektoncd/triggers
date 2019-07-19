@@ -107,6 +107,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:53151cc4366e3945282d4b783fd41f35222cabbc75601e68d8133648c63498d1"
+  name = "github.com/gobuffalo/envy"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "043cb4b8af871b49563291e32c66bb84378a60ac"
+  version = "v1.7.0"
+
+[[projects]]
   digest = "1:a1b2a5e38f79688ee8250942d5fa960525fceb1024c855c7bc76fa77b0f3cca2"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -260,6 +268,14 @@
   revision = "c2b33e84"
 
 [[projects]]
+  digest = "1:da62aa6632d04e080b8a8b85a59ed9ed1550842a0099a55f3ae3a20d02a3745a"
+  name = "github.com/joho/godotenv"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "23d116af351c84513e1946b527c88823e476be13"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:4e903242fe176238aaa469f59d7035f5abf2aa9acfefb8964ddd203651b574e9"
   name = "github.com/json-iterator/go"
   packages = ["."]
@@ -304,6 +320,7 @@
     "metrics/metricskey",
     "signals",
     "system",
+    "webhook",
   ]
   pruneopts = "T"
   revision = "68737b1b4e03d9a888e89ee2a44714a56eefd539"
@@ -314,6 +331,14 @@
   packages = ["tools/dep-collector"]
   pruneopts = "NUT"
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+
+[[projects]]
+  digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
+  name = "github.com/markbates/inflect"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "24b83195037b3bc61fcda2d28b7b0518bce293b6"
+  version = "v1.0.4"
 
 [[projects]]
   branch = "master"
@@ -415,6 +440,18 @@
   version = "v0.0.3"
 
 [[projects]]
+  digest = "1:e09ada96a5a41deda4748b1659cc8953961799e798aea557257b56baee4ecaf3"
+  name = "github.com/rogpeppe/go-internal"
+  packages = [
+    "modfile",
+    "module",
+    "semver",
+  ]
+  pruneopts = "NUT"
+  revision = "438578804ca6f31be148c27683afc419ce47c06e"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
@@ -431,7 +468,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:837bb82199978b5b4379838232da434ba3a3a6058bccf7e444f8a926ce1a2937"
+  digest = "1:5d1881b9924f9ea21c95ca53b1a5acd283b21800f7e8cbebaa05a8245d15397a"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
@@ -444,6 +481,7 @@
     "pkg/list",
     "pkg/merge",
     "pkg/names",
+    "pkg/system",
     "pkg/templating",
   ]
   pruneopts = "NUT"
@@ -762,9 +800,10 @@
   version = "v2.2.2"
 
 [[projects]]
-  digest = "1:4485f6050feae6844efd79bce3f5b35e5ed4a21dd79ef6a2dbbee263531cea09"
+  digest = "1:1d34342a53d8f8c625260d6c4c2e5c99442b1635bbf4208f426bd12aa210b870"
   name = "k8s.io/api"
   packages = [
+    "admission/v1beta1",
     "admissionregistration/v1alpha1",
     "admissionregistration/v1beta1",
     "apps/v1",
@@ -1073,10 +1112,13 @@
     "github.com/knative/pkg/injection/sharedmain",
     "github.com/knative/pkg/logging",
     "github.com/knative/pkg/logging/logkey",
+    "github.com/knative/pkg/signals",
+    "github.com/knative/pkg/webhook",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned",
     "github.com/tektoncd/pipeline/pkg/client/injection/client",
+    "github.com/tektoncd/pipeline/pkg/system",
     "github.com/tektoncd/plumbing/scripts",
     "go.uber.org/zap",
     "k8s.io/api/core/v1",
