@@ -214,7 +214,6 @@ While iterating on the project, you may need to:
 1. [Add and run tests](./test/README.md#tests)
 
 To make changes to these CRDs, you will probably interact with
-(**Note this code doesn't yet exist!!**):
 
 - The CRD type definitions in
   [./pkg/apis/triggers/alpha1](./pkg/apis/triggers/v1alpha1)
@@ -223,9 +222,6 @@ To make changes to these CRDs, you will probably interact with
   `./hack/update-codegen.sh`)
 
 ### Install Triggers
-
-**Note: this is aspirational! We don't yet have any code or config to deploy,
-watch this space!**
 
 You can stand up a version of this controller on-cluster (to your
 `kubectl config current-context`):
