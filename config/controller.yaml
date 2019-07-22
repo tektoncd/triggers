@@ -45,7 +45,7 @@ spec:
         - name: CONFIG_LOGGING_NAME
           value: config-logging-triggers
         - name: CONFIG_OBSERVABILITY_NAME
-          value: config-observability
+          value: config-observability-triggers
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
       volumes:
