@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 	"log"
-	"context"
+
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
@@ -52,7 +52,7 @@ func main() {
 	}
 	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
 
-        defer func() {
+	defer func() {
 		err := logger.Sync()
 		if err != nil {
 			logger.Fatal("Failed to sync the logger", zap.Error(err))
@@ -101,10 +101,6 @@ func main() {
 		},
 		Logger: logger,
 		DisallowUnknownFields: true,
-		// TODO: ecorate contexts with the current state of the config.
-		WithContext: func(ctx context.Context) context.Context {
-			return ctx
-		},
 	}
 
 	if err := controller.Run(stopCh); err != nil {
