@@ -52,7 +52,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	}
 
 	c := &Reconciler{
-		Base: reconciler.NewBase(opt, eventListenerAgentName),
+		Base:                reconciler.NewBase(opt, eventListenerAgentName),
 		eventListenerLister: eventListenerInformer.Lister(),
 	}
 	impl := controller.NewImpl(c, c.Logger, eventListenerControllerName)

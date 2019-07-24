@@ -40,7 +40,7 @@ type Options struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet pipelineclientset.Interface
 	TriggersClientSet triggersclientset.Interface
-	CachingClientSet cachingclientset.Interface
+	CachingClientSet  cachingclientset.Interface
 
 	ConfigMapWatcher configmap.Watcher
 	Logger           *zap.SugaredLogger
