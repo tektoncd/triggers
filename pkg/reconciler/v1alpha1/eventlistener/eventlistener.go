@@ -61,13 +61,13 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// The resource no longer exists, in which case we stop processing.
 		c.Logger.Infof("event listener %q in work queue no longer exists", key)
 		return nil
-		} else if err != nil {
-			c.Logger.Errorf("Error retreiving EventListener %q: %s", name, err)
-			return err
-		}
+	} else if err != nil {
+		c.Logger.Errorf("Error retreiving EventListener %q: %s", name, err)
+		return err
+	}
 
-		// TODO: add reconcile logic
-		c.Logger.Infof("original: %v", original)
+	// TODO: add reconcile logic
+	c.Logger.Infof("original: %v", original)
 
 	return nil
 }
