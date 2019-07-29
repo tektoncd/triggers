@@ -99,7 +99,7 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):  &v1alpha1.TriggerBinding{},
 			v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"): &v1alpha1.TriggerTemplate{},
 		},
-		Logger: logger,
+		Logger:                logger,
 		DisallowUnknownFields: true,
 	}
 
