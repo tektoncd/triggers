@@ -8,7 +8,7 @@ import (
 func TestInterpolate(t *testing.T) {
 	binding := "something.something"
 	interpolatedBinding := Interpolate(binding)
-	if interpolatedBinding != fmt.Sprintf("$(%s)",binding) {
+	if interpolatedBinding != fmt.Sprintf("$(%s)", binding) {
 		t.Error("Unexpected interpolated value")
 	}
 }
