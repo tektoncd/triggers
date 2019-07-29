@@ -16,6 +16,7 @@ limitations under the License.
 import (
 	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -61,4 +62,13 @@ type EventListenerList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EventListener `json:"items"`
+}
+
+// GetOwnerReference gets the EventListener as owner reference for any related objects
+func (el *EventListener) GetOwnerReference() *metav1.OwnerReference {
+	return metav1.NewControllerRef(el, schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    "EventListener",
+	})
 }

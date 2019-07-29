@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+		http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,22 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package v1alpha1
+package main
 
 import (
-	"context"
-
-	"github.com/knative/pkg/apis"
+	"fmt"
+	"log"
+	"net/http"
 )
 
-func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
+func handler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("EventListener Pod received a request: %+v", r)
+	fmt.Fprintf(w, "Hello from the EventListener Pod! \n")
 }
 
-func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
-	if len(s.TriggerBindingRefs) == 0 {
-		return apis.ErrMissingField("spec.triggerbindingrefs")
-	}
-	return nil
+func main() {
+	log.Print("EventListener Pod started")
+	log.Printf("Listen and serve on port 8082")
+
+	http.HandleFunc("/", handler)
+	log.Fatal(http.ListenAndServe(":8082", nil))
 }
