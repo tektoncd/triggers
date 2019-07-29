@@ -488,11 +488,11 @@
   revision = "0ee3b1491aa5b38d48b4547eeb4c87d11852b3a3"
 
 [[projects]]
-  digest = "1:5558ceef0c045f9c8a0c08c6e0de89bb0895b1aad69d9722b3748f003564b8cb"
+  digest = "1:b749c54748b755170cecd0bc4099f527d431a7ecd264f680913ce148ee6ee19c"
   name = "github.com/tektoncd/plumbing"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "a51e87c5261fdb718470c077c155e070aca690a8"
+  revision = "a268939d0be5ed810f541269f9dd606bb2e66090"
 
 [[projects]]
   digest = "1:cf43b1118f4690d1dbc85392c89a926a89b694d94a9d87a6e6d7f762ba4b8a14"
