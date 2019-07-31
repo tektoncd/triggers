@@ -1,6 +1,6 @@
 # TriggerTemplates
 A `TriggerTemplate` is a resource that can template resources.
-`TriggerTemplates` have optional parameters that can be substituted anywhere within the resource template.
+`TriggerTemplates` have optional parameters that can be substituted **anywhere** within the resource template.
 If resources do not have a name specified, it will default to value of the resource kind.
 Further, all resources names will have a unique timestamp postfix to avoid naming conflicts.
 
@@ -53,4 +53,7 @@ spec:
 ```
 
 Similar to [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplates` do not do any actual work, but instead act as the blueprint for what resources should be created.
-Also, any parameters defined a [`TriggerBinding`](triggerbindings.md) are passed into to the `TriggerTemplate` before resource creation.
+Any parameters defined in the [`TriggerBinding`](triggerbindings.md) are passed into to the `TriggerTemplate` before resource creation.
+
+To enable support for any resource type, the resource templates are internally resolved as byte blobs.
+As a result, validation on these resources is only done at event processing time (rather than during `TriggerTemplate` creation).

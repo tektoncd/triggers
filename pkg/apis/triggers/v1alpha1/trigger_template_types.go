@@ -14,6 +14,7 @@ limitations under the License.
 */
 
 import (
+	"encoding/json"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,10 +28,9 @@ type TriggerTemplateSpec struct {
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
-//TODO: This type will need to handle creating various resource types and inlining their Specs
+// +k8s:deepcopy-gen=true
 type TriggerResourceTemplate struct {
-	//	metav1.TypeMeta   `json:",inline"`
-	//	metav1.ObjectMeta `json:"metadata,omitempty"`
+	json.RawMessage `json:",inline"`
 }
 
 type TriggerTemplateStatus struct{}
