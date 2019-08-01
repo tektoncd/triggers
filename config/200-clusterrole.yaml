@@ -18,11 +18,11 @@ metadata:
   name: tekton-triggers-admin
 rules:
   - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
-    verbs: ["get", "list", "create", "watch"]
+    resources: ["configmaps", "secrets", "services"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
-    verbs: ["get"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["mutatingwebhookconfigurations"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

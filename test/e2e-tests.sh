@@ -26,6 +26,7 @@ initialize $@
 header "Setting up environment"
 
 install_triggers_crd
+install_pipeline_crd
 
 # Run the integration tests
 header "Running Go e2e tests"

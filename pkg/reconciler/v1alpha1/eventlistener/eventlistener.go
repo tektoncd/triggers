@@ -58,7 +58,7 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
-	c.Logger.Info("event-listener-reconcile")
+	c.Logger.Infof("event-listener-reconcile %s", key)
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -88,7 +88,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	labels["app"] = el.Name
 
 	// Create the EventListener Deployment
-	c.Logger.Infof("creating EventListener %s deployment in namespace %s", el.Name, el.Namespace)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			// Create the EventListener's Deployment in the same Namespace as where
@@ -137,13 +136,16 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Errorf("Error creating EventListener Deployment: %s", err)
 			return err
 		}
+		c.Logger.Infof("Created EventListener Deployment %s in Namespace %s", el.Name, el.Namespace)
 	} else if !reflect.DeepEqual(oldDeployment, deployment) {
 		// Update the EventListener Deployment
-		_, err = c.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(deployment)
+		oldDeployment.Spec = deployment.Spec
+		_, err = c.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(oldDeployment)
 		if err != nil {
 			c.Logger.Errorf("Error updating EventListener Deployment: %s", err)
 			return err
 		}
+		c.Logger.Info("Updated EventListener Deployment %s in Namespace %s", el.Name, el.Namespace)
 	}
 
 	// TODO: This is an example Service that we will probably want to modify in the future
@@ -178,17 +180,20 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 		// Create the EventListener Service
 		_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Create(service)
+		c.Logger.Infof("Created EventListener Service %s in Namespace %s", el.Name, el.Namespace)
 		if err != nil {
 			c.Logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
 	} else if !reflect.DeepEqual(oldService, service) {
 		// Update the EventListener Service
-		_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Update(service)
+		oldService.Spec = service.Spec
+		_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Update(oldService)
 		if err != nil {
 			c.Logger.Errorf("Error updating EventListener Service: %s", err)
 			return err
 		}
+		c.Logger.Info("Updated EventListener Service %s in Namespace %s", el.Name, el.Namespace)
 	}
 
 	return nil
