@@ -12,17 +12,18 @@ metadata:
   name: simple-pipeline-binding
   namespace: default
 spec:
-  templateRef:
-    name: simple-pipeline-template
-  serviceAccount: default
   event:
     class: cloudevent
     type: com.github.push
-  params:
-    - name: gitrevision
-      value: $(event.head_commit.id)
-    - name: gitrepositoryurl
-      value: $(event.repository.url)
+  templateBindings:
+    - templateRef:
+        name: simple-pipeline-template
+      params:
+        - name: gitrevision
+          value: $(event.head_commit.id)
+        - name: gitrepositoryurl
+          value: $(event.repository.url)
+      serviceAccount: default
 ```
 
 One or more `TriggerBindings` are collected together into an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.

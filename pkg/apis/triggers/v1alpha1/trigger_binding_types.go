@@ -23,14 +23,14 @@ import (
 
 // +k8s:deepcopy-gen=true
 type TriggerBindingSpec struct {
-	TemplateBindings []TemplateBinding `json:"templatebindings,omitempty"`
+	Event            TriggerTemplateEvent `json:"triggertemplateevent,omitempty"`
+	TemplateBindings []TemplateBinding    `json:"templatebindings,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
 type TemplateBinding struct {
-	TemplateRef TriggerTemplateRef   `json:"templateref,omitempty"`
-	Event       TriggerTemplateEvent `json:"triggertemplateevent,omitempty"`
-	Params      []pipelinev1.Param   `json:"params,omitempty"`
+	TemplateRef TriggerTemplateRef `json:"templateref,omitempty"`
+	Params      []pipelinev1.Param `json:"params,omitempty"`
 }
 
 type TriggerTemplateRef struct {
