@@ -18,7 +18,7 @@ package v1alpha1
 
 import (
 	"context"
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 )
 
 func (t *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {

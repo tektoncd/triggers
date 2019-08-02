@@ -20,17 +20,17 @@ import (
 	"flag"
 	"log"
 
-	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/logging"
-	"github.com/knative/pkg/logging/logkey"
-	"github.com/knative/pkg/signals"
-	"github.com/knative/pkg/webhook"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/signals"
+	"knative.dev/pkg/webhook"
 )
 
 // WebhookLogKey is the name of the logger for the webhook cmd

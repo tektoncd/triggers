@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"knative.dev/pkg/apis"
 )
 
 // Validate taskrun
@@ -47,6 +47,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Check that one of TaskRef and TaskSpec is present
 	if (ts.TaskRef == nil || (ts.TaskRef != nil && ts.TaskRef.Name == "")) && ts.TaskSpec == nil {
 		return apis.ErrMissingField("spec.taskref.name", "spec.taskspec")
+	}
+
+	// Validate TaskSpec if it's present
+	if ts.TaskSpec != nil {
+		if err := ts.TaskSpec.Validate(ctx); err != nil {
+			return err
+		}
 	}
 
 	// check for input resources

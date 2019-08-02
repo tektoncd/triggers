@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/knative/pkg/apis"
-	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var (
@@ -136,6 +136,17 @@ type PipelineRunTaskRunStatus struct {
 	// Status is the TaskRunStatus for the corresponding TaskRun
 	// +optional
 	Status *TaskRunStatus `json:"status,omitempty"`
+	// ConditionChecks maps the name of a condition check to its Status
+	// +optional
+	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
+}
+
+type PipelineRunConditionCheckStatus struct {
+	// ConditionName is the name of the Condition
+	ConditionName string `json:"conditionName,omitempty"`
+	// Status is the ConditionCheckStatus for the corresponding ConditionCheck
+	// +optional
+	Status *ConditionCheckStatus `json:"status,omitempty"`
 }
 
 var pipelineRunCondSet = apis.NewBatchConditionSet()

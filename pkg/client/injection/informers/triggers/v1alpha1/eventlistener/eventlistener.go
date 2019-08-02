@@ -21,11 +21,11 @@ package eventlistener
 import (
 	"context"
 
-	controller "github.com/knative/pkg/controller"
-	injection "github.com/knative/pkg/injection"
-	logging "github.com/knative/pkg/logging"
 	v1alpha1 "github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1alpha1"
 	factory "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/factory"
+	controller "knative.dev/pkg/controller"
+	injection "knative.dev/pkg/injection"
+	logging "knative.dev/pkg/logging"
 )
 
 func init() {
