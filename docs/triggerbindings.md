@@ -20,9 +20,9 @@ spec:
     type: com.github.push
   params:
     - name: gitrevision
-      value: ${event.head_commit.id}
+      value: $(event.head_commit.id)
     - name: gitrepositoryurl
-      value: ${event.repository.url}
+      value: $(event.repository.url)
 ```
 
 One or more `TriggerBindings` are collected together into an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.

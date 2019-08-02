@@ -24,16 +24,16 @@ spec:
       kind: PipelineResource
       metadata:
         name: git-source
-        namespace: ${params.namespace}
+        namespace: $(params.namespace)
         labels:
             triggertemplated: true
       spec:
         type: git
         params:
         - name: revision
-          value: ${params.gitrevision}
+          value: $(params.gitrevision)
         - name: url
-          value: ${params.gitrepositoryurl}
+          value: $(params.gitrepositoryurl)
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineRun
       metadata:
