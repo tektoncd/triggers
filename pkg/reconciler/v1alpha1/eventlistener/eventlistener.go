@@ -21,7 +21,6 @@ import (
 	"flag"
 	"reflect"
 
-	"github.com/knative/pkg/controller"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/controller"
 )
 
 const (

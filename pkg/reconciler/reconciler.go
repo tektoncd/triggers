@@ -19,9 +19,6 @@ package reconciler
 import (
 	"time"
 
-	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
-	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/logging/logkey"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	triggersScheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
@@ -31,6 +28,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
+	cachingclientset "knative.dev/caching/pkg/client/clientset/versioned"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/logging/logkey"
 )
 
 // Options defines the common reconciler options.

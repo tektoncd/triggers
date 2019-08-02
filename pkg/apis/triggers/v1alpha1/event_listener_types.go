@@ -14,9 +14,9 @@ limitations under the License.
 */
 
 import (
-	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/apis"
 )
 
 // Check that EventListener may be validated and defaulted.

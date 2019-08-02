@@ -20,15 +20,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/controller"
-	"github.com/knative/pkg/injection/clients/kubeclient"
-	"github.com/knative/pkg/logging"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection/clients/kubeclient"
+	"knative.dev/pkg/logging"
 )
 
 const (

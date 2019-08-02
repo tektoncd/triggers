@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/merge"
 	"github.com/tektoncd/pipeline/pkg/templating"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"knative.dev/pkg/apis"
 )
 
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
@@ -94,7 +94,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	// Validate task step names
 	for _, step := range ts.Steps {
-		if errs := validation.IsDNS1123Label(step.Name); len(errs) > 0 {
+		if errs := validation.IsDNS1123Label(step.Name); step.Name != "" && len(errs) > 0 {
 			return &apis.FieldError{
 				Message: fmt.Sprintf("invalid value %q", step.Name),
 				Paths:   []string{"taskspec.steps.name"},

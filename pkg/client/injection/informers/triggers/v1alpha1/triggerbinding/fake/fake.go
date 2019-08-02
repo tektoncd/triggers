@@ -21,10 +21,10 @@ package fake
 import (
 	"context"
 
-	controller "github.com/knative/pkg/controller"
-	injection "github.com/knative/pkg/injection"
 	fake "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/factory/fake"
 	triggerbinding "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding"
+	controller "knative.dev/pkg/controller"
+	injection "knative.dev/pkg/injection"
 )
 
 var Get = triggerbinding.Get
