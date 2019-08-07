@@ -4,13 +4,12 @@ A `TriggerTemplate` is a resource that can template resources.
 If resources do not have a name specified, it will default to value of the resource kind.
 Further, all resources names will have a unique timestamp postfix to avoid naming conflicts.
 
-<!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: pipeline-template
-  namespace: tekton-pipelines
+  name: simple-pipeline-template
+  namespace: default
 spec:
   params:
     - name: gitrevision
