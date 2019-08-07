@@ -24,11 +24,9 @@ source $(dirname $0)/e2e-common.sh
 initialize $@
 
 header "Setting up environment"
+
 install_triggers_crd
 install_pipeline_crd
-
-header "Running yaml tests"
-$(dirname $0)/e2e-tests-yaml.sh || fail_test
 
 # Run the integration tests
 header "Running Go e2e tests"
