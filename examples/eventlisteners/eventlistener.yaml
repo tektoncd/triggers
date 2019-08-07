@@ -1,0 +1,8 @@
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: listener
+  namespace: tekton-pipelines
+spec:
+  triggerbindingrefs:
+    - name: pipeline-binding
