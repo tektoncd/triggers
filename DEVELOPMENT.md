@@ -204,12 +204,13 @@ While iterating on the project, you may need to:
 1. [Install/Run Pipelines](#install-pipelines)
 1. [Install/Run Triggers](#install-triggers)
 1. Verify it's working by [looking at the logs](#accessing-logs)
-1. Update your (external) dependencies with: `./hack/update-deps.sh`.
+1. Update your (external) dependencies with: `./hack/update-deps.sh`
 
    **Running dep ensure manually, will pull a bunch of scripts deleted
    [here](./hack/update-deps.sh#L29)**
 
-1. Update your type definitions with: `./hack/update-codegen.sh`.
+1. Update your type definitions with: `./hack/update-codegen.sh`
+1. Update the documentation with: `./hack/update-docs.sh`
 1. [Add new CRD types](#adding-new-types)
 1. [Add and run tests](./test/README.md#tests)
 
