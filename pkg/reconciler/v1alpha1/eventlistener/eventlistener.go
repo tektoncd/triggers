@@ -70,7 +70,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	original, err := c.eventListenerLister.EventListeners(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		// The resource no longer exists, in which case we stop processing.
-		c.Logger.Infof("event listener %q in work queue no longer exists", key)
+		c.Logger.Infof("EventListener %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
 		c.Logger.Errorf("Error retreiving EventListener %q: %s", name, err)
@@ -108,6 +108,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					// TODO: Do not make the assumption that the EventListener/Deployment is in the tekton-pipelines namespace
+					ServiceAccountName: "tekton-triggers-controller",
 					Containers: []corev1.Container{
 						{
 							Name:  "event-listener",
@@ -115,6 +117,16 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: int32(8082),
+								},
+							},
+							Env: []corev1.EnvVar{
+								corev1.EnvVar{
+									Name:  "LISTENER_NAME",
+									Value: el.Name,
+								},
+								corev1.EnvVar{
+									Name:  "LISTENER_NAMESPACE",
+									Value: el.Namespace,
 								},
 							},
 						},
