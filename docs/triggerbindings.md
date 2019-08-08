@@ -5,24 +5,38 @@ These parameters are passed into the referenced `TriggerTemplate`.
 Although similar, the separation of these two resources was deliberate to encourage `TriggerTemplate` definitions to be reusable.
 Further, it is as this level that the service account is connected, which specifies what permissions the resources will be created (or at least attempted) with.
 
+<!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
-  name: simple-pipeline-binding
-  namespace: default
+  name: pipeline-binding
+  namespace: tekton-pipelines
 spec:
-  templateRef:
-    name: simple-pipeline-template
-  serviceAccount: default
-  event:
-    class: cloudevent
-    type: com.github.push
-  params:
-    - name: gitrevision
-      value: $(event.head_commit.id)
-    - name: gitrepositoryurl
-      value: $(event.repository.url)
+  templatebindings:
+    - templateref:
+        name: pipeline-template
+      params:
+        - name: gitrevision
+          value: $(event.head_commit.id)
+        - name: gitrepositoryurl
+          value: $(event.repository.url)
+```
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: pipeline-binding
+  namespace: tekton-pipelines
+spec:
+  templatebindings:
+    - templateref:
+        name: pipeline-template
+      params:
+        - name: gitrevision
+          value: $(event.head_commit.id)
+        - name: gitrepositoryurl
+          value: $(event.repository.url)
 ```
 
 One or more `TriggerBindings` are collected together into an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.

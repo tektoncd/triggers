@@ -85,14 +85,10 @@ go test -v -tags=e2e -count=1 ./test -run ^TestEventListener
 
 ### Running YAML tests
 
-There are no yaml tests at the moment. These tests will be created under
-[Issue #11](https://github.com/tektoncd/triggers/issues/11).
-<!-- TODO: Uncomment when Issue #11 is complete
 To run the YAML e2e tests, run the following command:
-
 ```bash
 ./test/e2e-tests-yaml.sh
-``` -->
+```
 
 ### Adding integration tests
 
