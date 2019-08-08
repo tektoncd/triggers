@@ -18,18 +18,21 @@
 # and deploy Tekton Pipelines to it for running integration tests.
 
 source $(dirname $0)/e2e-common.sh
-
 # Script entry point.
 
 initialize $@
+failed=0
 
 header "Setting up environment"
-
 install_triggers_crd
 install_pipeline_crd
 
+header "Running yaml tests"
+$(dirname $0)/e2e-tests-yaml.sh || failed=1
+
 # Run the integration tests
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test || fail_test
+go_test_e2e -timeout=20m ./test || failed=1
 
+(( failed )) && fail_test
 success
