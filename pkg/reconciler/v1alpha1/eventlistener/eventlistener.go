@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ const (
 	eventListenerAgentName = "eventlistener-controller"
 	// eventListenerControllerName defines name for EventListener Controller
 	eventListenerControllerName = "EventListener"
+	// Port defines the port for the EventListener to listen on
+	Port = 8082
 )
 
 var (
@@ -116,7 +118,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 							Image: *elImage,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(8082),
+									ContainerPort: int32(Port),
 								},
 							},
 							Env: []corev1.EnvVar{
@@ -178,7 +180,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			Ports: []corev1.ServicePort{
 				{
 					Protocol: corev1.ProtocolTCP,
-					Port:     int32(8082),
+					Port:     int32(Port),
 				},
 			},
 		},

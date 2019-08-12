@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -149,4 +149,12 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,
 		}}, nil
+}
+
+func (s *GCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
+}
+
+func (s *GCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
 }

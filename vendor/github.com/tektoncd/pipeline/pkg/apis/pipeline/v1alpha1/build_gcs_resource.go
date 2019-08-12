@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,4 +172,12 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 		return "", xerrors.Errorf("ArtifactType is empty. Should be one of %s", strings.Join(valid, ","))
 	}
 	return "", xerrors.Errorf("Invalid ArtifactType %s. Should be one of %s", aType, strings.Join(valid, ","))
+}
+
+func (s *BuildGCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
+}
+
+func (s *BuildGCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
 }

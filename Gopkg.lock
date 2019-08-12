@@ -35,7 +35,7 @@
   version = "v0.12.4"
 
 [[projects]]
-  digest = "1:3e2515e584328d05548e5a240061c456047c0ff144df47529e8ff1e81c5e5bbe"
+  digest = "1:c2cd958e29ac89c55ce0a2f8a51d0e69c251e00e56451c91d8a854bd81bd5908"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -71,8 +71,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = "NUT"
-  revision = "933fa4e60b06c8c1d3f91790ce134512f327b6af"
-  version = "v1.21.10"
+  revision = "7bbe2931d53d4675411814423d8960d7082a8847"
+  version = "v1.22.0"
 
 [[projects]]
   digest = "1:707ebe952a8b3d00b343c01536c79c73771d100f63ec6babeaed5c79e2b8a8dd"
@@ -298,17 +298,6 @@
   version = "v1.1.7"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b4a65a9e2d14d6c8747ea8075fe412c54679ff651bbf6230ed12bd4964d8a669"
-  name = "github.com/knative/pkg"
-  packages = [
-    "test",
-    "test/logging",
-  ]
-  pruneopts = "NUT"
-  revision = "a6e24ef7e5b297969d6a87a45ac3ec6d7b3c5f0f"
-
-[[projects]]
   digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
   name = "github.com/knative/test-infra"
   packages = ["tools/dep-collector"]
@@ -451,16 +440,19 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:d989d111c52b615a102c67797fa0bbcf3763e4949659c2f7418e9e7fcf0cf29e"
+  digest = "1:fa9a396a832186cc61f0c31b7e277e0323a117479a240f005b2c98bccfab16a3"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
     "pkg/apis/pipeline",
     "pkg/apis/pipeline/v1alpha1",
     "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/pipeline/v1alpha1",
+    "pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake",
     "pkg/client/injection/client",
+    "pkg/client/injection/client/fake",
     "pkg/list",
     "pkg/merge",
     "pkg/names",
@@ -468,7 +460,7 @@
     "pkg/templating",
   ]
   pruneopts = "NUT"
-  revision = "42bc3fbd5fc3ed35bfad1f371ef585da92b5fdc6"
+  revision = "33ea1a03b3d4fb6b0c8ae22abda5f335dc0b7997"
 
 [[projects]]
   digest = "1:b749c54748b755170cecd0bc4099f527d431a7ecd264f680913ce148ee6ee19c"
@@ -546,7 +538,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:85674ac609b704fd4e9f463553b6ffc3a3527a993ae0ba550eb56beaabdfe094"
+  digest = "1:5ab79d2a36037de1ab2908733a2cab0c08b12f6956e3e1eab07cd1b2abf7b903"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -554,7 +546,9 @@
     "internal/bufferpool",
     "internal/color",
     "internal/exit",
+    "internal/ztest",
     "zapcore",
+    "zaptest",
   ]
   pruneopts = "NUT"
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
@@ -652,7 +646,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fb5cf331f3037a2d153a00650e61b4469769d4c93aa1ab479827a8e7fd4a907d"
+  digest = "1:5b36055683b4369a6e60839aa98f810e1bfa99bf930003ca520720d6e6cf184b"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -669,7 +663,7 @@
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "35ef2682e516ea0dd37d51a73b1e957db246ebbf"
+  revision = "cae9aa54349647754b22764599d5c8110e09e95b"
 
 [[projects]]
   branch = "master"
@@ -722,9 +716,10 @@
   version = "v1.6.1"
 
 [[projects]]
-  digest = "1:7e4395d42254cb237b50c142598dd465cbd38c8a78e7fab8ae23d964b33ebe9d"
+  digest = "1:3689f4cc57cc55b4631efc4b778c47d2a888a7060b4108f42cf289a2033be5ba"
   name = "google.golang.org/genproto"
   packages = [
+    "googleapis/api",
     "googleapis/api/annotations",
     "googleapis/api/distribution",
     "googleapis/api/label",
@@ -737,7 +732,7 @@
     "protobuf/field_mask",
   ]
   pruneopts = "NUT"
-  revision = "fc2db5cae922db113989ef87b5b859cc8a179f59"
+  revision = "357c62f0e4bbba7e6cc403ae09edcf3e2b9028fe"
 
 [[projects]]
   digest = "1:c1a72c55bf103cb32a0c55ef3a15809178b314e411d7e372ba6ff98bfffeea97"
@@ -846,8 +841,8 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "145d52631d00cbfe68490d19ae4f0f501fd31a95"
-  version = "kubernetes-1.12.6"
+  revision = "9ad12a4af32677db3ae70bef3371bf9b618eb3a0"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:6423241a07f1586d8a2e30ce39332b0e7d938f8612a3b3cc2befd8cd4fd4f34a"
@@ -902,10 +897,10 @@
   ]
   pruneopts = "NUT"
   revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
-  version = "kubernetes-1.12.6"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
-  digest = "1:f3f8478ea4b0be04b07154be8f5763b5c98f5a66a31738aab585f2656162d4a1"
+  digest = "1:195d76db56287b4b8de466f8e369f1ea19fcba12879ecf858c86079a7c1af656"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -956,38 +951,70 @@
     "informers/storage/v1alpha1",
     "informers/storage/v1beta1",
     "kubernetes",
+    "kubernetes/fake",
     "kubernetes/scheme",
     "kubernetes/typed/admissionregistration/v1alpha1",
+    "kubernetes/typed/admissionregistration/v1alpha1/fake",
     "kubernetes/typed/admissionregistration/v1beta1",
+    "kubernetes/typed/admissionregistration/v1beta1/fake",
     "kubernetes/typed/apps/v1",
+    "kubernetes/typed/apps/v1/fake",
     "kubernetes/typed/apps/v1beta1",
+    "kubernetes/typed/apps/v1beta1/fake",
     "kubernetes/typed/apps/v1beta2",
+    "kubernetes/typed/apps/v1beta2/fake",
     "kubernetes/typed/authentication/v1",
+    "kubernetes/typed/authentication/v1/fake",
     "kubernetes/typed/authentication/v1beta1",
+    "kubernetes/typed/authentication/v1beta1/fake",
     "kubernetes/typed/authorization/v1",
+    "kubernetes/typed/authorization/v1/fake",
     "kubernetes/typed/authorization/v1beta1",
+    "kubernetes/typed/authorization/v1beta1/fake",
     "kubernetes/typed/autoscaling/v1",
+    "kubernetes/typed/autoscaling/v1/fake",
     "kubernetes/typed/autoscaling/v2beta1",
+    "kubernetes/typed/autoscaling/v2beta1/fake",
     "kubernetes/typed/autoscaling/v2beta2",
+    "kubernetes/typed/autoscaling/v2beta2/fake",
     "kubernetes/typed/batch/v1",
+    "kubernetes/typed/batch/v1/fake",
     "kubernetes/typed/batch/v1beta1",
+    "kubernetes/typed/batch/v1beta1/fake",
     "kubernetes/typed/batch/v2alpha1",
+    "kubernetes/typed/batch/v2alpha1/fake",
     "kubernetes/typed/certificates/v1beta1",
+    "kubernetes/typed/certificates/v1beta1/fake",
     "kubernetes/typed/coordination/v1beta1",
+    "kubernetes/typed/coordination/v1beta1/fake",
     "kubernetes/typed/core/v1",
+    "kubernetes/typed/core/v1/fake",
     "kubernetes/typed/events/v1beta1",
+    "kubernetes/typed/events/v1beta1/fake",
     "kubernetes/typed/extensions/v1beta1",
+    "kubernetes/typed/extensions/v1beta1/fake",
     "kubernetes/typed/networking/v1",
+    "kubernetes/typed/networking/v1/fake",
     "kubernetes/typed/policy/v1beta1",
+    "kubernetes/typed/policy/v1beta1/fake",
     "kubernetes/typed/rbac/v1",
+    "kubernetes/typed/rbac/v1/fake",
     "kubernetes/typed/rbac/v1alpha1",
+    "kubernetes/typed/rbac/v1alpha1/fake",
     "kubernetes/typed/rbac/v1beta1",
+    "kubernetes/typed/rbac/v1beta1/fake",
     "kubernetes/typed/scheduling/v1alpha1",
+    "kubernetes/typed/scheduling/v1alpha1/fake",
     "kubernetes/typed/scheduling/v1beta1",
+    "kubernetes/typed/scheduling/v1beta1/fake",
     "kubernetes/typed/settings/v1alpha1",
+    "kubernetes/typed/settings/v1alpha1/fake",
     "kubernetes/typed/storage/v1",
+    "kubernetes/typed/storage/v1/fake",
     "kubernetes/typed/storage/v1alpha1",
+    "kubernetes/typed/storage/v1alpha1/fake",
     "kubernetes/typed/storage/v1beta1",
+    "kubernetes/typed/storage/v1beta1/fake",
     "listers/admissionregistration/v1alpha1",
     "listers/admissionregistration/v1beta1",
     "listers/apps/v1",
@@ -1047,8 +1074,8 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "78295b709ec6fa5be12e35892477a326dea2b5d3"
-  version = "kubernetes-1.12.6"
+  revision = "4f3abb12cae2d6817e1b6d72d9cbc3d3a6ddf965"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:26b81b5e76e3f84ea5140da4f74649576e470f79091d2ef8e0d1b5000bc636ca"
@@ -1076,7 +1103,7 @@
   ]
   pruneopts = "T"
   revision = "b1289fc74931d4b6b04bd1a259acfc88a2cb0a66"
-  version = "kubernetes-1.12.6"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:39912eb5f8eaf46486faae0839586c27c93423e552f76875defa048f52c15c15"
@@ -1138,20 +1165,26 @@
     "controller",
     "injection",
     "injection/clients/kubeclient",
+    "injection/clients/kubeclient/fake",
     "injection/sharedmain",
     "kmeta",
     "kmp",
     "logging",
     "logging/logkey",
+    "logging/testing",
     "metrics",
     "metrics/metricskey",
+    "reconciler/testing",
     "signals",
     "system",
+    "system/testing",
+    "test",
     "test/ingress",
     "test/logging",
     "test/monitoring",
     "test/spoof",
     "test/zipkin",
+    "tracker",
     "webhook",
   ]
   pruneopts = "T"
@@ -1161,12 +1194,13 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/knative/pkg/test",
-    "github.com/knative/pkg/test/logging",
+    "github.com/google/go-cmp/cmp",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned",
+    "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake",
     "github.com/tektoncd/pipeline/pkg/client/injection/client",
+    "github.com/tektoncd/pipeline/pkg/client/injection/client/fake",
     "github.com/tektoncd/pipeline/pkg/names",
     "github.com/tektoncd/pipeline/pkg/system",
     "github.com/tektoncd/plumbing/scripts",
@@ -1189,6 +1223,7 @@
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
@@ -1202,6 +1237,7 @@
     "k8s.io/code-generator/cmd/defaulter-gen",
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
+    "knative.dev/caching/pkg/apis/caching",
     "knative.dev/caching/pkg/client/clientset/versioned",
     "knative.dev/pkg/apis",
     "knative.dev/pkg/codegen/cmd/injection-gen",
@@ -1209,10 +1245,14 @@
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection",
     "knative.dev/pkg/injection/clients/kubeclient",
+    "knative.dev/pkg/injection/clients/kubeclient/fake",
     "knative.dev/pkg/injection/sharedmain",
     "knative.dev/pkg/logging",
     "knative.dev/pkg/logging/logkey",
+    "knative.dev/pkg/reconciler/testing",
     "knative.dev/pkg/signals",
+    "knative.dev/pkg/test",
+    "knative.dev/pkg/test/logging",
     "knative.dev/pkg/webhook",
   ]
   solver-name = "gps-cdcl"

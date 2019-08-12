@@ -16,23 +16,26 @@ limitations under the License.
 package main
 
 import (
-	triggersClientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	triggersClientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("EventListener pod received a request: %+v", r)
-	eventListener, err := triggersClient.TriggersV1alpha1().EventListeners(listenerNamespace).Get(listenerName, v1.GetOptions{})
+	eventListener, err := triggersClient.TektonV1alpha1().EventListeners(listenerNamespace).Get(listenerName, v1.GetOptions{})
 	if err != nil {
 		log.Fatal("Failed to find EventListener", err)
 	}
 
 	for _, bindingRef := range eventListener.Spec.TriggerBindingRefs {
-		tb, err := triggersClient.TriggersV1alpha1().TriggerBindings(bindingRef.Namespace).Get(bindingRef.Name, v1.GetOptions{})
+		tb, err := triggersClient.TektonV1alpha1().TriggerBindings(bindingRef.Namespace).Get(bindingRef.Name, v1.GetOptions{})
 		if err != nil {
 			log.Printf("Error getting TriggerBinding %v", bindingRef)
 		}
@@ -63,7 +66,7 @@ func main() {
 		log.Fatal("Failed to get in cluster config", err)
 	}
 	triggersClient = triggersClientset.NewForConfigOrDie(clusterConfig)
-	log.Printf("Listen and serve on port 8082")
+	log.Printf("Listen and serve on port %d", eventlistener.Port)
 	http.HandleFunc("/", handler)
-	log.Fatal(http.ListenAndServe(":8082", nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", eventlistener.Port), nil))
 }

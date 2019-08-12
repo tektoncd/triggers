@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,4 +172,12 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 	}
 
 	return []corev1.Container{clusterContainer}, nil
+}
+
+func (s *ClusterResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
+func (s *ClusterResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
 }

@@ -54,7 +54,7 @@ type eventListeners struct {
 }
 
 // newEventListeners returns a EventListeners
-func newEventListeners(c *TriggersV1alpha1Client, namespace string) *eventListeners {
+func newEventListeners(c *TektonV1alpha1Client, namespace string) *eventListeners {
 	return &eventListeners{
 		client: c.RESTClient(),
 		ns:     namespace,
