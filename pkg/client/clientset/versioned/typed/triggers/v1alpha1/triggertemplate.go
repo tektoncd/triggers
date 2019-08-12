@@ -54,7 +54,7 @@ type triggerTemplates struct {
 }
 
 // newTriggerTemplates returns a TriggerTemplates
-func newTriggerTemplates(c *TriggersV1alpha1Client, namespace string) *triggerTemplates {
+func newTriggerTemplates(c *TektonV1alpha1Client, namespace string) *triggerTemplates {
 	return &triggerTemplates{
 		client: c.RESTClient(),
 		ns:     namespace,

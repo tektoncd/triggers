@@ -28,10 +28,10 @@ package test
 import (
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
+	knativetest "knative.dev/pkg/test"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.

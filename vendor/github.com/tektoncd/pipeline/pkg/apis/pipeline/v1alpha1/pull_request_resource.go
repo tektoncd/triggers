@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -137,4 +137,12 @@ func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container,
 // SetDestinationDirectory sets the destination directory at runtime like where is the resource going to be copied to
 func (s *PullRequestResource) SetDestinationDirectory(dir string) {
 	s.DestinationDir = dir
+}
+
+func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
+func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
 }

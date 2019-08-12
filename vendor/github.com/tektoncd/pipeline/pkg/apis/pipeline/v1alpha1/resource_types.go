@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,6 +55,8 @@ type PipelineResourceInterface interface {
 	Replacements() map[string]string
 	GetDownloadContainerSpec() ([]corev1.Container, error)
 	GetUploadContainerSpec() ([]corev1.Container, error)
+	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
+	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 	SetDestinationDirectory(string)
 }
 
@@ -68,7 +70,7 @@ type SecretParam struct {
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
 	Type   PipelineResourceType `json:"type"`
-	Params []Param              `json:"params"`
+	Params []ResourceParam      `json:"params"`
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`

@@ -21,9 +21,9 @@ package test
 import (
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 func TestEventListenerCreate(t *testing.T) {
@@ -36,7 +36,7 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("Start EventListener e2e test")
 
 	// Create EventListener
-	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(
+	el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(
 		&v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "my-eventlistener",
@@ -59,30 +59,30 @@ func TestEventListenerCreate(t *testing.T) {
 	if err = WaitForDeploymentToExist(c, namespace, el.Name); err != nil {
 		t.Fatalf("Failed to create EventListener Deployment: %s", err)
 	}
-	t.Logf("Found EventListener's Deployment")
+	t.Log("Found EventListener's Deployment")
 
 	// Verify the EventListener's Service is created
 	if err = WaitForServiceToExist(c, namespace, el.Name); err != nil {
 		t.Fatalf("Failed to create EventListener Service: %s", err)
 	}
-	t.Logf("Found EventListener's Service")
+	t.Log("Found EventListener's Service")
 
 	// Delete EventListener
-	err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Delete(el.Name, &metav1.DeleteOptions{})
+	err = c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Delete(el.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("Failed to delete EventListener: %s", err)
 	}
-	t.Logf("Deleted EventListener")
+	t.Log("Deleted EventListener")
 
 	// Verify the EventListener's Deployment is deleted
 	if err = WaitForDeploymentToNotExist(c, namespace, el.Name); err != nil {
 		t.Fatalf("Failed to delete EventListener Deployment: %s", err)
 	}
-	t.Logf("EventListener's Deployment was deleted")
+	t.Log("EventListener's Deployment was deleted")
 
 	// Verify the EventListener's Service is deleted
 	if err = WaitForServiceToNotExist(c, namespace, el.Name); err != nil {
 		t.Fatalf("Failed to delete EventListener Service: %s", err)
 	}
-	t.Logf("EventListener's Service was deleted")
+	t.Log("EventListener's Service was deleted")
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,4 +100,12 @@ func (s ImageResource) String() string {
 	// if the Marshal func gives an error, the returned string will be empty
 	json, _ := json.Marshal(s)
 	return string(json)
+}
+
+func (s *ImageResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
+func (s *ImageResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
 }

@@ -25,8 +25,6 @@ import (
 	"sync"
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	yaml "gopkg.in/yaml.v2"
@@ -35,6 +33,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/logging"
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -157,7 +157,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	els, err := cs.TriggersClient.TriggersV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
+	els, err := cs.TriggersClient.TektonV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get EventListeners: %w", err)
 	}
@@ -165,7 +165,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("EventListener", i.Name, i)
 	}
 
-	tbs, err := cs.TriggersClient.TriggersV1alpha1().TriggerBindings(ns).List(metav1.ListOptions{})
+	tbs, err := cs.TriggersClient.TektonV1alpha1().TriggerBindings(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerBindings: %w", err)
 	}
@@ -173,7 +173,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("TriggerBindings", i.Name, i)
 	}
 
-	tts, err := cs.TriggersClient.TriggersV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
+	tts, err := cs.TriggersClient.TektonV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerTemplates: %w", err)
 	}
