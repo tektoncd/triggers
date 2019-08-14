@@ -14,8 +14,8 @@ Naturally, CI/CD events contain information that should:
 
 The Tekton API enables functionality to be seperated from configuration (e.g. [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md) vs [PipelineRuns](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md)) such that steps can be reusable, but it does not provide a mechanism to generate the resources (notably, [PipelineRuns](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md) and [PipelineResources](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md#pipelineresources)) that encapsulate these configurations dynamically. Triggers extends the Tekton architecture with the following CRDs:
 - [`TriggerTemplate`](docs/triggertemplates.md) - Templates resources to be created (e.g. Create PipelineResources and PipelineRun that uses them)
-- [`TriggerBinding`](docs/triggerbindings.md) - Instantiates resources in TriggerTemplate using event fields
-- [`EventListener`](docs/eventlisteners.md) - Wraps TriggerBinding(s) into an addressable endpoint (the event sink)
+- [`TriggerBinding`](docs/triggerbindings.md) - Validates events and extracts payload fields
+- [`EventListener`](docs/eventlisteners.md) - Connects `TriggerBindings` and `TriggerTemplates` into an [addressable](https://github.com/knative/eventing/blob/master/docs/spec/interfaces.md) endpoint (the event sink). When hit, it uses extracted event parameters from each `TriggeringBinding` to instantiate resources specified in the corresponding `TriggerTemplates`.
 
 
 Using `tektoncd/triggers` in conjunction with `tektoncd/pipeline` enables you to easily create full-fledged CI/CD systems where the execution is defined **entirely** through Kubernetes resources.

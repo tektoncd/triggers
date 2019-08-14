@@ -25,36 +25,39 @@ import (
 // Check that TriggerTemplate may be validated and defaulted.
 //var _ apis.Validatable = (*TriggerTemplate)(nil)
 
+// TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
 	Params            []pipelinev1.ParamSpec    `json:"params,omitempty"`
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
+// TriggerTemplateResourceTemplate describes a resource to create
 type TriggerResourceTemplate struct {
 	json.RawMessage `json:",inline"`
 }
 
+// TriggerTemplateStatus describes the desired state of TriggerTemplate
 type TriggerTemplateStatus struct{}
 
+// TriggerTemplate takes parameters and uses them to create CRDs
+//
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// TriggerTemplate takes parameters and uses them to create CRDs
 // +k8s:openapi-gen=true
 type TriggerTemplate struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	// Spec holds the desired state of the EventListener from the client
+	// Spec holds the desired state of the TriggerTemplate from the client
 	// +optional
 	Spec TriggerTemplateSpec `json:"spec"`
 	// +optional
 	Status TriggerTemplateStatus `json:"status"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // TriggerTemplateList contains a list of TriggerTemplate
+//
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TriggerTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
