@@ -22,13 +22,15 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// Validate EventListener.
 func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
 	return t.Spec.Validate(ctx)
 }
 
+// Validate EventListenerSpec.
 func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
-	if len(s.TriggerBindingRefs) == 0 {
-		return apis.ErrMissingField("spec.triggerbindingrefs")
+	if len(s.Triggers) == 0 {
+		return apis.ErrMissingField("spec.triggers")
 	}
 	return nil
 }

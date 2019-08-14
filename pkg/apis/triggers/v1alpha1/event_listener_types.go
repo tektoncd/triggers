@@ -25,22 +25,41 @@ import (
 // Check that EventListener may be validated and defaulted.
 var _ apis.Validatable = (*EventListener)(nil)
 
+// EventListenerSpec defines the desired state of the EventListener, represented by a list of Triggers.
 type EventListenerSpec struct {
-	TriggerBindingRefs []TriggerBindingRef `json:"triggerbindingrefs,omitempty"`
+	ServiceAccountName string    `json:"serviceAccountName"`
+	Triggers           []Trigger `json:"triggers,omitempty"`
 }
 
+// Trigger represents a connection between TriggerBinding and TriggerTemplate; TriggerBinding provides extracted
+// values for TriggerTemplate to then create resources from.
+//
+// +k8s:deepcopy-gen=true
+type Trigger struct {
+	TriggerBinding  TriggerBindingRef  `json:"binding"`
+	TriggerTemplate TriggerTemplateRef `json:"template"`
+}
+
+// TriggerBindingRef refers to a particular TriggerBinding resource.
 type TriggerBindingRef struct {
-	Name       string `json:"name,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
+	Name       string `json:"name"`
 	APIVersion string `json:"apiversion,omitempty"`
 }
 
+// TriggerTemplateRef refers to a particular TriggerTemplate resource.
+type TriggerTemplateRef struct {
+	Name       string `json:"name"`
+	APIVersion string `json:"apiversion,omitempty"`
+}
+
+// EventListenerStatus defines the observed state of EventListener
 type EventListenerStatus struct{}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// EventListener exposes a service to accept webhook events.
+// EventListener exposes a service to accept HTTP event payloads.
+//
 // +k8s:openapi-gen=true
 type EventListener struct {
 	metav1.TypeMeta `json:",inline"`
@@ -53,9 +72,9 @@ type EventListener struct {
 	Status EventListenerStatus `json:"status"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // EventListenerList contains a list of TriggerBinding
+//
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type EventListenerList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

@@ -4,5 +4,9 @@ metadata:
   name: listener
   namespace: tekton-pipelines
 spec:
-  triggerbindingrefs:
-    - name: pipeline-binding
+  serviceAccountName: default
+  triggers:
+    - binding:
+        name: pipeline-binding
+      template:
+        name: pipeline-template

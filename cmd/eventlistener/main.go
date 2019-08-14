@@ -34,15 +34,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Failed to find EventListener", err)
 	}
 
-	for _, bindingRef := range eventListener.Spec.TriggerBindingRefs {
-		tb, err := triggersClient.TektonV1alpha1().TriggerBindings(bindingRef.Namespace).Get(bindingRef.Name, v1.GetOptions{})
+	for _, trigger := range eventListener.Spec.Triggers {
+
+		tb, err := triggersClient.TektonV1alpha1().TriggerBindings(listenerNamespace).Get(trigger.TriggerBinding.Name, v1.GetOptions{})
 		if err != nil {
-			log.Printf("Error getting TriggerBinding %v", bindingRef)
+			log.Printf("Error getting TriggerBinding %s", trigger.TriggerBinding.Name)
 		}
+		log.Print(tb)
+		tt, err := triggersClient.TektonV1alpha1().TriggerTemplates(listenerNamespace).Get(trigger.TriggerTemplate.Name, v1.GetOptions{})
+		if err != nil {
+			log.Printf("Error getting TriggerTemplate %s", trigger.TriggerTemplate.Name)
+		}
+		log.Print(tt)
 		// TODO: Header matching
 		// TODO: Conditionally match
 		// TODO: Create resources
-		log.Printf("TriggerBinding %v", tb)
 	}
 }
 

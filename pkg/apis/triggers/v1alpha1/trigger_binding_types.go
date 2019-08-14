@@ -25,23 +25,7 @@ import (
 //var _ apis.Validatable = (*TriggerBinding)(nil)
 
 type TriggerBindingSpec struct {
-	TemplateBindings []TemplateBinding `json:"templatebindings,omitempty"`
-}
-
-type TemplateBinding struct {
-	TemplateRef TriggerTemplateRef   `json:"templateref,omitempty"`
-	Event       TriggerTemplateEvent `json:"triggertemplateevent,omitempty"`
-	Params      []pipelinev1.Param   `json:"params,omitempty"`
-}
-
-type TriggerTemplateRef struct {
-	Name       string `json:"name,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
-	APIVersion string `json:"apiversion,omitempty"`
-}
-
-type TriggerTemplateEvent struct {
-	Type string `json:"type,omitempty"`
+	Params []pipelinev1.Param `json:"params,omitempty"`
 }
 
 type TriggerBindingStatus struct{}
@@ -64,7 +48,8 @@ type TriggerBinding struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TriggerBindingList contains a list of TriggerBinding
+// TriggerBindingList contains a list of TriggerBindings.
+// We don't use this but it's required for certain codegen features.
 type TriggerBindingList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

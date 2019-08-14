@@ -1,9 +1,7 @@
 # TriggerBindings
-As per the name, `TriggerBindings` bind events to `TriggerTemplates`.
-`TriggerBindings` build atop `TriggerTemplates` by enabling you to capture fields within an event payload and store them as parameters.
-These parameters are passed into the referenced `TriggerTemplate`.
-Although similar, the separation of these two resources was deliberate to encourage `TriggerTemplate` definitions to be reusable.
-Further, it is as this level that the service account is connected, which specifies what permissions the resources will be created (or at least attempted) with.
+As per the name, `TriggerBindings` bind against events/triggers.
+`TriggerBindings` enable you to capture fields within an event payload and store them as parameters. 
+The separation of `TriggerBindings` from `TriggerTemplates` was deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
 ```YAML
@@ -13,14 +11,11 @@ metadata:
   name: pipeline-binding
   namespace: tekton-pipelines
 spec:
-  templatebindings:
-    - templateref:
-        name: pipeline-template
-      params:
-        - name: gitrevision
-          value: $(event.head_commit.id)
-        - name: gitrepositoryurl
-          value: $(event.repository.url)
+  params:
+    - name: gitrevision
+      value: $(event.head_commit.id)
+    - name: gitrepositoryurl
+      value: $(event.repository.url)
 ```
 
-One or more `TriggerBindings` are collected together into an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.
+`TriggerBindings` are connected to `TriggerTemplates` within an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.

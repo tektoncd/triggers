@@ -58,9 +58,14 @@ func TestReconcile(t *testing.T) {
 			Name:      "my-eventlistener",
 		},
 		Spec: v1alpha1.EventListenerSpec{
-			TriggerBindingRefs: []v1alpha1.TriggerBindingRef{
-				{
-					Name: "my-triggerbinding",
+			Triggers: []v1alpha1.Trigger{
+				v1alpha1.Trigger{
+					TriggerBinding: v1alpha1.TriggerBindingRef{
+						Name: "my-triggerbinding",
+					},
+					TriggerTemplate: v1alpha1.TriggerTemplateRef{
+						Name: "my-triggertemplate",
+					},
 				},
 			},
 		},

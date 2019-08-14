@@ -42,9 +42,15 @@ func TestEventListenerCreate(t *testing.T) {
 				Name: "my-eventlistener",
 			},
 			Spec: v1alpha1.EventListenerSpec{
-				TriggerBindingRefs: []v1alpha1.TriggerBindingRef{
-					{
-						Name: "my-triggerbinding",
+				ServiceAccountName: "some-service-account",
+				Triggers: []v1alpha1.Trigger{
+					v1alpha1.Trigger{
+						TriggerBinding: v1alpha1.TriggerBindingRef{
+							Name: "some-trigger-binding",
+						},
+						TriggerTemplate: v1alpha1.TriggerTemplateRef{
+							Name: "some-trigger-template",
+						},
 					},
 				},
 			},

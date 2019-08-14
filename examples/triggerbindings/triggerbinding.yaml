@@ -4,11 +4,8 @@ metadata:
   name: pipeline-binding
   namespace: tekton-pipelines
 spec:
-  templatebindings:
-    - templateref:
-        name: pipeline-template
-      params:
-        - name: gitrevision
-          value: $(event.head_commit.id)
-        - name: gitrepositoryurl
-          value: $(event.repository.url)
+  params:
+    - name: gitrevision
+      value: $(event.head_commit.id)
+    - name: gitrepositoryurl
+      value: $(event.repository.url)
