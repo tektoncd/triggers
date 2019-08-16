@@ -22,21 +22,5 @@ spec:
         - name: gitrepositoryurl
           value: $(event.repository.url)
 ```
-```YAML
-apiVersion: tekton.dev/v1alpha1
-kind: TriggerBinding
-metadata:
-  name: pipeline-binding
-  namespace: tekton-pipelines
-spec:
-  templatebindings:
-    - templateref:
-        name: pipeline-template
-      params:
-        - name: gitrevision
-          value: $(event.head_commit.id)
-        - name: gitrepositoryurl
-          value: $(event.repository.url)
-```
 
 One or more `TriggerBindings` are collected together into an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.
