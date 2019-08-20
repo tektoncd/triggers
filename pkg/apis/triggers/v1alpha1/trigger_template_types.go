@@ -17,9 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Check that TriggerTemplate may be validated and defaulted.
@@ -31,7 +31,7 @@ type TriggerTemplateSpec struct {
 }
 
 type TriggerResourceTemplate struct {
-	json.RawMessage `json:",inline"`
+	runtime.RawExtension `json:",inline"`
 }
 
 type TriggerTemplateStatus struct{}
