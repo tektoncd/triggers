@@ -20,20 +20,41 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"knative.dev/pkg/apis"
 )
 
 // Validate EventListener.
 func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
+	return t.Spec.Validate(ctx, t)
 }
 
 // Validate EventListenerSpec.
-func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
+func (s *EventListenerSpec) Validate(ctx context.Context, el *EventListener) *apis.FieldError {
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}
+
+	clientset := ctx.Value("clientSet").(dynamic.Interface)
+	TriggerBindings := SchemeGroupVersion.WithResource("triggerbindings")
+	TriggerTemplates := SchemeGroupVersion.WithResource("triggertemplates")
+
 	for n, t := range s.Triggers {
+		if t.Binding != nil {
+			_, err := clientset.Resource(TriggerBindings).Namespace(el.Namespace).Get(t.Binding.Name, metav1.GetOptions{})
+			if err != nil {
+				return apis.ErrInvalidValue(err, "spec.triggers.binding")
+			}
+		}
+		if t.Template == (EventListenerTemplate{}) {
+			return apis.ErrMissingField("spec.triggers.template")
+		} else {
+			_, err := clientset.Resource(TriggerTemplates).Namespace(el.Namespace).Get(t.Template.Name, metav1.GetOptions{})
+			if err != nil {
+				return apis.ErrInvalidValue(err, "spec.triggers.template")
+			}
+		}
 		if t.Interceptor != nil {
 			return t.Interceptor.Validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", n))
 		}
