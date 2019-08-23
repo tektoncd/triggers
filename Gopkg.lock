@@ -932,12 +932,13 @@
   version = "kubernetes-1.12.9"
 
 [[projects]]
-  digest = "1:334266c299fd48be4080d0b5c111af025ed10be3edf7f4c84c694a1f799ce6fa"
+  digest = "1:cd3abb856100989f919fc65610be4a34fa93d6e27a5191b116c60b9ec150b952"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
     "discovery/fake",
     "dynamic",
+    "dynamic/fake",
     "informers",
     "informers/admissionregistration",
     "informers/admissionregistration/v1alpha1",
@@ -1107,8 +1108,7 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "4f3abb12cae2d6817e1b6d72d9cbc3d3a6ddf965"
-  version = "kubernetes-1.12.9"
+  revision = "97dc22a90a299033b557e8bb7db6d5d22f8f7875"
 
 [[projects]]
   digest = "1:26b81b5e76e3f84ea5140da4f74649576e470f79091d2ef8e0d1b5000bc636ca"
@@ -1270,6 +1270,8 @@
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
+    "k8s.io/client-go/dynamic",
+    "k8s.io/client-go/dynamic/fake",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",

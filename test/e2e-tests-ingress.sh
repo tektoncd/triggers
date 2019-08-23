@@ -98,6 +98,8 @@ set -o pipefail
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress
 # Apply Ingress Task
 kubectl apply -f ${REPO_ROOT_DIR}/docs/create-ingress.yaml
+kubectl apply -f ${REPO_ROOT_DIR}/examples/triggerbindings/triggerbinding.yaml
+kubectl apply -f ${REPO_ROOT_DIR}/examples/triggertemplates/triggertemplate.yaml
 
 EVENTLISTENER_NAME="ingress-test-eventlistener"
 
@@ -110,7 +112,11 @@ metadata:
 spec:
   serviceAccountName: default
   triggers:
-  - params:
+  - binding:
+      name: pipeline-binding
+    template:
+      name: pipeline-template
+    params:
     - name: param1
       value: value1
 DONE
