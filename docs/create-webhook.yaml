@@ -1,0 +1,155 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-webhook
+spec:
+  inputs:
+    params:
+    - name: CreateCertificate
+      description: Create certificate 
+      default: "true"
+    - name: CreateIngress
+      description: Create ingress 
+      default: "true"
+    - name: CreateWebhook
+      description: Create webhook 
+      default: "true"
+    - name: CreateEventListener
+      description: Create event listener 
+      default: "true"
+    - name: CertificateKeyPassphrase
+      description: The phrase that protects private key 
+      default: "phrase1"
+    - name: CertificateSecretName
+      description: The secret name for ingress certificate 
+      default: "secret1"
+    - name: ExternalUrl
+      description: The external access URl 
+      default: "https://$(inputs.params.EventListenerName).PROXYIP.nip.io"
+    - name: GithubOwner
+      description: The github owner name
+      default: "owner"
+    - name: GithubRepo
+      description: The github repo name 
+      default: "repo"
+    - name: GithubSecretName
+      description: The secret name for github access token 
+      default: "githubsecret"
+    - name: GithubUrl
+      description: The url of git hub 
+      default: "github.com"
+    - name: EventListenerName
+      description: The event listener name 
+      default: "eventlistener"
+    - name: TriggerBinding
+      description: The Trigger binding 
+      default: "triggerbinding"
+    - name: TriggerTemplate
+      description: The Trigger Template 
+      default: "triggertemplate"
+    - name: TriggerServiceAccount
+      description: The Trigger service account 
+      default: "default"
+  steps:
+  - name: generate-certificate
+    image: ibmcom/microclimate-utils:1905
+    command:
+    - sh
+    args:
+    - -ce
+    - |
+      set -e
+      cat <<EOF | sh
+      #!/bin/sh
+      if [ $(inputs.params.CreateCertificate) = "false" ]
+      then
+        exit 0
+      fi
+      mkdir /var/tmp/ingress
+      openssl genrsa -des3 -out /var/tmp/ingress/key.pem -passout pass:$(inputs.params.CertificateKeyPassphrase) 2048
+      openssl req -x509 -new -nodes -key /var/tmp/ingress/key.pem -sha256 -days 1825 -out /var/tmp/ingress/certificate.pem -passin pass:$(inputs.params.CertificateKeyPassphrase) -subj /CN=$(inputs.params.ExternalUrl)
+      openssl rsa -in /var/tmp/ingress/key.pem -out /var/tmp/ingress/key.pem -passin pass:$(inputs.params.CertificateKeyPassphrase)
+      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/ingress/certificate.pem --key=/var/tmp/ingress/key.pem -n tekton-pipelines
+      EOF
+  - name: create-ingress
+    image: lachlanevenson/k8s-kubectl:latest
+    command:
+    - sh
+    args:
+    - -ce
+    - |
+      set -e
+      if [ $(inputs.params.CreateIngress) = "false" ]
+      then
+        exit 0
+      fi
+      cat <<EOF | kubectl apply -f -
+      apiVersion: extensions/v1beta1
+      kind: Ingress
+      metadata:
+        name: $(inputs.params.EventListenerName)
+      spec:
+        tls:
+        - hosts:
+          - $(inputs.params.ExternalUrl)
+          secretName: $(inputs.params.CertificateSecretName)
+        rules:
+        - host: $(inputs.params.ExternalUrl)
+          http:
+            paths:
+            - backend:
+                serviceName: $(inputs.params.EventListenerName)
+                servicePort: 8082
+      EOF
+  - name: create-webhook
+    image: pstauffer/curl:latest
+    command:
+    - sh
+    args:
+    - -ce
+    - |
+      set -e
+      if [ $(inputs.params.CreateWebhook) = "false" ]
+      then
+        exit 0
+      fi
+      echo "Create Webhook"
+      if [ $(inputs.params.GithubUrl) = "github.com" ]
+      then
+      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\"}}" -X POST -u $(cat /var/secret/userName):$(cat /var/secret/accessToken) -L https://api.github.com/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
+      else
+      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\"}}" -X POST -u $(cat /var/secret/userName):$(cat /var/secret/accessToken) -L https://$(inputs.params.GithubUrl)/api/v3/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
+      fi
+    volumeMounts:
+    - name: github-secret
+      mountPath: /var/secret
+  - name: create-eventlistener
+    image: lachlanevenson/k8s-kubectl:latest
+    command:
+    - sh
+    args:
+    - -ce
+    - |
+      set -e
+      if [ $(inputs.params.CreateEventListener) = "false" ]
+      then
+        exit 0
+      fi
+      cat <<EOF | kubectl apply -f -
+      apiVersion: tekton.dev/v1alpha1
+      kind: EventListener
+      metadata:
+        name: $(inputs.params.EventListenerName)
+      spec:
+        serviceAccountName: $(inputs.params.TriggerServiceAccount)
+        triggers:
+        - binding:
+            name: $(inputs.params.TriggerBinding)
+          template:
+            name: $(inputs.params.TriggerTemplate)
+      EOF
+  volumes:
+  - name: github-secret
+    secret:
+      secretName: $(inputs.params.GithubSecretName) 
+
