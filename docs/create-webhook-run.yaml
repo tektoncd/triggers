@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: create-webhook
+spec:
+  taskRef:
+    name: create-webhook
+  inputs:
+    params:
+    - name: CreateCertificate
+      value: "false"
+    - name: CreateIngress
+      value: "false"
+    - name: CreateWebhook
+      value: "false"
+    - name: CreateEventListener
+      value: "false"
+    - name: EventListenerName
+      value: listener
+    - name: CertificateKeyPassphrase
+      value: pass1
+    - name: CertificateSecretName
+      value: secret1
+    - name: ExternalUrl
+      value: listener.192.168.0.1.nip.io
+    - name: GithubOwner
+      value: tektoncd
+    - name: GithubRepo
+      value: trigger
+    - name: GithubSecretName
+      value: ghe-secret
+    - name: GithubUrl
+      value: github.com
+    - name: TriggerBinding
+      value: pipeline-binding
+    - name: TriggerTemplate
+      value: pipeline-template
+  timeout: 1000s
+  serviceAccount: tekton-pipelines-controller
