@@ -26,18 +26,19 @@ that contains initialized clients for accessing:
 package test
 
 import (
-	"testing"
-
-	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	fakeTktnClientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
+	fakeTriggersClientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes"
+	fakek8sClientset "k8s.io/client-go/kubernetes/fake"
 	knativetest "knative.dev/pkg/test"
+	"testing"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.
 type clients struct {
-	KubeClient kubernetes.Interface
-
+	KubeClient     kubernetes.Interface
 	PipelineClient pipelineclientset.Interface
 	TriggersClient triggersclientset.Interface
 }
@@ -67,6 +68,18 @@ func newClients(t *testing.T, configPath, clusterName string) *clients {
 	c.TriggersClient, err = triggersclientset.NewForConfig(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create triggers clientset from config file at %s: %s", configPath, err)
+	}
+	return c
+}
+
+func NewFakeClients() *clients {
+	var kubeClient kubernetes.Interface = fakek8sClientset.NewSimpleClientset()
+	var pipelineClient pipelineclientset.Interface = fakeTktnClientset.NewSimpleClientset()
+	var triggersClient triggersclientset.Interface = fakeTriggersClientset.NewSimpleClientset()
+	c := &clients{
+		KubeClient:     kubeClient,
+		PipelineClient: pipelineClient,
+		TriggersClient: triggersClient,
 	}
 	return c
 }

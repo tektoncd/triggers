@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,26 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package test
 
-import (
-	"context"
-
-	"knative.dev/pkg/apis"
-)
-
-// Validate EventListener.
-func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
-}
-
-// Validate EventListenerSpec.
-func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
-	if len(s.Triggers) == 0 {
-		return apis.ErrMissingField("spec.triggers")
+// MergeLabels merges values in map m2 into m1, which potentially clobbers values.
+// Non-nil maps are assumed.
+func MergeLabels(m1, m2 map[string]string) map[string]string {
+	for k, v := range m2 {
+		m1[k] = v
 	}
-	if s.ServiceAccountName == "" {
-		return apis.ErrMissingField("spec.serviceAccountName")
-	}
-	return nil
+	return m1
 }

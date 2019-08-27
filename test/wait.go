@@ -45,50 +45,58 @@ const (
 	timeout  = 30 * time.Second
 )
 
-// WaitForDeploymentToExist polls for the existence of the Deployment called name
-// in the specified namespace
-func WaitForDeploymentToExist(c *clients, namespace, name string) error {
+// WaitForDeployment polls for the existence/non-existence of the specified Deployment
+func WaitForDeployment(c *clients, namespace, name string, exists bool) error {
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := c.KubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return !exists, nil
+			}
+			return exists, err
 		}
-		return true, err
+		return true, nil
 	})
 }
 
-// WaitForDeploymentToNotExist polls for the absence of the Deployment called
-// name in the specified namespace
-func WaitForDeploymentToNotExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := c.KubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, err
-	})
-}
-
-// WaitForServiceToExist polls for the existence of the Service called name in
-// the specified namespace
-func WaitForServiceToExist(c *clients, namespace, name string) error {
+// WaitForService polls for the existence/non-existence of the specified Service
+func WaitForService(c *clients, namespace, name string, exists bool) error {
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := c.KubeClient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return !exists, nil
+			}
+			return exists, err
 		}
-		return true, err
+		return true, nil
 	})
 }
 
-// WaitForServiceToNotExist polls for the absence of the Service called name in
-// the specified namespace
-func WaitForServiceToNotExist(c *clients, namespace, name string) error {
+// WaitForRole polls for the existence/non-existence of the specified Role
+func WaitForRole(c *clients, namespace, name string, exists bool) error {
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := c.KubeClient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return true, nil
+		_, err := c.KubeClient.RbacV1().Roles(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return !exists, nil
+			}
+			return exists, err
 		}
-		return false, err
+		return true, nil
+	})
+}
+
+// WaitForRoleBinding polls for the existence/non-existence of the specified RoleBinding
+func WaitForRoleBinding(c *clients, namespace, name string, exists bool) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		_, err := c.KubeClient.RbacV1().RoleBindings(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return !exists, nil
+			}
+			return exists, err
+		}
+		return true, nil
 	})
 }

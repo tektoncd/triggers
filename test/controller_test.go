@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -75,6 +76,42 @@ func TestGetTestResourcesFromClients(t *testing.T) {
 			Name:      "my-service2",
 		},
 	}
+	sa1 := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-sa1",
+		},
+	}
+	sa2 := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-sa2",
+		},
+	}
+	role1 := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-role1",
+		},
+	}
+	role2 := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-role2",
+		},
+	}
+	roleBinding1 := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-rolebinding1",
+		},
+	}
+	roleBinding2 := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-rolebinding2",
+		},
+	}
 
 	tests := []struct {
 		name          string
@@ -87,19 +124,25 @@ func TestGetTestResourcesFromClients(t *testing.T) {
 		{
 			name: "one resource each",
 			testResources: TestResources{
-				Namespaces:     []*corev1.Namespace{nsFoo},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				Namespaces:      []*corev1.Namespace{nsFoo},
+				EventListeners:  []*v1alpha1.EventListener{eventListener1},
+				Deployments:     []*appsv1.Deployment{deployment1},
+				Services:        []*corev1.Service{service1},
+				ServiceAccounts: []*corev1.ServiceAccount{sa1},
+				Roles:           []*rbacv1.Role{role1},
+				RoleBindings:    []*rbacv1.RoleBinding{roleBinding1},
 			},
 		},
 		{
 			name: "two resources each",
 			testResources: TestResources{
-				Namespaces:     []*corev1.Namespace{nsFoo, nsTektonPipelines},
-				EventListeners: []*v1alpha1.EventListener{eventListener1, eventListener2},
-				Deployments:    []*appsv1.Deployment{deployment1, deployment2},
-				Services:       []*corev1.Service{service1, service2},
+				Namespaces:      []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				EventListeners:  []*v1alpha1.EventListener{eventListener1, eventListener2},
+				Deployments:     []*appsv1.Deployment{deployment1, deployment2},
+				Services:        []*corev1.Service{service1, service2},
+				ServiceAccounts: []*corev1.ServiceAccount{sa1, sa2},
+				Roles:           []*rbacv1.Role{role1, role2},
+				RoleBindings:    []*rbacv1.RoleBinding{roleBinding1, roleBinding2},
 			},
 		},
 		{

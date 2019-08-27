@@ -17,6 +17,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-admin
 rules:
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "create", "update"]
   - apiGroups: [""]
     resources: ["configmaps", "secrets", "services"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

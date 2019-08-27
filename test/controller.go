@@ -31,6 +31,7 @@ import (
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/controller"
@@ -39,10 +40,13 @@ import (
 // TestResources represents the desired state of the system (i.e. existing resources)
 // to seed controllers with.
 type TestResources struct {
-	Namespaces     []*corev1.Namespace
-	EventListeners []*v1alpha1.EventListener
-	Deployments    []*appsv1.Deployment
-	Services       []*corev1.Service
+	Namespaces      []*corev1.Namespace
+	EventListeners  []*v1alpha1.EventListener
+	Deployments     []*appsv1.Deployment
+	Services        []*corev1.Service
+	ServiceAccounts []*corev1.ServiceAccount
+	Roles           []*rbacv1.Role
+	RoleBindings    []*rbacv1.RoleBinding
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -95,6 +99,21 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 			t.Fatal(err)
 		}
 	}
+	for _, sa := range r.ServiceAccounts {
+		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(sa); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, role := range r.Roles {
+		if _, err := c.Kube.RbacV1().Roles(role.Namespace).Create(role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, rb := range r.RoleBindings {
+		if _, err := c.Kube.RbacV1().RoleBindings(rb.Namespace).Create(rb); err != nil {
+			t.Fatal(err)
+		}
+	}
 	c.Kube.ClearActions()
 	c.Triggers.ClearActions()
 	c.Pipeline.ClearActions()
@@ -135,6 +154,30 @@ func GetTestResourcesFromClients(c Clients) (*TestResources, error) {
 		}
 		for _, svc := range svcList.Items {
 			testResources.Services = append(testResources.Services, svc.DeepCopy())
+		}
+		// Add ServiceAccounts
+		saList, err := c.Kube.CoreV1().ServiceAccounts(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, sa := range saList.Items {
+			testResources.ServiceAccounts = append(testResources.ServiceAccounts, sa.DeepCopy())
+		}
+		// Add Roles
+		roleList, err := c.Kube.RbacV1().Roles(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, role := range roleList.Items {
+			testResources.Roles = append(testResources.Roles, role.DeepCopy())
+		}
+		// Add RoleBindings
+		roleBindingList, err := c.Kube.RbacV1().RoleBindings(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, roleBinding := range roleBindingList.Items {
+			testResources.RoleBindings = append(testResources.RoleBindings, roleBinding.DeepCopy())
 		}
 	}
 	return testResources, nil
