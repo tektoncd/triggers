@@ -33,7 +33,7 @@ spec:
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
-          "-el-image", "github.com/tektoncd/triggers/cmd/eventlistener",
+          "-el-image", "github.com/tektoncd/triggers/cmd/eventlistenersink",
         ]
         volumeMounts:
         - name: config-logging

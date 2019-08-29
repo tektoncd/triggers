@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"reflect"
+	"strconv"
 
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler"
@@ -110,8 +111,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					// TODO: Do not make the assumption that the EventListener/Deployment is in the tekton-pipelines namespace
-					ServiceAccountName: "tekton-triggers-controller",
+					ServiceAccountName: el.Spec.ServiceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:  "event-listener",
@@ -121,15 +121,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 									ContainerPort: int32(Port),
 								},
 							},
-							Env: []corev1.EnvVar{
-								corev1.EnvVar{
-									Name:  "LISTENER_NAME",
-									Value: el.Name,
-								},
-								corev1.EnvVar{
-									Name:  "LISTENER_NAMESPACE",
-									Value: el.Namespace,
-								},
+							Args: []string{
+								"-el-name", el.Name,
+								"-el-namespace", el.Namespace,
+								"-port", strconv.Itoa(Port),
 							},
 						},
 					},

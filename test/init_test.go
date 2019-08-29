@@ -85,6 +85,14 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 		} else {
 			t.Log(webhookLogs)
 		}
+
+		header(t.Logf, fmt.Sprintf("Dumping logs from EventListener sinks in namespace %s", namespace))
+		elSinkLogs, err := CollectPodLogsWithLabel(cs.KubeClient, namespace, "triggers=eventlistener")
+		if err != nil {
+			t.Logf("Could not get logs for EventListener sink Pods: %s", err)
+		} else {
+			t.Log(elSinkLogs)
+		}
 	}
 
 	t.Logf("Deleting namespace %s", namespace)
@@ -187,6 +195,30 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	}
 	for _, i := range pods.Items {
 		printOrAdd("Pod", i.Name, i)
+	}
+
+	services, err := cs.KubeClient.CoreV1().Services(ns).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("could not get Services: %w", err)
+	}
+	for _, i := range services.Items {
+		printOrAdd("Service", i.Name, i)
+	}
+
+	roles, err := cs.KubeClient.RbacV1().Roles(ns).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("could not get Roles: %w", err)
+	}
+	for _, i := range roles.Items {
+		printOrAdd("Role", i.Name, i)
+	}
+
+	roleBindings, err := cs.KubeClient.RbacV1().RoleBindings(ns).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("could not get RoleBindings: %w", err)
+	}
+	for _, i := range roleBindings.Items {
+		printOrAdd("Role", i.Name, i)
 	}
 
 	return output, nil

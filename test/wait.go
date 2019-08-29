@@ -35,6 +35,7 @@ package test
 import (
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -90,5 +91,53 @@ func WaitForServiceToNotExist(c *clients, namespace, name string) error {
 			return true, nil
 		}
 		return false, err
+	})
+}
+
+// WaitForTriggerTemplateToExist polls for the existence of the Deployment called name
+// in the specified namespace
+func WaitForTriggerTemplateToExist(c *clients, namespace, name string) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		_, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Get(name, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	})
+}
+
+// WaitForPodRunning polls for the Pod called name in the specified namespace
+// to be in the running phase
+func WaitForPodRunning(c *clients, namespace, name string) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		pod, err := c.KubeClient.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return true, err
+		}
+		if pod.Status.Phase != corev1.PodRunning {
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// WaitForExternalIP polls for the Service called svcName in the specified
+// namespace to have a LoadBalancer status with an Ingress
+func WaitForExternalIP(c *clients, namespace, svcName string) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		svc, err := c.KubeClient.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return true, err
+		}
+		if len(svc.Status.LoadBalancer.Ingress) == 0 {
+			return false, nil
+		}
+		return true, nil
 	})
 }

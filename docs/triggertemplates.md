@@ -27,7 +27,7 @@ spec:
         name: git-source
         namespace: $(params.namespace)
         labels:
-            triggertemplated: true
+          triggertemplated: "true"
       spec:
         type: git
         params:
@@ -39,14 +39,12 @@ spec:
       kind: PipelineRun
       metadata:
         name: simple-pipeline-run
-        namespace: default
+        namespace: $(params.namespace)
         labels:
-            triggertemplated: true
+          triggertemplated: "true"
       spec:
         pipelineRef:
             name: simple-pipeline
-        trigger:
-          type: event
         resources:
         - name: git-source
           resourceRef:
