@@ -28,7 +28,7 @@ import (
 
 // CollectPodLogsWithLabel will get the logs of all the Pods given a LabelSelector
 func CollectPodLogsWithLabel(c kubernetes.Interface, namespace, LabelSelector string) (string, error) {
-	pods, err := c.CoreV1().Pods("tekton-pipelines").List(metav1.ListOptions{LabelSelector: LabelSelector})
+	pods, err := c.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: LabelSelector})
 	if err != nil {
 		return "", err
 	}

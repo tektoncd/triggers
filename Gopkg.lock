@@ -900,7 +900,7 @@
   version = "kubernetes-1.12.9"
 
 [[projects]]
-  digest = "1:195d76db56287b4b8de466f8e369f1ea19fcba12879ecf858c86079a7c1af656"
+  digest = "1:334266c299fd48be4080d0b5c111af025ed10be3edf7f4c84c694a1f799ce6fa"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1049,6 +1049,7 @@
     "plugin/pkg/client/auth/exec",
     "plugin/pkg/client/auth/gcp",
     "rest",
+    "rest/fake",
     "rest/watch",
     "testing",
     "third_party/forked/golang/template",
@@ -1210,6 +1211,7 @@
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/api/rbac/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/labels",
@@ -1228,6 +1230,7 @@
     "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
+    "k8s.io/client-go/rest/fake",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/record",

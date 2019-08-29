@@ -9,3 +9,5 @@ spec:
       value: $(event.head_commit.id)
     - name: gitrepositoryurl
       value: $(event.repository.url)
+    - name: namespace
+      value: tekton-pipelines
