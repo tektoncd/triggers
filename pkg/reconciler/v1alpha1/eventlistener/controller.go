@@ -21,6 +21,7 @@ import (
 	"time"
 
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler"
@@ -28,6 +29,8 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/clients/kubeclient"
+	deployinformer "knative.dev/pkg/injection/informers/kubeinformers/appsv1/deployment"
+	serviceinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/service"
 	"knative.dev/pkg/logging"
 )
 
@@ -41,6 +44,8 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	pipelineclientset := pipelineclient.Get(ctx)
 	triggersclientset := triggersclient.Get(ctx)
 	eventListenerInformer := eventlistenerinformer.Get(ctx)
+	deploymentInformer := deployinformer.Get(ctx)
+	serviceInformer := serviceinformer.Get(ctx)
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeclientset,
@@ -62,6 +67,16 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 		DeleteFunc: impl.Enqueue,
+	})
+
+	deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+	})
+
+	serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 
 	return impl

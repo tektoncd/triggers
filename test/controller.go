@@ -25,6 +25,8 @@ import (
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
 	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
+	fakedeployinformer "knative.dev/pkg/injection/informers/kubeinformers/appsv1/deployment/fake"
+	fakeserviceinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/service/fake"
 
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -69,6 +71,8 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 
 	// Setup fake informer for reconciler tests
 	elInformer := fakeeventlistenerinformer.Get(ctx)
+	deployInformer := fakedeployinformer.Get(ctx)
+	serviceInformer := fakeserviceinformer.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -86,11 +90,19 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 		}
 	}
 	for _, d := range r.Deployments {
+		if err := deployInformer.Informer().GetIndexer().Add(d); err != nil {
+			t.Fatal(err)
+		}
+
 		if _, err := c.Kube.AppsV1().Deployments(d.Namespace).Create(d); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, svc := range r.Services {
+		if err := serviceInformer.Informer().GetIndexer().Add(svc); err != nil {
+			t.Fatal(err)
+		}
+
 		if _, err := c.Kube.CoreV1().Services(svc.Namespace).Create(svc); err != nil {
 			t.Fatal(err)
 		}
