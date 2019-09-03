@@ -11,7 +11,7 @@ metadata:
   name: listener
   namespace: tekton-pipelines
 spec:
-  serviceAccountName: default
+  serviceAccountName: tekton-triggers-controller
   triggers:
     - binding:
         name: pipeline-binding
