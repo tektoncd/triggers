@@ -8,13 +8,13 @@ spec:
   inputs:
     params:
     - name: CreateCertificate
-      value: "false"
+      value: "true"
     - name: CreateIngress
-      value: "false"
+      value: "true"
     - name: CreateWebhook
       value: "false"
     - name: CreateEventListener
-      value: "false"
+      value: "true"
     - name: EventListenerName
       value: listener
     - name: CertificateKeyPassphrase
@@ -28,7 +28,7 @@ spec:
     - name: GithubRepo
       value: trigger
     - name: GithubSecretName
-      value: ghe-secret
+      value: githubsecret
     - name: GithubUrl
       value: github.com
     - name: TriggerBinding
@@ -36,4 +36,4 @@ spec:
     - name: TriggerTemplate
       value: pipeline-template
   timeout: 1000s
-  serviceAccount: tekton-pipelines-controller
+  serviceAccount: default
