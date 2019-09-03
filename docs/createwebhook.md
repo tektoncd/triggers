@@ -43,6 +43,9 @@ This task requires the following permissions to execute.  The clusterrole with t
   - update
 ```
 
+This task always mounts the secret specified in `GithubSecretName`.  It must be created before the task is run.  The contents can be dummy values if the webhook does not need to be created.  
+
+
 ## Task params
 
 These are the task parms to manage the task execution

@@ -69,7 +69,7 @@ spec:
       openssl genrsa -des3 -out /var/tmp/ingress/key.pem -passout pass:$(inputs.params.CertificateKeyPassphrase) 2048
       openssl req -x509 -new -nodes -key /var/tmp/ingress/key.pem -sha256 -days 1825 -out /var/tmp/ingress/certificate.pem -passin pass:$(inputs.params.CertificateKeyPassphrase) -subj /CN=$(inputs.params.ExternalUrl)
       openssl rsa -in /var/tmp/ingress/key.pem -out /var/tmp/ingress/key.pem -passin pass:$(inputs.params.CertificateKeyPassphrase)
-      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/ingress/certificate.pem --key=/var/tmp/ingress/key.pem -n tekton-pipelines
+      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/ingress/certificate.pem --key=/var/tmp/ingress/key.pem 
       EOF
   - name: create-ingress
     image: lachlanevenson/k8s-kubectl:latest
