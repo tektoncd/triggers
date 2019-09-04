@@ -16,7 +16,7 @@ spec:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineResource
       metadata:
-        name: git-source
+        name: git-source-$(uid)
         namespace: $(params.namespace)
         labels:
           triggertemplated: "true"
@@ -30,7 +30,7 @@ spec:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineRun
       metadata:
-        name: simple-pipeline-run
+        generateName: simple-pipeline-run
         namespace: $(params.namespace)
         labels:
           triggertemplated: "true"
@@ -40,4 +40,4 @@ spec:
         resources:
         - name: git-source
           resourceRef:
-            name: git-source
+            name: git-source-$(uid)

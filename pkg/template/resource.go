@@ -17,15 +17,20 @@ limitations under the License.
 package template
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 )
+
+// uidMatch determines the uid variable within the resource template
+var uidMatch = []byte(`$(uid)`)
 
 type ResolvedBinding struct {
 	TriggerBinding  *triggersv1.TriggerBinding
@@ -83,5 +88,16 @@ func ApplyParamsToResourceTemplate(params []pipelinev1.Param, rt json.RawMessage
 func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(params.%s)", param.Name)
-	return []byte(strings.Replace(string(rt), paramVariable, param.Value.StringVal, -1))
+	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value.StringVal), -1)
+}
+
+// Uid generates a random string like the Kubernetes apiserver generateName metafield postfix.
+func Uid() string {
+	return rand.String(5)
+}
+
+// ApplyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
+// The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.
+func ApplyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage {
+	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
 }

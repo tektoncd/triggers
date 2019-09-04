@@ -92,6 +92,8 @@ func getEventPathValue(event []byte, eventPath string) (string, error) {
 	return eventPathValue, nil
 }
 
+// NewResources returns all resources defined when applying the event to the
+// TriggerTemplate and TriggerBinding in the ResolvedBinding.
 func NewResources(event []byte, binding ResolvedBinding) ([]json.RawMessage, error) {
 	params, err := ApplyEventToParams(event, binding.TriggerBinding.Spec.Params)
 	if err != nil {
@@ -100,8 +102,10 @@ func NewResources(event []byte, binding ResolvedBinding) ([]json.RawMessage, err
 	params = MergeInDefaultParams(params, binding.TriggerTemplate.Spec.Params)
 
 	resources := make([]json.RawMessage, len(binding.TriggerTemplate.Spec.ResourceTemplates))
+	uid := Uid()
 	for i := range binding.TriggerTemplate.Spec.ResourceTemplates {
 		resources[i] = ApplyParamsToResourceTemplate(params, binding.TriggerTemplate.Spec.ResourceTemplates[i].RawMessage)
+		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources, nil
 }

@@ -86,7 +86,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// TriggerTemplate
-	_, err = c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(
+	tt, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(
 		&triggersv1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "my-triggertemplate",
@@ -109,7 +109,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// TriggerBinding
-	_, err = c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
+	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
 		&triggersv1.TriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "my-triggerbinding",
@@ -153,7 +153,7 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// ServiceAccount + Role + RoleBinding to authorize the creation of our
 	// templated resources
-	_, err = c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(
+	sa, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(
 		&corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-serviceaccount"},
 		},
@@ -182,7 +182,7 @@ func TestEventListenerCreate(t *testing.T) {
 			Subjects: []rbacv1.Subject{
 				rbacv1.Subject{
 					Kind:      "ServiceAccount",
-					Name:      "my-serviceaccount",
+					Name:      sa.Name,
 					Namespace: namespace,
 				},
 			},
@@ -205,14 +205,14 @@ func TestEventListenerCreate(t *testing.T) {
 				Labels: map[string]string{"triggers": "eventlistener"},
 			},
 			Spec: triggersv1.EventListenerSpec{
-				ServiceAccountName: "my-serviceaccount",
+				ServiceAccountName: sa.Name,
 				Triggers: []triggersv1.Trigger{
 					triggersv1.Trigger{
 						TriggerBinding: triggersv1.TriggerBindingRef{
-							Name: "my-triggerbinding",
+							Name: tb.Name,
 						},
 						TriggerTemplate: triggersv1.TriggerTemplateRef{
-							Name: "my-triggertemplate",
+							Name: tt.Name,
 						},
 					},
 				},
