@@ -26,6 +26,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Allows us to sort Params by Name
@@ -316,6 +317,40 @@ func Test_ResolveBinding_error(t *testing.T) {
 			_, err := ResolveBinding(tt.trigger, tt.getTB, tt.getTT)
 			if err == nil {
 				t.Error("ResolveBinding() did not return error when expected")
+			}
+		})
+	}
+}
+
+func Test_ApplyUIDToResourceTemplate(t *testing.T) {
+	tests := []struct {
+		name       string
+		rt         json.RawMessage
+		expectedRt json.RawMessage
+	}{
+		{
+			name:       "No uid",
+			rt:         json.RawMessage(`{"rt": "nothing to see here"}`),
+			expectedRt: json.RawMessage(`{"rt": "nothing to see here"}`),
+		},
+		{
+			name:       "One uid",
+			rt:         json.RawMessage(`{"rt": "uid is $(uid)"}`),
+			expectedRt: json.RawMessage(`{"rt": "uid is cbhtc"}`),
+		},
+		{
+			name:       "Three uid",
+			rt:         json.RawMessage(`{"rt1": "uid is $(uid)", "rt2": "nothing", "rt3": "$(uid)-center-$(uid)"}`),
+			expectedRt: json.RawMessage(`{"rt1": "uid is cbhtc", "rt2": "nothing", "rt3": "cbhtc-center-cbhtc"}`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This seeds Uid() to return 'cbhtc'
+			rand.Seed(0)
+			actualRt := ApplyUIDToResourceTemplate(tt.rt, Uid())
+			if diff := cmp.Diff(string(tt.expectedRt), string(actualRt)); diff != "" {
+				t.Errorf("ApplyUIDToResourceTemplate(): -want +got: %s", diff)
 			}
 		})
 	}

@@ -29,6 +29,8 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"golang.org/x/xerrors"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func Test_EventPathVarRegex(t *testing.T) {
@@ -512,9 +514,116 @@ func Test_NewResources(t *testing.T) {
 				json.RawMessage(`{"rt3": "rt3"}`),
 			},
 		},
+		{
+			name:  "one resource template with one uid",
+			event: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: &triggersv1.TriggerTemplate{
+					Spec: triggersv1.TriggerTemplateSpec{
+						Params: []pipelinev1.ParamSpec{
+							pipelinev1.ParamSpec{Name: "param1"},
+						},
+						ResourceTemplates: []triggersv1.TriggerResourceTemplate{
+							triggersv1.TriggerResourceTemplate{
+								RawMessage: json.RawMessage(`{"rt1": "$(params.param1)-$(uid)"}`),
+							},
+						},
+					},
+				},
+				TriggerBinding: &triggersv1.TriggerBinding{
+					Spec: triggersv1.TriggerBindingSpec{
+						Params: []pipelinev1.Param{
+							pipelinev1.Param{
+								Name:  "param1",
+								Value: pipelinev1.ArrayOrString{StringVal: "$(event.foo)", Type: pipelinev1.ParamTypeString},
+							},
+						},
+					},
+				},
+			},
+			want: []json.RawMessage{
+				json.RawMessage(`{"rt1": "bar-cbhtc"}`),
+			},
+		},
+		{
+			name:  "one resource template with three uid",
+			event: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: &triggersv1.TriggerTemplate{
+					Spec: triggersv1.TriggerTemplateSpec{
+						Params: []pipelinev1.ParamSpec{
+							pipelinev1.ParamSpec{Name: "param1"},
+						},
+						ResourceTemplates: []triggersv1.TriggerResourceTemplate{
+							triggersv1.TriggerResourceTemplate{
+								RawMessage: json.RawMessage(`{"rt1": "$(params.param1)-$(uid)-$(uid)", "rt2": "$(uid)"}`),
+							},
+						},
+					},
+				},
+				TriggerBinding: &triggersv1.TriggerBinding{
+					Spec: triggersv1.TriggerBindingSpec{
+						Params: []pipelinev1.Param{
+							pipelinev1.Param{
+								Name:  "param1",
+								Value: pipelinev1.ArrayOrString{StringVal: "$(event.foo)", Type: pipelinev1.ParamTypeString},
+							},
+						},
+					},
+				},
+			},
+			want: []json.RawMessage{
+				json.RawMessage(`{"rt1": "bar-cbhtc-cbhtc", "rt2": "cbhtc"}`),
+			},
+		},
+		{
+			name:  "multiple resource templates with multiple uid",
+			event: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: &triggersv1.TriggerTemplate{
+					Spec: triggersv1.TriggerTemplateSpec{
+						Params: []pipelinev1.ParamSpec{
+							pipelinev1.ParamSpec{Name: "param1"},
+							pipelinev1.ParamSpec{
+								Name:    "param2",
+								Default: &pipelinev1.ArrayOrString{StringVal: "default2", Type: pipelinev1.ParamTypeString},
+							},
+						},
+						ResourceTemplates: []triggersv1.TriggerResourceTemplate{
+							triggersv1.TriggerResourceTemplate{
+								RawMessage: json.RawMessage(`{"rt1": "$(params.param1)-$(uid)", "$(uid)": "$(uid)"}`),
+							},
+							triggersv1.TriggerResourceTemplate{
+								RawMessage: json.RawMessage(`{"rt2": "$(params.param2)-$(uid)"}`),
+							},
+							triggersv1.TriggerResourceTemplate{
+								RawMessage: json.RawMessage(`{"rt3": "rt3"}`),
+							},
+						},
+					},
+				},
+				TriggerBinding: &triggersv1.TriggerBinding{
+					Spec: triggersv1.TriggerBindingSpec{
+						Params: []pipelinev1.Param{
+							pipelinev1.Param{
+								Name:  "param1",
+								Value: pipelinev1.ArrayOrString{StringVal: "$(event.foo)", Type: pipelinev1.ParamTypeString},
+							},
+						},
+					},
+				},
+			},
+			want: []json.RawMessage{
+				json.RawMessage(`{"rt1": "bar-cbhtc", "cbhtc": "cbhtc"}`),
+				json.RawMessage(`{"rt2": "default2-cbhtc"}`),
+				json.RawMessage(`{"rt3": "rt3"}`),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// This seeds Uid() to return 'cbhtc'
+			rand.Seed(0)
 			got, err := NewResources(tt.event, tt.binding)
 			if err != nil {
 				t.Errorf("NewResources() returned unexpected error: %s", err)
