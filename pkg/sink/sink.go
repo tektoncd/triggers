@@ -33,6 +33,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
@@ -98,15 +99,15 @@ func (r Resource) executeTrigger(payload []byte, header http.Header, trigger tri
 		log.Print(err)
 		return
 	}
-	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace)
+	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName)
 	if err != nil {
 		log.Print(err)
 	}
 }
 
-func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string) error {
+func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string) error {
 	for _, resource := range resources {
-		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace); err != nil {
+		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName); err != nil {
 			return err
 		}
 	}
@@ -115,7 +116,7 @@ func createResources(resources []json.RawMessage, restClient restclient.Interfac
 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string) error {
+func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
 	kind := gjson.GetBytes(rt, "kind").String()
@@ -128,6 +129,12 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 	if err != nil {
 		return err
 	}
+
+	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventListenerLabelKey, eventListenerName)
+	if err != nil {
+		log.Print(err)
+	}
+
 	uri := createRequestURI(apiVersion, apiResource.Name, namespace, apiResource.Namespaced)
 	result := restClient.Post().
 		RequestURI(uri).

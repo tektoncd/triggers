@@ -49,6 +49,8 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
+const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+
 func Test_createRequestURI(t *testing.T) {
 	tests := []struct {
 		apiVersion string
@@ -193,17 +195,37 @@ func Test_createResource(t *testing.T) {
 			Kind:       "PipelineResource",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "my-pipelineresource",
+			Name:   "my-pipelineresource",
+			Labels: map[string]string{"woriginal-label-1": "label-1"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{},
 	}
+	Pr1Want := pipelinev1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "my-pipelineresource",
+			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el"},
+		},
+		Spec: pipelinev1.PipelineResourceSpec{},
+	}
+
 	pr2 := pr1
 	pr2.Namespace = "foo"
+	pr2.Labels = map[string]string{resourceLabel: "bar-el"}
 
 	pr1Bytes, err := json.Marshal(pr1)
 	if err != nil {
 		t.Fatalf("Error marshalling PipelineResource: %s", err)
 	}
+
+	pr1WantBytes, err := json.Marshal(Pr1Want)
+	if err != nil {
+		t.Fatalf("Error marshalling wanted PipelineResource: %s", err)
+	}
+
 	pr2Bytes, err := json.Marshal(pr2)
 	if err != nil {
 		t.Fatalf("Error marshalling namespaced PipelineResource: %s", err)
@@ -215,7 +237,8 @@ func Test_createResource(t *testing.T) {
 			Kind:       "Namespace",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "tekton-pipelines",
+			Name:   "tekton-pipelines",
+			Labels: map[string]string{resourceLabel: "test-el"},
 		},
 	}
 	namespaceBytes, err := json.Marshal(namespace)
@@ -258,25 +281,33 @@ func Test_createResource(t *testing.T) {
 	tests := []struct {
 		name                   string
 		resource               json.RawMessage
+		wantResource           json.RawMessage
 		eventListenerNamespace string
+		eventListenerName      string
 		wantURLPath            string
 	}{
 		{
 			name:                   "PipelineResource without namespace",
 			resource:               json.RawMessage(pr1Bytes),
+			wantResource:           json.RawMessage(pr1WantBytes),
 			eventListenerNamespace: "bar",
+			eventListenerName:      "foo-el",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/bar/pipelineresources",
 		},
 		{
 			name:                   "PipelineResource with namespace",
 			resource:               json.RawMessage(pr2Bytes),
+			wantResource:           json.RawMessage(pr2Bytes),
 			eventListenerNamespace: "bar",
+			eventListenerName:      "bar-el",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources",
 		},
 		{
 			name:                   "Namespace",
 			resource:               json.RawMessage(namespaceBytes),
+			wantResource:           json.RawMessage(namespaceBytes),
 			eventListenerNamespace: "",
+			eventListenerName:      "test-el",
 			wantURLPath:            "/api/v1/namespaces",
 		},
 	}
@@ -293,13 +324,14 @@ func Test_createResource(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				if diff := cmp.Diff(string(tt.resource), string(body)); diff != "" {
+
+				if diff := cmp.Diff(string(tt.wantResource), string(body)); diff != "" {
 					t.Errorf("Diff request body: -want +got: %s", diff)
 				}
 				return &http.Response{StatusCode: http.StatusCreated, Body: ioutil.NopCloser(bytes.NewReader([]byte{}))}, nil
 			})
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace)
+			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -321,6 +353,7 @@ func Test_HandleEvent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pipelineresource",
 			Namespace: namespace,
+			Labels:    map[string]string{"zorigiallabel": "foo"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
@@ -338,6 +371,7 @@ func Test_HandleEvent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pipelineresource",
 			Namespace: namespace,
+			Labels:    map[string]string{"zorigiallabel": "foo", "tekton.dev/eventlistener": "my-eventlistener"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
