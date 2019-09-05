@@ -27,6 +27,7 @@ const (
 	EventListenerLabelKey  = "/eventlistener"
 	TriggerBindingLabelKey = "/triggerbinding"
 	TriggerTemplateKey     = "/triggertemplate"
+	LabelEscape            = "tekton\\.dev"
 )
 
 // SchemeGroupVersion is group version used to register these objects

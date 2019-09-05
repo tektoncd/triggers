@@ -29,12 +29,15 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
+
+const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
 
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
@@ -120,7 +123,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// Event body & Expected ResourceTemplates after instantiation
-	eventBodyJSON := []byte(`{"one": "onevalue", "two": {"name": "foo", "value": "bar"}}`)
+	eventBodyJSON := []byte(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`)
 	wantPr1 := v1alpha1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineResource",
@@ -130,7 +133,8 @@ func TestEventListenerCreate(t *testing.T) {
 			Name:      "pr1",
 			Namespace: namespace,
 			Labels: map[string]string{
-				"onevalue": "onevalue",
+				resourceLabel: "my-eventlistener",
+				"zonevalue":   "zonevalue",
 			},
 		},
 	}
@@ -144,7 +148,8 @@ func TestEventListenerCreate(t *testing.T) {
 			Name:      "pr2",
 			Namespace: namespace,
 			Labels: map[string]string{
-				"foo": "defaultvalue",
+				resourceLabel: "my-eventlistener",
+				"zfoo":        "defaultvalue",
 			},
 		},
 	}

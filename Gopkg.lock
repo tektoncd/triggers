@@ -581,6 +581,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:6b710a4259018ad39c57b847ef492762bcb705dc8d035647ba79abbf8bfacc29"
+  name = "github.com/tidwall/sjson"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "25fb082a20e29e83fb7b7ef5f5919166aad1f084"
+  version = "v1.0.4"
+
+[[projects]]
   digest = "1:0e3fd52087079d1289983e4fef32268ca965973f5370b69204e2934185527baa"
   name = "go.opencensus.io"
   packages = [
@@ -1334,6 +1342,7 @@
     "github.com/tektoncd/pipeline/test/builder",
     "github.com/tektoncd/plumbing/scripts",
     "github.com/tidwall/gjson",
+    "github.com/tidwall/sjson",
     "go.uber.org/zap",
     "golang.org/x/xerrors",
     "gopkg.in/yaml.v2",
