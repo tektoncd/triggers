@@ -28,8 +28,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,40 +45,22 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("Start EventListener e2e test")
 
 	// ResourceTemplates
-	rtTriggerTemplate1 := &triggersv1.TriggerTemplate{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "TriggerTemplate",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rt-triggertemplate1",
-			Namespace: namespace,
-			Labels:    map[string]string{"$(params.oneparam)": "$(params.oneparam)"},
-		},
-		Spec: triggersv1.TriggerTemplateSpec{
-			Params:            []pipelinev1.ParamSpec{},
-			ResourceTemplates: []triggersv1.TriggerResourceTemplate{},
-		},
-	}
+	rtTriggerTemplate1 := bldr.TriggerTemplate("rt-triggertemplate1", namespace,
+		bldr.TriggerTemplateMeta(
+			bldr.Label("$(params.oneparam)", "$(params.oneparam)"),
+			bldr.TypeMeta("TriggerTemplate", "tekton.dev/v1alpha1"),
+		),
+	)
 	rtBytes1, err := json.Marshal(rtTriggerTemplate1)
 	if err != nil {
 		t.Fatalf("Error marshalling ResourceTemplate TriggerTemplate 1: %s", err)
 	}
-	rtTriggerTemplate2 := &triggersv1.TriggerTemplate{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "TriggerTemplate",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rt-triggertemplate2",
-			Namespace: namespace,
-			Labels:    map[string]string{"$(params.twoparamname)": "$(params.twoparamvalue)"},
-		},
-		Spec: triggersv1.TriggerTemplateSpec{
-			Params:            []pipelinev1.ParamSpec{},
-			ResourceTemplates: []triggersv1.TriggerResourceTemplate{},
-		},
-	}
+	rtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", namespace,
+		bldr.TriggerTemplateMeta(
+			bldr.Label("$(params.twoparamname)", "$(params.twoparamvalue)"),
+			bldr.TypeMeta("TriggerTemplate", "tekton.dev/v1alpha1"),
+		),
+	)
 	rtBytes2, err := json.Marshal(rtTriggerTemplate2)
 	if err != nil {
 		t.Fatalf("Error marshalling ResourceTemplate TriggerTemplate 2: %s", err)
@@ -87,22 +68,15 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// TriggerTemplate
 	tt, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(
-		&triggersv1.TriggerTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-triggertemplate",
-			},
-			Spec: triggersv1.TriggerTemplateSpec{
-				Params: []pipelinev1.ParamSpec{
-					pipelinev1.ParamSpec{Name: "oneparam"},
-					pipelinev1.ParamSpec{Name: "twoparamname"},
-					pipelinev1.ParamSpec{Name: "twoparamvalue", Default: &pipelinev1.ArrayOrString{StringVal: "defaultvalue", Type: pipelinev1.ParamTypeString}},
-				},
-				ResourceTemplates: []triggersv1.TriggerResourceTemplate{
-					triggersv1.TriggerResourceTemplate{RawMessage: rtBytes1},
-					triggersv1.TriggerResourceTemplate{RawMessage: rtBytes2},
-				},
-			},
-		},
+		bldr.TriggerTemplate("my-triggertemplate", "",
+			bldr.TriggerTemplateSpec(
+				bldr.TriggerTemplateParam("oneparam", "", ""),
+				bldr.TriggerTemplateParam("twoparamname", "", ""),
+				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
+				bldr.TriggerResourceTemplate(rtBytes1),
+				bldr.TriggerResourceTemplate(rtBytes2),
+			),
+		),
 	)
 	if err != nil {
 		t.Fatalf("Error creating TriggerTemplate: %s", err)
@@ -110,17 +84,12 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// TriggerBinding
 	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
-		&triggersv1.TriggerBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-triggerbinding",
-			},
-			Spec: triggersv1.TriggerBindingSpec{
-				Params: []pipelinev1.Param{
-					pipelinev1.Param{Name: "oneparam", Value: pipelinev1.ArrayOrString{StringVal: "$(event.one)", Type: pipelinev1.ParamTypeString}},
-					pipelinev1.Param{Name: "twoparamname", Value: pipelinev1.ArrayOrString{StringVal: "$(event.two.name)", Type: pipelinev1.ParamTypeString}},
-				},
-			},
-		},
+		bldr.TriggerBinding("my-triggerbinding", "",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("oneparam", "$(event.one)"),
+				bldr.TriggerBindingParam("twoparamname", "$(event.two.name)"),
+			),
+		),
 	)
 	if err != nil {
 		t.Fatalf("Error creating TriggerBinding: %s", err)
@@ -128,28 +97,16 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// Event body & Expected ResourceTemplates after instantiation
 	eventBodyJSON := []byte(`{"one": "onevalue", "two": {"name": "foo", "value": "bar"}}`)
-	wantRtTriggerTemplate1 := &triggersv1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rt-triggertemplate1",
-			Namespace: namespace,
-			Labels:    map[string]string{"onevalue": "onevalue"},
-		},
-		Spec: triggersv1.TriggerTemplateSpec{
-			Params:            []pipelinev1.ParamSpec{},
-			ResourceTemplates: []triggersv1.TriggerResourceTemplate{},
-		},
-	}
-	wantRtTriggerTemplate2 := &triggersv1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rt-triggertemplate2",
-			Namespace: namespace,
-			Labels:    map[string]string{"foo": "defaultvalue"},
-		},
-		Spec: triggersv1.TriggerTemplateSpec{
-			Params:            []pipelinev1.ParamSpec{},
-			ResourceTemplates: []triggersv1.TriggerResourceTemplate{},
-		},
-	}
+	wantRtTriggerTemplate1 := bldr.TriggerTemplate("rt-triggertemplate1", namespace,
+		bldr.TriggerTemplateMeta(
+			bldr.Label("onevalue", "onevalue"),
+		),
+	)
+	wantRtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", namespace,
+		bldr.TriggerTemplateMeta(
+			bldr.Label("foo", "defaultvalue"),
+		),
+	)
 
 	// ServiceAccount + Role + RoleBinding to authorize the creation of our
 	// templated resources
@@ -199,25 +156,15 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// EventListener
 	el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(
-		&triggersv1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "my-eventlistener",
-				Labels: map[string]string{"triggers": "eventlistener"},
-			},
-			Spec: triggersv1.EventListenerSpec{
-				ServiceAccountName: sa.Name,
-				Triggers: []triggersv1.Trigger{
-					triggersv1.Trigger{
-						TriggerBinding: triggersv1.TriggerBindingRef{
-							Name: tb.Name,
-						},
-						TriggerTemplate: triggersv1.TriggerTemplateRef{
-							Name: tt.Name,
-						},
-					},
-				},
-			},
-		},
+		bldr.EventListener("my-eventlistener", "",
+			bldr.EventListenerMeta(
+				bldr.Label("triggers", "eventlistener"),
+			),
+			bldr.EventListenerSpec(
+				bldr.EventListenerServiceAccount(sa.Name),
+				bldr.EventListenerTrigger(tb.Name, tt.Name, ""),
+			),
+		),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create EventListener: %s", err)
