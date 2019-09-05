@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
+	bldr "github.com/tektoncd/triggers/test/builder"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,24 +54,11 @@ func TestReconcile(t *testing.T) {
 			Name: "tekton-pipelines",
 		},
 	}
-	eventListener := &v1alpha1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "tekton-pipelines",
-			Name:      "my-eventlistener",
-		},
-		Spec: v1alpha1.EventListenerSpec{
-			Triggers: []v1alpha1.Trigger{
-				v1alpha1.Trigger{
-					TriggerBinding: v1alpha1.TriggerBindingRef{
-						Name: "my-triggerbinding",
-					},
-					TriggerTemplate: v1alpha1.TriggerTemplateRef{
-						Name: "my-triggertemplate",
-					},
-				},
-			},
-		},
-	}
+	eventListener := bldr.EventListener("my-eventlistener", "tekton-pipelines",
+		bldr.EventListenerSpec(
+			bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", ""),
+		),
+	)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       "tekton-pipelines",
