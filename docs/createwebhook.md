@@ -82,7 +82,7 @@ These are the task parms to manage the task execution
   This param is the github repo name (github.com/onwer/**repo**)
   - value: string
 - name: `GithubSecretName`
-  This param is the secret name for github access token. The key **userName** must have the github user name and **accessToken** must have the github access token  
+  This param is the secret name for github access token. The key **userName** must have the github user name and **accessToken** must have the github access token.  If the secret has the key **secretString**, the value is set to the `Secret` in the github webhook.  
   - value: kubernetes secret name string
 - name: `GithubUrl`
   This param is the github side address.  The defult value **github.com** works for the public git hub.  For the github enterprize, this param have to have the site address.  Example: **github.yourcompany.com**   
