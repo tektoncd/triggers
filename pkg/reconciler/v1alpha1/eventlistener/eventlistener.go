@@ -194,15 +194,21 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
-	} else if !reflect.DeepEqual(oldService, service) {
-		// Update the EventListener Service
-		oldService.Spec = service.Spec
-		_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Update(oldService)
-		if err != nil {
-			c.Logger.Errorf("Error updating EventListener Service: %s", err)
-			return err
+	} else {
+		// clusterIP cannot be updated once set. So, ignore it when comparing the serviceSpecs
+		if oldService.Spec.ClusterIP != "" {
+			service.Spec.ClusterIP = oldService.Spec.ClusterIP
 		}
-		c.Logger.Info("Updated EventListener Service %s in Namespace %s", el.Name, el.Namespace)
+		if !reflect.DeepEqual(oldService.Spec, service.Spec) {
+			// Update the EventListener Service
+			oldService.Spec = service.Spec
+			_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Update(oldService)
+			if err != nil {
+				c.Logger.Errorf("Error updating EventListener Service: %s", err)
+				return err
+			}
+			c.Logger.Info("Updated EventListener Service %s in Namespace %s", el.Name, el.Namespace)
+		}
 	}
 
 	return nil
