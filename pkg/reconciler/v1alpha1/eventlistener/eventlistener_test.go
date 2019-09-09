@@ -113,33 +113,64 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
+	serviceWithClusterIp := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       "tekton-pipelines",
+			Name:            "my-eventlistener",
+			OwnerReferences: []metav1.OwnerReference{*eventListener.GetOwnerReference()},
+			Labels:          labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector:  labels,
+			Type:      corev1.ServiceTypeLoadBalancer,
+			ClusterIP: "some_ip_address",
+			Ports: []corev1.ServicePort{
+				{
+					Protocol: corev1.ProtocolTCP,
+					Port:     int32(Port),
+				},
+			},
+		},
+	}
 
 	tests := []struct {
 		name               string
 		key                string
 		testResourcesStart test.TestResources
 		testResourcesEnd   test.TestResources
-	}{
-		{
-			name:               "delete-eventlistener",
-			key:                "tekton-pipelines/my-eventlistener",
-			testResourcesStart: test.TestResources{},
-			testResourcesEnd:   test.TestResources{},
+	}{{
+		name:               "delete-eventlistener",
+		key:                "tekton-pipelines/my-eventlistener",
+		testResourcesStart: test.TestResources{},
+		testResourcesEnd:   test.TestResources{},
+	}, {
+		name: "create-eventlistener",
+		key:  "tekton-pipelines/my-eventlistener",
+		testResourcesStart: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespace},
+			EventListeners: []*v1alpha1.EventListener{eventListener},
 		},
-		{
-			name: "create-eventlistener",
-			key:  "tekton-pipelines/my-eventlistener",
-			testResourcesStart: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespace},
-				EventListeners: []*v1alpha1.EventListener{eventListener},
-			},
-			testResourcesEnd: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespace},
-				EventListeners: []*v1alpha1.EventListener{eventListener},
-				Deployments:    []*appsv1.Deployment{deployment},
-				Services:       []*corev1.Service{service},
-			},
+		testResourcesEnd: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespace},
+			EventListeners: []*v1alpha1.EventListener{eventListener},
+			Deployments:    []*appsv1.Deployment{deployment},
+			Services:       []*corev1.Service{service},
 		},
+	}, {
+		name: "update-eventlistener",
+		key:  "tekton-pipelines/my-eventlistener",
+		testResourcesStart: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespace},
+			EventListeners: []*v1alpha1.EventListener{eventListener},
+			Deployments:    []*appsv1.Deployment{deployment},
+			Services:       []*corev1.Service{serviceWithClusterIp},
+		},
+		testResourcesEnd: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespace},
+			EventListeners: []*v1alpha1.EventListener{eventListener},
+			Deployments:    []*appsv1.Deployment{deployment},
+			Services:       []*corev1.Service{serviceWithClusterIp},
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
