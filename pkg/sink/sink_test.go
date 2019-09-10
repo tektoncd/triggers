@@ -29,6 +29,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -42,36 +43,34 @@ func Test_createRequestURI(t *testing.T) {
 		apiVersion string
 		namePlural string
 		namespace  string
+		namespaced bool
 		want       string
 	}{
 		{
 			apiVersion: "tekton.dev/v1alpha1",
 			namePlural: "pipelineruns",
-			namespace:  "",
-			want:       "apis/tekton.dev/v1alpha1/pipelineruns",
-		},
-		{
-			apiVersion: "tekton.dev/v1alpha1",
-			namePlural: "pipelineruns",
 			namespace:  "foo",
+			namespaced: true,
 			want:       "apis/tekton.dev/v1alpha1/namespaces/foo/pipelineruns",
 		},
 		{
 			apiVersion: "v1",
 			namePlural: "secrets",
-			namespace:  "",
-			want:       "api/v1/secrets",
+			namespace:  "foo",
+			namespaced: true,
+			want:       "api/v1/namespaces/foo/secrets",
 		},
 		{
 			apiVersion: "v1",
-			namePlural: "secrets",
-			namespace:  "foo",
-			want:       "api/v1/namespaces/foo/secrets",
+			namePlural: "namespaces",
+			namespace:  "",
+			namespaced: false,
+			want:       "api/v1/namespaces",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := createRequestURI(tt.apiVersion, tt.namePlural, tt.namespace)
+			got := createRequestURI(tt.apiVersion, tt.namePlural, tt.namespace, tt.namespaced)
 			if got != tt.want {
 				t.Errorf("createRequestURI() = %s, want = %s", got, tt.want)
 			}
@@ -79,7 +78,7 @@ func Test_createRequestURI(t *testing.T) {
 	}
 }
 
-func Test_findAPIResourceNamePlural(t *testing.T) {
+func Test_findAPIResource(t *testing.T) {
 	// Create fake kubeclient with list of resources
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{
@@ -87,8 +86,14 @@ func Test_findAPIResourceNamePlural(t *testing.T) {
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
 				metav1.APIResource{
-					Name: "pods",
-					Kind: "Pod",
+					Name:       "pods",
+					Namespaced: true,
+					Kind:       "Pod",
+				},
+				metav1.APIResource{
+					Name:       "namespaces",
+					Namespaced: false,
+					Kind:       "Namespace",
 				},
 			},
 		},
@@ -96,12 +101,14 @@ func Test_findAPIResourceNamePlural(t *testing.T) {
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
 				metav1.APIResource{
-					Name: "triggertemplates",
-					Kind: "TriggerTemplate",
+					Name:       "triggertemplates",
+					Namespaced: true,
+					Kind:       "TriggerTemplate",
 				},
 				metav1.APIResource{
-					Name: "pipelineruns",
-					Kind: "PipelineRun",
+					Name:       "pipelineruns",
+					Namespaced: true,
+					Kind:       "PipelineRun",
 				},
 			},
 		},
@@ -109,59 +116,100 @@ func Test_findAPIResourceNamePlural(t *testing.T) {
 	tests := []struct {
 		apiVersion string
 		kind       string
-		want       string
+		want       *metav1.APIResource
 	}{
 		{
 			apiVersion: "v1",
 			kind:       "Pod",
-			want:       "pods",
+			want: &metav1.APIResource{
+				Name:       "pods",
+				Namespaced: true,
+				Kind:       "Pod",
+			},
+		},
+		{
+			apiVersion: "v1",
+			kind:       "Namespace",
+			want: &metav1.APIResource{
+				Name:       "namespaces",
+				Namespaced: false,
+				Kind:       "Namespace",
+			},
 		},
 		{
 			apiVersion: "tekton.dev/v1alpha1",
 			kind:       "TriggerTemplate",
-			want:       "triggertemplates",
+			want: &metav1.APIResource{
+				Name:       "triggertemplates",
+				Namespaced: true,
+				Kind:       "TriggerTemplate",
+			},
 		},
 		{
 			apiVersion: "tekton.dev/v1alpha1",
 			kind:       "PipelineRun",
-			want:       "pipelineruns",
+			want: &metav1.APIResource{
+				Name:       "pipelineruns",
+				Namespaced: true,
+				Kind:       "PipelineRun",
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%s", tt.apiVersion, tt.kind), func(t *testing.T) {
-			got, err := findAPIResourceNamePlural(kubeClient.Discovery(), tt.apiVersion, tt.kind)
+			got, err := findAPIResource(kubeClient.Discovery(), tt.apiVersion, tt.kind)
 			if err != nil {
-				t.Errorf("findAPIResourceNamePlural() returned error: %s", err)
-			} else if got != tt.want {
-				t.Errorf("findAPIResourceNamePlural() = %s, want = %s", got, tt.want)
+				t.Errorf("findAPIResource() returned error: %s", err)
+			} else if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("findAPIResource() Diff: -want +got: %s", diff)
 			}
 		})
 	}
 }
 
-func Test_findAPIResourceNamePlural_error(t *testing.T) {
+func Test_findAPIResource_error(t *testing.T) {
 	kubeClient := fakekubeclientset.NewSimpleClientset()
-	_, err := findAPIResourceNamePlural(kubeClient.Discovery(), "v1", "Pod")
+	_, err := findAPIResource(kubeClient.Discovery(), "v1", "Pod")
 	if err == nil {
-		t.Error("findAPIResourceNamePlural() did not return error when expected")
+		t.Error("findAPIResource() did not return error when expected")
 	}
 }
 
 func Test_createResource(t *testing.T) {
-	pipelineResource := pipelinev1.PipelineResource{
+	pr1 := pipelinev1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pipelineresource",
-			Namespace: "foo",
+			Name: "my-pipelineresource",
 		},
 		Spec: pipelinev1.PipelineResourceSpec{},
 	}
-	pipelineResourceBytes, err := json.Marshal(pipelineResource)
+	pr2 := pr1
+	pr2.Namespace = "foo"
+
+	pr1Bytes, err := json.Marshal(pr1)
 	if err != nil {
 		t.Fatalf("Error marshalling PipelineResource: %s", err)
+	}
+	pr2Bytes, err := json.Marshal(pr2)
+	if err != nil {
+		t.Fatalf("Error marshalling namespaced PipelineResource: %s", err)
+	}
+
+	namespace := corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Namespace",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tekton-pipelines",
+		},
+	}
+	namespaceBytes, err := json.Marshal(namespace)
+	if err != nil {
+		t.Fatalf("Error marshalling Namespace: %s", err)
 	}
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{
@@ -169,8 +217,19 @@ func Test_createResource(t *testing.T) {
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
 				metav1.APIResource{
-					Name: "pipelineresources",
-					Kind: "PipelineResource",
+					Name:       "pipelineresources",
+					Kind:       "PipelineResource",
+					Namespaced: true,
+				},
+			},
+		},
+		&metav1.APIResourceList{
+			GroupVersion: "v1",
+			APIResources: []metav1.APIResource{
+				metav1.APIResource{
+					Name:       "namespaces",
+					Kind:       "Namespace",
+					Namespaced: false,
 				},
 			},
 		},
@@ -186,14 +245,28 @@ func Test_createResource(t *testing.T) {
 		t.Fatalf("Error creating RESTClient: %s", err)
 	}
 	tests := []struct {
-		name        string
-		resource    json.RawMessage
-		wantURLPath string
+		name                   string
+		resource               json.RawMessage
+		eventListenerNamespace string
+		wantURLPath            string
 	}{
 		{
-			name:        "PipelineResource",
-			resource:    json.RawMessage(pipelineResourceBytes),
-			wantURLPath: "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources",
+			name:                   "PipelineResource without namespace",
+			resource:               json.RawMessage(pr1Bytes),
+			eventListenerNamespace: "bar",
+			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/bar/pipelineresources",
+		},
+		{
+			name:                   "PipelineResource with namespace",
+			resource:               json.RawMessage(pr2Bytes),
+			eventListenerNamespace: "bar",
+			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources",
+		},
+		{
+			name:                   "Namespace",
+			resource:               json.RawMessage(namespaceBytes),
+			eventListenerNamespace: "",
+			wantURLPath:            "/api/v1/namespaces",
 		},
 	}
 	for _, tt := range tests {
@@ -215,7 +288,7 @@ func Test_createResource(t *testing.T) {
 				return &http.Response{StatusCode: http.StatusCreated, Body: ioutil.NopCloser(bytes.NewReader([]byte{}))}, nil
 			})
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery())
+			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -323,8 +396,9 @@ func Test_HandleEvent(t *testing.T) {
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
 				metav1.APIResource{
-					Name: "pipelineresources",
-					Kind: "PipelineResource",
+					Name:       "pipelineresources",
+					Kind:       "PipelineResource",
+					Namespaced: true,
 				},
 			},
 		},

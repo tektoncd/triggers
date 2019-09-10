@@ -55,7 +55,9 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error marshalling ResourceTemplate TriggerTemplate 1: %s", err)
 	}
-	rtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", namespace,
+	// This is a templated resource, which does not have a namespace.
+	// This is defaulted to the EventListener namespace.
+	rtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", "",
 		bldr.TriggerTemplateMeta(
 			bldr.Label("$(params.twoparamname)", "$(params.twoparamvalue)"),
 			bldr.TypeMeta("TriggerTemplate", "tekton.dev/v1alpha1"),
