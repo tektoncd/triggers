@@ -1,7 +1,7 @@
 # TriggerBindings
-As per the name, `TriggerBindings` bind against events/triggers.
-`TriggerBindings` enable you to capture fields within an event payload and store them as parameters.
-The separation of `TriggerBindings` from `TriggerTemplates` was deliberate to encourage reuse between them.
+As per the name, `TriggerBinding`s bind against events/triggers.
+`TriggerBinding`s enable you to capture fields within an event payload and store them as parameters.
+The separation of `TriggerBinding`s from `TriggerTemplate`s was deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
 ```YAML
@@ -20,4 +20,4 @@ spec:
       value: tekton-pipelines
 ```
 
-`TriggerBindings` are connected to `TriggerTemplates` within an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.
+`TriggerBinding`s are connected to `TriggerTemplate`s within an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.

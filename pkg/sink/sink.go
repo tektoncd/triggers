@@ -67,16 +67,16 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 			log.Print(err)
 			continue
 		}
-		err = createResources(resources, r.RESTClient, r.DiscoveryClient)
+		err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace)
 		if err != nil {
 			log.Print(err)
 		}
 	}
 }
 
-func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface) error {
+func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string) error {
 	for _, resource := range resources {
-		if err := createResource(resource, restClient, discoveryClient); err != nil {
+		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace); err != nil {
 			return err
 		}
 	}
@@ -85,16 +85,20 @@ func createResources(resources []json.RawMessage, restClient restclient.Interfac
 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface) error {
+func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
 	kind := gjson.GetBytes(rt, "kind").String()
 	namespace := gjson.GetBytes(rt, "metadata.namespace").String()
-	namePlural, err := findAPIResourceNamePlural(discoveryClient, apiVersion, kind)
+	// Default the resource creation to the EventListenerNamespace if not found in the resource template
+	if namespace == "" {
+		namespace = eventListenerNamespace
+	}
+	apiResource, err := findAPIResource(discoveryClient, apiVersion, kind)
 	if err != nil {
 		return err
 	}
-	uri := createRequestURI(apiVersion, namePlural, namespace)
+	uri := createRequestURI(apiVersion, apiResource.Name, namespace, apiResource.Namespaced)
 	result := restClient.Post().
 		RequestURI(uri).
 		Body([]byte(rt)).
@@ -106,31 +110,30 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 	return nil
 }
 
-// apiResourceName returns the plural resource name for the apiVersion and kind
-func findAPIResourceNamePlural(discoveryClient discoveryclient.DiscoveryInterface, apiVersion, kind string) (string, error) {
+// findAPIResource returns the APIResource defintion using the discovery client.
+func findAPIResource(discoveryClient discoveryclient.DiscoveryInterface, apiVersion, kind string) (*metav1.APIResource, error) {
 	resourceList, err := discoveryClient.ServerResourcesForGroupVersion(apiVersion)
 	if err != nil {
-		return "", xerrors.Errorf("Error getting kubernetes server resources for apiVersion %s: %s", apiVersion, err)
+		return nil, xerrors.Errorf("Error getting kubernetes server resources for apiVersion %s: %s", apiVersion, err)
 	}
 	for _, apiResource := range resourceList.APIResources {
 		if apiResource.Kind == kind {
-			return apiResource.Name, nil
+			return &apiResource, nil
 		}
 	}
-	return "", xerrors.Errorf("Error could not find resource with apiVersion %s and kind %s", apiVersion, kind)
+	return nil, xerrors.Errorf("Error could not find resource with apiVersion %s and kind %s", apiVersion, kind)
 }
 
-// createRequestURI returns the URI for a request to the kubernetes API REST endpoint
-// given apiVersion, namePlural, and namespace. If namespace is an empty string,
-// then namespace will be excluded from the URI
-func createRequestURI(apiVersion, namePlural, namespace string) string {
+// createRequestURI returns the URI for a request to the kubernetes API REST endpoint.
+// If namespaced is false, then namespace will be excluded from the URI.
+func createRequestURI(apiVersion, namePlural, namespace string, namespaced bool) string {
 	var uri string
 	if apiVersion == "v1" {
 		uri = "api/v1"
 	} else {
 		uri = path.Join(uri, "apis", apiVersion)
 	}
-	if namespace != "" {
+	if namespaced {
 		uri = path.Join(uri, "namespaces", namespace)
 	}
 	uri = path.Join(uri, namePlural)

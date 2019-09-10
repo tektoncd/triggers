@@ -550,7 +550,6 @@ func Test_NewResources(t *testing.T) {
 			if err != nil {
 				t.Errorf("NewResources() returned unexpected error: %s", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("NewResources(): -want +got: %s", diff)
 				stringDiff := cmp.Diff(convertJSONRawMessagesToString(tt.want), convertJSONRawMessagesToString(got))
 				t.Errorf("NewResources(): -want +got: %s", stringDiff)
 			}
