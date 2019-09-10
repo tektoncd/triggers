@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tidwall/gjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -63,4 +64,11 @@ type TriggerTemplateList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TriggerTemplate `json:"items"`
+}
+// GetApiVersionAndKind returns the apiVersion and Kind for the resourceTemplate
+// Missing fields are represented by empty strings
+func (trt *TriggerResourceTemplate) getApiVersionAndKind() (string, string) {
+	apiVersion := gjson.GetBytes(trt.RawMessage, "apiVersion").String()
+	kind := gjson.GetBytes(trt.RawMessage, "kind").String()
+	return apiVersion, kind
 }

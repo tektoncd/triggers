@@ -18,13 +18,42 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
+	// TODO: Add metadata validation as in pipeline
+	return t.Spec.Validate(ctx).ViaField("spec")
 }
 
 func (s *TriggerTemplateSpec) Validate(ctx context.Context) *apis.FieldError {
+	if equality.Semantic.DeepEqual(s, TriggerTemplateSpec{}) {
+		return apis.ErrMissingField(apis.CurrentField)
+	}
+	if len(s.ResourceTemplates) == 0 {
+		return apis.ErrMissingField("resourcetemplates")
+	}
+	if err := validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldError {
+	for i, trt := range templates {
+		apiVersion, kind := trt.getApiVersionAndKind()
+
+		if apiVersion == "" {
+			return apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i))
+		}
+
+		if kind == "" {
+			return apis.ErrMissingField(fmt.Sprintf("[%d].kind", i))
+		}
+
+	}
 	return nil
 }
