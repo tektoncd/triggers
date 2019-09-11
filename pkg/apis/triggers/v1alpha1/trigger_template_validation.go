@@ -54,6 +54,11 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldE
 			return apis.ErrMissingField(fmt.Sprintf("[%d].kind", i))
 		}
 
+		if !trt.IsAllowedType() {
+			return apis.ErrInvalidValue(
+				fmt.Sprintf("resource type not allowed: apiVersion: %s, kind: %s", apiVersion, kind),
+				fmt.Sprintf("[%d]", i))
+		}
 	}
 	return nil
 }
