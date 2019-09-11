@@ -266,5 +266,7 @@ kubectl -n tekton-pipelines logs $(kubectl -n tekton-pipelines get pods -l app=t
 If you need to add a new CRD type, you will need to add:
 
 1. A yaml definition in [config/](./config)
-1. Add the type to the cluster roles in
-   [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+1. Add the type to the cluster roles in:
+   - [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+   - [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
+   - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
