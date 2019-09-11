@@ -28,7 +28,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var simpleResourceTemplate = json.RawMessage(`{ "apiVersion": "foobar", "kind": "foo"}`)
+var simpleResourceTemplate = json.RawMessage(`{ "apiVersion": "tekton.dev/v1alpha1", "kind": "pipelinerun"}`)
 
 func TestTriggerTemplateSpec_Validate(t *testing.T) {
 	tcs := []struct {
@@ -66,6 +66,24 @@ func TestTriggerTemplateSpec_Validate(t *testing.T) {
 		want: &apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
+		},
+	}, {
+		name: "resource template invalid apiVersion",
+		template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
+			b.TriggerTemplateParam("foo", "desc", "val"),
+			b.TriggerResourceTemplate(json.RawMessage(`{"kind": "pipelinerun", "apiVersion": "foobar"}`)))),
+		want: &apis.FieldError{
+			Message: "invalid value: resource type not allowed: apiVersion: foobar, kind: pipelinerun",
+			Paths:   []string{"spec.resourcetemplates[0]"},
+		},
+	}, {
+		name: "resource template invalid kind",
+		template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
+			b.TriggerTemplateParam("foo", "desc", "val"),
+			b.TriggerResourceTemplate(json.RawMessage(`{"kind": "tekton.dev/v1alpha1", "apiVersion": "foo"}`)))),
+		want: &apis.FieldError{
+			Message: "invalid value: resource type not allowed: apiVersion: foo, kind: tekton.dev/v1alpha1",
+			Paths:   []string{"spec.resourcetemplates[0]"},
 		},
 	}}
 

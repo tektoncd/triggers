@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -44,28 +45,49 @@ func TestEventListenerCreate(t *testing.T) {
 
 	t.Log("Start EventListener e2e test")
 
-	// ResourceTemplates
-	rtTriggerTemplate1 := bldr.TriggerTemplate("rt-triggertemplate1", namespace,
-		bldr.TriggerTemplateMeta(
-			bldr.Label("$(params.oneparam)", "$(params.oneparam)"),
-			bldr.TypeMeta("TriggerTemplate", "tekton.dev/v1alpha1"),
-		),
-	)
-	rtBytes1, err := json.Marshal(rtTriggerTemplate1)
-	if err != nil {
-		t.Fatalf("Error marshalling ResourceTemplate TriggerTemplate 1: %s", err)
+	// TemplatedPipelineResources
+	pr1 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr1",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"$(params.oneparam)": "$(params.oneparam)",
+			},
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+		},
 	}
+	pr1Bytes, err := json.Marshal(pr1)
+	if err != nil {
+		t.Fatalf("Error marshalling PipelineResource 1: %s", err)
+	}
+
 	// This is a templated resource, which does not have a namespace.
 	// This is defaulted to the EventListener namespace.
-	rtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", "",
-		bldr.TriggerTemplateMeta(
-			bldr.Label("$(params.twoparamname)", "$(params.twoparamvalue)"),
-			bldr.TypeMeta("TriggerTemplate", "tekton.dev/v1alpha1"),
-		),
-	)
-	rtBytes2, err := json.Marshal(rtTriggerTemplate2)
+	pr2 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr2",
+			Labels: map[string]string{
+				"$(params.twoparamname)": "$(params.twoparamvalue)",
+			},
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+		},
+	}
+
+	pr2Bytes, err := json.Marshal(pr2)
 	if err != nil {
-		t.Fatalf("Error marshalling ResourceTemplate TriggerTemplate 2: %s", err)
+		t.Fatalf("Error marshalling ResourceTemplate PipelineResource 2: %s", err)
 	}
 
 	// TriggerTemplate
@@ -75,8 +97,8 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.TriggerTemplateParam("oneparam", "", ""),
 				bldr.TriggerTemplateParam("twoparamname", "", ""),
 				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
-				bldr.TriggerResourceTemplate(rtBytes1),
-				bldr.TriggerResourceTemplate(rtBytes2),
+				bldr.TriggerResourceTemplate(pr1Bytes),
+				bldr.TriggerResourceTemplate(pr2Bytes),
 			),
 		),
 	)
@@ -99,16 +121,33 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// Event body & Expected ResourceTemplates after instantiation
 	eventBodyJSON := []byte(`{"one": "onevalue", "two": {"name": "foo", "value": "bar"}}`)
-	wantRtTriggerTemplate1 := bldr.TriggerTemplate("rt-triggertemplate1", namespace,
-		bldr.TriggerTemplateMeta(
-			bldr.Label("onevalue", "onevalue"),
-		),
-	)
-	wantRtTriggerTemplate2 := bldr.TriggerTemplate("rt-triggertemplate2", namespace,
-		bldr.TriggerTemplateMeta(
-			bldr.Label("foo", "defaultvalue"),
-		),
-	)
+	wantPr1 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr1",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"onevalue": "onevalue",
+			},
+		},
+	}
+
+	wantPr2 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr2",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"foo": "defaultvalue",
+			},
+		},
+	}
 
 	// ServiceAccount + Role + RoleBinding to authorize the creation of our
 	// templated resources
@@ -123,14 +162,11 @@ func TestEventListenerCreate(t *testing.T) {
 	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
-			Rules: []rbacv1.PolicyRule{
-				rbacv1.PolicyRule{
-					APIGroups: []string{"tekton.dev"},
-					Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates"},
-					Verbs:     []string{"create", "get"},
-				},
-			},
-		},
+			Rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{"tekton.dev"},
+				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
+				Verbs:     []string{"create", "get"},
+			}}},
 	)
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
@@ -138,13 +174,11 @@ func TestEventListenerCreate(t *testing.T) {
 	_, err = c.KubeClient.RbacV1().RoleBindings(namespace).Create(
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-rolebinding"},
-			Subjects: []rbacv1.Subject{
-				rbacv1.Subject{
-					Kind:      "ServiceAccount",
-					Name:      sa.Name,
-					Namespace: namespace,
-				},
-			},
+			Subjects: []rbacv1.Subject{{
+				Kind:      "ServiceAccount",
+				Name:      sa.Name,
+				Namespace: namespace,
+			}},
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: "rbac.authorization.k8s.io",
 				Kind:     "Role",
@@ -224,27 +258,17 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error sending POST request: %s", err)
 	}
 
-	// Check ResourceTemplate TriggerTemplate 1
-	if err = WaitForTriggerTemplateToExist(c, namespace, wantRtTriggerTemplate1.Name); err != nil {
-		t.Fatalf("Failed to create ResourceTemplate TriggerTemplate 1: %s", err)
-	}
-	gotRtTriggerTemplate1, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Get(wantRtTriggerTemplate1.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Error getting ResourceTemplate TriggerTemplate 1: %s: %s", wantRtTriggerTemplate1.Name, err)
-	}
-	if diff := cmp.Diff(wantRtTriggerTemplate1.Labels, gotRtTriggerTemplate1.Labels); diff != "" {
-		t.Fatalf("Diff instantiated ResourceTemplate TriggerTemplate 1: -want +got: %s", diff)
-	}
-	// Check ResourceTemplate TriggerTemplate 2
-	if err = WaitForTriggerTemplateToExist(c, namespace, wantRtTriggerTemplate2.Name); err != nil {
-		t.Fatalf("Failed to create ResourceTemplate TriggerTemplate 2: %s", err)
-	}
-	gotRtTriggerTemplate2, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Get(wantRtTriggerTemplate2.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Error getting ResourceTemplate TriggerTemplate 2: %s: %s", wantRtTriggerTemplate2.Name, err)
-	}
-	if diff := cmp.Diff(wantRtTriggerTemplate2.Labels, gotRtTriggerTemplate2.Labels); diff != "" {
-		t.Fatalf("Diff instantiated ResourceTemplate TriggerTemplate 2: -want +got: %s", diff)
+	for _, wantPr := range []v1alpha1.PipelineResource{wantPr1, wantPr2} {
+		if err = WaitForPipelineResourceToExist(c, namespace, wantPr.Name); err != nil {
+			t.Fatalf("Failed to create ResourceTemplate %s: %s", wantPr.Name, err)
+		}
+		gotPr, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
+		}
+		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
+			t.Fatalf("Diff instantiated ResourceTemplate %s: -want +got: %s", wantPr1.Name, diff)
+		}
 	}
 
 	// Delete EventListener

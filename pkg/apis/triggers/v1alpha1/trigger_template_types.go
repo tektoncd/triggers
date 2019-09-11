@@ -18,13 +18,27 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"strings"
+
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tidwall/gjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
+// apiVersion for Tekton core types
+const tektonApiVersion = GroupName + "/v1alpha1"
+
+// allowedTemplate types are the resource types identified by apiVersion + kind
+// that can be templated using TriggerResourceTemplates
+// TODO: Make this configurable using a ConfigMap entry
+var allowedTemplateTypes = map[string][]string{
+	tektonApiVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "task", "condition"},
+}
+
 // Check that TriggerTemplate may be validated and defaulted.
-//var _ apis.Validatable = (*TriggerTemplate)(nil)
+var _ apis.Validatable = (*TriggerTemplate)(nil)
+var _ apis.Defaultable = (*TriggerTemplate)(nil)
 
 // TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
@@ -65,10 +79,26 @@ type TriggerTemplateList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TriggerTemplate `json:"items"`
 }
+
 // GetApiVersionAndKind returns the apiVersion and Kind for the resourceTemplate
 // Missing fields are represented by empty strings
 func (trt *TriggerResourceTemplate) getApiVersionAndKind() (string, string) {
 	apiVersion := gjson.GetBytes(trt.RawMessage, "apiVersion").String()
 	kind := gjson.GetBytes(trt.RawMessage, "kind").String()
 	return apiVersion, kind
+}
+
+// IsAllowedResourceType returns true if the resourceTemplate has an apiVersion
+// and kind field set to one of the allowed ones.
+func (trt *TriggerResourceTemplate) IsAllowedType() bool {
+	apiVersion, kind := trt.getApiVersionAndKind()
+
+	if kinds, ok := allowedTemplateTypes[apiVersion]; ok {
+		for _, allowedKind := range kinds {
+			if strings.ToLower(kind) == allowedKind {
+				return true
+			}
+		}
+	}
+	return false
 }

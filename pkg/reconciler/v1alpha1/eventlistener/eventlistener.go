@@ -176,9 +176,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			Selector: map[string]string{"app": el.Name},
 			Type:     corev1.ServiceTypeLoadBalancer,
 			Ports: []corev1.ServicePort{{
-					Protocol: corev1.ProtocolTCP,
-					Port:     int32(Port),
-				}},
+				Protocol: corev1.ProtocolTCP,
+				Port:     int32(Port),
+			}},
 		},
 	}
 	oldService, err := c.KubeClientSet.CoreV1().Services(el.Namespace).Get(el.Name, metav1.GetOptions{})

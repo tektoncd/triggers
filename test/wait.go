@@ -94,11 +94,11 @@ func WaitForServiceToNotExist(c *clients, namespace, name string) error {
 	})
 }
 
-// WaitForTriggerTemplateToExist polls for the existence of the Deployment called name
+// WaitForPipelineRunToExist polls for the existence of the PipelineRun called name
 // in the specified namespace
-func WaitForTriggerTemplateToExist(c *clients, namespace, name string) error {
+func WaitForPipelineResourceToExist(c *clients, namespace, name string) error {
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Get(name, metav1.GetOptions{})
+		_, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
