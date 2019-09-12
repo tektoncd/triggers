@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -36,8 +37,16 @@ type EventListenerSpec struct {
 //
 // +k8s:deepcopy-gen=true
 type Trigger struct {
+	TriggerValidate *TriggerValidate   `json:"validate,omitempty"`
 	TriggerBinding  TriggerBindingRef  `json:"binding"`
 	TriggerTemplate TriggerTemplateRef `json:"template"`
+}
+
+// TriggerValidate represents struct needed to run taskrun for validating that trigger comes from the source which is desired
+type TriggerValidate struct {
+	TaskRef            pipelinev1.TaskRef `json:"taskRef"`
+	ServiceAccountName string             `json:"serviceAccountName"`
+	Params             []pipelinev1.Param `json:"params,omitempty"`
 }
 
 // TriggerBindingRef refers to a particular TriggerBinding resource.
