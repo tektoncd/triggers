@@ -8,7 +8,6 @@ apiVersion: tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template
-  namespace: tekton-pipelines
 spec:
   params:
     - name: gitrevision
@@ -16,16 +15,14 @@ spec:
       default: master
     - name: gitrepositoryurl
       description: The git repository url
-    - name: namespace
-      description: The namespace to create the resources
   resourcetemplates:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineResource
       metadata:
         name: git-source-$(uid)
-        namespace: $(params.namespace)
         labels:
           triggertemplated: "true"
+          generatedBy: "triggers-example"
       spec:
         type: git
         params:
@@ -37,9 +34,9 @@ spec:
       kind: PipelineRun
       metadata:
         generateName: simple-pipeline-run
-        namespace: $(params.namespace)
         labels:
           triggertemplated: "true"
+          generatedBy: "triggers-example"
       spec:
         pipelineRef:
             name: simple-pipeline

@@ -2,9 +2,8 @@ apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: listener
-  namespace: tekton-pipelines
 spec:
-  serviceAccountName: default
+  serviceAccountName: tekton-triggers-example-sa
   triggers:
     - binding:
         name: pipeline-binding
