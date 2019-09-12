@@ -1,0 +1,48 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: validate-github-event
+spec:
+  inputs:
+    params:
+      - name: EventBody
+        description: Payload of Event Received
+      - name: EventHeaders
+        description: Headers of the Event Received
+      - name: Github-Secret
+        description: Secret name used to configure webhook
+      - name: Github-Secret-Key
+        description: Secret key used to configured webhook
+  steps:
+    - name: validate
+      image: python:alpine
+      command: ["/bin/sh"]
+      args:
+      - -ce
+      - |
+        set -e
+        cat <<EOF | python
+        import hashlib, os, hmac, json
+        secret = bytes(os.environ.get('GithubSecret'), 'utf-8')
+        payload = bytes("$(inputs.params.EventBody)",'utf-8')
+        h = json.loads(r'$(inputs.params.EventHeaders)')
+        signature = h["X-Hub-Signature"][0]
+        expected = hmac.new(secret, payload, hashlib.sha1).hexdigest()
+        if expected is not None:
+          if not isinstance(expected, str):
+            expected = str(expected)
+          sig_parts = signature.split("=", 1)
+          if not isinstance(sig_parts[1], str):
+            sig_parts1 = str(sig_parts[1])
+          else:
+            sig_parts1 = sig_parts[1]
+          if len(sig_parts) > 1 and sig_parts[0] == "sha1" and hmac.compare_digest(sig_parts1, expected):
+            exit(0)
+        exit(1)
+        EOF
+      env:
+        - name: GithubSecret
+          valueFrom:
+            secretKeyRef:
+              name: $(inputs.params.Github-Secret)
+              key: $(inputs.params.Github-Secret-Key)

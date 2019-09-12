@@ -18,8 +18,10 @@ package sink
 
 import (
 	"flag"
+
 	"golang.org/x/xerrors"
 
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	discoveryclient "k8s.io/client-go/discovery"
 	kubeclientset "k8s.io/client-go/kubernetes"
@@ -52,6 +54,7 @@ type SinkClients struct {
 	DiscoveryClient discoveryclient.DiscoveryInterface
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
+	PipelineClient  pipelineclientset.Interface
 }
 
 // GetArgs returns the flagged SinkArgs
@@ -87,9 +90,15 @@ func ConfigureClients() (SinkClients, error) {
 	if err != nil {
 		return SinkClients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
+	pipelineclient, err := pipelineclientset.NewForConfig(clusterConfig)
+	if err != nil {
+		return SinkClients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
+	}
+
 	return SinkClients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
+		PipelineClient:  pipelineclient,
 	}, nil
 }

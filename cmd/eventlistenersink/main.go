@@ -42,6 +42,7 @@ func main() {
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		RESTClient:             sinkClients.RESTClient,
 		TriggersClient:         sinkClients.TriggersClient,
+		PipelineClient:         sinkClients.PipelineClient,
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,
 	}

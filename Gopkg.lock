@@ -35,7 +35,35 @@
   version = "v0.12.4"
 
 [[projects]]
-  digest = "1:c2cd958e29ac89c55ce0a2f8a51d0e69c251e00e56451c91d8a854bd81bd5908"
+  digest = "1:9d566059dee617cbb19fc6fd2a2409de431bf0b748252d157b11a506db661aa7"
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = [
+    "services/containerregistry/mgmt/2017-10-01/containerregistry",
+    "version",
+  ]
+  pruneopts = "NUT"
+  revision = "de65d71d3102a1ca9dee41db58aa57c7fdafed7f"
+  version = "v33.0.0"
+
+[[projects]]
+  digest = "1:a22596dcc4cce040563d3a54de2110a23511adbad47d5948c121c23160898b9d"
+  name = "github.com/Azure/go-autorest"
+  packages = [
+    "autorest",
+    "autorest/adal",
+    "autorest/azure",
+    "autorest/date",
+    "autorest/to",
+    "autorest/validation",
+    "logger",
+    "tracing",
+  ]
+  pruneopts = "NUT"
+  revision = "5e7a399d8bbf4953ab0c8e3167d7fd535fd74ce1"
+  version = "v13.0.0"
+
+[[projects]]
+  digest = "1:3fcba1085af1107fa7ba0fa74446b71717bfe6e0c2a8c95dda0f591c6679f96d"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -63,10 +91,12 @@
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
+    "service/ecr",
     "service/sts",
     "service/sts/stsiface",
   ]
@@ -101,6 +131,14 @@
   pruneopts = "NUT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:7a6852b35eb5bbc184561443762d225116ae630c26a7c4d90546619f1e7d2ad2"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   digest = "1:4304cca260ab815326ca42d9c28fb843342748267034c51963e13f5e54e727d1"
@@ -192,6 +230,27 @@
   ]
   pruneopts = "NUT"
   revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
+
+[[projects]]
+  branch = "master"
+  digest = "1:8a30e7763be7a72afcbd1a3863260bdff2eb2eedfeac22928dc3c9e9c7a51816"
+  name = "github.com/google/go-containerregistry"
+  packages = [
+    "pkg/authn",
+    "pkg/authn/k8schain",
+    "pkg/internal/retry",
+    "pkg/internal/retry/wait",
+    "pkg/logs",
+    "pkg/name",
+    "pkg/v1",
+    "pkg/v1/partial",
+    "pkg/v1/remote",
+    "pkg/v1/remote/transport",
+    "pkg/v1/types",
+    "pkg/v1/v1util",
+  ]
+  pruneopts = "NUT"
+  revision = "2e91d5f85c2760a686e204ca51bc733be2ab4d30"
 
 [[projects]]
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
@@ -440,27 +499,55 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:fa9a396a832186cc61f0c31b7e277e0323a117479a240f005b2c98bccfab16a3"
+  digest = "1:fb6196d88b385854bf829c3e9eca613b6396533ce23eb6f94eae5ca6b2393e94"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
     "pkg/apis/pipeline",
     "pkg/apis/pipeline/v1alpha1",
+    "pkg/artifacts",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/pipeline/v1alpha1",
     "pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/pipeline",
+    "pkg/client/informers/externalversions/pipeline/v1alpha1",
     "pkg/client/injection/client",
     "pkg/client/injection/client/fake",
+    "pkg/client/injection/informers/pipeline/factory",
+    "pkg/client/injection/informers/pipeline/factory/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/clustertask",
+    "pkg/client/injection/informers/pipeline/v1alpha1/clustertask/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/condition",
+    "pkg/client/injection/informers/pipeline/v1alpha1/condition/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipeline",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipeline/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/task",
+    "pkg/client/injection/informers/pipeline/v1alpha1/task/fake",
+    "pkg/client/injection/informers/pipeline/v1alpha1/taskrun",
+    "pkg/client/injection/informers/pipeline/v1alpha1/taskrun/fake",
+    "pkg/client/listers/pipeline/v1alpha1",
+    "pkg/credentials",
+    "pkg/credentials/dockercreds",
+    "pkg/credentials/gitcreds",
     "pkg/list",
-    "pkg/merge",
     "pkg/names",
+    "pkg/reconciler/v1alpha1/taskrun/entrypoint",
+    "pkg/reconciler/v1alpha1/taskrun/resources",
     "pkg/system",
-    "pkg/templating",
+    "test",
+    "test/builder",
   ]
   pruneopts = "NUT"
-  revision = "33ea1a03b3d4fb6b0c8ae22abda5f335dc0b7997"
+  revision = "c105b6835a899ad1cccadc3556c8a260e812d2cf"
+  version = "v0.6.0"
 
 [[projects]]
   digest = "1:b749c54748b755170cecd0bc4099f527d431a7ecd264f680913ce148ee6ee19c"
@@ -538,7 +625,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:5ab79d2a36037de1ab2908733a2cab0c08b12f6956e3e1eab07cd1b2abf7b903"
+  digest = "1:6463628b4e2c5680bf069a15bf109ee6dd8ffc54e20447a23639167128c2c4ed"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -549,15 +636,20 @@
     "internal/ztest",
     "zapcore",
     "zaptest",
+    "zaptest/observer",
   ]
   pruneopts = "NUT"
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
 [[projects]]
   branch = "master"
-  digest = "1:bbe51412d9915d64ffaa96b51d409e070665efc5194fcf145c4a27d4133107a4"
+  digest = "1:5e4639c1d29ee517777961d74071e3cf3aa7634521b0ceac3d2c8fc0334dbff9"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "pkcs12",
+    "pkcs12/internal/rc2",
+    "ssh/terminal",
+  ]
   pruneopts = "NUT"
   revision = "4def268fd1a49955bfb3dda92fe3db4f924f2285"
 
@@ -594,9 +686,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:382bb5a7fb4034db3b6a2d19e5a4a6bcf52f4750530603c01ca18a172fa3089b"
+  digest = "1:a2fc247e64b5dafd3251f12d396ec85f163d5bb38763c4997856addddf6e78d8"
   name = "golang.org/x/sync"
-  packages = ["semaphore"]
+  packages = [
+    "errgroup",
+    "semaphore",
+  ]
   pruneopts = "NUT"
   revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
 
@@ -1139,6 +1234,20 @@
   revision = "5e22f3d471e6f24ca20becfdffdc6206c7cecac8"
 
 [[projects]]
+  digest = "1:ea0871075d014a0c553b8430c4b162f8dd6397bf25a4938cadcd56d3e05f7afe"
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/cloudprovider/providers/azure/auth",
+    "pkg/credentialprovider",
+    "pkg/credentialprovider/aws",
+    "pkg/credentialprovider/azure",
+    "pkg/credentialprovider/gcp",
+    "pkg/credentialprovider/secrets",
+  ]
+  pruneopts = "NUT"
+  revision = "721bfa751924da8d1680787490c54b9179b1fed0"
+
+[[projects]]
   digest = "1:e137525e8c556aad84e7d1ea5b2f77621faaa236313e9ebb76357ee6265c3e32"
   name = "knative.dev/caching"
   packages = [
@@ -1167,6 +1276,8 @@
     "injection",
     "injection/clients/kubeclient",
     "injection/clients/kubeclient/fake",
+    "injection/informers/kubeinformers/corev1/pod",
+    "injection/informers/kubeinformers/corev1/pod/fake",
     "injection/informers/kubeinformers/appsv1/deployment",
     "injection/informers/kubeinformers/appsv1/deployment/fake",
     "injection/informers/kubeinformers/corev1/service",
@@ -1197,6 +1308,14 @@
   pruneopts = "T"
   revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
 
+[[projects]]
+  digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
+  name = "sigs.k8s.io/yaml"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "fd68e9863619f6ec2fdd8625fe1f02e7c877e480"
+  version = "v1.1.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -1211,6 +1330,8 @@
     "github.com/tektoncd/pipeline/pkg/client/injection/client/fake",
     "github.com/tektoncd/pipeline/pkg/names",
     "github.com/tektoncd/pipeline/pkg/system",
+    "github.com/tektoncd/pipeline/test",
+    "github.com/tektoncd/pipeline/test/builder",
     "github.com/tektoncd/plumbing/scripts",
     "github.com/tidwall/gjson",
     "go.uber.org/zap",

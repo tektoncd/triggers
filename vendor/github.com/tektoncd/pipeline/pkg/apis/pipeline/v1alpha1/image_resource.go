@@ -75,19 +75,10 @@ func (s *ImageResource) Replacements() map[string]string {
 	}
 }
 
-// GetUploadContainerSpec returns the spec for the upload container
-func (s *ImageResource) GetUploadContainerSpec() ([]corev1.Container, error) {
-	return nil, nil
-}
-
-// GetDownloadContainerSpec returns the spec for the download container
-func (s *ImageResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
-	return nil, nil
-}
-
-// SetDestinationDirectory sets the destination for the resource
-func (s *ImageResource) SetDestinationDirectory(path string) {
-}
+func (s *ImageResource) GetUploadSteps(string) ([]Step, error)                    { return nil, nil }
+func (s *ImageResource) GetDownloadSteps(string) ([]Step, error)                  { return nil, nil }
+func (s *ImageResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
+func (s *ImageResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
 
 // GetOutputImageDir return the path to get the index.json file
 func (s *ImageResource) GetOutputImageDir() string {
@@ -100,12 +91,4 @@ func (s ImageResource) String() string {
 	// if the Marshal func gives an error, the returned string will be empty
 	json, _ := json.Marshal(s)
 	return string(json)
-}
-
-func (s *ImageResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-func (s *ImageResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
 }
