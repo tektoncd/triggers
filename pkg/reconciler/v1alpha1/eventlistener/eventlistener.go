@@ -174,7 +174,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{"app": el.Name},
-			Type:     corev1.ServiceTypeLoadBalancer,
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{{
 				Protocol: corev1.ProtocolTCP,
 				Port:     int32(Port),
