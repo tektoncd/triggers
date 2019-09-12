@@ -104,7 +104,7 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: labels,
-			Type:     corev1.ServiceTypeLoadBalancer,
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Protocol: corev1.ProtocolTCP,
@@ -122,7 +122,7 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector:  labels,
-			Type:      corev1.ServiceTypeLoadBalancer,
+			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: "some_ip_address",
 			Ports: []corev1.ServicePort{
 				{
