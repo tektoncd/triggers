@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: say-hello
+spec:
+  inputs:
+    resources:
+      - name: git-source
+        type: git
+  steps:
+  - name: say-hi
+    image: bash
+    command: ["bash", "-c"]
+    args: 
+      - echo 'Hello Triggers!'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: say-bye
+spec:
+  inputs:
+    resources:
+      - name: git-source
+        type: git
+  steps:
+  - name: say-bye
+    image: bash
+    command: ["bash", "-c"]
+    args: 
+      - echo 'Goodbye Triggers!'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: simple-pipeline
+spec:
+  resources: 
+  - name: git-source
+    type: git
+  tasks:
+  - name: say-hello
+    taskRef:
+      name: say-hello
+    resources:
+      inputs:
+      - name: git-source
+        resource: git-source
+  - name: say-bye
+    runAfter: [say-hello]
+    taskRef: 
+      name: say-bye
+    resources: 
+      inputs:
+      - name: git-source
+        resource: git-source
