@@ -17,6 +17,7 @@ rules:
   - tekton.dev
   resources:
   - eventlisteners
+  - tasks
   verbs:
   - get
   - list

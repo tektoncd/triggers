@@ -33,8 +33,17 @@ spec:
       description: The github repo name 
       default: "repo"
     - name: GithubSecretName
-      description: The secret name for github access token 
+      description: The secret name for github 
       default: "githubsecret"
+    - name: GithubAccessTokenKey
+      description: The key name for access token 
+      default: "accessToken"
+    - name: GithubUserNameKey
+      description: The key name for github user name 
+      default: "userName"
+    - name: GithubSecretStringKey
+      description: The key name for github secret string 
+      default: "secretString"
     - name: GithubUrl
       description: The url of git hub 
       default: "github.com"
@@ -50,9 +59,12 @@ spec:
     - name: TriggerServiceAccount
       description: The Trigger service account 
       default: "default"
+    - name: ValidateTaskName
+      description: The event validation task name 
+      default: "validate-github-event"
   steps:
   - name: generate-certificate
-    image: ibmcom/microclimate-utils:1905
+    image: frapsoft/openssl
     command:
     - sh
     args:
@@ -65,12 +77,33 @@ spec:
       then
         exit 0
       fi
-      mkdir /var/tmp/ingress
-      openssl genrsa -des3 -out /var/tmp/ingress/key.pem -passout pass:$(inputs.params.CertificateKeyPassphrase) 2048
-      openssl req -x509 -new -nodes -key /var/tmp/ingress/key.pem -sha256 -days 1825 -out /var/tmp/ingress/certificate.pem -passin pass:$(inputs.params.CertificateKeyPassphrase) -subj /CN=$(inputs.params.ExternalUrl)
-      openssl rsa -in /var/tmp/ingress/key.pem -out /var/tmp/ingress/key.pem -passin pass:$(inputs.params.CertificateKeyPassphrase)
-      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/ingress/certificate.pem --key=/var/tmp/ingress/key.pem 
+      mkdir /var/tmp/work/ingress
+      openssl genrsa -des3 -out /var/tmp/work/ingress/key.pem -passout pass:$(inputs.params.CertificateKeyPassphrase) 2048
+      openssl req -x509 -new -nodes -key /var/tmp/work/ingress/key.pem -sha256 -days 1825 -out /var/tmp/work/ingress/certificate.pem -passin pass:$(inputs.params.CertificateKeyPassphrase) -subj /CN=$(inputs.params.ExternalUrl)
+      openssl rsa -in /var/tmp/work/ingress/key.pem -out /var/tmp/work/ingress/key.pem -passin pass:$(inputs.params.CertificateKeyPassphrase)
       EOF
+    volumeMounts:
+    - name: work
+      mountPath: /var/tmp/work
+  - name: create-certificate-secret
+    image: lachlanevenson/k8s-kubectl:latest
+    command:
+    - sh
+    args:
+    - -ce
+    - |
+      set -e
+      cat <<EOF | sh
+      #!/bin/sh
+      if [ $(inputs.params.CreateCertificate) = "false" ]
+      then
+        exit 0
+      fi
+      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/work/ingress/certificate.pem --key=/var/tmp/work/ingress/key.pem 
+      EOF
+    volumeMounts:
+    - name: work
+      mountPath: /var/tmp/work
   - name: create-ingress
     image: lachlanevenson/k8s-kubectl:latest
     command:
@@ -116,9 +149,9 @@ spec:
       echo "Create Webhook"
       if [ $(inputs.params.GithubUrl) = "github.com" ]
       then
-      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\"}}" -X POST -u $(cat /var/secret/userName):$(cat /var/secret/accessToken) -L https://api.github.com/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
+      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\" ,\"secret\": \"$(cat /var/secret/$(inputs.params.GithubSecretStringKey))\"}}" -X POST -u $(cat /var/secret/$(inputs.params.GithubUserNameKey)):$(cat /var/secret/$(inputs.params.GithubAccessTokenKey)) -L https://api.github.com/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
       else
-      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\"}}" -X POST -u $(cat /var/secret/userName):$(cat /var/secret/accessToken) -L https://$(inputs.params.GithubUrl)/api/v3/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
+      curl -d "{\"name\": \"web\",\"active\": true,\"events\": [\"push\",\"pull_request\"],\"config\": {\"url\": \"https://$(inputs.params.ExternalUrl)/\",\"content_type\": \"json\",\"insecure_ssl\": \"1\" ,\"secret\": \"$(cat /var/secret/$(inputs.params.GithubSecretStringKey))\"}}" -X POST -u $(cat /var/secret/$(inputs.params.GithubUserNameKey)):$(cat /var/secret/$(inputs.params.GithubAccessTokenKey)) -L https://$(inputs.params.GithubUrl)/api/v3/repos/$(inputs.params.GithubOwner)/$(inputs.params.GithubRepo)/hooks
       fi
     volumeMounts:
     - name: github-secret
@@ -135,6 +168,61 @@ spec:
       then
         exit 0
       fi
+      export EVENTBODY="(inputs.params.EventBody)"
+      export EVENTHEADERS="(inputs.params.EventHeaders)"
+      export GITHUBSECRET="(inputs.params.Github-Secret)"
+      export GITHUBSECRETKEY="(inputs.params.Github-Secret-Key)"
+      export D="\$"
+      cat <<EOF | kubectl apply -f -
+      apiVersion: tekton.dev/v1alpha1
+      kind: Task
+      metadata:
+        name: $(inputs.params.ValidateTaskName)
+      spec:
+        inputs:
+          params:
+            - name: EventBody
+              description: Payload of Event Received
+            - name: EventHeaders
+              description: Headers of the Event Received
+            - name: Github-Secret
+              description: Secret name used to configure webhook
+            - name: Github-Secret-Key
+              description: Secret key used to configured webhook
+        steps:
+          - name: validate
+            image: python:alpine
+            command: ["/bin/sh"]
+            args:
+            - -ce
+            - |
+              set -e
+              cat <<EOF | python
+              import hashlib, os, hmac, json
+              secret = bytes(os.environ.get('GithubSecret'), 'utf-8')
+              payload = bytes('${D}${EVENTBODY}','utf-8')
+              h = json.loads(r'${D}${EVENTHEADERS}')
+              signature = h["X-Hub-Signature"][0]
+              expected = hmac.new(secret, payload, hashlib.sha1).hexdigest()
+              if expected is not None:
+                if not isinstance(expected, str):
+                  expected = str(expected)
+                sig_parts = signature.split("=", 1)
+                if not isinstance(sig_parts[1], str):
+                  sig_parts1 = str(sig_parts[1])
+                else:
+                  sig_parts1 = sig_parts[1]
+                if len(sig_parts) > 1 and sig_parts[0] == "sha1" and hmac.compare_digest(sig_parts1, expected):
+                  exit(0)
+              exit(1)
+              EOF
+            env:
+              - name: GithubSecret
+                valueFrom:
+                  secretKeyRef:
+                    name: ${D}${GITHUBSECRET}
+                    key: ${D}${GITHUBSECRETKEY}
+      EOF
       cat <<EOF | kubectl apply -f -
       apiVersion: tekton.dev/v1alpha1
       kind: EventListener
@@ -147,9 +235,20 @@ spec:
             name: $(inputs.params.TriggerBinding)
           template:
             name: $(inputs.params.TriggerTemplate)
+          validate:
+            taskRef:
+              name: $(inputs.params.ValidateTaskName)
+            serviceAccountName: $(inputs.params.TriggerServiceAccount)
+            params:
+            - name: Github-Secret
+              value: $(inputs.params.GithubSecretName)
+            - name: Github-Secret-Key
+              value: $(inputs.params.GithubSecretStringKey)
+
       EOF
   volumes:
   - name: github-secret
     secret:
       secretName: $(inputs.params.GithubSecretName) 
-
+  - name: work
+    emptyDir: {}

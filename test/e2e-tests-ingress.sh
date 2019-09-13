@@ -63,6 +63,7 @@ done
 echo "clean up before start. Ignore (NotFound) errors"
 kubectl delete secret secret1 || true
 kubectl delete eventlistener listener || true
+kubectl delete task validate-github-event || true
 kubectl delete taskrun create-webhook || true
 kubectl delete secret githubsecret || true
 
@@ -70,7 +71,7 @@ kubectl delete secret githubsecret || true
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrole.yaml
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrolebinding.yaml
 kubectl apply -f ${REPO_ROOT_DIR}/docs/create-webhook.yaml
-kubectl create secret generic githubsecret --from-literal=accessToken=ff7d2c2949844f68cb18a68f4febad4454df2336 --from-literal=userName=tektonuser
+kubectl create secret generic githubsecret --from-literal=accessToken=ff7d2c2949844f68cb18a68f4febad4454df2336 --from-literal=userName=tektonuser --from-literal=secretString=secret1
 
 
 # test
@@ -98,12 +99,20 @@ if [ $svc != "listener" ] || [ $host != "listener.192.168.0.1.nip.io" ] || [ $tl
   exit 1
 fi
 
+# check validation task
+validationtaskname=$(kubectl get task validate-github-event -o=jsonpath='{.metadata.name}')
+if [ $validatetaskname != "validate-github-event" ]; then
+  echo -e "unexpected values " "wanted: validate-github-event; got:" $validatetaskename
+  exit 1
+fi
+
 # check event listener
 listenername=$(kubectl get eventlistener listener -o=jsonpath='{.metadata.name}')
 bindingname=$(kubectl get eventlistener listener -o=jsonpath='{.spec.triggers[0].binding.name}')
 templatename=$(kubectl get eventlistener listener -o=jsonpath='{.spec.triggers[0].template.name}')
-if [ $listenername != "listener" ] || [ $bindingname != "pipeline-binding" ] || [ $templatename != "pipeline-template" ]; then
-  echo -e "unexpected values " "wanted: listener; got:" $listenername", wanted: pipeline-binding; got:" $bindingname", wanted: pipeline-template; got:" $templatename
+validatetaskname=$(kubectl get eventlistener listener -o=jsonpath='{.spec.triggers[0].validate.taskRef.name}')
+if [ $listenername != "listener" ] || [ $bindingname != "pipeline-binding" ] || [ $templatename != "pipeline-template" ] || [ $validatetaskname != "validate-github-event" ]; then
+  echo -e "unexpected values " "wanted: listener; got:" $listenername", wanted: pipeline-binding; got:" $bindingname", wanted: pipeline-template; got:" $templatename", wanted: validate-github-event; got:" $validatetaskename
   exit 1
 fi
 
@@ -128,6 +137,7 @@ kubectl delete -f ${REPO_ROOT_DIR}/docs/create-webhook.yaml
 kubectl delete -f ${REPO_ROOT_DIR}/docs/create-webhook-run.yaml
 kubectl delete secret secret1
 kubectl delete eventlistener listener
+kubectl delete task validate-github-event
 kubectl delete secret githubsecret
 
 
