@@ -20,11 +20,4 @@ spec:
         name: pipeline-binding
       template:
         name: pipeline-template
-      validate:
-        taskRef:
-          name: validateTaskName
-        serviceAccountName: saName
-        params:
-        - name: paramName
-          value: paramValue
 ```
