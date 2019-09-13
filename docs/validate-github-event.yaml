@@ -24,7 +24,7 @@ spec:
         cat <<EOF | python
         import hashlib, os, hmac, json
         secret = bytes(os.environ.get('GithubSecret'), 'utf-8')
-        payload = bytes("$(inputs.params.EventBody)",'utf-8')
+        payload = bytes('$(inputs.params.EventBody)','utf-8')
         h = json.loads(r'$(inputs.params.EventHeaders)')
         signature = h["X-Hub-Signature"][0]
         expected = hmac.new(secret, payload, hashlib.sha1).hexdigest()
