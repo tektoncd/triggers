@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -329,10 +330,34 @@ func Test_HandleEvent(t *testing.T) {
 			},
 		},
 	}
+	wantPipelineResource := pipelinev1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pipelineresource",
+			Namespace: namespace,
+		},
+		Spec: pipelinev1.PipelineResourceSpec{
+			Type: pipelinev1.PipelineResourceTypeGit,
+			Params: []pipelinev1.ResourceParam{
+				pipelinev1.ResourceParam{Name: "url", Value: "testurl"},
+				pipelinev1.ResourceParam{Name: "revision", Value: "testrevision"},
+			},
+		},
+	}
+
 	pipelineResourceBytes, err := json.Marshal(pipelineResource)
 	if err != nil {
 		t.Fatalf("Error unmarshalling pipelineResource: %s", err)
 	}
+	wantPipelineResourceBytes, err := json.Marshal(wantPipelineResource)
+	if err != nil {
+		t.Fatalf("Error unmarshalling wantPipelineResource: %s", err)
+	}
+	wantPipelineResourceURLPath := "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources"
+
 	tt := &triggersv1.TriggerTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-triggertemplate",
@@ -421,10 +446,25 @@ func Test_HandleEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(r.HandleEvent))
 	defer ts.Close()
 
+	numRequests := 0
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	restClient.Client = fakerestclient.CreateHTTPClient(func(request *http.Request) (*http.Response, error) {
+		defer wg.Done()
+		numRequests++
+		if diff := cmp.Diff(wantPipelineResourceURLPath, request.URL.Path); diff != "" {
+			t.Errorf("Diff request uri: -want +got: %s", diff)
+		}
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return nil, err
+		}
+		if diff := cmp.Diff(string(wantPipelineResourceBytes), string(body)); diff != "" {
+			t.Errorf("Diff request body: -want +got: %s", diff)
+		}
 		return &http.Response{StatusCode: http.StatusCreated, Body: ioutil.NopCloser(bytes.NewReader([]byte{}))}, nil
 	})
-
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
@@ -438,6 +478,11 @@ func Test_HandleEvent(t *testing.T) {
 
 	if !strings.Contains(string(body), wantPayload) {
 		t.Errorf("Diff response body: %s, should have: %s", string(body), wantPayload)
+	}
+
+	wg.Wait()
+	if numRequests != 1 {
+		t.Errorf("Expected 1 request, got %d requests", numRequests)
 	}
 }
 
@@ -614,37 +659,21 @@ func TestResource_createValidateTask(t *testing.T) {
 				})
 				return clients.Pipeline
 			}(),
-			want: &pipelinev1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					GenerateName: "bar",
-					Namespace:    "foo",
-					Labels: map[string]string{
-						"tekton.dev/eventlistener": "foo-listener"},
-				},
-				Spec: pipelinev1.TaskRunSpec{
-					ServiceAccount: "foo",
-					TaskRef:        &triggerValidate.TaskRef,
-					Inputs: pipelinev1.TaskRunInputs{
-						Params: []pipelinev1.Param{
-							{
-								Name: "Secret",
-								Value: pipelinev1.ArrayOrString{
-									Type:      v1alpha1.ParamTypeString,
-									StringVal: "github-secret"}},
-							{
-								Name: "EventBody",
-								Value: pipelinev1.ArrayOrString{
-									Type:      v1alpha1.ParamTypeString,
-									StringVal: string(payload)},
-							},
-							{
-								Name: "EventHeaders",
-								Value: pipelinev1.ArrayOrString{
-									Type:      v1alpha1.ParamTypeString,
-									StringVal: string(hEncode)},
-							},
-						}}},
-			},
+			want: func() *pipelinev1.TaskRun {
+				tr := pipelinetb.TaskRun("", "foo", pipelinetb.TaskRunLabel("tekton.dev/eventlistener", "foo-listener"),
+					pipelinetb.TaskRunSpec(pipelinetb.TaskRunServiceAccount("foo"),
+						pipelinetb.TaskRunTaskRef(triggerValidate.TaskRef.Name, pipelinetb.TaskRefKind(triggerValidate.TaskRef.Kind)),
+						pipelinetb.TaskRunInputs(
+							pipelinetb.TaskRunInputsParam("Secret", "github-secret"),
+							pipelinetb.TaskRunInputsParam("EventBody", string(payload)),
+							pipelinetb.TaskRunInputsParam("EventHeaders", string(hEncode)),
+						),
+						pipelinetb.TaskRunNilTimeout,
+					))
+				tr.GenerateName = "bar"
+				tr.Annotations = nil
+				return tr
+			}(),
 			wantErr: false,
 		},
 		{
@@ -679,8 +708,9 @@ func TestResource_createValidateTask(t *testing.T) {
 				}
 				return
 			}
+			fmt.Println(tt.want.Spec.Timeout)
 			if diff := cmp.Diff(got, tt.want); diff != "" {
-				t.Errorf("Resource.createValidateTask() = %v, want %v", got, tt.want)
+				t.Errorf("Resource.createValidateTask() = \n%+v, want \n%+v, diff:%s", got, tt.want, diff)
 			}
 		})
 	}
