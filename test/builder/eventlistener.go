@@ -1,6 +1,7 @@
 package builder
 
 import (
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -10,6 +11,9 @@ type EventListenerOp func(*v1alpha1.EventListener)
 
 // EventListenerSpecOp is an operation which modifies the EventListenerSpec.
 type EventListenerSpecOp func(*v1alpha1.EventListenerSpec)
+
+// EventListenerTriggerOp is an operation which modifies the Trigger.
+type EventListenerTriggerOp func(*v1alpha1.EventListenerTrigger)
 
 // EventListener creates an EventListener with default values.
 // Any number of EventListenerOp modifiers can be passed to transform it.
@@ -60,19 +64,45 @@ func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 	}
 }
 
-// EventListenerTrigger adds a Trigger to the EventListenerSpec Triggers.
-func EventListenerTrigger(tbName, ttName, apiVersion string) EventListenerSpecOp {
+// EventListenerTrigger adds an EventListenerTrigger to the EventListenerSpec Triggers.
+// Any number of EventListenerTriggerOp modifiers can be passed to create/modify it.
+func EventListenerTrigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.Triggers = append(spec.Triggers,
-			v1alpha1.Trigger{
-				TriggerBinding: v1alpha1.TriggerBindingRef{
-					Name:       tbName,
-					APIVersion: apiVersion,
-				},
-				TriggerTemplate: v1alpha1.TriggerTemplateRef{
-					Name:       ttName,
-					APIVersion: apiVersion,
+		spec.Triggers = append(spec.Triggers, Trigger(tbName, ttName, apiVersion, ops...))
+	}
+}
+
+// EventListenerTriggerParam adds a param to the EventListenerTrigger
+func EventListenerTriggerParam(name, value string) EventListenerTriggerOp {
+	return func(trigger *v1alpha1.EventListenerTrigger) {
+		trigger.Binding.Params = append(trigger.Binding.Params,
+			pipelinev1.Param{
+				Name: name,
+				Value: pipelinev1.ArrayOrString{
+					StringVal: value,
+					Type:      pipelinev1.ParamTypeString,
 				},
 			})
 	}
+}
+
+// Trigger creates an EventListenerTrigger. Any number of EventListenerTriggerOp
+// modifiers can be passed to create/modify it.
+func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
+	t := v1alpha1.EventListenerTrigger{
+		Binding: v1alpha1.EventListenerBinding{
+			Name:       tbName,
+			APIVersion: apiVersion,
+		},
+		Template: v1alpha1.EventListenerTemplate{
+			Name:       ttName,
+			APIVersion: apiVersion,
+		},
+	}
+
+	for _, op := range ops {
+		op(&t)
+	}
+
+	return t
 }

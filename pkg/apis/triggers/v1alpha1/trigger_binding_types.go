@@ -25,7 +25,8 @@ import (
 //var _ apis.Validatable = (*TriggerBinding)(nil)
 
 type TriggerBindingSpec struct {
-	Params []pipelinev1.Param `json:"params,omitempty"`
+	InputParams  []pipelinev1.ParamSpec `json:"inputparams,omitempty"`
+	OutputParams []pipelinev1.Param     `json:"outputparams,omitempty"`
 }
 
 type TriggerBindingStatus struct{}

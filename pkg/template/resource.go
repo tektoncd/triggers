@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -40,19 +41,21 @@ type ResolvedBinding struct {
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
-func ResolveBinding(trigger triggersv1.Trigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
-	tb, err := getTB(trigger.TriggerBinding.Name, metav1.GetOptions{})
+func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
+	tbName := trigger.Binding.Name
+	tb, err := getTB(tbName, metav1.GetOptions{})
 	if err != nil {
-		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerBinding %s: %s", trigger.TriggerBinding.Name, err)
+		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerBinding %s: %s", tbName, err)
 	}
-	tt, err := getTT(trigger.TriggerTemplate.Name, metav1.GetOptions{})
+	ttName := trigger.Template.Name
+	tt, err := getTT(ttName, metav1.GetOptions{})
 	if err != nil {
-		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", trigger.TriggerTemplate.Name, err)
+		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", ttName, err)
 	}
 	return ResolvedBinding{TriggerBinding: tb, TriggerTemplate: tt}, nil
 }
 
-// AddDefaultParamsFromSpec returns the params with the addition of all
+// MergeInDefaultParams returns the params with the addition of all
 // paramSpecs that have default values and are already in the params list
 func MergeInDefaultParams(params []pipelinev1.Param, paramSpecs []pipelinev1.ParamSpec) []pipelinev1.Param {
 	allParamsMap := map[string]pipelinev1.ArrayOrString{}
@@ -89,6 +92,19 @@ func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) js
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(params.%s)", param.Name)
 	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value.StringVal), -1)
+}
+
+// ApplyInputParamsToOutputParams returns the outputParams with substituted
+// values for every matching inputParam
+func ApplyInputParamsToOutputParams(inputParams []pipelinev1.Param, outputParams []pipelinev1.Param) []pipelinev1.Param {
+	// Assume the params are valid
+	for _, inputParam := range inputParams {
+		for i := range outputParams {
+			intputParamVariable := fmt.Sprintf("$(inputParams.%s)", inputParam.Name)
+			outputParams[i].Value.StringVal = strings.Replace(outputParams[i].Value.StringVal, intputParamVariable, inputParam.Value.StringVal, -1)
+		}
+	}
+	return outputParams
 }
 
 // Uid generates a random string like the Kubernetes apiserver generateName metafield postfix.

@@ -18,7 +18,7 @@ kubectl apply -f eventlisteners/eventlistener.yaml
 ```bash
 tekton:examples user$ kubectl get svc
 NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
-listener                      LoadBalancer   10.100.151.220   localhost     8082:30607/TCP   48s  <--- this will receive the event
+listener                      ClusterIP      10.100.151.220   <none>        8082/TCP         48s  <--- this will receive the event
 tekton-pipelines-controller   ClusterIP      10.103.144.96    <none>        9090/TCP         8m34s
 tekton-pipelines-webhook      ClusterIP      10.96.198.4      <none>        443/TCP          8m34s
 tekton-triggers-controller    ClusterIP      10.102.221.96    <none>        9090/TCP         7m56s
@@ -37,7 +37,9 @@ tekton-triggers-webhook-5985cfcfc5-cq5hp       1/1       Running   0          6m
 
 3. Apply an example pipeline and tasks that will be run (in this case named `simple-pipeline`):
 
-`kubectl apply -f example-pipeline.yaml`
+```bash
+kubectl apply -f example-pipeline.yaml
+```
 
 This is intentionally very simple and operates on a created Git resource. The trigger created Git resource will have the repository URL and revision parameters.
 
@@ -53,8 +55,8 @@ curl -X POST \
 	"head_commit":
 	{
 		"id": "master"
-	}, 
-	"repository": 
+	},
+	"repository":
 	{
 		"url": "https://github.com/tektoncd/triggers.git"
 	}
@@ -72,7 +74,7 @@ git-source-g8j7r   1s
 ```bash
 tekton:examples user$ kubectl get pipelinerun
 NAME                       SUCCEEDED   REASON    STARTTIME   COMPLETIONTIME
-simple-pipeline-runxl8rm   Unknown     Running   1s      
+simple-pipeline-runxl8rm   Unknown     Running   1s
 ```
 
 ```bash
@@ -116,6 +118,9 @@ spec:
   - name: git-source
     resourceRef:
       name: git-source-g8j7r
+  params:
+  - name: message
+    value: Hello from the Triggers EventListener!
   serviceAccount: ""
   timeout: 1h0m0s
 status:
@@ -129,12 +134,18 @@ status:
   ...
 ```
 
-3. The two Pods (one per Task) finish their work and the PipelineRun is marked as successful:
+3. The three Pods (one per Task) finish their work and the PipelineRun is marked as successful:
 
 ```
 tekton:examples user$ kubectl logs simple-pipeline-runn4qps-say-hello-29ztk-pod-118fbd --all-containers
 ...
 Hello Triggers!
+```
+
+```
+tekton:examples user$ kubectl logs simple-pipeline-runn4qps-say-message-f64qf-pod-80fb58 --all-containers
+...
+Hello from the Triggers EventListener!
 ```
 
 ```

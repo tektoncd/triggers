@@ -11,8 +11,29 @@ spec:
   - name: say-hi
     image: bash
     command: ["bash", "-c"]
-    args: 
+    args:
       - echo 'Hello Triggers!'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: say-message
+spec:
+  inputs:
+    params:
+    - name: message
+      description: The message to print
+      default: This is the default message
+      type: string
+    resources:
+    - name: git-source
+      type: git
+  steps:
+  - name: say-message
+    image: bash
+    command: ["bash", "-c"]
+    args:
+      - echo '$(inputs.params.message)'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Task
@@ -21,21 +42,26 @@ metadata:
 spec:
   inputs:
     resources:
-      - name: git-source
-        type: git
+    - name: git-source
+      type: git
   steps:
   - name: say-bye
     image: bash
     command: ["bash", "-c"]
-    args: 
-      - echo 'Goodbye Triggers!'
+    args:
+    - echo 'Goodbye Triggers!'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: simple-pipeline
 spec:
-  resources: 
+  params:
+  - name: message
+    description: The message to print
+    default: This is the default message
+    type: string
+  resources:
   - name: git-source
     type: git
   tasks:
@@ -46,11 +72,22 @@ spec:
       inputs:
       - name: git-source
         resource: git-source
-  - name: say-bye
+  - name: say-message
     runAfter: [say-hello]
-    taskRef: 
+    taskRef:
+      name: say-message
+    params:
+    - name: message
+      value: $(params.message)
+    resources:
+      inputs:
+      - name: git-source
+        resource: git-source
+  - name: say-bye
+    runAfter: [say-message]
+    taskRef:
       name: say-bye
-    resources: 
+    resources:
       inputs:
       - name: git-source
         resource: git-source

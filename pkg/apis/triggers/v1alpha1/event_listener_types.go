@@ -28,18 +28,24 @@ var _ apis.Validatable = (*EventListener)(nil)
 
 // EventListenerSpec defines the desired state of the EventListener, represented by a list of Triggers.
 type EventListenerSpec struct {
-	ServiceAccountName string    `json:"serviceAccountName"`
-	Triggers           []Trigger `json:"triggers,omitempty"`
+	ServiceAccountName string                 `json:"serviceAccountName"`
+	Triggers           []EventListenerTrigger `json:"triggers"`
 }
 
-// Trigger represents a connection between TriggerBinding and TriggerTemplate; TriggerBinding provides extracted
-// values for TriggerTemplate to then create resources from.
-//
-// +k8s:deepcopy-gen=true
-type Trigger struct {
-	TriggerValidate *TriggerValidate   `json:"validate,omitempty"`
-	TriggerBinding  TriggerBindingRef  `json:"binding"`
-	TriggerTemplate TriggerTemplateRef `json:"template"`
+// EventListenerTrigger represents a connection between TriggerBinding and TriggerTemplate;
+// TriggerBinding provides extracted values for TriggerTemplate to then create resources from.
+type EventListenerTrigger struct {
+	TriggerValidate *TriggerValidate      `json:"validate,omitempty"`
+	Binding         EventListenerBinding  `json:"binding"`
+	Template        EventListenerTemplate `json:"template"`
+}
+
+// EventListenerBinding specifies a TriggerBinding resource and the parameters that
+// get passed to the TriggerBinding.
+type EventListenerBinding struct {
+	Name       string             `json:"name"`
+	APIVersion string             `json:"apiversion,omitempty"`
+	Params     []pipelinev1.Param `json:"params,omitempty"`
 }
 
 // TriggerValidate represents struct needed to run taskrun for validating that trigger comes from the source which is desired
@@ -49,14 +55,8 @@ type TriggerValidate struct {
 	Params             []pipelinev1.Param `json:"params,omitempty"`
 }
 
-// TriggerBindingRef refers to a particular TriggerBinding resource.
-type TriggerBindingRef struct {
-	Name       string `json:"name"`
-	APIVersion string `json:"apiversion,omitempty"`
-}
-
-// TriggerTemplateRef refers to a particular TriggerTemplate resource.
-type TriggerTemplateRef struct {
+// EventListenerTemplate refers to a particular TriggerTemplate resource.
+type EventListenerTemplate struct {
 	Name       string `json:"name"`
 	APIVersion string `json:"apiversion,omitempty"`
 }

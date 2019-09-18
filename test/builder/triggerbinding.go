@@ -53,14 +53,29 @@ func TriggerBindingSpec(ops ...TriggerBindingSpecOp) TriggerBindingOp {
 	}
 }
 
-// TriggerBindingParam adds a param to the TriggerBindingSpec.
-func TriggerBindingParam(name, value string) TriggerBindingSpecOp {
+// TriggerBindingOutputParam adds an outputParam to the TriggerBindingSpec.
+func TriggerBindingOutputParam(name, value string) TriggerBindingSpecOp {
 	return func(spec *v1alpha1.TriggerBindingSpec) {
-		spec.Params = append(spec.Params,
+		spec.OutputParams = append(spec.OutputParams,
 			pipelinev1.Param{
 				Name: name,
 				Value: pipelinev1.ArrayOrString{
 					StringVal: value,
+					Type:      pipelinev1.ParamTypeString,
+				},
+			})
+	}
+}
+
+// TriggerBindingInputParam adds an inputParam to the TriggerBindingSpec
+func TriggerBindingInputParam(name, description, defaultValue string) TriggerBindingSpecOp {
+	return func(spec *v1alpha1.TriggerBindingSpec) {
+		spec.InputParams = append(spec.InputParams,
+			pipelinev1.ParamSpec{
+				Name:        name,
+				Description: description,
+				Default: &pipelinev1.ArrayOrString{
+					StringVal: defaultValue,
 					Type:      pipelinev1.ParamTypeString,
 				},
 			})

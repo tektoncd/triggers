@@ -78,11 +78,11 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 		r.EventListenerName, r.EventListenerNamespace, string(event), request.Header)
 }
 
-func (r Resource) executeTrigger(payload []byte, header http.Header, trigger triggersv1.Trigger) {
+func (r Resource) executeTrigger(payload []byte, header http.Header, trigger triggersv1.EventListenerTrigger) {
 	// Secure Endpoint
 	if trigger.TriggerValidate != nil {
 		if err := r.validateEvent(trigger.TriggerValidate, header, payload); err != nil {
-			log.Printf("Error securing Endpoint for TriggerBinding %s in Namespace %s: %s", trigger.TriggerBinding.Name, r.EventListenerNamespace, err)
+			log.Printf("Error securing Endpoint for TriggerBinding %s in Namespace %s: %s", trigger.Binding.Name, r.EventListenerNamespace, err)
 			return
 		}
 	}
@@ -94,7 +94,7 @@ func (r Resource) executeTrigger(payload []byte, header http.Header, trigger tri
 		log.Print(err)
 		return
 	}
-	resources, err := template.NewResources(payload, binding)
+	resources, err := template.NewResources(payload, trigger.Binding.Params, binding)
 	if err != nil {
 		log.Print(err)
 		return
