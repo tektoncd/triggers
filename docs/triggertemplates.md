@@ -1,6 +1,7 @@
 # TriggerTemplates
 A `TriggerTemplate` is a resource that can template resources.
-`TriggerTemplate`s have optional parameters that can be substituted **anywhere** within the resource template.
+`TriggerTemplate`s have [parameters](#parameters) that can be substituted **anywhere**
+within the resource template.
 
 <!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
 ```YAML
@@ -15,6 +16,9 @@ spec:
       default: master
     - name: gitrepositoryurl
       description: The git repository url
+    - name: message
+      description: The message to print
+      default: This is the default message
   resourcetemplates:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineResource
@@ -40,6 +44,9 @@ spec:
       spec:
         pipelineRef:
             name: simple-pipeline
+        params:
+        - name: message
+          value: $(params.message)
         resources:
         - name: git-source
           resourceRef:
@@ -47,7 +54,7 @@ spec:
 ```
 
 Similar to [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s do not do any actual work, but instead act as the blueprint for what resources should be created.
-Any parameters defined in the [`TriggerBinding`](triggerbindings.md) are passed into to the `TriggerTemplate` before resource creation.
+
 If the namespace is omitted, it will be resolved to the `EventListener`'s namespace.
 
 The `$(uid)` variable is implicitly available throughout a `TriggerTemplate`'s resource templates.
@@ -56,6 +63,20 @@ One instance where there is useful is when resources in a `TriggerTemplate` have
 
 When creating resource, an additional label is added on created resources with the following value: `event-listener-name`: `<EventListenerName>`.
 Mark all resources created by a certain EventListener, which helps with housekeeping.
- 
+
 To enable support for any resource type, the resource templates are internally resolved as byte blobs.
 As a result, validation on these resources is only done at event processing time (rather than during `TriggerTemplate` creation).
+
+## Parameters
+`TriggerTemplate`s can declare parameters that are supplied by a
+`TriggerBinding`. `params` must have a `name`, and can have an optional
+`description` and `default` value.
+
+`params` can be referenced in the `TriggerTemplate` using the following
+variable substitution syntax, where `<name>` is the name of the parameter:
+```YAML
+$(params.<name>)
+```
+`params` can be referenced in the `resourceTemplates` section of a
+`TriggerTemplate`. The purpose of `params` is to make `TriggerTemplates`
+reusable.

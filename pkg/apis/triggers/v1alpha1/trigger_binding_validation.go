@@ -30,17 +30,46 @@ func (t *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate TriggerBindingSpec.
 func (s *TriggerBindingSpec) Validate(ctx context.Context) *apis.FieldError {
-	return validateParameters(s.Params)
-}
-
-// Ensure there aren't multiple params with the same name.
-func validateParameters(params []v1alpha1.Param) *apis.FieldError {
-	seen := map[string]struct{}{}
-	for _, p := range params {
-		if _, ok := seen[strings.ToLower(p.Name)]; ok {
-			return apis.ErrMultipleOneOf("spec.params")
-		}
-		seen[p.Name] = struct{}{}
+	if err := validateInputParams(s.InputParams); err != nil {
+		return err
+	}
+	if err := validateOutputParams(s.OutputParams); err != nil {
+		return err
 	}
 	return nil
+}
+
+func validateInputParams(params []v1alpha1.ParamSpec) *apis.FieldError {
+	paramNames := make([]string, len(params))
+	for i, param := range params {
+		paramNames[i] = param.Name
+	}
+	if duplicateStrings(paramNames) {
+		return apis.ErrMultipleOneOf("spec.inputParams")
+	}
+	return nil
+}
+
+func validateOutputParams(params []v1alpha1.Param) *apis.FieldError {
+	paramNames := make([]string, len(params))
+	for i, param := range params {
+		paramNames[i] = param.Name
+	}
+	if duplicateStrings(paramNames) {
+		return apis.ErrMultipleOneOf("spec.outputParams")
+	}
+	return nil
+}
+
+// Return true if there are duplicate strings in the list. Converts strings
+// to lowercase before comparing.
+func duplicateStrings(list []string) bool {
+	seen := map[string]struct{}{}
+	for _, s := range list {
+		if _, ok := seen[strings.ToLower(s)]; ok {
+			return true
+		}
+		seen[s] = struct{}{}
+	}
+	return false
 }

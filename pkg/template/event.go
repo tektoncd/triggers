@@ -40,10 +40,10 @@ func getEventPathFromVar(eventPathVar string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(eventPathVar, "$(event."), ")")
 }
 
-// ApplyEventToParams returns the params with each event path variable replaced
+// ApplyEventToOutputParams returns the params with each event path variable replaced
 // with the appropriate data from the event. Returns an error when the event
 // path variable is not found in the event.
-func ApplyEventToParams(event []byte, params []pipelinev1.Param) ([]pipelinev1.Param, error) {
+func ApplyEventToOutputParams(event []byte, params []pipelinev1.Param) ([]pipelinev1.Param, error) {
 	for i := range params {
 		param, err := applyEventToParam(event, params[i])
 		if err != nil {
@@ -92,12 +92,14 @@ func getEventPathValue(event []byte, eventPath string) (string, error) {
 	return eventPathValue, nil
 }
 
-// NewResources returns all resources defined when applying the event to the
-// TriggerTemplate and TriggerBinding in the ResolvedBinding.
-func NewResources(event []byte, binding ResolvedBinding) ([]json.RawMessage, error) {
-	params, err := ApplyEventToParams(event, binding.TriggerBinding.Spec.Params)
+// NewResources returns all resources defined when applying the event and
+// elParams to the TriggerTemplate and TriggerBinding in the ResolvedBinding.
+func NewResources(event []byte, elParams []pipelinev1.Param, binding ResolvedBinding) ([]json.RawMessage, error) {
+	inputParams := MergeInDefaultParams(elParams, binding.TriggerBinding.Spec.InputParams)
+	outputParams := ApplyInputParamsToOutputParams(inputParams, binding.TriggerBinding.Spec.OutputParams)
+	params, err := ApplyEventToOutputParams(event, outputParams)
 	if err != nil {
-		return []json.RawMessage{}, xerrors.Errorf("Error applying event to TriggerBinding params: %s", err)
+		return []json.RawMessage{}, xerrors.Errorf("Error applying event to TriggerBinding outputParams: %s", err)
 	}
 	params = MergeInDefaultParams(params, binding.TriggerTemplate.Spec.Params)
 

@@ -6,61 +6,61 @@ spec:
   inputs:
     params:
     - name: CreateCertificate
-      description: Create certificate 
+      description: Create certificate
       default: "true"
     - name: CreateIngress
-      description: Create ingress 
+      description: Create ingress
       default: "true"
     - name: CreateWebhook
-      description: Create webhook 
+      description: Create webhook
       default: "true"
     - name: CreateEventListener
-      description: Create event listener 
+      description: Create event listener
       default: "true"
     - name: CertificateKeyPassphrase
-      description: The phrase that protects private key 
+      description: The phrase that protects private key
       default: "phrase1"
     - name: CertificateSecretName
-      description: The secret name for ingress certificate 
+      description: The secret name for ingress certificate
       default: "secret1"
     - name: ExternalUrl
-      description: The external access URl 
+      description: The external access URl
       default: "https://$(inputs.params.EventListenerName).PROXYIP.nip.io"
     - name: GithubOwner
       description: The github owner name
       default: "owner"
     - name: GithubRepo
-      description: The github repo name 
+      description: The github repo name
       default: "repo"
     - name: GithubSecretName
-      description: The secret name for github 
+      description: The secret name for github
       default: "githubsecret"
     - name: GithubAccessTokenKey
-      description: The key name for access token 
+      description: The key name for access token
       default: "accessToken"
     - name: GithubUserNameKey
-      description: The key name for github user name 
+      description: The key name for github user name
       default: "userName"
     - name: GithubSecretStringKey
-      description: The key name for github secret string 
+      description: The key name for github secret string
       default: "secretString"
     - name: GithubUrl
-      description: The url of git hub 
+      description: The url of git hub
       default: "github.com"
     - name: EventListenerName
-      description: The event listener name 
+      description: The event listener name
       default: "eventlistener"
     - name: TriggerBinding
-      description: The Trigger binding 
+      description: The Trigger binding
       default: "triggerbinding"
     - name: TriggerTemplate
-      description: The Trigger Template 
+      description: The Trigger Template
       default: "triggertemplate"
     - name: TriggerServiceAccount
-      description: The Trigger service account 
+      description: The Trigger service account
       default: "default"
     - name: ValidateTaskName
-      description: The event validation task name 
+      description: The event validation task name
       default: "validate-github-event"
   steps:
   - name: generate-certificate
@@ -99,7 +99,7 @@ spec:
       then
         exit 0
       fi
-      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/work/ingress/certificate.pem --key=/var/tmp/work/ingress/key.pem 
+      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/work/ingress/certificate.pem --key=/var/tmp/work/ingress/key.pem
       EOF
     volumeMounts:
     - name: work
@@ -194,6 +194,6 @@ spec:
   volumes:
   - name: github-secret
     secret:
-      secretName: $(inputs.params.GithubSecretName) 
+      secretName: $(inputs.params.GithubSecretName)
   - name: work
     emptyDir: {}

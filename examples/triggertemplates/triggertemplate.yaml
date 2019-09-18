@@ -9,6 +9,9 @@ spec:
       default: master
     - name: gitrepositoryurl
       description: The git repository url
+    - name: message
+      description: The message to print
+      default: This is the default message
   resourcetemplates:
     - apiVersion: tekton.dev/v1alpha1
       kind: PipelineResource
@@ -34,6 +37,9 @@ spec:
       spec:
         pipelineRef:
             name: simple-pipeline
+        params:
+        - name: message
+          value: $(params.message)
         resources:
         - name: git-source
           resourceRef:
