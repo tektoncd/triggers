@@ -69,7 +69,7 @@ As a result, validation on these resources is only done at event processing time
 
 ## Parameters
 `TriggerTemplate`s can declare parameters that are supplied by a
-`TriggerBinding`. `params` must have a `name`, and can have an optional
+`TriggerBinding` and/or `EventListener`. `params` must have a `name`, and can have an optional
 `description` and `default` value.
 
 `params` can be referenced in the `TriggerTemplate` using the following

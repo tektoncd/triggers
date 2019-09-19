@@ -3,14 +3,8 @@ kind: TriggerBinding
 metadata:
   name: pipeline-binding
 spec:
-  inputParams:
-    - name: message
-      description: The message to print
-      default: This is the default message
-  outputParams:
+  params:
     - name: gitrevision
       value: $(event.head_commit.id)
     - name: gitrepositoryurl
       value: $(event.repository.url)
-    - name: message
-      value: $(inputParams.message)

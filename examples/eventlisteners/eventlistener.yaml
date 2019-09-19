@@ -7,8 +7,8 @@ spec:
   triggers:
     - binding:
         name: pipeline-binding
-        params:
-          - name: message
-            value: Hello from the Triggers EventListener!
       template:
         name: pipeline-template
+      params:
+        - name: message
+          value: Hello from the Triggers EventListener!

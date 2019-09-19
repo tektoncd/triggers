@@ -32,20 +32,19 @@ type EventListenerSpec struct {
 	Triggers           []EventListenerTrigger `json:"triggers"`
 }
 
-// EventListenerTrigger represents a connection between TriggerBinding and TriggerTemplate;
+// EventListenerTrigger represents a connection between TriggerBinding, Params, and TriggerTemplate;
 // TriggerBinding provides extracted values for TriggerTemplate to then create resources from.
 type EventListenerTrigger struct {
 	TriggerValidate *TriggerValidate      `json:"validate,omitempty"`
 	Binding         EventListenerBinding  `json:"binding"`
 	Template        EventListenerTemplate `json:"template"`
+	Params          []pipelinev1.Param    `json:"params,omitempty"`
 }
 
-// EventListenerBinding specifies a TriggerBinding resource and the parameters that
-// get passed to the TriggerBinding.
+// EventListenerBinding refers to a particular TriggerBinding resource.
 type EventListenerBinding struct {
-	Name       string             `json:"name"`
-	APIVersion string             `json:"apiversion,omitempty"`
-	Params     []pipelinev1.Param `json:"params,omitempty"`
+	Name       string `json:"name"`
+	APIVersion string `json:"apiversion,omitempty"`
 }
 
 // TriggerValidate represents struct needed to run taskrun for validating that trigger comes from the source which is desired
