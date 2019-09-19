@@ -1,11 +1,12 @@
 package builder
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestEventListenerBuilder(t *testing.T) {
@@ -215,6 +216,77 @@ func TestEventListenerBuilder(t *testing.T) {
 					EventListenerServiceAccount("serviceAccount"),
 					EventListenerTrigger("tb1", "tt1", "v1alpha1"),
 					EventListenerTrigger("tb2", "tt2", "v1alpha1"),
+				),
+			),
+		},
+		{
+			name: "One Trigger with Validation",
+			normal: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: v1alpha1.EventListenerSpec{
+					ServiceAccountName: "serviceAccount",
+					Triggers: []v1alpha1.EventListenerTrigger{
+						v1alpha1.EventListenerTrigger{
+							TriggerValidate: &v1alpha1.TriggerValidate{
+								TaskRef: pipelinev1.TaskRef{
+									Name:       "bar",
+									Kind:       pipelinev1.NamespacedTaskKind,
+									APIVersion: "v1alpha1",
+								},
+								ServiceAccountName: "foo",
+								Params: []pipelinev1.Param{
+									{
+										Name: "Secret",
+										Value: pipelinev1.ArrayOrString{
+											Type:      pipelinev1.ParamTypeString,
+											StringVal: "github-secret",
+										},
+									},
+									{
+										Name: "Secret-Key",
+										Value: pipelinev1.ArrayOrString{
+											Type:      pipelinev1.ParamTypeString,
+											StringVal: "github-secret-key",
+										},
+									},
+								},
+							},
+							Binding: v1alpha1.EventListenerBinding{
+								Name:       "tb1",
+								APIVersion: "v1alpha1",
+							},
+							Template: v1alpha1.EventListenerTemplate{
+								Name:       "tt1",
+								APIVersion: "v1alpha1",
+							},
+							Params: []pipelinev1.Param{
+								pipelinev1.Param{
+									Name: "param1",
+									Value: pipelinev1.ArrayOrString{
+										StringVal: "value1",
+										Type:      pipelinev1.ParamTypeString,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			builder: EventListener("name", "namespace",
+				EventListenerSpec(
+					EventListenerServiceAccount("serviceAccount"),
+					EventListenerTrigger("tb1", "tt1", "v1alpha1",
+						EventListenerTriggerParam("param1", "value1"),
+						EventListenerTriggerValidate(
+							EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind),
+							EventListenerTriggerValidateServiceAccount("foo"),
+							EventListenerTriggerValidateParam("Secret", "github-secret"),
+							EventListenerTriggerValidateParam("Secret-Key", "github-secret-key"),
+						),
+					),
 				),
 			),
 		},

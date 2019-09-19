@@ -498,12 +498,10 @@ func TestResource_validateEvent(t *testing.T) {
 		EventListenerNamespace: "foo",
 	}
 
-	triggerValidate := &triggersv1.TriggerValidate{
-		TaskRef: pipelinev1.TaskRef{
-			Name: "bar",
-		},
-		ServiceAccountName: "foo",
-	}
+	triggerValidate := &triggersv1.TriggerValidate{}
+	bldr.EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind)(triggerValidate)
+	bldr.EventListenerTriggerValidateServiceAccount("foo")(triggerValidate)
+
 	task := pipelinetb.Task("bar", "foo", pipelinetb.TaskSpec(
 		pipelinetb.TaskInputs(
 			pipelinetb.InputsParamSpec("param", pipelinev1.ParamTypeString, pipelinetb.ParamSpecDescription("mydesc"), pipelinetb.ParamSpecDefault("default")),
@@ -632,19 +630,10 @@ func TestResource_createValidateTask(t *testing.T) {
 	}
 
 	payload := []byte("test payload")
-	triggerValidate := &triggersv1.TriggerValidate{
-		TaskRef: pipelinev1.TaskRef{
-			Name: "bar",
-		},
-		ServiceAccountName: "foo",
-		Params: []pipelinev1.Param{{
-			Name: "Secret",
-			Value: pipelinev1.ArrayOrString{
-				Type:      pipelinev1.ParamTypeString,
-				StringVal: "github-secret",
-			},
-		}},
-	}
+	triggerValidate := &triggersv1.TriggerValidate{}
+	bldr.EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind)(triggerValidate)
+	bldr.EventListenerTriggerValidateServiceAccount("foo")(triggerValidate)
+	bldr.EventListenerTriggerValidateParam("Secret", "github-secret")(triggerValidate)
 
 	tests := []struct {
 		name    string
@@ -668,7 +657,7 @@ func TestResource_createValidateTask(t *testing.T) {
 			want: func() *pipelinev1.TaskRun {
 				tr := pipelinetb.TaskRun("", "foo", pipelinetb.TaskRunLabel("tekton.dev/eventlistener", "foo-listener"),
 					pipelinetb.TaskRunSpec(pipelinetb.TaskRunServiceAccount("foo"),
-						pipelinetb.TaskRunTaskRef(triggerValidate.TaskRef.Name, pipelinetb.TaskRefKind(triggerValidate.TaskRef.Kind)),
+						pipelinetb.TaskRunTaskRef(triggerValidate.TaskRef.Name, pipelinetb.TaskRefAPIVersion("v1alpha1"), pipelinetb.TaskRefKind(triggerValidate.TaskRef.Kind)),
 						pipelinetb.TaskRunInputs(
 							pipelinetb.TaskRunInputsParam("Secret", "github-secret"),
 							pipelinetb.TaskRunInputsParam("EventBody", string(payload)),
