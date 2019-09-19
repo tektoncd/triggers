@@ -396,9 +396,8 @@ func Test_HandleEvent(t *testing.T) {
 		))
 	tb := bldr.TriggerBinding("my-triggerbinding", namespace,
 		bldr.TriggerBindingSpec(
-			bldr.TriggerBindingOutputParam("url", "$(event.repository.url)"),
-			bldr.TriggerBindingOutputParam("revision", "$(event.head_commit.id)"),
-			bldr.TriggerBindingOutputParam("appLabel", "$(inputParams.appLabel)"),
+			bldr.TriggerBindingParam("url", "$(event.repository.url)"),
+			bldr.TriggerBindingParam("revision", "$(event.head_commit.id)"),
 		))
 	el := bldr.EventListener("my-eventlistener", namespace,
 		bldr.EventListenerSpec(

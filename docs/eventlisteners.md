@@ -25,13 +25,14 @@ spec:
   triggers:
     - binding:
         name: pipeline-binding
-        params:
-          - name: message
-            value: Hello from the Triggers EventListener!
       template:
         name: pipeline-template
+      params:
+        - name: message
+          value: Hello from the Triggers EventListener!
 ```
 
 ## Parameters
-`EventListener`s can provide `params` which are passed to the `TriggerBinding`
-specified by the `binding.name`. Each parameter has a `name` and a `value`.
+`EventListener`s can provide `params` which are merged with the `TriggerBinding`
+`params` and passed to the `TriggerTemplate`. Each parameter has a `name` and a
+`value`.

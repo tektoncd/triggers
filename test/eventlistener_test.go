@@ -81,7 +81,7 @@ func TestEventListenerCreate(t *testing.T) {
 			Name: "pr2",
 			Labels: map[string]string{
 				"$(params.twoparamname)": "$(params.twoparamvalue)",
-				"inputParam":             "$(params.threeparam)",
+				"threeparam":             "$(params.threeparam)",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -115,9 +115,8 @@ func TestEventListenerCreate(t *testing.T) {
 	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
 		bldr.TriggerBinding("my-triggerbinding", "",
 			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingOutputParam("oneparam", "$(event.one)"),
-				bldr.TriggerBindingOutputParam("twoparamname", "$(event.two.name)"),
-				bldr.TriggerBindingOutputParam("threeparam", "$(inputParams.one)"),
+				bldr.TriggerBindingParam("oneparam", "$(event.one)"),
+				bldr.TriggerBindingParam("twoparamname", "$(event.two.name)"),
 			),
 		),
 	)
@@ -153,7 +152,7 @@ func TestEventListenerCreate(t *testing.T) {
 			Labels: map[string]string{
 				resourceLabel: "my-eventlistener",
 				"zfoo":        "defaultvalue",
-				"inputParam":  "inputParamValue",
+				"threeparam":  "threevalue",
 			},
 		},
 	}
@@ -208,7 +207,7 @@ func TestEventListenerCreate(t *testing.T) {
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
 				bldr.EventListenerTrigger(tb.Name, tt.Name, "",
-					bldr.EventListenerTriggerParam("one", "inputParamValue")),
+					bldr.EventListenerTriggerParam("threeparam", "threevalue")),
 			),
 		),
 	)

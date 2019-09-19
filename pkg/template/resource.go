@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -67,13 +66,7 @@ func MergeInDefaultParams(params []pipelinev1.Param, paramSpecs []pipelinev1.Par
 	for _, param := range params {
 		allParamsMap[param.Name] = param.Value
 	}
-	allParams := make([]pipelinev1.Param, len(allParamsMap))
-	i := 0
-	for name, value := range allParamsMap {
-		allParams[i] = pipelinev1.Param{Name: name, Value: value}
-		i++
-	}
-	return allParams
+	return convertParamMapToArray(allParamsMap)
 }
 
 // ApplyParamsToResourceTemplate returns the TriggerResourceTemplate with the
@@ -94,19 +87,6 @@ func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) js
 	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value.StringVal), -1)
 }
 
-// ApplyInputParamsToOutputParams returns the outputParams with substituted
-// values for every matching inputParam
-func ApplyInputParamsToOutputParams(inputParams []pipelinev1.Param, outputParams []pipelinev1.Param) []pipelinev1.Param {
-	// Assume the params are valid
-	for _, inputParam := range inputParams {
-		for i := range outputParams {
-			intputParamVariable := fmt.Sprintf("$(inputParams.%s)", inputParam.Name)
-			outputParams[i].Value.StringVal = strings.Replace(outputParams[i].Value.StringVal, intputParamVariable, inputParam.Value.StringVal, -1)
-		}
-	}
-	return outputParams
-}
-
 // Uid generates a random string like the Kubernetes apiserver generateName metafield postfix.
 func Uid() string {
 	return rand.String(5)
@@ -116,4 +96,32 @@ func Uid() string {
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.
 func ApplyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage {
 	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
+}
+
+// MergeParams merges two param arrays. An error is returned if there are
+// multiple params with the same name.
+func MergeParams(params1 []pipelinev1.Param, params2 []pipelinev1.Param) ([]pipelinev1.Param, error) {
+	// Assume params1 does not have any duplicate names within itself
+	// Assume params2 does not have any duplicate names within itself
+	paramMap := map[string]pipelinev1.ArrayOrString{}
+	for _, p1 := range params1 {
+		paramMap[p1.Name] = p1.Value
+	}
+	for _, p2 := range params2 {
+		if _, ok := paramMap[p2.Name]; ok {
+			return []pipelinev1.Param{}, fmt.Errorf("%s", p2.Name)
+		}
+		paramMap[p2.Name] = p2.Value
+	}
+	return convertParamMapToArray(paramMap), nil
+}
+
+func convertParamMapToArray(paramMap map[string]pipelinev1.ArrayOrString) []pipelinev1.Param {
+	params := make([]pipelinev1.Param, len(paramMap))
+	i := 0
+	for name, value := range paramMap {
+		params[i] = pipelinev1.Param{Name: name, Value: value}
+		i++
+	}
+	return params
 }

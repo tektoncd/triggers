@@ -20,7 +20,6 @@ import (
 	"context"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"knative.dev/pkg/apis"
-	"strings"
 )
 
 // Validate TriggerBinding.
@@ -30,46 +29,20 @@ func (t *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate TriggerBindingSpec.
 func (s *TriggerBindingSpec) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateInputParams(s.InputParams); err != nil {
-		return err
-	}
-	if err := validateOutputParams(s.OutputParams); err != nil {
+	if err := validateParams(s.Params); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateInputParams(params []v1alpha1.ParamSpec) *apis.FieldError {
-	paramNames := make([]string, len(params))
-	for i, param := range params {
-		paramNames[i] = param.Name
-	}
-	if duplicateStrings(paramNames) {
-		return apis.ErrMultipleOneOf("spec.inputParams")
-	}
-	return nil
-}
-
-func validateOutputParams(params []v1alpha1.Param) *apis.FieldError {
-	paramNames := make([]string, len(params))
-	for i, param := range params {
-		paramNames[i] = param.Name
-	}
-	if duplicateStrings(paramNames) {
-		return apis.ErrMultipleOneOf("spec.outputParams")
-	}
-	return nil
-}
-
-// Return true if there are duplicate strings in the list. Converts strings
-// to lowercase before comparing.
-func duplicateStrings(list []string) bool {
+func validateParams(params []v1alpha1.Param) *apis.FieldError {
+	// Ensure there aren't multiple params with the same name.
 	seen := map[string]struct{}{}
-	for _, s := range list {
-		if _, ok := seen[strings.ToLower(s)]; ok {
-			return true
+	for _, param := range params {
+		if _, ok := seen[param.Name]; ok {
+			return apis.ErrMultipleOneOf("spec.params")
 		}
-		seen[s] = struct{}{}
+		seen[param.Name] = struct{}{}
 	}
-	return false
+	return nil
 }
