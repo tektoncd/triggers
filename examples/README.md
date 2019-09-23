@@ -11,6 +11,7 @@ kubectl apply -f role-resources
 kubectl apply -f triggertemplates/triggertemplate.yaml
 kubectl apply -f triggerbindings/triggerbinding.yaml
 kubectl apply -f eventlisteners/eventlistener.yaml
+kubectl apply -f ../docs/validate-github-event.yaml
 ```
 
 2. Check required pods and services are available and healthy
@@ -51,6 +52,7 @@ Assuming we have a listener available at `localhost:8082` (and port-forwarded fo
 curl -X POST \
   http://localhost:8082 \
   -H 'Content-Type: application/json' \
+  -H 'X-Hub-Signature: sha1=2da37dcb9404ff17b714ee7a505c384758ddeb7b' \
   -d '{
 	"head_commit":
 	{

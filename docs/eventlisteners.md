@@ -27,6 +27,15 @@ spec:
         name: pipeline-binding
       template:
         name: pipeline-template
+      validate:
+          taskRef:
+           name: validate-github-event
+          serviceAccountName: tekton-triggers-example-sa
+          params:
+          - name: Github-Secret
+            value: githubsecret
+          - name: Github-Secret-Key
+            value: secretToken
       params:
         - name: message
           value: Hello from the Triggers EventListener!
