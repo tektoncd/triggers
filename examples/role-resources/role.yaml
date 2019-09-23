@@ -4,8 +4,8 @@ metadata:
   name: tekton-triggers-example-minimal
 rules:
 - apiGroups: ["tekton.dev"]
-  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "tasks", "taskruns"]
   verbs: ["get"]
 - apiGroups: ["tekton.dev"]
-  resources: ["pipelineruns", "pipelineresources"]
+  resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
