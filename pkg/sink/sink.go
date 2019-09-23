@@ -68,20 +68,21 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	log.Printf("EventListener: %s in Namespace: %s handling event with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, string(event), request.Header)
+	eventId := template.Uid()
+	log.Printf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
+		r.EventListenerName, r.EventListenerNamespace, eventId, string(event), request.Header)
 	// Execute each Trigger
 	for _, trigger := range el.Spec.Triggers {
-		go r.executeTrigger(event, request.Header, trigger)
+		go r.executeTrigger(event, request.Header, trigger, eventId)
 	}
-	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, string(event), request.Header)
+	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s)",
+		r.EventListenerName, r.EventListenerNamespace, eventId)
 }
 
-func (r Resource) executeTrigger(payload []byte, header http.Header, trigger triggersv1.EventListenerTrigger) {
+func (r Resource) executeTrigger(payload []byte, header http.Header, trigger triggersv1.EventListenerTrigger, eventId string) {
 	// Secure Endpoint
 	if trigger.TriggerValidate != nil {
-		if err := r.validateEvent(trigger.TriggerValidate, header, payload); err != nil {
+		if err := r.validateEvent(trigger.TriggerValidate, header, payload, eventId); err != nil {
 			log.Printf("Error securing Endpoint for TriggerBinding %s in Namespace %s: %s", trigger.Binding.Name, r.EventListenerNamespace, err)
 			return
 		}
@@ -99,15 +100,15 @@ func (r Resource) executeTrigger(payload []byte, header http.Header, trigger tri
 		log.Print(err)
 		return
 	}
-	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName)
+	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventId)
 	if err != nil {
 		log.Print(err)
 	}
 }
 
-func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string) error {
+func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {
 	for _, resource := range resources {
-		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName); err != nil {
+		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName, eventId); err != nil {
 			return err
 		}
 	}
@@ -116,7 +117,7 @@ func createResources(resources []json.RawMessage, restClient restclient.Interfac
 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string) error {
+func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
 	kind := gjson.GetBytes(rt, "kind").String()
@@ -133,6 +134,12 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventListenerLabelKey, eventListenerName)
 	if err != nil {
 		log.Print(err)
+		return err
+	}
+	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventIDLabelKey, eventId)
+	if err != nil {
+		log.Print(err)
+		return err
 	}
 
 	uri := createRequestURI(apiVersion, apiResource.Name, namespace, apiResource.Namespaced)
@@ -177,8 +184,8 @@ func createRequestURI(apiVersion, namePlural, namespace string, namespaced bool)
 	return uri
 }
 
-func (r Resource) validateEvent(triggerValidate *triggersv1.TriggerValidate, headers http.Header, payload []byte) error {
-	tr, err := r.createValidateTask(triggerValidate, headers, payload)
+func (r Resource) validateEvent(triggerValidate *triggersv1.TriggerValidate, headers http.Header, payload []byte, eventId string) error {
+	tr, err := r.createValidateTask(triggerValidate, headers, payload, eventId)
 	if err != nil {
 		return err
 	}
@@ -208,7 +215,7 @@ func (r Resource) validateEvent(triggerValidate *triggersv1.TriggerValidate, hea
 }
 
 func (r Resource) createValidateTask(triggerValidate *triggersv1.TriggerValidate,
-	headers http.Header, payload []byte) (*pipelinev1.TaskRun, error) {
+	headers http.Header, payload []byte, eventId string) (*pipelinev1.TaskRun, error) {
 	// Checking whether task define in taskref exists or not
 	task, err := r.PipelineClient.TektonV1alpha1().Tasks(r.EventListenerNamespace).Get(triggerValidate.TaskRef.Name, metav1.GetOptions{})
 	if err != nil {
@@ -247,7 +254,8 @@ func (r Resource) createValidateTask(triggerValidate *triggersv1.TriggerValidate
 			Namespace:    r.EventListenerNamespace,
 			GenerateName: triggerValidate.TaskRef.Name,
 			Labels: map[string]string{triggersv1.GroupName +
-				triggersv1.EventListenerLabelKey: r.EventListenerName},
+				triggersv1.EventListenerLabelKey: r.EventListenerName,
+				triggersv1.GroupName + triggersv1.EventIDLabelKey: eventId},
 		},
 		Spec: pipelinev1.TaskRunSpec{
 			Inputs: pipelinev1.TaskRunInputs{

@@ -50,6 +50,7 @@ import (
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+const eventIdLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
 func Test_createRequestURI(t *testing.T) {
 	tests := []struct {
@@ -207,14 +208,14 @@ func Test_createResource(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "my-pipelineresource",
-			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el"},
+			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el", eventIdLabel: "12345"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{},
 	}
 
 	pr2 := pr1
 	pr2.Namespace = "foo"
-	pr2.Labels = map[string]string{resourceLabel: "bar-el"}
+	pr2.Labels = map[string]string{resourceLabel: "bar-el", eventIdLabel: "54321"}
 
 	pr1Bytes, err := json.Marshal(pr1)
 	if err != nil {
@@ -238,7 +239,7 @@ func Test_createResource(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "tekton-pipelines",
-			Labels: map[string]string{resourceLabel: "test-el"},
+			Labels: map[string]string{resourceLabel: "test-el", eventIdLabel: "12321"},
 		},
 	}
 	namespaceBytes, err := json.Marshal(namespace)
@@ -284,6 +285,7 @@ func Test_createResource(t *testing.T) {
 		wantResource           json.RawMessage
 		eventListenerNamespace string
 		eventListenerName      string
+		eventId                string
 		wantURLPath            string
 	}{
 		{
@@ -292,6 +294,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(pr1WantBytes),
 			eventListenerNamespace: "bar",
 			eventListenerName:      "foo-el",
+			eventId:                "12345",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/bar/pipelineresources",
 		},
 		{
@@ -300,6 +303,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(pr2Bytes),
 			eventListenerNamespace: "bar",
 			eventListenerName:      "bar-el",
+			eventId:                "54321",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources",
 		},
 		{
@@ -308,6 +312,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(namespaceBytes),
 			eventListenerNamespace: "",
 			eventListenerName:      "test-el",
+			eventId:                "12321",
 			wantURLPath:            "/api/v1/namespaces",
 		},
 	}
@@ -325,13 +330,21 @@ func Test_createResource(t *testing.T) {
 					return nil, err
 				}
 
-				if diff := cmp.Diff(string(tt.wantResource), string(body)); diff != "" {
+				var actualResource, expectedResource interface{}
+				if err := json.Unmarshal(body, &actualResource); err != nil {
+					t.Error(err)
+				}
+				if err := json.Unmarshal(tt.wantResource, &expectedResource); err != nil {
+					t.Error(err)
+				}
+				if diff := cmp.Diff(expectedResource, actualResource); diff != "" {
 					t.Errorf("Diff request body: -want +got: %s", diff)
 				}
 				return &http.Response{StatusCode: http.StatusCreated, Body: ioutil.NopCloser(bytes.NewReader([]byte{}))}, nil
 			})
+
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName)
+			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventId)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -371,7 +384,7 @@ func Test_HandleEvent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pipelineresource",
 			Namespace: namespace,
-			Labels:    map[string]string{"app": "foo", "tekton.dev/eventlistener": "my-eventlistener"},
+			Labels:    map[string]string{"app": "foo", "tekton.dev/eventlistener": "my-eventlistener", eventIdLabel: "12345"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
@@ -466,6 +479,11 @@ func Test_HandleEvent(t *testing.T) {
 		if err = json.Unmarshal(body, &gotPipelineResource); err != nil {
 			t.Errorf("Error unmarshalling body as pipelineResource: %s \n%s", string(body), err)
 		}
+		if gotPipelineResource.ObjectMeta.Labels["tekton.dev/triggers-eventid"] == "" {
+			t.Errorf("EventId is missing")
+		}
+		gotPipelineResource.ObjectMeta.Labels["tekton.dev/triggers-eventid"] = "12345"
+
 		if diff := cmp.Diff(wantPipelineResource, gotPipelineResource); diff != "" {
 			t.Errorf("Diff request body: -want +got: %s", diff)
 		}
@@ -480,7 +498,11 @@ func Test_HandleEvent(t *testing.T) {
 		t.Fatalf("Error reading response body: %s", err)
 		return
 	}
-	wantPayload := `EventListener: my-eventlistener in Namespace: foo handling event with payload: {"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}}`
+	wantPayload := `EventListener: my-eventlistener in Namespace: foo handling event`
+
+	if !strings.Contains(string(body), "event (EventID: ") {
+		t.Errorf("Response body doesn't have eventid")
+	}
 
 	if !strings.Contains(string(body), wantPayload) {
 		t.Errorf("Diff response body: %s, should have: %s", string(body), wantPayload)
@@ -608,7 +630,7 @@ func TestResource_validateEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r.PipelineClient = tt.pClient
-			if err := r.validateEvent(triggerValidate, h, payload); (err != nil) != tt.wantErr {
+			if err := r.validateEvent(triggerValidate, h, payload, "eventid"); (err != nil) != tt.wantErr {
 				t.Errorf("Resource.secureEndpoint() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -656,6 +678,7 @@ func TestResource_createValidateTask(t *testing.T) {
 			}(),
 			want: func() *pipelinev1.TaskRun {
 				tr := pipelinetb.TaskRun("", "foo", pipelinetb.TaskRunLabel("tekton.dev/eventlistener", "foo-listener"),
+					pipelinetb.TaskRunLabel("tekton.dev/triggers-eventid", "eventid"),
 					pipelinetb.TaskRunSpec(pipelinetb.TaskRunServiceAccount("foo"),
 						pipelinetb.TaskRunTaskRef(triggerValidate.TaskRef.Name, pipelinetb.TaskRefAPIVersion("v1alpha1"), pipelinetb.TaskRefKind(triggerValidate.TaskRef.Kind)),
 						pipelinetb.TaskRunInputs(
@@ -696,7 +719,7 @@ func TestResource_createValidateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r.PipelineClient = tt.pClient
-			got, err := r.createValidateTask(triggerValidate, h, payload)
+			got, err := r.createValidateTask(triggerValidate, h, payload, "eventid")
 			if err != nil {
 				if !tt.wantErr {
 					t.Errorf("Resource.createValidateTask() error = %v, wantErr %v", err, tt.wantErr)

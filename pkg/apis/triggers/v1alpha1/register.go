@@ -25,6 +25,7 @@ import (
 const (
 	GroupName              = "tekton.dev"
 	EventListenerLabelKey  = "/eventlistener"
+	EventIDLabelKey        = "/triggers-eventid"
 	TriggerBindingLabelKey = "/triggerbinding"
 	TriggerTemplateKey     = "/triggertemplate"
 	LabelEscape            = "tekton\\.dev"
