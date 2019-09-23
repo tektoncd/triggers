@@ -38,6 +38,7 @@ import (
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+const eventIdLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
@@ -274,6 +275,11 @@ func TestEventListenerCreate(t *testing.T) {
 		gotPr, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
+		}
+		if gotPr.Labels[eventIdLabel] == "" {
+			t.Fatalf("Instantiated ResourceTemplate missing EventId")
+		} else {
+			delete(gotPr.Labels, eventIdLabel)
 		}
 		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
 			t.Fatalf("Diff instantiated ResourceTemplate %s: -want +got: %s", wantPr1.Name, diff)
