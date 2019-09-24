@@ -23,7 +23,8 @@ metadata:
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
-    - binding:
+    - name: foo-trig
+      binding:
         name: pipeline-binding
       template:
         name: pipeline-template

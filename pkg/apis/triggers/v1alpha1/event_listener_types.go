@@ -39,6 +39,8 @@ type EventListenerTrigger struct {
 	Binding         EventListenerBinding  `json:"binding"`
 	Template        EventListenerTemplate `json:"template"`
 	Params          []pipelinev1.Param    `json:"params,omitempty"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // EventListenerBinding refers to a particular TriggerBinding resource.
