@@ -220,7 +220,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			),
 		},
 		{
-			name: "One Trigger with Validation",
+			name: "One Trigger with Validation & Name",
 			normal: &v1alpha1.EventListener{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
@@ -230,6 +230,7 @@ func TestEventListenerBuilder(t *testing.T) {
 					ServiceAccountName: "serviceAccount",
 					Triggers: []v1alpha1.EventListenerTrigger{
 						v1alpha1.EventListenerTrigger{
+							Name: "foo-trig",
 							TriggerValidate: &v1alpha1.TriggerValidate{
 								TaskRef: pipelinev1.TaskRef{
 									Name:       "bar",
@@ -279,6 +280,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				EventListenerSpec(
 					EventListenerServiceAccount("serviceAccount"),
 					EventListenerTrigger("tb1", "tt1", "v1alpha1",
+						EventListenerTriggerName("foo-trig"),
 						EventListenerTriggerParam("param1", "value1"),
 						EventListenerTriggerValidate(
 							EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind),

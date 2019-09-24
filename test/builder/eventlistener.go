@@ -110,6 +110,13 @@ func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v
 	return t
 }
 
+// EventListenerTriggerName adds a Name to the Trigger in EventListenerSpec Triggers.
+func EventListenerTriggerName(name string) EventListenerTriggerOp {
+	return func(trigger *v1alpha1.EventListenerTrigger) {
+		trigger.Name = name
+	}
+}
+
 // EventListenerTriggerValidate adds a TriggerValidate to the Trigger in EventListenerSpec Triggers.
 func EventListenerTriggerValidate(ops ...EventListenerTriggerValidateOp) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
