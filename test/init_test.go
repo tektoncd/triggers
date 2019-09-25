@@ -180,7 +180,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	for _, i := range tbs.Items {
 		printOrAdd("TriggerBindings", i.Name, i)
 	}
-
+	// TODO: Update TriggerTemplates Marshalling so it isn't a byte array in debug log
 	tts, err := cs.TriggersClient.TektonV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerTemplates: %w", err)

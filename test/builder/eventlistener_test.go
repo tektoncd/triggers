@@ -6,7 +6,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestEventListenerBuilder(t *testing.T) {
@@ -44,6 +48,93 @@ func TestEventListenerBuilder(t *testing.T) {
 			builder: EventListener("name", "namespace",
 				EventListenerSpec(
 					EventListenerServiceAccount("serviceAccount"),
+				),
+			),
+		},
+		{
+			name: "Status configuration",
+			normal: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Status: v1alpha1.EventListenerStatus{
+					Configuration: v1alpha1.EventListenerConfig{
+						GeneratedResourceName: "generatedName",
+						Hostname:              "hostname",
+					},
+				},
+			},
+			builder: EventListener("name", "namespace",
+				EventListenerStatus(
+					EventListenerConfig("generatedName", "hostname"),
+				),
+			),
+		},
+		{
+			name: "One Condition",
+			normal: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Status: v1alpha1.EventListenerStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{
+							apis.Condition{
+								Type:    v1alpha1.ServiceExists,
+								Status:  corev1.ConditionTrue,
+								Message: "Service exists",
+							},
+						},
+					},
+				},
+			},
+			builder: EventListener("name", "namespace",
+				EventListenerStatus(
+					EventListenerCondition(
+						v1alpha1.ServiceExists,
+						corev1.ConditionTrue,
+						"Service exists", "",
+					),
+				),
+			),
+		},
+		{
+			name: "Two Condition",
+			normal: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Status: v1alpha1.EventListenerStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{
+							apis.Condition{
+								Type:    v1alpha1.DeploymentExists,
+								Status:  corev1.ConditionTrue,
+								Message: "Deployment exists",
+							},
+							apis.Condition{
+								Type:    v1alpha1.ServiceExists,
+								Status:  corev1.ConditionTrue,
+								Message: "Service exists",
+							}},
+					},
+				},
+			},
+			builder: EventListener("name", "namespace",
+				EventListenerStatus(
+					EventListenerCondition(
+						v1alpha1.ServiceExists,
+						corev1.ConditionTrue,
+						"Service exists", "",
+					),
+					EventListenerCondition(
+						v1alpha1.DeploymentExists,
+						corev1.ConditionTrue,
+						"Deployment exists", "",
+					),
 				),
 			),
 		},
@@ -295,8 +386,10 @@ func TestEventListenerBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := cmp.Diff(tt.normal, tt.builder); diff != "" {
-				t.Errorf("EventListener(): -want +got: %s", diff)
+			if !equality.Semantic.DeepEqual(tt.normal, tt.builder) {
+				t.Error("EventListener() builder equality mismatch. Ignore semantic time mismatch")
+				diff := cmp.Diff(tt.normal, tt.builder)
+				t.Errorf("Diff request body: -want +got: %s", diff)
 			}
 		})
 	}

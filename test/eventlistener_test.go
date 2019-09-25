@@ -30,11 +30,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	knativetest "knative.dev/pkg/test"
+	"strconv"
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
@@ -201,9 +204,6 @@ func TestEventListenerCreate(t *testing.T) {
 	// EventListener
 	el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(
 		bldr.EventListener("my-eventlistener", "",
-			bldr.EventListenerMeta(
-				bldr.Label("triggers", "eventlistener"),
-			),
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
 				bldr.EventListenerTrigger(tb.Name, tt.Name, "",
@@ -215,32 +215,22 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Failed to create EventListener: %s", err)
 	}
 
-	// Verify the EventListener's Deployment is created
-	if err = WaitForDeploymentToExist(c, namespace, el.Name); err != nil {
-		t.Fatalf("Failed to create EventListener Deployment: %s", err)
+	// Verify the EventListener to be ready
+	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
+		t.Fatalf("EventListener not ready: %s", err)
 	}
-	t.Log("Found EventListener's Deployment")
+	t.Log("EventListener is ready")
 
-	// Verify the EventListener's Service is created
-	if err = WaitForServiceToExist(c, namespace, el.Name); err != nil {
-		t.Fatalf("Failed to create EventListener Service: %s", err)
-	}
-	t.Log("Found EventListener's Service")
-
-	// Wait for EventListener sink to be running
-	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", el.Name)})
+	labelSelector := fields.SelectorFromSet(eventReconciler.GeneratedResourceLabels).String()
+	// Grab EventListener sink pods
+	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		t.Fatalf("Error listing EventListener sink pods: %s", err)
 	}
-	for _, pod := range sinkPods.Items {
-		if err = WaitForPodRunning(c, namespace, pod.Name); err != nil {
-			t.Fatalf("Error EventListener sink pod failed to enter the running phase: %s", err)
-		}
-	}
-	t.Log("EventListener sink pod is running")
 
 	// Port forward sink pod for http request
-	cmd := exec.Command("kubectl", "port-forward", sinkPods.Items[0].Name, "-n", namespace, "8082:8082")
+	portString := strconv.Itoa(eventReconciler.Port)
+	cmd := exec.Command("kubectl", "port-forward", sinkPods.Items[0].Name, "-n", namespace, fmt.Sprintf("%s:%s", portString, portString))
 	err = cmd.Start()
 	if err != nil {
 		t.Fatalf("Error starting port-forward command: %s", err)
@@ -257,7 +247,7 @@ func TestEventListenerCreate(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Send POST request to EventListener sink
-	req, err := http.NewRequest("POST", "http://127.0.0.1:8082", bytes.NewBuffer(eventBodyJSON))
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request: %s", err)
 	}
@@ -268,7 +258,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	for _, wantPr := range []v1alpha1.PipelineResource{wantPr1, wantPr2} {
-		if err = WaitForPipelineResourceToExist(c, namespace, wantPr.Name); err != nil {
+		if err = WaitFor(pipelineResourceExist(t, c, namespace, wantPr.Name)); err != nil {
 			t.Fatalf("Failed to create ResourceTemplate %s: %s", wantPr.Name, err)
 		}
 		gotPr, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
@@ -288,13 +278,13 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("Deleted EventListener")
 
 	// Verify the EventListener's Deployment is deleted
-	if err = WaitForDeploymentToNotExist(c, namespace, el.Name); err != nil {
+	if err = WaitFor(deploymentNotExist(t, c, namespace, el.Name)); err != nil {
 		t.Fatalf("Failed to delete EventListener Deployment: %s", err)
 	}
 	t.Log("EventListener's Deployment was deleted")
 
 	// Verify the EventListener's Service is deleted
-	if err = WaitForServiceToNotExist(c, namespace, el.Name); err != nil {
+	if err = WaitFor(serviceNotExist(t, c, namespace, el.Name)); err != nil {
 		t.Fatalf("Failed to delete EventListener Service: %s", err)
 	}
 	t.Log("EventListener's Service was deleted")

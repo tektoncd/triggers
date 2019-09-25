@@ -14,7 +14,7 @@ type ObjectMetaOp func(m *metav1.ObjectMeta)
 // TypeMetaOp is an operation which modifies the TypeMeta.
 type TypeMetaOp func(m *metav1.TypeMeta)
 
-// Label adds a label to the ObjectMeta.
+// Label adds a single label to the ObjectMeta.
 func Label(key, value string) ObjectMetaOp {
 	return func(m *metav1.ObjectMeta) {
 		if m.Labels == nil {

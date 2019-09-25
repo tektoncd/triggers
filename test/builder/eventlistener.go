@@ -3,7 +3,9 @@ package builder
 import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // EventListenerOp is an operation which modifies the EventListener.
@@ -11,6 +13,9 @@ type EventListenerOp func(*v1alpha1.EventListener)
 
 // EventListenerSpecOp is an operation which modifies the EventListenerSpec.
 type EventListenerSpecOp func(*v1alpha1.EventListenerSpec)
+
+// EventListenerStatusOp is an operation which modifies the EventListenerStatus.
+type EventListenerStatusOp func(*v1alpha1.EventListenerStatus)
 
 // EventListenerTriggerOp is an operation which modifies the Trigger.
 type EventListenerTriggerOp func(*v1alpha1.EventListenerTrigger)
@@ -86,6 +91,36 @@ func EventListenerTriggerParam(name, value string) EventListenerTriggerOp {
 					Type:      pipelinev1.ParamTypeString,
 				},
 			})
+	}
+}
+
+// EventListenerStatus sets the specified status of the EventListener.
+// Any number of EventListenerStatusOp modifiers can be passed to create/modify it.
+func EventListenerStatus(ops ...EventListenerStatusOp) EventListenerOp {
+	return func(e *v1alpha1.EventListener) {
+		for _, op := range ops {
+			op(&e.Status)
+		}
+	}
+}
+
+// EventListenerConditition sets the specified condition on the EventListenerStatus.
+func EventListenerCondition(t apis.ConditionType, status corev1.ConditionStatus, message, reason string) EventListenerStatusOp {
+	return func(e *v1alpha1.EventListenerStatus) {
+		e.SetCondition(&apis.Condition{
+			Type:    t,
+			Status:  status,
+			Message: message,
+			Reason:  reason,
+		})
+	}
+}
+
+// EventListenerConfig sets the EventListenerConfiguration on the EventListenerStatus.
+func EventListenerConfig(generatedResourceName, hostname string) EventListenerStatusOp {
+	return func(e *v1alpha1.EventListenerStatus) {
+		e.Configuration.GeneratedResourceName = generatedResourceName
+		e.Configuration.Hostname = hostname
 	}
 }
 

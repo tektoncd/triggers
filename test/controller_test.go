@@ -17,7 +17,6 @@ limitations under the License.
 package test
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -138,9 +137,8 @@ func TestGetTestResourcesFromClients(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(*actualTestResources, tt.testResources) {
-				t.Errorf("GetTestResourcesFromClients = %v, expected %v", *actualTestResources, tt.testResources)
-				t.Log(cmp.Diff(*actualTestResources, tt.testResources))
+			if diff := cmp.Diff(tt.testResources, *actualTestResources); diff != "" {
+				t.Errorf("Diff request body: -want +got: %s", cmp.Diff(tt.testResources, *actualTestResources))
 			}
 		})
 	}
