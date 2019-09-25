@@ -38,8 +38,8 @@ spec:
           - name: Github-Secret-Key
             value: secretToken
       params:
-        - name: message
-          value: Hello from the Triggers EventListener!
+      - name: message
+        value: Hello from the Triggers EventListener!
 ```
 
 ## Parameters

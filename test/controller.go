@@ -68,7 +68,6 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 		Triggers: faketriggersclient.Get(ctx),
 		Pipeline: fakepipelineclient.Get(ctx),
 	}
-
 	// Setup fake informer for reconciler tests
 	elInformer := fakeeventlistenerinformer.Get(ctx)
 	deployInformer := fakedeployinformer.Get(ctx)
@@ -93,7 +92,6 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 		if err := deployInformer.Informer().GetIndexer().Add(d); err != nil {
 			t.Fatal(err)
 		}
-
 		if _, err := c.Kube.AppsV1().Deployments(d.Namespace).Create(d); err != nil {
 			t.Fatal(err)
 		}

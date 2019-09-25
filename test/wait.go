@@ -35,109 +35,81 @@ package test
 import (
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"knative.dev/pkg/apis"
+	"testing"
 )
 
 const (
 	interval = 1 * time.Second
-	timeout  = 30 * time.Second
+	timeout  = 10 * time.Second
 )
 
-// WaitForDeploymentToExist polls for the existence of the Deployment called name
-// in the specified namespace
-func WaitForDeploymentToExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := c.KubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
-		}
-		return true, err
-	})
+// WaitFor waits for the specified ConditionFunc every internal until the timeout.
+func WaitFor(waitFunc wait.ConditionFunc) error {
+	return wait.PollImmediate(interval, timeout, waitFunc)
 }
 
-// WaitForDeploymentToNotExist polls for the absence of the Deployment called
-// name in the specified namespace
-func WaitForDeploymentToNotExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+// eventListenerReady returns a function that checks if all conditions on the
+// specified EventListener are true and that the deployment available condition
+// is within this set
+func eventListenerReady(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+	return func() (bool, error) {
+		el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Get(name, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			t.Log("EventListener not found")
+			return false, nil
+		}
+		t.Log("EventListenerStatus:", el.Status)
+		// No conditions have been set yet
+		if len(el.Status.Conditions) == 0 {
+			return false, nil
+		}
+		if el.Status.GetCondition(apis.ConditionType(appsv1.DeploymentAvailable)) == nil {
+			return false, nil
+		}
+		for _, cond := range el.Status.Conditions {
+			if cond.Status != corev1.ConditionTrue {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+}
+
+// deploymentNotExist returns a function that checks if the specified Deployment does not exist
+func deploymentNotExist(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+	return func() (bool, error) {
 		_, err := c.KubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, err
-	})
+		return false, nil
+	}
 }
 
-// WaitForServiceToExist polls for the existence of the Service called name in
-// the specified namespace
-func WaitForServiceToExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := c.KubeClient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
-		}
-		return true, err
-	})
-}
-
-// WaitForServiceToNotExist polls for the absence of the Service called name in
-// the specified namespace
-func WaitForServiceToNotExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+// serviceNotExist returns a function that checks if the specified Service does not exist
+func serviceNotExist(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+	return func() (bool, error) {
 		_, err := c.KubeClient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, err
-	})
+		return false, nil
+	}
 }
 
-// WaitForPipelineRunToExist polls for the existence of the PipelineRun called name
-// in the specified namespace
-func WaitForPipelineResourceToExist(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+// pipelineResourceExist returns a function that checks if the specified PipelineResource exists
+func pipelineResourceExist(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+	return func() (bool, error) {
 		_, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
 		return true, err
-	})
-}
-
-// WaitForPodRunning polls for the Pod called name in the specified namespace
-// to be in the running phase
-func WaitForPodRunning(c *clients, namespace, name string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		pod, err := c.KubeClient.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return true, err
-		}
-		if pod.Status.Phase != corev1.PodRunning {
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
-// WaitForExternalIP polls for the Service called svcName in the specified
-// namespace to have a LoadBalancer status with an Ingress
-func WaitForExternalIP(c *clients, namespace, svcName string) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		svc, err := c.KubeClient.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return true, err
-		}
-		if len(svc.Status.LoadBalancer.Ingress) == 0 {
-			return false, nil
-		}
-		return true, nil
-	})
+	}
 }
