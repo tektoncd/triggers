@@ -6,6 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 )
 
 // EventListenerOp is an operation which modifies the EventListener.
@@ -117,10 +118,18 @@ func EventListenerCondition(t apis.ConditionType, status corev1.ConditionStatus,
 }
 
 // EventListenerConfig sets the EventListenerConfiguration on the EventListenerStatus.
-func EventListenerConfig(generatedResourceName, hostname string) EventListenerStatusOp {
+func EventListenerConfig(generatedResourceName string) EventListenerStatusOp {
 	return func(e *v1alpha1.EventListenerStatus) {
 		e.Configuration.GeneratedResourceName = generatedResourceName
-		e.Configuration.Hostname = hostname
+	}
+}
+
+// EventListenerAddress sets the EventListenerAddress on the EventListenerStatus
+func EventListenerAddress(hostname string) EventListenerStatusOp {
+	return func(e *v1alpha1.EventListenerStatus) {
+		e.Address = &duckv1alpha1.Addressable{
+			Hostname: hostname,
+		}
 	}
 }
 

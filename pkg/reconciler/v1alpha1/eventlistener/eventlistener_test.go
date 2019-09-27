@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	"knative.dev/pkg/configmap"
 	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -48,16 +50,15 @@ func init() {
 			bldr.EventListenerServiceAccount("sa"),
 		),
 		bldr.EventListenerStatus(
-			bldr.EventListenerConfig(
-				generatedResourceName,
-				"",
-			),
+			bldr.EventListenerConfig(generatedResourceName),
 		),
 	)
 }
 
 var (
-	generatedResourceName string
+	generatedResourceName    string
+	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+
 	// 0 indicates pre-reconciliation
 	eventListener0    *v1alpha1.EventListener
 	eventListenerName = "my-eventlistener"
@@ -117,7 +118,9 @@ func getEventListenerTestAssets(t *testing.T, r test.TestResources) (test.TestAs
 func Test_reconcileService(t *testing.T) {
 	eventListener1 := eventListener0.DeepCopy()
 	eventListener1.Status.SetExistsCondition(v1alpha1.ServiceExists, nil)
-	eventListener1.Status.Configuration.Hostname = listenerHostname(generatedResourceName, namespace)
+	eventListener1.Status.Address = &duckv1alpha1.Addressable{
+		Hostname: listenerHostname(generatedResourceName, namespace),
+	}
 
 	eventListener2 := eventListener1.DeepCopy()
 	eventListener2.Labels = updateLabel
@@ -197,17 +200,14 @@ func Test_reconcileService(t *testing.T) {
 			}
 			// Compare services
 			// Semantic equality since VolatileTime will not match using cmp.Diff
-			if !equality.Semantic.DeepEqual(tests[i].endResources.Services, actualEndResources.Services) {
-				t.Error("eventlistener.Reconcile() equality mismatch. Ignore semantic time mismatch")
-				diff := cmp.Diff(tests[i].endResources.Services, actualEndResources.Services)
-				t.Errorf("Diff request body: -want +got: %s", diff)
+			if diff := cmp.Diff(tests[i].endResources.Services, actualEndResources.Services, ignoreLastTransitionTime); diff != "" {
+				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
+
 			// Compare EventListener
 			// The updates to EventListener are not persisted within reconcileService
-			if !equality.Semantic.DeepEqual(tests[i].endResources.EventListeners[0], tests[i].startResources.EventListeners[0]) {
-				t.Error("eventlistener.Reconcile() equality mismatch. Ignore semantic time mismatch")
-				diff := cmp.Diff(tests[i].endResources.EventListeners[0], tests[i].startResources.EventListeners[0])
-				t.Errorf("Diff request body: -want +got: %s", diff)
+			if diff := cmp.Diff(tests[i].endResources.EventListeners[0], tests[i].startResources.EventListeners[0], ignoreLastTransitionTime); diff != "" {
+				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
 	}
@@ -410,10 +410,8 @@ func TestReconcile(t *testing.T) {
 			bldr.EventListenerServiceAccount("sa"),
 		),
 		bldr.EventListenerStatus(
-			bldr.EventListenerConfig(
-				generatedResourceName,
-				listenerHostname(generatedResourceName, namespace),
-			),
+			bldr.EventListenerConfig(generatedResourceName),
+			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace)),
 			bldr.EventListenerCondition(
 				v1alpha1.ServiceExists,
 				corev1.ConditionTrue,
@@ -586,11 +584,8 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Semantic equality since VolatileTime will not match using cmp.Diff
-			if !equality.Semantic.DeepEqual(tt.endResources, *actualEndResources) {
-				t.Error("eventlistener.Reconcile() equality mismatch. Ignore semantic time mismatch")
-				diff := cmp.Diff(tt.endResources, *actualEndResources)
-				t.Errorf("Diff request body: -want +got: %s", diff)
+			if diff := cmp.Diff(tt.endResources, *actualEndResources, ignoreLastTransitionTime); diff != "" {
+				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
 	}
@@ -707,43 +702,37 @@ func TestGeneratedObjectMeta(t *testing.T) {
 			expectedObjectMeta: metav1.ObjectMeta{
 				Namespace: "",
 				Name:      "",
-				OwnerReferences: []metav1.OwnerReference{
-					metav1.OwnerReference{
-						APIVersion:         "tekton.dev/v1alpha1",
-						Kind:               "EventListener",
-						Name:               "name",
-						UID:                "",
-						Controller:         &isController,
-						BlockOwnerDeletion: &blockOwnerDeletion,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1alpha1",
+					Kind:               "EventListener",
+					Name:               "name",
+					UID:                "",
+					Controller:         &isController,
+					BlockOwnerDeletion: &blockOwnerDeletion,
+				}},
 				Labels: GeneratedResourceLabels,
 			},
-		},
-		{
+		}, {
 			name: "EventListener with Configuration",
 			el: bldr.EventListener("name", "",
 				bldr.EventListenerStatus(
-					bldr.EventListenerConfig("generatedName", ""),
+					bldr.EventListenerConfig("generatedName"),
 				),
 			),
 			expectedObjectMeta: metav1.ObjectMeta{
 				Namespace: "",
 				Name:      "generatedName",
-				OwnerReferences: []metav1.OwnerReference{
-					metav1.OwnerReference{
-						APIVersion:         "tekton.dev/v1alpha1",
-						Kind:               "EventListener",
-						Name:               "name",
-						UID:                "",
-						Controller:         &isController,
-						BlockOwnerDeletion: &blockOwnerDeletion,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1alpha1",
+					Kind:               "EventListener",
+					Name:               "name",
+					UID:                "",
+					Controller:         &isController,
+					BlockOwnerDeletion: &blockOwnerDeletion,
+				}},
 				Labels: GeneratedResourceLabels,
 			},
-		},
-		{
+		}, {
 			name: "EventListener with Labels",
 			el: bldr.EventListener("name", "",
 				bldr.EventListenerMeta(
@@ -753,16 +742,14 @@ func TestGeneratedObjectMeta(t *testing.T) {
 			expectedObjectMeta: metav1.ObjectMeta{
 				Namespace: "",
 				Name:      "",
-				OwnerReferences: []metav1.OwnerReference{
-					metav1.OwnerReference{
-						APIVersion:         "tekton.dev/v1alpha1",
-						Kind:               "EventListener",
-						Name:               "name",
-						UID:                "",
-						Controller:         &isController,
-						BlockOwnerDeletion: &blockOwnerDeletion,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1alpha1",
+					Kind:               "EventListener",
+					Name:               "name",
+					UID:                "",
+					Controller:         &isController,
+					BlockOwnerDeletion: &blockOwnerDeletion,
+				}},
 				Labels: mergeLabels(map[string]string{"k": "v"}, GeneratedResourceLabels),
 			},
 		},

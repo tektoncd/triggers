@@ -41,7 +41,7 @@ func TestSetGetCondition(t *testing.T) {
 		{
 			name: "One condition",
 			conditions: []*apis.Condition{
-				&apis.Condition{
+				{
 					Type:    "Some Type",
 					Status:  corev1.ConditionTrue,
 					Message: "Message",
@@ -52,12 +52,12 @@ func TestSetGetCondition(t *testing.T) {
 		{
 			name: "Two conditions",
 			conditions: []*apis.Condition{
-				&apis.Condition{
+				{
 					Type:    "Some Type1",
 					Status:  corev1.ConditionTrue,
 					Message: "Message1",
 				},
-				&apis.Condition{
+				{
 					Type:    "Some Type2",
 					Status:  corev1.ConditionFalse,
 					Message: "Message2",
@@ -68,22 +68,22 @@ func TestSetGetCondition(t *testing.T) {
 		{
 			name: "Two conditions repeated",
 			conditions: []*apis.Condition{
-				&apis.Condition{
+				{
 					Type:    "Some Type1",
 					Status:  corev1.ConditionTrue,
 					Message: "Message1",
 				},
-				&apis.Condition{
+				{
 					Type:    "Some Type1",
 					Status:  corev1.ConditionFalse,
 					Message: "Message2",
 				},
-				&apis.Condition{
+				{
 					Type:    "Some Type2",
 					Status:  corev1.ConditionTrue,
 					Message: "Message1",
 				},
-				&apis.Condition{
+				{
 					Type:    "Some Type2",
 					Status:  corev1.ConditionFalse,
 					Message: "Message2",
@@ -183,7 +183,7 @@ func TestSetDeploymentConditions(t *testing.T) {
 		{
 			name: "One Deployment Condition",
 			deploymentConditions: []appsv1.DeploymentCondition{
-				appsv1.DeploymentCondition{
+				{
 					Type:    appsv1.DeploymentAvailable,
 					Status:  corev1.ConditionTrue,
 					Reason:  "Reason",
@@ -207,13 +207,13 @@ func TestSetDeploymentConditions(t *testing.T) {
 		{
 			name: "Two Deployment Conditions",
 			deploymentConditions: []appsv1.DeploymentCondition{
-				appsv1.DeploymentCondition{
+				{
 					Type:    appsv1.DeploymentAvailable,
 					Status:  corev1.ConditionTrue,
 					Reason:  "Reason",
 					Message: "Message",
 				},
-				appsv1.DeploymentCondition{
+				{
 					Type:    appsv1.DeploymentProgressing,
 					Status:  corev1.ConditionTrue,
 					Reason:  "Reason",
@@ -243,13 +243,13 @@ func TestSetDeploymentConditions(t *testing.T) {
 		{
 			name: "Update Replica Condition",
 			deploymentConditions: []appsv1.DeploymentCondition{
-				appsv1.DeploymentCondition{
+				{
 					Type:    appsv1.DeploymentAvailable,
 					Status:  corev1.ConditionTrue,
 					Reason:  "Reason",
 					Message: "Message",
 				},
-				appsv1.DeploymentCondition{
+				{
 					Type:    appsv1.DeploymentProgressing,
 					Status:  corev1.ConditionTrue,
 					Reason:  "Reason",
