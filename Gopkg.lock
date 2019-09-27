@@ -1274,6 +1274,7 @@
   packages = [
     "apis",
     "apis/duck",
+    "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
     "changeset",
     "codegen/cmd/injection-gen",
@@ -1384,6 +1385,7 @@
     "knative.dev/caching/pkg/apis/caching",
     "knative.dev/caching/pkg/client/clientset/versioned",
     "knative.dev/pkg/apis",
+    "knative.dev/pkg/apis/duck/v1alpha1",
     "knative.dev/pkg/apis/duck/v1beta1",
     "knative.dev/pkg/codegen/cmd/injection-gen",
     "knative.dev/pkg/configmap",

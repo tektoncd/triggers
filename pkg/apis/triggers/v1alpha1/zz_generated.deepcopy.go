@@ -147,6 +147,7 @@ func (in *EventListenerSpec) DeepCopy() *EventListenerSpec {
 func (in *EventListenerStatus) DeepCopyInto(out *EventListenerStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
+	in.AddressStatus.DeepCopyInto(&out.AddressStatus)
 	out.Configuration = in.Configuration
 	return
 }

@@ -187,7 +187,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 			c.Logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		} else {
-			el.Status.Configuration.Hostname = listenerHostname(service.Name, el.Namespace)
+			el.Status.SetAddress(listenerHostname(service.Name, el.Namespace))
 			c.Logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 		}
 	default:

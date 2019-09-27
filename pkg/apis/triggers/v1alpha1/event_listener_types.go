@@ -18,12 +18,14 @@ package v1alpha1
 
 import (
 	"fmt"
+
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
+	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
@@ -100,6 +102,11 @@ type EventListenerList struct {
 // +k8s:deepcopy-gen=true
 type EventListenerStatus struct {
 	duckv1beta1.Status `json:",inline"`
+
+	// EventListener is Addressable. It currently exposes the service DNS
+	// address of the the EventListener sink
+	duckv1alpha1.AddressStatus `json:",inline"`
+
 	// Configuration stores configuration for the EventListener service
 	Configuration EventListenerConfig `json:"configuration"`
 }
@@ -110,8 +117,6 @@ type EventListenerConfig struct {
 	// GeneratedResourceName is the name given to all resources reconciled by
 	// the EventListener
 	GeneratedResourceName string `json:"generatedName"`
-	// Hostname is the EventListener's internal/local service hostname
-	Hostname string `json:"hostname"`
 }
 
 // The conditions that are internally resolved by the EventListener reconciler
@@ -207,4 +212,20 @@ func (el *EventListener) GetOwnerReference() *metav1.OwnerReference {
 		Version: SchemeGroupVersion.Version,
 		Kind:    "EventListener",
 	})
+}
+
+// SetAddress sets the address (as part of Addressable contract) and marks the correct condition.
+func (els *EventListenerStatus) SetAddress(hostname string) {
+	if els.Address == nil {
+		els.Address = &duckv1alpha1.Addressable{}
+	}
+	if hostname != "" {
+		els.Address.Hostname = hostname
+		if u, err := apis.ParseURL(fmt.Sprintf("http://%s/", hostname)); err != nil {
+			els.Address.URL = u
+		}
+	} else {
+		els.Address.Hostname = ""
+		els.Address.URL = nil
+	}
 }
