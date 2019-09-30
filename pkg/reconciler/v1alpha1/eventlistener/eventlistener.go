@@ -45,7 +45,7 @@ const (
 	// eventListenerControllerName defines name for EventListener Controller
 	eventListenerControllerName = "EventListener"
 	// Port defines the port for the EventListener to listen on
-	Port = 8082
+	Port = 8080
 )
 
 var (

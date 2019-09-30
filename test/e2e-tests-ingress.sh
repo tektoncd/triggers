@@ -110,7 +110,7 @@ fi
 # Checking EventListener log
 wait_until_pod_started listener
 log=$(kubectl logs $(kubectl get pod | grep listener | cut -f 1 -d " "))
-entry=$(echo $log | grep "Listen and serve on port 8082")  || true
+entry=$(echo $log | grep "Listen and serve on port 8080")  || true
 ll=${#entry}
 if [ 0 -eq $ll ];
 then
