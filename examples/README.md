@@ -19,7 +19,7 @@ kubectl apply -f ../docs/validate-github-event.yaml
 ```bash
 tekton:examples user$ kubectl get svc
 NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
-listener                      ClusterIP      10.100.151.220   <none>        8082/TCP         48s  <--- this will receive the event
+listener                      ClusterIP      10.100.151.220   <none>        8080/TCP         48s  <--- this will receive the event
 tekton-pipelines-controller   ClusterIP      10.103.144.96    <none>        9090/TCP         8m34s
 tekton-pipelines-webhook      ClusterIP      10.96.198.4      <none>        443/TCP          8m34s
 tekton-triggers-controller    ClusterIP      10.102.221.96    <none>        9090/TCP         7m56s
@@ -46,11 +46,11 @@ This is intentionally very simple and operates on a created Git resource. The tr
 
 4. Send a payload to the listener
 
-Assuming we have a listener available at `localhost:8082` (and port-forwarded for this example, with `kubectl port-forward $(kubectl get pod -o=name -l app=listener) 8082`), run the following command in your shell of choice or using Postman:
+Assuming we have a listener available at `localhost:8080` (and port-forwarded for this example, with `kubectl port-forward $(kubectl get pod -o=name -l app=listener) 8080`), run the following command in your shell of choice or using Postman:
 
 ```bash
 curl -X POST \
-  http://localhost:8082 \
+  http://localhost:8080 \
   -H 'Content-Type: application/json' \
   -H 'X-Hub-Signature: sha1=2da37dcb9404ff17b714ee7a505c384758ddeb7b' \
   -d '{

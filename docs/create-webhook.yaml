@@ -132,7 +132,7 @@ spec:
             paths:
             - backend:
                 serviceName: $(inputs.params.EventListenerName)
-                servicePort: 8082
+                servicePort: 8080
       EOF
   - name: create-webhook
     image: pstauffer/curl:latest
