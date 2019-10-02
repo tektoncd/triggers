@@ -16,118 +16,161 @@
 
 source $(dirname $0)/e2e-common.sh
 
-# Waits until taskrun completed.
-# Parameters: $1 - taskrun name
+trap "cleanup" SIGINT EXIT
+
+function cleanup() {
+  echo -e "\n\nCleaning up test resources"
+  kubectl delete eventlistener ${EVENTLISTENER_NAME} || true
+  kubectl delete secret ${CERTIFICATE_SECRET_NAME} || true
+  kubectl delete taskrun ${INGRESS_TASKRUN_NAME} || true
+  kubectl delete -f ${REPO_ROOT_DIR}/test/ingress || true
+}
+
+# Parameters: $1 - TaskRun name
 function wait_until_taskrun_completed() {
-  echo -e "Waiting until taskrun $1 completed\n"
-  for i in {1..150}; do  # timeout after 5 minutes
-    taskrun_status="$(kubectl get taskrun $1 -o=jsonpath='{.status.conditions[0]}')"
-    match=$(echo $taskrun_status | grep "message:All Steps have completed executing reason:Succeeded status:True type:Succeeded")  || true
-    l=${#match}
-    if [ 0 -ne $l ];
-    then
-      return 0
-    fi
+  echo "Waiting until TaskRun $1 is completed"
+  for i in {1..150}; do  # timeout after 10 minutes
+    reason=$(kubectl get taskrun $1 -o=jsonpath='{.status.conditions[0].reason}')
+    case ${reason} in
+    "TaskRunValidationFailed"|"TaskRunTimeout")
+      echo -e "\n\nERROR: ${reason}"
+      kubectl get taskrun $1 -o=jsonpath='{.status.conditions[0].message}'
+      exit 1
+      ;;
+    "Failed")
+      echo -e "\n\nERROR: TaskRun Failed"
+      echo "Grabbing container logs:"
+      kubectl_debug="$(kubectl get taskrun $1 -o=jsonpath='{.status.conditions[0].message}' | sed 's/^.*\(kubectl.*\)/\1/')"
+      eval ${kubectl_debug}
+      exit 1
+      ;;
+    "Succeeded")
+      return
+      ;;
+    esac
     sleep 2
   done
   echo -e "\n\nERROR: timeout waiting for taskrun successful completion\n"
-  return 1
+  exit 1
 }
 
-# Waits until pod started.
 # Parameters: $1 - pod name prefix
 function wait_until_pod_started() {
-  echo -e "Waiting until pod started\n"
+  echo "Waiting until Pod $1 is running"
   for i in {1..150}; do  # timeout after 5 minutes
-    pod_status=$(kubectl get pod | grep $1 | grep "Running") || true
-    l=${#pod_status}
-    if [ 0 -ne $l ];
-    then
-      return 0
-    fi
-    sleep 2
+    kubectl get pod | grep $1 | grep "Running" && return || sleep 2
   done
   echo -e "\n\nERROR: timeout waiting for pod successful start\n"
-  return 1
+  exit 1
+}
+
+# Parameters: $1 - EventListener name
+function get_eventlistener_service() {
+  echo "Getting ServiceName for EventListener $1"
+  for i in {1..150}; do  # timeout after 5 minutes
+    SERVICE_NAME=$(kubectl get eventlistener $1 -o=jsonpath='{.status.configuration.generatedName}') && return || sleep 2
+  done
+}
+
+# Parameters: $1 - Service name
+function get_service_uid() {
+  echo "Getting UID for Service $1"
+  for i in {1..150}; do  # timeout after 5 minutes
+    SERVICE_UID=$(kubectl get svc $1 -o=jsonpath='{.metadata.uid}') && return || sleep 2
+  done
+}
+
+# Parameters:
+# $1 - Debug message before match
+# $2, $3 - Expected, Actual value
+function matchOrFail() {
+  echo $1
+  if [ $2 != $3 ];then
+    echo "Match fail: expected: $2, actual: $3"
+    exit 1
+  fi
 }
 
 set -o errexit
 set -o pipefail
 
-# verify if the yaml file is valid
-for op in apply delete;do 
-  kubectl ${op} -f ${REPO_ROOT_DIR}/docs/create-webhook.yaml
-done
+# Apply ClusterRole/ClusterRoleBinding for default SA to run create Ingress Task
+kubectl apply -f ${REPO_ROOT_DIR}/test/ingress
+# Apply Ingress Task
+kubectl apply -f ${REPO_ROOT_DIR}/docs/create-ingress.yaml
 
-# make sure no remaining resources from the previous run
-echo "clean up before start. Ignore (NotFound) errors"
-kubectl delete secret secret1 || true
-kubectl delete eventlistener listener || true
-kubectl delete taskrun create-webhook || true
-kubectl delete secret githubsecret || true
+EVENTLISTENER_NAME="ingress-test-eventlistener"
 
-# setup
-kubectl apply -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrole.yaml
-kubectl apply -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrolebinding.yaml
-kubectl apply -f ${REPO_ROOT_DIR}/docs/create-webhook.yaml
-kubectl create secret generic githubsecret --from-literal=accessToken=ff7d2c2949844f68cb18a68f4febad4454df2336 --from-literal=userName=tektonuser
+# Create EventListener
+cat << DONE | kubectl apply -f -
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: ${EVENTLISTENER_NAME}
+spec:
+  serviceAccountName: default
+  triggers:
+  - params:
+    - name: param1
+      value: value1
+DONE
 
+INGRESS_TASKRUN_NAME="create-ingress-taskrun"
+CERTIFICATE_KEY_PASSPHRASE="pass1"
+CERTIFICATE_SECRET_NAME="secret1"
+get_eventlistener_service ${EVENTLISTENER_NAME}
+get_service_uid ${SERVICE_NAME}
+EXTERNAL_DOMAIN="${SERVICE_NAME}.192.168.0.1.nip.io"
 
-# test
-kubectl apply -f ${REPO_ROOT_DIR}/docs/create-webhook-run.yaml
-wait_until_taskrun_completed create-webhook 
+# Create Ingress using Ingress Task
+cat << DONE | kubectl apply -f -
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: ${INGRESS_TASKRUN_NAME}
+spec:
+  taskRef:
+    name: create-ingress
+  inputs:
+    params:
+    - name: CertificateKeyPassphrase
+      value: ${CERTIFICATE_KEY_PASSPHRASE}
+    - name: CertificateSecretName
+      value: ${CERTIFICATE_SECRET_NAME}
+    - name: ExternalDomain
+      value: ${EXTERNAL_DOMAIN}
+    - name: Service
+      value: ${SERVICE_NAME}
+    - name: ServicePort
+      value: "8080"
+    - name: ServiceUID
+      value: ${SERVICE_UID}
+  timeout: 1000s
+  serviceAccount: default
+DONE
+wait_until_taskrun_completed ${INGRESS_TASKRUN_NAME}
 
-# check certificate
+# Check certificate
 echo -e "Testing certificate"
-crt=$(kubectl get secret secret1 -o=jsonpath='{.data.tls\.crt}')
+crt=$(kubectl get secret ${CERTIFICATE_SECRET_NAME} -o=jsonpath='{.data.tls\.crt}')
 echo $crt | base64 --decode | grep "\-\-\-\-\-BEGIN CERTIFICATE\-\-\-\-\-"
 echo $crt | base64 --decode | grep "\-\-\-\-\-END CERTIFICATE\-\-\-\-\-"
 
-key=$(kubectl get secret secret1 -o=jsonpath='{.data.tls\.key}')
+key=$(kubectl get secret ${CERTIFICATE_SECRET_NAME} -o=jsonpath='{.data.tls\.key}')
 echo $key | base64 --decode | grep "\-\-\-\-\-BEGIN RSA PRIVATE KEY\-\-\-\-\-"
 echo $key | base64 --decode | grep "\-\-\-\-\-END RSA PRIVATE KEY\-\-\-\-\-"
 echo -e "Certificate is OK"
 
-# check ingress
-svc=$(kubectl get ingress listener -o=jsonpath='{.spec.rules[0].http.paths[0].backend.serviceName}')
-host=$(kubectl get ingress listener -o=jsonpath='{.spec.rules[0].host}')
-tlshost=$(kubectl get ingress listener -o=jsonpath='{.spec.tls[0].hosts[0]}')
-secret=$(kubectl get ingress listener -o=jsonpath='{.spec.tls[0].secretName}')
-if [ $svc != "listener" ] || [ $host != "listener.192.168.0.1.nip.io" ] || [ $tlshost != "listener.192.168.0.1.nip.io" ] || [ $secret != "secret1" ]; then
-  echo -e "unexpected values " "wanted: listener; got:" $svc", wanted: listener.192.168.0.1.nip.io; got:" $host", wanted: listener.192.168.0.1.nip.io; got:" $tlshost", wanted: secret1; got:" $secret
-  exit 1
-fi
-
-# check event listener
-listenername=$(kubectl get eventlistener listener -o=jsonpath='{.metadata.name}')
-bindingname=$(kubectl get eventlistener listener -o=jsonpath='{.spec.triggers[0].binding.name}')
-templatename=$(kubectl get eventlistener listener -o=jsonpath='{.spec.triggers[0].template.name}')
-if [ $listenername != "listener" ] || [ $bindingname != "pipeline-binding" ] || [ $templatename != "pipeline-template" ]; then
-  echo -e "unexpected values " "wanted: listener; got:" $listenername", wanted: pipeline-binding; got:" $bindingname", wanted: pipeline-template; got:" $templatename
-  exit 1
-fi
-
-# Checking EventListener log
-wait_until_pod_started listener
-log=$(kubectl logs $(kubectl get pod | grep listener | cut -f 1 -d " "))
-entry=$(echo $log | grep "Listen and serve on port 8080")  || true
-ll=${#entry}
-if [ 0 -eq $ll ];
-then
-  echo "Event Listener POD didn't start expectedly"
-  echo "POD dump:"
-  kubectl get pod listener -o yaml
-  exit 1
-fi
-
-
-# clean up
-kubectl delete -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrole.yaml
-kubectl delete -f ${REPO_ROOT_DIR}/test/ingress/ingress-clusterrolebinding.yaml
-kubectl delete -f ${REPO_ROOT_DIR}/docs/create-webhook.yaml
-kubectl delete -f ${REPO_ROOT_DIR}/docs/create-webhook-run.yaml
-kubectl delete secret secret1
-kubectl delete eventlistener listener
-kubectl delete secret githubsecret
+# Check ingress
+ingress_svc=$(kubectl get ingress ${SERVICE_NAME} -o=jsonpath='{.spec.rules[0].http.paths[0].backend.serviceName}')
+ingress_rules_host=$(kubectl get ingress ${SERVICE_NAME} -o=jsonpath='{.spec.rules[0].host}')
+ingress_tls_host=$(kubectl get ingress ${SERVICE_NAME} -o=jsonpath='{.spec.tls[0].hosts[0]}')
+ingress_tls_secret=$(kubectl get ingress ${SERVICE_NAME} -o=jsonpath='{.spec.tls[0].secretName}')
+ingress_owner_reference_uid=$(kubectl get ingress ${SERVICE_NAME} -o=jsonpath='{.metadata.ownerReferences[0].uid}')
+matchOrFail "Checking the Ingress Service" ${SERVICE_NAME} ${ingress_svc}
+matchOrFail "Checking the Ingress Rules Host" ${EXTERNAL_DOMAIN} ${ingress_rules_host}
+matchOrFail "Checking the Ingress TLS Host" ${EXTERNAL_DOMAIN} ${ingress_tls_host}
+matchOrFail "Checking the Ingress TLS Secret" ${CERTIFICATE_SECRET_NAME} ${ingress_tls_secret}
+matchOrFail "Checking the Ingress OwnerReference" ${SERVICE_UID} ${ingress_owner_reference_uid}
 
 

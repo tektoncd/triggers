@@ -11,46 +11,40 @@ metadata:
   name: pipeline-template
 spec:
   params:
-    - name: gitrevision
-      description: The git revision
-      default: master
-    - name: gitrepositoryurl
-      description: The git repository url
-    - name: message
-      description: The message to print
-      default: This is the default message
+  - name: gitrevision
+    description: The git revision
+    default: master
+  - name: gitrepositoryurl
+    description: The git repository url
+  - name: message
+    description: The message to print
+    default: This is the default message
   resourcetemplates:
-    - apiVersion: tekton.dev/v1alpha1
-      kind: PipelineResource
-      metadata:
-        name: git-source-$(uid)
-        labels:
-          triggertemplated: "true"
-          generatedBy: "triggers-example"
-      spec:
-        type: git
-        params:
-        - name: revision
-          value: $(params.gitrevision)
-        - name: url
-          value: $(params.gitrepositoryurl)
-    - apiVersion: tekton.dev/v1alpha1
-      kind: PipelineRun
-      metadata:
-        generateName: simple-pipeline-run
-        labels:
-          triggertemplated: "true"
-          generatedBy: "triggers-example"
-      spec:
-        pipelineRef:
-            name: simple-pipeline
-        params:
-        - name: message
-          value: $(params.message)
-        resources:
-        - name: git-source
-          resourceRef:
-            name: git-source-$(uid)
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: git-source-$(uid)
+    spec:
+      type: git
+      params:
+      - name: revision
+        value: $(params.gitrevision)
+      - name: url
+        value: $(params.gitrepositoryurl)
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineRun
+    metadata:
+      generateName: simple-pipeline-run
+    spec:
+      pipelineRef:
+        name: simple-pipeline
+      params:
+      - name: message
+        value: $(params.message)
+      resources:
+      - name: git-source
+        resourceRef:
+          name: git-source-$(uid)
 ```
 
 Similar to [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s do not do any actual work, but instead act as the blueprint for what resources should be created.

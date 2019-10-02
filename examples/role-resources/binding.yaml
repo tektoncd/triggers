@@ -3,8 +3,8 @@ kind: RoleBinding
 metadata:
   name: tekton-triggers-example-binding
 subjects:
-  - kind: ServiceAccount
-    name: tekton-triggers-example-sa
+- kind: ServiceAccount
+  name: tekton-triggers-example-sa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
