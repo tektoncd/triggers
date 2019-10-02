@@ -18,4 +18,9 @@ for op in apply delete;do
     for file in $(find ${REPO_ROOT_DIR}/examples/eventlisteners/ -name *.yaml | sort); do
         kubectl ${op} -f ${file}
     done
+
+    # Apply all types in /docs
+    for file in $(find ${REPO_ROOT_DIR}/docs -name *.yaml | sort); do
+        kubectl ${op} -f ${file}
+    done
 done

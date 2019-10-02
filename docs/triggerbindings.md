@@ -12,10 +12,10 @@ metadata:
   name: pipeline-binding
 spec:
   params:
-    - name: gitrevision
-      value: $(event.head_commit.id)
-    - name: gitrepositoryurl
-      value: $(event.repository.url)
+  - name: gitrevision
+    value: $(event.head_commit.id)
+  - name: gitrepositoryurl
+    value: $(event.repository.url)
 ```
 
 `TriggerBinding`s are connected to `TriggerTemplate`s within an [`EventListener`](eventlisteners.md), which is where the pod is actually instantiated that "listens" for the respective events.
