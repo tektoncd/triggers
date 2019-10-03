@@ -31,9 +31,9 @@ const tektonApiVersion = GroupName + "/v1alpha1"
 
 // allowedTemplate types are the resource types identified by apiVersion + kind
 // that can be templated using TriggerResourceTemplates
-// TODO: Make this configurable using a ConfigMap entry
+// TODO: Replace static restrictions here with SubjectAccessReview create checks
 var allowedTemplateTypes = map[string][]string{
-	tektonApiVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "task", "condition"},
+	tektonApiVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "clustertask", "task", "condition"},
 }
 
 // Check that TriggerTemplate may be validated and defaulted.
