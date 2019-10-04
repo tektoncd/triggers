@@ -3,3 +3,4 @@ run:
   - e2e
   skip-dirs:
   - vendor
+  - pkg/client/clientset/versioned/fake
