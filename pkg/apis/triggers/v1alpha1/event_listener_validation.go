@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -31,6 +32,18 @@ func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
 func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
+	}
+	for n, t := range s.Triggers {
+		if t.Interceptor != nil {
+			return t.Interceptor.Validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", n))
+		}
+	}
+	return nil
+}
+
+func (i *EventInterceptor) Validate(ctx context.Context) *apis.FieldError {
+	if i.ObjectRef == nil {
+		return apis.ErrMissingField("objectRef")
 	}
 	return nil
 }

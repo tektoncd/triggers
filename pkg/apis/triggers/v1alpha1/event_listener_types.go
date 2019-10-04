@@ -66,6 +66,17 @@ type EventListenerTrigger struct {
 	Params          []pipelinev1.Param    `json:"params,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
+	// +optional
+	// TODO(dibyom): Allow multiple interceptors
+	Interceptor *EventInterceptor `json:"interceptor,omitempty"`
+}
+
+// EventInterceptor provides a hook to intercept and pre-process events
+type EventInterceptor struct {
+	// ObjectRef is a reference to an object that will resolve to a cluster DNS
+	// name to use as the EventInterceptor. Either objectRef or url can be specified
+	// +optional
+	ObjectRef *corev1.ObjectReference `json:"objectRef,omitempty"`
 }
 
 // EventListenerBinding refers to a particular TriggerBinding resource.
