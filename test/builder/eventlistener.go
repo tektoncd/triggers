@@ -205,14 +205,15 @@ func EventListenerTriggerValidateParam(name, value string) EventListenerTriggerV
 	}
 }
 
-// EventListenerTriggerValidateParam adds a param name to the TriggerValidate.
-func EventListenerTriggerInterceptor(name, version, kind string) EventListenerTriggerOp {
+// EventListenerTriggerInterceptor adds an objectRef to an interceptor Service to the EventListenerTrigger.
+func EventListenerTriggerInterceptor(name, version, kind, namespace string) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
 		t.Interceptor = &v1alpha1.EventInterceptor{
 			ObjectRef: &corev1.ObjectReference{
 				Kind:       kind,
 				Name:       name,
 				APIVersion: version,
+				Namespace:  namespace,
 			},
 		}
 	}

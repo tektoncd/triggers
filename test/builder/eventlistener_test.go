@@ -375,7 +375,7 @@ func TestEventListenerBuilder(t *testing.T) {
 					Interceptor: &v1alpha1.EventInterceptor{
 						ObjectRef: &corev1.ObjectReference{
 							Kind:       "Service",
-							Namespace:  "",
+							Namespace:  "namespace",
 							Name:       "foo",
 							APIVersion: "v1",
 						},
@@ -405,7 +405,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				EventListenerTrigger("tb1", "tt1", "v1alpha1",
 					EventListenerTriggerName("foo-trig"),
 					EventListenerTriggerParam("param1", "value1"),
-					EventListenerTriggerInterceptor("foo", "v1", "Service"),
+					EventListenerTriggerInterceptor("foo", "v1", "Service", "namespace"),
 				),
 			),
 		),

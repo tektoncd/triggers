@@ -11,6 +11,7 @@ required = [
   "knative.dev/caching/pkg/apis/caching",
   "github.com/tektoncd/plumbing/scripts",
   "github.com/knative/test-infra/tools/dep-collector",
+  "github.com/google/go-github/github"
 ]
 
 [[constraint]]
