@@ -12,3 +12,4 @@ See the following links for more on each of the resources involved:
 ## Getting Started Tasks
 - [Create an Ingress on the EventListener Service](create-ingress.yaml)
 - [Create a GitHub webhook](create-webhook.yaml)
+- [Create a Github Validation interceptor](create-gh-validate-interceptor.yaml)

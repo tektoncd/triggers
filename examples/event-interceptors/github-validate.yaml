@@ -24,7 +24,7 @@ spec:
       app: gh-validate
   template:
     metadata:
-     labels:
+      labels:
         app: gh-validate
     spec:
       serviceAccountName: default
@@ -35,8 +35,8 @@ spec:
             - name: GITHUB_SECRET_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: github-secret
-                  key: secret-token
+                  name: github-secret # Change this to match your secret name
+                  key: secret-token # Change this to match your secret key
 ---
 apiVersion: v1
 kind: Service

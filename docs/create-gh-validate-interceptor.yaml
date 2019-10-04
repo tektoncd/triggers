@@ -1,0 +1,77 @@
+# This Task deploys the example github validation webhook (cmd/gh-validate) and
+# exposes it as a ClusterIP service.
+# See examples/event-interceptors and docs/eventlisteners.md#event-interceptors
+# for more information.
+
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-github-validate-interceptor
+spec:
+  inputs:
+    params:
+      - name: Name
+        description: "The name of the interceptor Service."
+      - name: GitHubSecretName
+        description: "The Secret name for GitHub webhook secret. This is always mounted and must exist"
+      - name: GitHubSecretStringKey
+        description: "Key name within the Secret for the Github webhook secret."
+      - name: ContainerImage
+        description: "Container image of the Github Validation Interceptor. Defaults to the latest release and can be overridden with your own image"
+        default: "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/gh-validate@sha256:98e4f1ac48fbad76f51d5eae68147c9800dc4c9a2e95a60532c92fc4c8d204b1"
+  steps:
+    - name: create-service
+      image: lachlanevenson/k8s-kubectl:latest
+      command:
+        - sh
+      args:
+        - -ce
+        - |
+          set -e
+          cat <<EOF | kubectl create -f -
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: $(inputs.params.Name)
+          spec:
+            type: ClusterIP
+            selector:
+              app: $(inputs.params.Name)
+            ports:
+              - protocol: TCP
+                port: 80
+                targetPort: 8080
+          EOF
+    - name: create-deployment
+      image: lachlanevenson/k8s-kubectl:latest
+      command:
+        - sh
+      args:
+        - -ce
+        - |
+          set -e
+          cat <<EOF | kubectl create -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: $(inputs.params.Name)
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: $(inputs.params.Name)
+            template:
+              metadata:
+                labels:
+                  app: $(inputs.params.Name)
+              spec:
+                containers:
+                  - name: validate
+                    image: $(inputs.params.ContainerImage)
+                    env:
+                      - name: GITHUB_SECRET_TOKEN
+                        valueFrom:
+                          secretKeyRef:
+                            name: $(inputs.params.GitHubSecretName)
+                            key: $(inputs.params.GitHubSecretStringKey)
+          EOF

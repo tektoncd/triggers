@@ -42,6 +42,11 @@ To be an Event Interceptor, a Kubernetes object should:
   payload for any further processing. If the interceptor does not need to modify
   the body, it can simply return the body that it received.
 
+
+#### Examples
+
+For examples, see the [examples folder](../examples/event-interceptors).
+
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
 ```YAML
 apiVersion: tekton.dev/v1alpha1
