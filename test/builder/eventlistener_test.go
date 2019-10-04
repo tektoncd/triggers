@@ -361,8 +361,55 @@ func TestEventListenerBuilder(t *testing.T) {
 				),
 			),
 		),
-	},
-	}
+	}, {
+		name: "One Trigger with Interceptor",
+		normal: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				ServiceAccountName: "serviceAccount",
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Name: "foo-trig",
+					Interceptor: &v1alpha1.EventInterceptor{
+						ObjectRef: &corev1.ObjectReference{
+							Kind:       "Service",
+							Namespace:  "",
+							Name:       "foo",
+							APIVersion: "v1",
+						},
+					},
+					Binding: v1alpha1.EventListenerBinding{
+						Name:       "tb1",
+						APIVersion: "v1alpha1",
+					},
+					Template: v1alpha1.EventListenerTemplate{
+						Name:       "tt1",
+						APIVersion: "v1alpha1",
+					},
+					Params: []pipelinev1.Param{{
+						Name: "param1",
+						Value: pipelinev1.ArrayOrString{
+							StringVal: "value1",
+							Type:      pipelinev1.ParamTypeString,
+						}},
+					},
+				},
+				},
+			},
+		},
+		builder: EventListener("name", "namespace",
+			EventListenerSpec(
+				EventListenerServiceAccount("serviceAccount"),
+				EventListenerTrigger("tb1", "tt1", "v1alpha1",
+					EventListenerTriggerName("foo-trig"),
+					EventListenerTriggerParam("param1", "value1"),
+					EventListenerTriggerInterceptor("foo", "v1", "Service"),
+				),
+			),
+		),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := cmp.Diff(tt.normal, tt.builder, cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {

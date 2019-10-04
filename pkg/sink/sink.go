@@ -17,12 +17,14 @@ limitations under the License.
 package sink
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 
@@ -45,6 +47,7 @@ type Resource struct {
 	DiscoveryClient        discoveryclient.DiscoveryInterface
 	RESTClient             restclient.Interface
 	PipelineClient         pipelineclientset.Interface
+	HttpClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string
 }
@@ -59,27 +62,48 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 	el, err := r.TriggersClient.TektonV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
 		log.Printf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	event, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		log.Printf("Error reading event body: %s", err)
+		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	eventId := template.Uid()
 	log.Printf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventId, string(event), request.Header)
+
 	// Execute each Trigger
 	for _, trigger := range el.Spec.Triggers {
-		go r.executeTrigger(event, request.Header, trigger, eventId)
+		go r.executeTrigger(event, request, trigger, eventId)
 	}
-	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s)",
-		r.EventListenerName, r.EventListenerNamespace, eventId)
+
+	// TODO: Do we really need to return the entire body back???
+	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
+		r.EventListenerName, r.EventListenerNamespace, string(eventId), string(event), request.Header)
 }
 
-func (r Resource) executeTrigger(payload []byte, header http.Header, trigger triggersv1.EventListenerTrigger, eventId string) {
+func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventId string) {
+	header := request.Header
+	if trigger.Interceptor != nil {
+		interceptorUrl, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
+		if err != nil {
+			log.Printf("Could not resolve Interceptor Service URI: %q", err)
+			return
+		}
+
+		modifiedPayload, err := r.processEvent(interceptorUrl, request, payload)
+		if err != nil {
+			log.Printf("Error Intercepting Event (EventID: %s): %q", eventId, err)
+			return
+		}
+		payload = modifiedPayload
+	}
+
 	// Secure Endpoint
 	if trigger.TriggerValidate != nil {
 		if err := r.validateEvent(trigger.TriggerValidate, header, payload, eventId); err != nil {
@@ -104,6 +128,15 @@ func (r Resource) executeTrigger(payload []byte, header http.Header, trigger tri
 	if err != nil {
 		log.Print(err)
 	}
+}
+
+func (r Resource) processEvent(interceptorUrl *url.URL, request *http.Request, payload []byte) ([]byte, error) {
+	outgoing := createOutgoingRequest(context.Background(), request, interceptorUrl, payload)
+	respPayload, err := makeRequest(r.HttpClient, outgoing)
+	if err != nil {
+		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
+	}
+	return respPayload, nil
 }
 
 func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {
@@ -154,7 +187,7 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 	return nil
 }
 
-// findAPIResource returns the APIResource defintion using the discovery client.
+// findAPIResource returns the APIResource definition using the discovery client.
 func findAPIResource(discoveryClient discoveryclient.DiscoveryInterface, apiVersion, kind string) (*metav1.APIResource, error) {
 	resourceList, err := discoveryClient.ServerResourcesForGroupVersion(apiVersion)
 	if err != nil {

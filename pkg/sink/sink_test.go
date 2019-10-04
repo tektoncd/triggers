@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -96,30 +97,30 @@ func Test_findAPIResource(t *testing.T) {
 	// Create fake kubeclient with list of resources
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{
-		&metav1.APIResourceList{
+		{
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
-				metav1.APIResource{
+				{
 					Name:       "pods",
 					Namespaced: true,
 					Kind:       "Pod",
 				},
-				metav1.APIResource{
+				{
 					Name:       "namespaces",
 					Namespaced: false,
 					Kind:       "Namespace",
 				},
 			},
 		},
-		&metav1.APIResourceList{
+		{
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
-				metav1.APIResource{
+				{
 					Name:       "triggertemplates",
 					Namespaced: true,
 					Kind:       "TriggerTemplate",
 				},
-				metav1.APIResource{
+				{
 					Name:       "pipelineruns",
 					Namespaced: true,
 					Kind:       "PipelineRun",
@@ -248,20 +249,20 @@ func Test_createResource(t *testing.T) {
 	}
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{
-		&metav1.APIResourceList{
+		{
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
-				metav1.APIResource{
+				{
 					Name:       "pipelineresources",
 					Kind:       "PipelineResource",
 					Namespaced: true,
 				},
 			},
 		},
-		&metav1.APIResourceList{
+		{
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
-				metav1.APIResource{
+				{
 					Name:       "namespaces",
 					Kind:       "Namespace",
 					Namespaced: false,
@@ -371,8 +372,8 @@ func Test_HandleEvent(t *testing.T) {
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
 			Params: []pipelinev1.ResourceParam{
-				pipelinev1.ResourceParam{Name: "url", Value: "$(params.url)"},
-				pipelinev1.ResourceParam{Name: "revision", Value: "$(params.revision)"},
+				{Name: "url", Value: "$(params.url)"},
+				{Name: "revision", Value: "$(params.revision)"},
 			},
 		},
 	}
@@ -389,8 +390,8 @@ func Test_HandleEvent(t *testing.T) {
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
 			Params: []pipelinev1.ResourceParam{
-				pipelinev1.ResourceParam{Name: "url", Value: "testurl"},
-				pipelinev1.ResourceParam{Name: "revision", Value: "testrevision"},
+				{Name: "url", Value: "testurl"},
+				{Name: "revision", Value: "testrevision"},
 			},
 		},
 	}
@@ -420,10 +421,10 @@ func Test_HandleEvent(t *testing.T) {
 
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{
-		&metav1.APIResourceList{
+		{
 			GroupVersion: "tekton.dev/v1alpha1",
 			APIResources: []metav1.APIResource{
-				metav1.APIResource{
+				{
 					Name:       "pipelineresources",
 					Kind:       "PipelineResource",
 					Namespaced: true,
@@ -731,5 +732,39 @@ func TestResource_createValidateTask(t *testing.T) {
 				t.Errorf("Resource.createValidateTask() = \n%+v, want \n%+v, diff:%s", got, tt.want, diff)
 			}
 		})
+	}
+}
+
+func TestResource_processEvent(t *testing.T) {
+	r := Resource{
+		HttpClient:             http.DefaultClient,
+		EventListenerName:      "foo-listener",
+		EventListenerNamespace: "foo",
+	}
+
+	payload, _ := json.Marshal(map[string]string{
+		"eventType": "push",
+		"foo":       "bar",
+	})
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, "http://some-url/", nil)
+	if err != nil {
+		t.Fatalf("Error trying to create request: %q", err)
+	}
+
+	interceptorUrl, _ := url.Parse(ts.URL)
+	resPayload, err := r.processEvent(interceptorUrl, req, payload)
+
+	if err != nil {
+		t.Errorf("Unexpected error in process event: %q", err)
+	}
+
+	if diff := cmp.Diff(payload, resPayload); diff != "" {
+		t.Errorf("Did not get expected payload back: %s", diff)
 	}
 }

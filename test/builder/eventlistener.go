@@ -204,3 +204,16 @@ func EventListenerTriggerValidateParam(name, value string) EventListenerTriggerV
 		)
 	}
 }
+
+// EventListenerTriggerValidateParam adds a param name to the TriggerValidate.
+func EventListenerTriggerInterceptor(name, version, kind string) EventListenerTriggerOp {
+	return func(t *v1alpha1.EventListenerTrigger) {
+		t.Interceptor = &v1alpha1.EventInterceptor{
+			ObjectRef: &corev1.ObjectReference{
+				Kind:       kind,
+				Name:       name,
+				APIVersion: version,
+			},
+		}
+	}
+}
