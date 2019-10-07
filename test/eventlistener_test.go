@@ -222,7 +222,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 	t.Log("EventListener is ready")
 
-	labelSelector := fields.SelectorFromSet(eventReconciler.GeneratedResourceLabels).String()
+	labelSelector := fields.SelectorFromSet(eventReconciler.GenerateResourceLabels(el.Name)).String()
 	// Grab EventListener sink pods
 	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
