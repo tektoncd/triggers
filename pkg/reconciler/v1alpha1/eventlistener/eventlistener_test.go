@@ -83,6 +83,7 @@ var (
 		Message: fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
 		Reason:  "NewReplicaSetAvailable",
 	}
+	generatedLabels = GenerateResourceLabels(eventListenerName)
 )
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
@@ -126,9 +127,9 @@ func Test_reconcileService(t *testing.T) {
 	eventListener2.Labels = updateLabel
 
 	service1 := &corev1.Service{
-		ObjectMeta: GeneratedObjectMeta(eventListener0),
+		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: corev1.ServiceSpec{
-			Selector: GeneratedResourceLabels,
+			Selector: generatedLabels,
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				servicePort,
@@ -136,8 +137,8 @@ func Test_reconcileService(t *testing.T) {
 		},
 	}
 	service2 := service1.DeepCopy()
-	service2.Labels = mergeLabels(GeneratedResourceLabels, updateLabel)
-	service2.Spec.Selector = mergeLabels(GeneratedResourceLabels, updateLabel)
+	service2.Labels = mergeLabels(generatedLabels, updateLabel)
+	service2.Spec.Selector = mergeLabels(generatedLabels, updateLabel)
 
 	tests := []struct {
 		name           string
@@ -234,15 +235,15 @@ func Test_reconcileDeployment(t *testing.T) {
 
 	var replicas int32 = 1
 	deployment1 := &appsv1.Deployment{
-		ObjectMeta: GeneratedObjectMeta(eventListener0),
+		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: GeneratedResourceLabels,
+				MatchLabels: generatedLabels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: GeneratedResourceLabels,
+					Labels: generatedLabels,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: eventListener0.Spec.ServiceAccountName,
@@ -275,9 +276,9 @@ func Test_reconcileDeployment(t *testing.T) {
 	}
 
 	deployment2 := deployment1.DeepCopy()
-	deployment2.Labels = mergeLabels(GeneratedResourceLabels, updateLabel)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(GeneratedResourceLabels, updateLabel)
-	deployment2.Spec.Template.Labels = mergeLabels(GeneratedResourceLabels, updateLabel)
+	deployment2.Labels = mergeLabels(generatedLabels, updateLabel)
+	deployment2.Spec.Selector.MatchLabels = mergeLabels(generatedLabels, updateLabel)
+	deployment2.Spec.Template.Labels = mergeLabels(generatedLabels, updateLabel)
 
 	deployment3 := deployment1.DeepCopy()
 	var updateReplicas int32 = 5
@@ -445,15 +446,15 @@ func TestReconcile(t *testing.T) {
 
 	var replicas int32 = 1
 	deployment1 := &appsv1.Deployment{
-		ObjectMeta: GeneratedObjectMeta(eventListener0),
+		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: GeneratedResourceLabels,
+				MatchLabels: generatedLabels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: GeneratedResourceLabels,
+					Labels: generatedLabels,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: eventListener0.Spec.ServiceAccountName,
@@ -486,17 +487,17 @@ func TestReconcile(t *testing.T) {
 	}
 
 	deployment2 := deployment1.DeepCopy()
-	deployment2.Labels = mergeLabels(updateLabel, GeneratedResourceLabels)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(updateLabel, GeneratedResourceLabels)
-	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, GeneratedResourceLabels)
+	deployment2.Labels = mergeLabels(updateLabel, generatedLabels)
+	deployment2.Spec.Selector.MatchLabels = mergeLabels(updateLabel, generatedLabels)
+	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
 
 	deployment3 := deployment1.DeepCopy()
 	deployment3.Spec.Template.Spec.ServiceAccountName = updatedSa
 
 	service1 := &corev1.Service{
-		ObjectMeta: GeneratedObjectMeta(eventListener0),
+		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: corev1.ServiceSpec{
-			Selector: GeneratedResourceLabels,
+			Selector: generatedLabels,
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				servicePort,
@@ -505,8 +506,8 @@ func TestReconcile(t *testing.T) {
 	}
 
 	service2 := service1.DeepCopy()
-	service2.Labels = mergeLabels(updateLabel, GeneratedResourceLabels)
-	service2.Spec.Selector = mergeLabels(updateLabel, GeneratedResourceLabels)
+	service2.Labels = mergeLabels(updateLabel, generatedLabels)
+	service2.Spec.Selector = mergeLabels(updateLabel, generatedLabels)
 
 	tests := []struct {
 		name           string
@@ -651,7 +652,7 @@ func Test_mergeLabels(t *testing.T) {
 			name:           "Both maps empty",
 			l1:             nil,
 			l2:             nil,
-			expectedLabels: nil,
+			expectedLabels: map[string]string{},
 		},
 		{
 			name:           "Map one empty",
@@ -688,7 +689,15 @@ func Test_mergeLabels(t *testing.T) {
 	}
 }
 
-func TestGeneratedObjectMeta(t *testing.T) {
+func TestGenerateResourceLabels(t *testing.T) {
+	expectedLabels := mergeLabels(StaticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	actualLabels := GenerateResourceLabels(eventListenerName)
+	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
+		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
+	}
+}
+
+func Test_generateObjectMeta(t *testing.T) {
 	blockOwnerDeletion := true
 	isController := true
 	tests := []struct {
@@ -698,23 +707,23 @@ func TestGeneratedObjectMeta(t *testing.T) {
 	}{
 		{
 			name: "Empty EventListener",
-			el:   bldr.EventListener("name", ""),
+			el:   bldr.EventListener(eventListenerName, ""),
 			expectedObjectMeta: metav1.ObjectMeta{
 				Namespace: "",
 				Name:      "",
 				OwnerReferences: []metav1.OwnerReference{{
 					APIVersion:         "tekton.dev/v1alpha1",
 					Kind:               "EventListener",
-					Name:               "name",
+					Name:               eventListenerName,
 					UID:                "",
 					Controller:         &isController,
 					BlockOwnerDeletion: &blockOwnerDeletion,
 				}},
-				Labels: GeneratedResourceLabels,
+				Labels: generatedLabels,
 			},
 		}, {
 			name: "EventListener with Configuration",
-			el: bldr.EventListener("name", "",
+			el: bldr.EventListener(eventListenerName, "",
 				bldr.EventListenerStatus(
 					bldr.EventListenerConfig("generatedName"),
 				),
@@ -725,16 +734,16 @@ func TestGeneratedObjectMeta(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{{
 					APIVersion:         "tekton.dev/v1alpha1",
 					Kind:               "EventListener",
-					Name:               "name",
+					Name:               eventListenerName,
 					UID:                "",
 					Controller:         &isController,
 					BlockOwnerDeletion: &blockOwnerDeletion,
 				}},
-				Labels: GeneratedResourceLabels,
+				Labels: generatedLabels,
 			},
 		}, {
 			name: "EventListener with Labels",
-			el: bldr.EventListener("name", "",
+			el: bldr.EventListener(eventListenerName, "",
 				bldr.EventListenerMeta(
 					bldr.Label("k", "v"),
 				),
@@ -745,20 +754,20 @@ func TestGeneratedObjectMeta(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{{
 					APIVersion:         "tekton.dev/v1alpha1",
 					Kind:               "EventListener",
-					Name:               "name",
+					Name:               eventListenerName,
 					UID:                "",
 					Controller:         &isController,
 					BlockOwnerDeletion: &blockOwnerDeletion,
 				}},
-				Labels: mergeLabels(map[string]string{"k": "v"}, GeneratedResourceLabels),
+				Labels: mergeLabels(map[string]string{"k": "v"}, generatedLabels),
 			},
 		},
 	}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
-			actualObjectMeta := GeneratedObjectMeta(tests[i].el)
+			actualObjectMeta := generateObjectMeta(tests[i].el)
 			if diff := cmp.Diff(tests[i].expectedObjectMeta, actualObjectMeta); diff != "" {
-				t.Errorf("GeneratedObjectMeta() did not return expected. -want, +got: %s", diff)
+				t.Errorf("generateObjectMeta() did not return expected. -want, +got: %s", diff)
 			}
 		})
 	}
