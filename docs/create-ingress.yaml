@@ -64,7 +64,7 @@ spec:
       if [ $(inputs.params.CreateCertificate) = "false" ];then
         exit 0
       fi
-      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/work/ingress/certificate.pem --key=/var/tmp/work/ingress/key.pem 
+      kubectl create secret tls $(inputs.params.CertificateSecretName) --cert=/var/tmp/work/ingress/certificate.pem --key=/var/tmp/work/ingress/key.pem || true
       EOF
   - name: create-ingress
     image: lachlanevenson/k8s-kubectl:latest
@@ -74,8 +74,8 @@ spec:
     - -ce
     - |
       set -e
-      if [ -n $(inputs.params.ServiceUID) ];then
-        cat <<EOF | kubectl create -f -
+      if [ -n "$(inputs.params.ServiceUID)" ];then
+        cat <<EOF | kubectl create -f - || true
         apiVersion: extensions/v1beta1
         kind: Ingress
         metadata:
@@ -99,7 +99,7 @@ spec:
                   servicePort: $(inputs.params.ServicePort)
       EOF
       else
-        cat <<EOF | kubectl create -f -
+        cat <<EOF | kubectl create -f - || true
         apiVersion: extensions/v1beta1
         kind: Ingress
         metadata:
