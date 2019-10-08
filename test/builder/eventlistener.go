@@ -21,9 +21,6 @@ type EventListenerStatusOp func(*v1alpha1.EventListenerStatus)
 // EventListenerTriggerOp is an operation which modifies the Trigger.
 type EventListenerTriggerOp func(*v1alpha1.EventListenerTrigger)
 
-// EventListenerTriggerValidateOp is an operation which modifies the TriggerValidate.
-type EventListenerTriggerValidateOp func(*v1alpha1.TriggerValidate)
-
 // EventListener creates an EventListener with default values.
 // Any number of EventListenerOp modifiers can be passed to transform it.
 func EventListener(name, namespace string, ops ...EventListenerOp) *v1alpha1.EventListener {
@@ -158,50 +155,6 @@ func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v
 func EventListenerTriggerName(name string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
 		trigger.Name = name
-	}
-}
-
-// EventListenerTriggerValidate adds a TriggerValidate to the Trigger in EventListenerSpec Triggers.
-func EventListenerTriggerValidate(ops ...EventListenerTriggerValidateOp) EventListenerTriggerOp {
-	return func(trigger *v1alpha1.EventListenerTrigger) {
-		validate := &v1alpha1.TriggerValidate{}
-		for _, op := range ops {
-			op(validate)
-		}
-		trigger.TriggerValidate = validate
-	}
-}
-
-// EventListenerTriggerValidateTaskRef adds a TaskRef to the TriggerValidate.
-func EventListenerTriggerValidateTaskRef(taskName, apiVersion string, kind pipelinev1.TaskKind) EventListenerTriggerValidateOp {
-	return func(validate *v1alpha1.TriggerValidate) {
-		validate.TaskRef = pipelinev1.TaskRef{
-			Name:       taskName,
-			Kind:       kind,
-			APIVersion: apiVersion,
-		}
-	}
-}
-
-// EventListenerTriggerValidateServiceAccount adds a service account name to the TriggerValidate.
-func EventListenerTriggerValidateServiceAccount(serviceAccount string) EventListenerTriggerValidateOp {
-	return func(validate *v1alpha1.TriggerValidate) {
-		validate.ServiceAccountName = serviceAccount
-	}
-}
-
-// EventListenerTriggerValidateParam adds a param name to the TriggerValidate.
-func EventListenerTriggerValidateParam(name, value string) EventListenerTriggerValidateOp {
-	return func(validate *v1alpha1.TriggerValidate) {
-		validate.Params = append(validate.Params,
-			pipelinev1.Param{
-				Name: name,
-				Value: pipelinev1.ArrayOrString{
-					StringVal: value,
-					Type:      pipelinev1.ParamTypeString,
-				},
-			},
-		)
 	}
 }
 

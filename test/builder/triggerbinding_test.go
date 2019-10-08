@@ -38,7 +38,7 @@ func TestTriggerBindingBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerBindingSpec{
 					Params: []pipelinev1.Param{
-						pipelinev1.Param{
+						{
 							Name: "param1",
 							Value: pipelinev1.ArrayOrString{
 								StringVal: "value1",
@@ -63,14 +63,14 @@ func TestTriggerBindingBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerBindingSpec{
 					Params: []pipelinev1.Param{
-						pipelinev1.Param{
+						{
 							Name: "param1",
 							Value: pipelinev1.ArrayOrString{
 								StringVal: "value1",
 								Type:      pipelinev1.ParamTypeString,
 							},
 						},
-						pipelinev1.Param{
+						{
 							Name: "param2",
 							Value: pipelinev1.ArrayOrString{
 								StringVal: "value2",

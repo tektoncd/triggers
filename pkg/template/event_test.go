@@ -562,7 +562,7 @@ func Test_NewResources(t *testing.T) {
 			args: args{
 				event: json.RawMessage(`{"foo": "bar"}`),
 				elParams: []pipelinev1.Param{
-					pipelinev1.Param{
+					{
 						Name:  "param1",
 						Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 					},
@@ -593,11 +593,11 @@ func Test_NewResources(t *testing.T) {
 			args: args{
 				event: json.RawMessage(`{"foo": "bar"}`),
 				elParams: []pipelinev1.Param{
-					pipelinev1.Param{
+					{
 						Name:  "param1",
 						Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 					},
-					pipelinev1.Param{
+					{
 						Name:  "param3",
 						Value: pipelinev1.ArrayOrString{StringVal: "value3", Type: pipelinev1.ParamTypeString},
 					},
@@ -679,7 +679,7 @@ func Test_NewResources_error(t *testing.T) {
 		{
 			name: "merge params error",
 			elParams: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 				},

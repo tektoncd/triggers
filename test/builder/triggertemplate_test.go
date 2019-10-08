@@ -39,7 +39,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
 					Params: []pipelinev1.ParamSpec{
-						pipelinev1.ParamSpec{
+						{
 							Name:        "param1",
 							Description: "description",
 							Default: &pipelinev1.ArrayOrString{
@@ -65,7 +65,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
 					Params: []pipelinev1.ParamSpec{
-						pipelinev1.ParamSpec{
+						{
 							Name:        "param1",
 							Description: "description",
 							Default: &pipelinev1.ArrayOrString{
@@ -73,7 +73,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 								Type:      pipelinev1.ParamTypeString,
 							},
 						},
-						pipelinev1.ParamSpec{
+						{
 							Name:        "param2",
 							Description: "description",
 							Default: &pipelinev1.ArrayOrString{
@@ -100,7 +100,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
-						v1alpha1.TriggerResourceTemplate{
+						{
 							RawMessage: json.RawMessage(`{"rt1": "value"}`),
 						},
 					},
@@ -121,10 +121,10 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
-						v1alpha1.TriggerResourceTemplate{
+						{
 							RawMessage: json.RawMessage(`{"rt1": "value"}`),
 						},
-						v1alpha1.TriggerResourceTemplate{
+						{
 							RawMessage: json.RawMessage(`{"rt2": "value"}`),
 						},
 					},
@@ -153,7 +153,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
 					Params: []pipelinev1.ParamSpec{
-						pipelinev1.ParamSpec{
+						{
 							Name:        "param1",
 							Description: "description",
 							Default: &pipelinev1.ArrayOrString{
@@ -161,7 +161,7 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 								Type:      pipelinev1.ParamTypeString,
 							},
 						},
-						pipelinev1.ParamSpec{
+						{
 							Name:        "param2",
 							Description: "description",
 							Default: &pipelinev1.ArrayOrString{
@@ -171,10 +171,10 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 						},
 					},
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
-						v1alpha1.TriggerResourceTemplate{
+						{
 							RawMessage: json.RawMessage(`{"rt1": "value"}`),
 						},
-						v1alpha1.TriggerResourceTemplate{
+						{
 							RawMessage: json.RawMessage(`{"rt2": "value"}`),
 						},
 					},

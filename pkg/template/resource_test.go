@@ -215,7 +215,7 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 			name: "one param",
 			args: args{
 				params: []pipelinev1.Param{
-					pipelinev1.Param{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
+					{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
 				},
 				rt: rt,
 			},
@@ -225,9 +225,9 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 			name: "multiple params",
 			args: args{
 				params: []pipelinev1.Param{
-					pipelinev1.Param{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
-					pipelinev1.Param{Name: "twoid", Value: pipelinev1.ArrayOrString{StringVal: "twovalue"}},
-					pipelinev1.Param{Name: "threeid", Value: pipelinev1.ArrayOrString{StringVal: "threevalue"}},
+					{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
+					{Name: "twoid", Value: pipelinev1.ArrayOrString{StringVal: "twovalue"}},
+					{Name: "threeid", Value: pipelinev1.ArrayOrString{StringVal: "threevalue"}},
 				},
 				rt: rt,
 			},
@@ -362,13 +362,13 @@ func Test_MergeParams(t *testing.T) {
 			name:    "empty params1",
 			params1: []pipelinev1.Param{},
 			params2: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -377,14 +377,14 @@ func Test_MergeParams(t *testing.T) {
 		{
 			name: "empty params2",
 			params1: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			params2: []pipelinev1.Param{},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -393,23 +393,23 @@ func Test_MergeParams(t *testing.T) {
 		{
 			name: "one params1 and one params2",
 			params1: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			params2: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -418,39 +418,39 @@ func Test_MergeParams(t *testing.T) {
 		{
 			name: "multiple params1 and multiple params2",
 			params1: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param12",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			params2: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param22",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param12",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param22",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -481,13 +481,13 @@ func Test_MergeParams_error(t *testing.T) {
 		{
 			name: "one duplicate name",
 			params1: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "duplicate1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			params2: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "duplicate1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -496,29 +496,29 @@ func Test_MergeParams_error(t *testing.T) {
 		{
 			name: "multiple duplicate names",
 			params1: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "duplicate1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "unique11",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "duplicate2",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
 			},
 			params2: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "unique21",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "duplicate2",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "duplicate1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value", Type: pipelinev1.ParamTypeString},
 				},
@@ -548,10 +548,10 @@ func Test_convertParamMapToArray(t *testing.T) {
 		{
 			name: "one param",
 			paramMap: map[string]pipelinev1.ArrayOrString{
-				"param1": pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
+				"param1": {StringVal: "value1", Type: pipelinev1.ParamTypeString},
 			},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 				},
@@ -560,20 +560,20 @@ func Test_convertParamMapToArray(t *testing.T) {
 		{
 			name: "multiple params",
 			paramMap: map[string]pipelinev1.ArrayOrString{
-				"param1": pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
-				"param2": pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
-				"param3": pipelinev1.ArrayOrString{StringVal: "value3", Type: pipelinev1.ParamTypeString},
+				"param1": {StringVal: "value1", Type: pipelinev1.ParamTypeString},
+				"param2": {StringVal: "value2", Type: pipelinev1.ParamTypeString},
+				"param3": {StringVal: "value3", Type: pipelinev1.ParamTypeString},
 			},
 			want: []pipelinev1.Param{
-				pipelinev1.Param{
+				{
 					Name:  "param1",
 					Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param2",
 					Value: pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
 				},
-				pipelinev1.Param{
+				{
 					Name:  "param3",
 					Value: pipelinev1.ArrayOrString{StringVal: "value3", Type: pipelinev1.ParamTypeString},
 				},
