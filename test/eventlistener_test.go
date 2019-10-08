@@ -284,13 +284,13 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("Deleted EventListener")
 
 	// Verify the EventListener's Deployment is deleted
-	if err = WaitFor(deploymentNotExist(t, c, namespace, el.Name)); err != nil {
+	if err = WaitFor(deploymentNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, el.Name))); err != nil {
 		t.Fatalf("Failed to delete EventListener Deployment: %s", err)
 	}
 	t.Log("EventListener's Deployment was deleted")
 
 	// Verify the EventListener's Service is deleted
-	if err = WaitFor(serviceNotExist(t, c, namespace, el.Name)); err != nil {
+	if err = WaitFor(serviceNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, el.Name))); err != nil {
 		t.Fatalf("Failed to delete EventListener Service: %s", err)
 	}
 	t.Log("EventListener's Service was deleted")
