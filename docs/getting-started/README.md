@@ -74,9 +74,11 @@ Now lets create our webhook Task.
 
 ### Update the Ingress TaskRun
 
+**Note**: If you are running on GKE, the default Ingress will not work. Instead, follow the instructions to use an Nginx Ingress [here](../exposing-eventlisteners.md#Using-Nginx-Ingress)
+
 Lets first update the TaskRun to make any needed changes
 
-edit the `docs/getting-started/ingress-run.yaml` file to adjust the settings.
+Edit the `docs/getting-started/ingress-run.yaml` file to adjust the settings.
 
 At the mimimum, you will need to update the ExternalDomain field to match your own DNS name.
 

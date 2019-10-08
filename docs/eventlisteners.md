@@ -9,14 +9,15 @@ with.
 When an `EventListener` is successfully created, a service is created that
 references a listener pod. This listener pod accepts the incoming events and
 does what has been specified in the corresponding
-`TriggerBinding`s/`TriggerTemplate`s.
-
+`TriggerBinding`s/`TriggerTemplate`s. The service created is a `ClusterIP` service 
+which means any other pods running in the same Kubernetes cluster can access it via the service's 
+cluster DNS. For external services to connect to your cluster (e.g. GitHub 
+sending webhooks), check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md) 
 
 ## Parameters
 `EventListener`s can provide `params` which are merged with the `TriggerBinding`
 `params` and passed to the `TriggerTemplate`. Each parameter has a `name` and a
 `value`.
-
 
 ## Event Interceptors
 
