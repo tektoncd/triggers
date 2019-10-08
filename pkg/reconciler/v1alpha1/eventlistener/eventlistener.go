@@ -24,7 +24,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler"
@@ -46,6 +45,9 @@ const (
 	eventListenerControllerName = "EventListener"
 	// Port defines the port for the EventListener to listen on
 	Port = 8080
+	// GeneratedResourcePrefix is the name prefix for resources generated in the
+	// EventListener reconciler
+	GeneratedResourcePrefix = "el-"
 )
 
 var (
@@ -104,7 +106,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) (returnError err
 	// Initial reconciliation
 	if equality.Semantic.DeepEqual(el.Status, v1alpha1.EventListenerStatus{}) {
 		el.Status.InitializeConditions()
-		el.Status.Configuration.GeneratedResourceName = names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(el.Name)
+		el.Status.Configuration.GeneratedResourceName = fmt.Sprintf("%s-%s", GeneratedResourcePrefix, el.Name)
 	}
 
 	// Reconcile this copy of the EventListener and then write back any status
