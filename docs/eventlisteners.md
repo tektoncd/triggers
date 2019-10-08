@@ -2,9 +2,6 @@
 `EventListener`s connect `TriggerBinding`s to `TriggerTemplate`s and provide an
 addressable endpoint, which is where webhooks/events are directed.
 
-It also define an optional field called `validate` to validate event using a
-predefined task. Learn more here: [validate-event](validate-event.md).
-
 Further, it is at this level that the service account is connected, which
 specifies what permissions the resources will be created (or at least attempted)
 with.

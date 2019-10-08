@@ -19,7 +19,6 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -31,23 +30,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	pipelinetest "github.com/tektoncd/pipeline/test"
-	pipelinetb "github.com/tektoncd/pipeline/test/builder"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	fakerestclient "k8s.io/client-go/rest/fake"
-	k8stest "k8s.io/client-go/testing"
-	apis "knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
@@ -512,226 +504,6 @@ func Test_HandleEvent(t *testing.T) {
 	wg.Wait()
 	if numRequests != 1 {
 		t.Errorf("Expected 1 request, got %d requests", numRequests)
-	}
-}
-
-func TestResource_validateEvent(t *testing.T) {
-	r := Resource{
-		EventListenerName:      "foo-listener",
-		EventListenerNamespace: "foo",
-	}
-
-	triggerValidate := &triggersv1.TriggerValidate{}
-	bldr.EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind)(triggerValidate)
-	bldr.EventListenerTriggerValidateServiceAccount("foo")(triggerValidate)
-
-	task := pipelinetb.Task("bar", "foo", pipelinetb.TaskSpec(
-		pipelinetb.TaskInputs(
-			pipelinetb.InputsParamSpec("param", pipelinev1.ParamTypeString, pipelinetb.ParamSpecDescription("mydesc"), pipelinetb.ParamSpecDefault("default")),
-			pipelinetb.InputsParamSpec("array-param", pipelinev1.ParamTypeString, pipelinetb.ParamSpecDescription("desc"), pipelinetb.ParamSpecDefault("array", "values")))))
-
-	h := http.Header{}
-	h.Set("X-Hub-Signature", "1234567")
-	payload := []byte("test payload")
-
-	tests := []struct {
-		name    string
-		pClient *fakepipelineclientset.Clientset
-		wantErr bool
-	}{
-		{
-			name: "Test_SecureEndpoint",
-			pClient: func() *fakepipelineclientset.Clientset {
-				// We put the succeeded taskrun in the pipeline
-				tr := pipelinetb.TaskRun("bar-random", "foo", pipelinetb.TaskRunStatus(pipelinetb.StatusCondition(
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				)))
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks:    []*pipelinev1.Task{task},
-					TaskRuns: []*pipelinev1.TaskRun{tr},
-				})
-				pClient := clients.Pipeline
-				// We add a prependreactor which just return the value and doesn't insert
-				pClient.PrependReactor("create", "taskruns",
-					func(action k8stest.Action) (bool, runtime.Object, error) {
-						create := action.(k8stest.CreateActionImpl)
-						obj := create.GetObject().(*pipelinev1.TaskRun)
-						obj.Name = "bar-random"
-						return true, obj, nil
-					})
-				return pClient
-			}(),
-		},
-		{
-			name: "Test_SecureEndpoint_ValidationFailure",
-			pClient: func() *fakepipelineclientset.Clientset {
-				// We put the succeeded taskrun in the pipeline
-				tr := pipelinetb.TaskRun("bar-random", "foo", pipelinetb.TaskRunStatus(pipelinetb.StatusCondition(
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-					},
-				)))
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks:    []*pipelinev1.Task{task},
-					TaskRuns: []*pipelinev1.TaskRun{tr},
-				})
-				pClient := clients.Pipeline
-				// We add a prependreactor which just return the value and doesn't insert
-				pClient.PrependReactor("create", "taskruns",
-					func(action k8stest.Action) (bool, runtime.Object, error) {
-						create := action.(k8stest.CreateActionImpl)
-						obj := create.GetObject().(*pipelinev1.TaskRun)
-						obj.Name = "bar-random"
-						return true, obj, nil
-					})
-				return pClient
-			}(),
-			wantErr: true,
-		},
-		{
-			name: "Test_SecureEndpoint_TaskrunCreateFailure",
-			pClient: func() *fakepipelineclientset.Clientset {
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks: []*pipelinev1.Task{task},
-				})
-				pClient := clients.Pipeline
-				pClient.PrependReactor("create", "taskruns",
-					func(action k8stest.Action) (bool, runtime.Object, error) {
-						return true, nil, errors.New("mock create taskrun error")
-					})
-				return pClient
-			}(),
-			wantErr: true,
-		},
-		{
-			name: "Test_SecureEndpoint_TaskrunGetFailure",
-			pClient: func() *fakepipelineclientset.Clientset {
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks: []*pipelinev1.Task{task},
-				})
-				pClient := clients.Pipeline
-				pClient.PrependReactor("get", "taskruns",
-					func(action k8stest.Action) (bool, runtime.Object, error) {
-						return true, nil, errors.New("mock create taskrun error")
-					})
-				return pClient
-			}(),
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r.PipelineClient = tt.pClient
-			if err := r.validateEvent(triggerValidate, h, payload, "eventid"); (err != nil) != tt.wantErr {
-				t.Errorf("Resource.secureEndpoint() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestResource_createValidateTask(t *testing.T) {
-	r := Resource{
-		EventListenerName:      "foo-listener",
-		EventListenerNamespace: "foo",
-	}
-
-	h := http.Header{}
-	h.Set("X-Hub-Signature", "1234567")
-	h["X-Hub-Array"] = []string{"1234567", "abcde"}
-	hEncode, err := json.Marshal(h)
-	if err != nil {
-		t.Errorf("Resource.createValidateTask() Unexpected failure to marshal header: %+v", h)
-	}
-
-	payload := []byte("test payload")
-	triggerValidate := &triggersv1.TriggerValidate{}
-	bldr.EventListenerTriggerValidateTaskRef("bar", "v1alpha1", pipelinev1.NamespacedTaskKind)(triggerValidate)
-	bldr.EventListenerTriggerValidateServiceAccount("foo")(triggerValidate)
-	bldr.EventListenerTriggerValidateParam("Secret", "github-secret")(triggerValidate)
-
-	tests := []struct {
-		name    string
-		pClient *fakepipelineclientset.Clientset
-		want    *pipelinev1.TaskRun
-		wantErr bool
-	}{
-		{
-			name: "Test_createValidateTask",
-			pClient: func() *fakepipelineclientset.Clientset {
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks: []*pipelinev1.Task{pipelinetb.Task("bar", "foo", pipelinetb.TaskSpec(
-						pipelinetb.TaskInputs(
-							pipelinetb.InputsParamSpec("Secret", pipelinev1.ParamTypeString, pipelinetb.ParamSpecDescription("mydesc")),
-							pipelinetb.InputsParamSpec("EventBody", pipelinev1.ParamTypeString, pipelinetb.ParamSpecDescription("mydesc")),
-							pipelinetb.InputsParamSpec("EventHeaders", pipelinev1.ParamTypeArray, pipelinetb.ParamSpecDescription("desc")))))},
-				})
-				return clients.Pipeline
-			}(),
-			want: func() *pipelinev1.TaskRun {
-				tr := pipelinetb.TaskRun("", "foo", pipelinetb.TaskRunLabel("tekton.dev/eventlistener", "foo-listener"),
-					pipelinetb.TaskRunLabel("tekton.dev/triggers-eventid", "eventid"),
-					pipelinetb.TaskRunSpec(pipelinetb.TaskRunServiceAccount("foo"),
-						pipelinetb.TaskRunTaskRef(triggerValidate.TaskRef.Name, pipelinetb.TaskRefAPIVersion("v1alpha1"), pipelinetb.TaskRefKind(triggerValidate.TaskRef.Kind)),
-						pipelinetb.TaskRunInputs(
-							pipelinetb.TaskRunInputsParam("Secret", "github-secret"),
-							pipelinetb.TaskRunInputsParam("EventBody", string(payload)),
-							pipelinetb.TaskRunInputsParam("EventHeaders", string(hEncode)),
-						),
-						pipelinetb.TaskRunNilTimeout,
-					))
-				tr.GenerateName = "bar"
-				tr.Annotations = nil
-				return tr
-			}(),
-			wantErr: false,
-		},
-		{
-			name:    "Test_createValidateTaskNotFound",
-			pClient: fakepipelineclientset.NewSimpleClientset(),
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "Test_createValidateTaskInputsNotFound",
-			pClient: func() *fakepipelineclientset.Clientset {
-				ctx, _ := rtesting.SetupFakeContext(t)
-				clients, _ := pipelinetest.SeedTestData(t, ctx, pipelinetest.Data{
-					Tasks: []*pipelinev1.Task{
-						pipelinetb.Task("bar", "foo",
-							pipelinetb.TaskSpec())},
-				})
-				return clients.Pipeline
-			}(),
-			want:    nil,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r.PipelineClient = tt.pClient
-			got, err := r.createValidateTask(triggerValidate, h, payload, "eventid")
-			if err != nil {
-				if !tt.wantErr {
-					t.Errorf("Resource.createValidateTask() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				return
-			}
-			fmt.Println(tt.want.Spec.Timeout)
-			if diff := cmp.Diff(got, tt.want); diff != "" {
-				t.Errorf("Resource.createValidateTask() = \n%+v, want \n%+v, diff:%s", got, tt.want, diff)
-			}
-		})
 	}
 }
 
