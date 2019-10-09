@@ -56,7 +56,10 @@ func (s *EventListenerSpec) Validate(ctx context.Context, el *EventListener) *ap
 			}
 		}
 		if t.Interceptor != nil {
-			return t.Interceptor.Validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", n))
+			err := t.Interceptor.Validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", n))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -65,6 +68,13 @@ func (s *EventListenerSpec) Validate(ctx context.Context, el *EventListener) *ap
 func (i *EventInterceptor) Validate(ctx context.Context) *apis.FieldError {
 	if i.ObjectRef == nil {
 		return apis.ErrMissingField("objectRef")
+	}
+
+	if i.ObjectRef.Kind != "Service" || i.ObjectRef.APIVersion != "v1" {
+		return &apis.FieldError{
+			Message: "Only objects of Kind: Servive with APIVersion: v1 are suported",
+			Paths:   []string{"objectRef"},
+		}
 	}
 	return nil
 }

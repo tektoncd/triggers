@@ -6,6 +6,7 @@ import (
 
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakedynamicclient "k8s.io/client-go/dynamic/fake"
 )
@@ -15,28 +16,56 @@ func Test_EventListenerValidate_error(t *testing.T) {
 		name     string
 		el       *v1alpha1.EventListener
 		raiseErr bool
-	}{
-		{
-			name: "without correct triggerBinding",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb2", "tt1", "v1alpha1"))),
-			raiseErr: true,
+	}{{
+		name: "without correct triggerBinding",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb2", "tt1", "v1alpha1"))),
+		raiseErr: true,
+	}, {
+		name: "without correct triggerTemplate",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb1", "tt2", "v1alpha1"))),
+		raiseErr: true,
+	}, {
+		name: "with correct interceptor",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb1", "tt1", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Service", "")))),
+		raiseErr: false,
+	}, {
+		name: "interceptor missing objectRef",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Binding:     v1alpha1.EventListenerBinding{Name: "tb1"},
+					Template:    v1alpha1.EventListenerTemplate{Name: "tt1"},
+					Interceptor: &v1alpha1.EventInterceptor{},
+				}},
+			},
 		},
-		{
-			name: "without correct triggerTemplate",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb1", "tt2", "v1alpha1"))),
-			raiseErr: true,
-		},
-		{
-			name: "validate",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb1", "tt1", "v1alpha1"))),
-			raiseErr: false,
-		},
+		raiseErr: true,
+	}, {
+		name: "interceptor with wrong APIVersion",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb1", "tt1", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v3", "Service", "")))),
+		raiseErr: true,
+	}, {
+		name: "interceptor with wrong Kind",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb1", "tt1", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "")))),
+		raiseErr: true,
+	},
 	}
 
 	tb := bldr.TriggerBinding("tb1", "namespace",
