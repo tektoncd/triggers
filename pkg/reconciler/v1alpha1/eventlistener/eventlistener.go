@@ -97,7 +97,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) (returnError err
 		c.Logger.Infof("EventListener %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
-		c.Logger.Errorf("Error retreiving EventListener %q: %s", name, err)
+		c.Logger.Errorf("Error retrieving EventListener %q: %s", name, err)
 		return err
 	}
 
