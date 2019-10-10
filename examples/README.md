@@ -45,7 +45,7 @@ This is intentionally very simple and operates on a created Git resource. The tr
 
 4. Send a payload to the listener
 
-Assuming we have a listener available at `localhost:8080` (and port-forwarded for this example, with `kubectl port-forward $(kubectl get pod -o=name -l app=listener) 8080`), run the following command in your shell of choice or using Postman:
+Assuming we have a listener available at `localhost:8080` (and port-forwarded for this example, with `kubectl port-forward $(kubectl get pod -o=name -l eventlistener=listener) 8080`), run the following command in your shell of choice or using Postman:
 
 ```bash
 curl -X POST \

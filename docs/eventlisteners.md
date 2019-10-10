@@ -21,10 +21,10 @@ does what has been specified in the corresponding
 ## Event Interceptors
 
 Triggers within an `EventListener` can optionally specify an interceptor field
-which contains an [`ObjectReference`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.12/#objectreference-v1-core) to a Kubernetes Service. If an interceptor 
-is specified, the `EventListener` sink will forward incoming events to the 
-service referenced by the interceptor over HTTP. The service is expected to 
-process the event and return a response back. The status code of the response 
+which contains an [`ObjectReference`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.12/#objectreference-v1-core) to a Kubernetes Service. If an interceptor
+is specified, the `EventListener` sink will forward incoming events to the
+service referenced by the interceptor over HTTP. The service is expected to
+process the event and return a response back. The status code of the response
 determines if the processing is successful and the returned body is used as
 the new event payload by the EventListener and passed on the `TriggerBinding`.
 
@@ -33,19 +33,18 @@ the new event payload by the EventListener and passed on the `TriggerBinding`.
 To be an Event Interceptor, a Kubernetes object should:
 * Be fronted by a regular Kubernetes v1 Service over port 80
 * Accept JSON payloads over HTTP
-* Return a HTTP 200 OK Status if the EventListener should continue processing 
+* Return a HTTP 200 OK Status if the EventListener should continue processing
   the event
 * Return a JSON body back. This will be used by the EventListener as the event
   payload for any further processing. If the interceptor does not need to modify
   the body, it can simply return the body that it received.
 
-
-<!-- FILE: examples/eventlisteners/eventlistener.yaml -->
+<!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: listener
+  name: listener-interceptor
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
@@ -62,4 +61,5 @@ spec:
         name: pipeline-template
       params:
       - name: message
-        value: Hello from the Triggers EventListener!```
+        value: Hello from the Triggers EventListener!
+```

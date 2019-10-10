@@ -17,6 +17,7 @@ limitations under the License.
 package template
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -33,71 +34,129 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-func Test_EventPathVarRegex(t *testing.T) {
+func Test_BodyPathVarRegex(t *testing.T) {
 	tests := []string{
-		"$(event)",
-		"$(event.a-b)",
-		"$(event.a1)",
-		"$(event.a.b)",
-		"$(event.a.b.c)",
+		"$(body)",
+		"$(body.a-b)",
+		"$(body.a1)",
+		"$(body.a.b)",
+		"$(body.a.b.c)",
 	}
-	for _, eventPathVar := range tests {
-		t.Run(eventPathVar, func(t *testing.T) {
-			if !eventPathVarRegex.MatchString(eventPathVar) {
-				t.Errorf("eventPathVarRegex.MatchString(%s) = false, want = true", eventPathVar)
+	for _, bodyPathVar := range tests {
+		t.Run(bodyPathVar, func(t *testing.T) {
+			if !bodyPathVarRegex.MatchString(bodyPathVar) {
+				t.Errorf("bodyPathVarRegex.MatchString(%s) = false, want = true", bodyPathVar)
 			}
 		})
 	}
 }
 
-func Test_EventPathVarRegex_invalid(t *testing.T) {
+func Test_BodyPathVarRegex_invalid(t *testing.T) {
 	tests := []string{
-		"$event",
-		"$[event]",
-		"${event}",
-		"$(event.)",
-		"$(event..)",
-		"$(event.$a)",
-		"event.a",
-		"event",
-		"${{event}",
-		"${event",
+		"$body",
+		"$[body]",
+		"${body}",
+		"$(body.)",
+		"$(body..)",
+		"$(body.$a)",
+		"body.a",
+		"body",
+		"${{body}",
+		"${body",
 	}
-	for _, eventPathVar := range tests {
-		t.Run(eventPathVar, func(t *testing.T) {
-			if eventPathVarRegex.MatchString(eventPathVar) {
-				t.Errorf("eventPathVarRegex.MatchString(%s) = true, want = false", eventPathVar)
+	for _, bodyPathVar := range tests {
+		t.Run(bodyPathVar, func(t *testing.T) {
+			if bodyPathVarRegex.MatchString(bodyPathVar) {
+				t.Errorf("bodyPathVarRegex.MatchString(%s) = true, want = false", bodyPathVar)
 			}
 		})
 	}
 }
 
-func Test_GetEventPathFromVar(t *testing.T) {
+func Test_HeaderVarRegex(t *testing.T) {
+	tests := []string{
+		"$(header)",
+		"$(header.a-b)",
+		"$(header.a1)",
+	}
+	for _, headerVar := range tests {
+		t.Run(headerVar, func(t *testing.T) {
+			if !headerVarRegex.MatchString(headerVar) {
+				t.Errorf("headerVarRegex.MatchString(%s) = false, want = true", headerVar)
+			}
+		})
+	}
+}
+
+func Test_HeaderVarRegex_invalid(t *testing.T) {
+	tests := []string{
+		"$(header.a.b)",
+		"$(header.a.b.c)",
+		"$header",
+		"$[header]",
+		"${header}",
+		"$(header.)",
+		"$(header..)",
+		"$(header.$a)",
+		"header.a",
+		"header",
+		"${{header}",
+		"${header",
+	}
+	for _, headerVar := range tests {
+		t.Run(headerVar, func(t *testing.T) {
+			if headerVarRegex.MatchString(headerVar) {
+				t.Errorf("headerVarRegex.MatchString(%s) = true, want = false", headerVar)
+			}
+		})
+	}
+}
+
+func Test_GetBodyPathFromVar(t *testing.T) {
 	tests := []struct {
-		eventPathVar string
-		want         string
+		bodyPathVar string
+		want        string
 	}{
-		{eventPathVar: "$(event)", want: ""},
-		{eventPathVar: "$(event.a-b)", want: "a-b"},
-		{eventPathVar: "$(event.a1)", want: "a1"},
-		{eventPathVar: "$(event.a.b)", want: "a.b"},
-		{eventPathVar: "$(event.a.b.c)", want: "a.b.c"},
+		{bodyPathVar: "$(body)", want: ""},
+		{bodyPathVar: "$(body.a-b)", want: "a-b"},
+		{bodyPathVar: "$(body.a1)", want: "a1"},
+		{bodyPathVar: "$(body.a.b)", want: "a.b"},
+		{bodyPathVar: "$(body.a.b.c)", want: "a.b.c"},
 	}
 	for _, tt := range tests {
-		t.Run(tt.eventPathVar, func(t *testing.T) {
-			if eventPath := getEventPathFromVar(tt.eventPathVar); eventPath != tt.want {
-				t.Errorf("getEventPathFromVar() = %s, want = %s", eventPath, tt.want)
+		t.Run(tt.bodyPathVar, func(t *testing.T) {
+			if bodyPath := getBodyPathFromVar(tt.bodyPathVar); bodyPath != tt.want {
+				t.Errorf("getBodyPathFromVar() = %s, want = %s", bodyPath, tt.want)
 			}
 		})
 	}
 }
 
-func Test_getEventPathValue(t *testing.T) {
-	event := `{"empty": "", "null": null, "one": "one", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`
-	eventJSON := json.RawMessage(event)
+func Test_GetHeaderFromVar(t *testing.T) {
+	tests := []struct {
+		headerVar string
+		want      string
+	}{
+		{headerVar: "$(header)", want: ""},
+		{headerVar: "$(header.a-b)", want: "a-b"},
+		{headerVar: "$(header.a1)", want: "a1"},
+		{headerVar: "$(header.a.b)", want: "a.b"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.headerVar, func(t *testing.T) {
+			if header := getHeaderFromVar(tt.headerVar); header != tt.want {
+				t.Errorf("getHeaderFromVar() = %s, want = %s", header, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getBodyPathValue(t *testing.T) {
+	body := `{"empty": "", "null": null, "one": "one", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`
+	bodyJSON := json.RawMessage(body)
 	type args struct {
-		event     []byte
-		eventPath string
+		body     []byte
+		bodyPath string
 	}
 	tests := []struct {
 		args args
@@ -105,151 +164,223 @@ func Test_getEventPathValue(t *testing.T) {
 	}{
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "",
+				body:     bodyJSON,
+				bodyPath: "",
 			},
-			want: event,
+			want: strings.Replace(body, `"`, `\"`, -1),
 		},
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "one",
+				body:     bodyJSON,
+				bodyPath: "one",
 			},
 			want: "one",
 		},
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "two",
+				body:     bodyJSON,
+				bodyPath: "two",
 			},
-			want: `{"two": "twovalue"}`,
+			want: `{\"two\": \"twovalue\"}`,
 		},
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "three.three.three.three.three",
+				body:     bodyJSON,
+				bodyPath: "three.three.three.three.three",
 			},
 			want: "threevalue",
 		},
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "empty",
+				body:     bodyJSON,
+				bodyPath: "empty",
 			},
 			want: "",
 		},
 		{
 			args: args{
-				event:     eventJSON,
-				eventPath: "null",
+				body:     bodyJSON,
+				bodyPath: "null",
 			},
 			want: "null",
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.args.eventPath, func(t *testing.T) {
-			got, err := getEventPathValue(tt.args.event, tt.args.eventPath)
+		t.Run(tt.args.bodyPath, func(t *testing.T) {
+			got, err := getBodyPathValue(tt.args.body, tt.args.bodyPath)
 			if err != nil {
-				t.Errorf("getEventPathValue() error: %s", err)
+				t.Errorf("getBodyPathValue() error: %s", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("getEventPathValue(): -want +got: %s", diff)
+				t.Errorf("getBodyPathValue(): -want +got: %s", diff)
 			}
 		})
 	}
 }
 
-func Test_getEventPathValue_error(t *testing.T) {
-	eventJSON := json.RawMessage(`{"one": "onevalue", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`)
+func Test_getBodyPathValue_error(t *testing.T) {
+	bodyJSON := json.RawMessage(`{"one": "onevalue", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`)
 	tests := []struct {
-		event     []byte
-		eventPath string
+		body     []byte
+		bodyPath string
 	}{
 		{
-			event:     eventJSON,
-			eventPath: "boguspath",
+			body:     bodyJSON,
+			bodyPath: "boguspath",
 		},
 		{
-			event:     eventJSON,
-			eventPath: "two.bogus",
+			body:     bodyJSON,
+			bodyPath: "two.bogus",
 		},
 		{
-			event:     eventJSON,
-			eventPath: "three.three.bogus.three",
+			body:     bodyJSON,
+			bodyPath: "three.three.bogus.three",
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.eventPath, func(t *testing.T) {
-			got, err := getEventPathValue(tt.event, tt.eventPath)
+		t.Run(tt.bodyPath, func(t *testing.T) {
+			got, err := getBodyPathValue(tt.body, tt.bodyPath)
 			if err == nil {
-				t.Errorf("getEventPathValue() did not return error when expected; got: %s", got)
+				t.Errorf("getBodyPathValue() did not return error when expected; got: %s", got)
+			}
+		})
+	}
+}
+
+func Test_getHeaderValue(t *testing.T) {
+	header := map[string][]string{"one": {"one"}, "two": {"one", "two"}, "three": {"one", "two", "three"}}
+	type args struct {
+		header     map[string][]string
+		headerName string
+	}
+	tests := []struct {
+		args args
+		want string
+	}{
+		{
+			args: args{
+				header:     header,
+				headerName: "",
+			},
+			want: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`,
+		},
+		{
+			args: args{
+				header:     header,
+				headerName: "one",
+			},
+			want: "one",
+		},
+		{
+			args: args{
+				header:     header,
+				headerName: "two",
+			},
+			want: "one two",
+		},
+		{
+			args: args{
+				header:     header,
+				headerName: "three",
+			},
+			want: "one two three",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.args.headerName, func(t *testing.T) {
+			got, err := getHeaderValue(tt.args.header, tt.args.headerName)
+			if err != nil {
+				t.Errorf("getHeaderValue() error: %s", err)
+			} else if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("getHeaderValue(): -want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func Test_getHeaderValue_error(t *testing.T) {
+	header := map[string][]string{"one": {"one"}}
+	tests := []struct {
+		header     map[string][]string
+		headerName string
+	}{
+		{
+			header:     header,
+			headerName: "bogusheadername",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.headerName, func(t *testing.T) {
+			got, err := getHeaderValue(tt.header, tt.headerName)
+			if err == nil {
+				t.Errorf("getHeaderValue() did not return error when expected; got: %s", got)
 			}
 		})
 	}
 }
 
 var (
-	testEventJSON       = json.RawMessage(`{"one": "onevalue", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`)
-	paramNoEventPathVar = pipelinev1.Param{
-		Name:  "paramNoEventPathVar",
+	testBodyJSON       = json.RawMessage(`{"one": "onevalue", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}`)
+	paramNoBodyPathVar = pipelinev1.Param{
+		Name:  "paramNoBodyPathVar",
 		Value: pipelinev1.ArrayOrString{StringVal: "bar"},
 	}
-	wantParamNoEventPathVar = pipelinev1.Param{
-		Name:  "paramNoEventPathVar",
+	wantParamNoBodyPathVar = pipelinev1.Param{
+		Name:  "paramNoBodyPathVar",
 		Value: pipelinev1.ArrayOrString{StringVal: "bar"},
 	}
-	paramOneEventPathVar = pipelinev1.Param{
-		Name:  "paramOneEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.one)-bar"},
+	paramOneBodyPathVar = pipelinev1.Param{
+		Name:  "paramOneBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.one)-bar"},
 	}
-	wantParamOneEventPathVar = pipelinev1.Param{
-		Name:  "paramOneEventPathVar",
+	wantParamOneBodyPathVar = pipelinev1.Param{
+		Name:  "paramOneBodyPathVar",
 		Value: pipelinev1.ArrayOrString{StringVal: "bar-onevalue-bar"},
 	}
-	paramMultipleIdenticalEventPathVars = pipelinev1.Param{
-		Name:  "paramMultipleIdenticalEventPathVars",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.one)-$(event.one)-$(event.one)-bar"},
+	paramMultipleIdenticalBodyPathVars = pipelinev1.Param{
+		Name:  "paramMultipleIdenticalBodyPathVars",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.one)-$(body.one)-$(body.one)-bar"},
 	}
-	wantParamMultipleIdenticalEventPathVars = pipelinev1.Param{
-		Name:  "paramMultipleIdenticalEventPathVars",
+	wantParamMultipleIdenticalBodyPathVars = pipelinev1.Param{
+		Name:  "paramMultipleIdenticalBodyPathVars",
 		Value: pipelinev1.ArrayOrString{StringVal: "bar-onevalue-onevalue-onevalue-bar"},
 	}
-	paramMultipleUniqueEventPathVars = pipelinev1.Param{
-		Name:  "paramMultipleUniqueEventPathVars",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.one)-$(event.two.two)-$(event.three.three.three.three.three)-bar"},
+	paramMultipleUniqueBodyPathVars = pipelinev1.Param{
+		Name:  "paramMultipleUniqueBodyPathVars",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.one)-$(body.two.two)-$(body.three.three.three.three.three)-bar"},
 	}
-	wantParamMultipleUniqueEventPathVars = pipelinev1.Param{
-		Name:  "paramMultipleUniqueEventPathVars",
+	wantParamMultipleUniqueBodyPathVars = pipelinev1.Param{
+		Name:  "paramMultipleUniqueBodyPathVars",
 		Value: pipelinev1.ArrayOrString{StringVal: "bar-onevalue-twovalue-threevalue-bar"},
 	}
-	paramSubobjectEventPathVar = pipelinev1.Param{
-		Name:  "paramSubobjectEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.three)-bar"},
+	paramSubobjectBodyPathVar = pipelinev1.Param{
+		Name:  "paramSubobjectBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.three)-bar"},
 	}
-	wantParamSubobjectEventPathVar = pipelinev1.Param{
-		Name:  "paramSubobjectEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: `bar-{"three": {"three": {"three": {"three": "threevalue"}}}}-bar`},
+	wantParamSubobjectBodyPathVar = pipelinev1.Param{
+		Name:  "paramSubobjectBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: `bar-{\"three\": {\"three\": {\"three\": {\"three\": \"threevalue\"}}}}-bar`},
 	}
-	paramEntireEventEventPathVar = pipelinev1.Param{
-		Name:  "paramEntireEventEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event)-bar"},
+	paramEntireBodyPathVar = pipelinev1.Param{
+		Name:  "paramEntireBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body)-bar"},
 	}
-	wantParamEntireEventEventPathVar = pipelinev1.Param{
-		Name:  "paramEntireEventEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: `bar-{"one": "onevalue", "two": {"two": "twovalue"}, "three": {"three": {"three": {"three": {"three": "threevalue"}}}}}-bar`},
+	wantParamEntireBodyPathVar = pipelinev1.Param{
+		Name:  "paramEntireBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: `bar-{\"one\": \"onevalue\", \"two\": {\"two\": \"twovalue\"}, \"three\": {\"three\": {\"three\": {\"three\": {\"three\": \"threevalue\"}}}}}-bar`},
 	}
-	paramOneBogusEventPathVar = pipelinev1.Param{
-		Name:  "paramOneBogusEventPathVar",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.bogus.path)-bar"},
+	paramOneBogusBodyPathVar = pipelinev1.Param{
+		Name:  "paramOneBogusBodyPathVar",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.bogus.path)-bar"},
 	}
-	paramMultipleBogusEventPathVars = pipelinev1.Param{
-		Name:  "paramMultipleBogusEventPathVars",
-		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(event.bogus.path)-$(event.two.bogus)-$(event.three.bogus)-bar"},
+	paramMultipleBogusBodyPathVars = pipelinev1.Param{
+		Name:  "paramMultipleBogusBodyPathVars",
+		Value: pipelinev1.ArrayOrString{StringVal: "bar-$(body.bogus.path)-$(body.two.bogus)-$(body.three.bogus)-bar"},
 	}
 )
 
-func Test_applyEventToParam(t *testing.T) {
+func Test_applyBodyToParam(t *testing.T) {
 	type args struct {
-		event []byte
+		body  []byte
 		param pipelinev1.Param
 	}
 	tests := []struct {
@@ -257,69 +388,69 @@ func Test_applyEventToParam(t *testing.T) {
 		want pipelinev1.Param
 	}{
 		{
-			args: args{event: []byte{}, param: paramNoEventPathVar},
-			want: wantParamNoEventPathVar,
+			args: args{body: []byte{}, param: paramNoBodyPathVar},
+			want: wantParamNoBodyPathVar,
 		},
 		{
-			args: args{event: testEventJSON, param: paramOneEventPathVar},
-			want: wantParamOneEventPathVar,
+			args: args{body: testBodyJSON, param: paramOneBodyPathVar},
+			want: wantParamOneBodyPathVar,
 		},
 		{
-			args: args{event: testEventJSON, param: paramMultipleIdenticalEventPathVars},
-			want: wantParamMultipleIdenticalEventPathVars,
+			args: args{body: testBodyJSON, param: paramMultipleIdenticalBodyPathVars},
+			want: wantParamMultipleIdenticalBodyPathVars,
 		},
 		{
-			args: args{event: testEventJSON, param: paramMultipleUniqueEventPathVars},
-			want: wantParamMultipleUniqueEventPathVars,
+			args: args{body: testBodyJSON, param: paramMultipleUniqueBodyPathVars},
+			want: wantParamMultipleUniqueBodyPathVars,
 		},
 		{
-			args: args{event: testEventJSON, param: paramEntireEventEventPathVar},
-			want: wantParamEntireEventEventPathVar,
+			args: args{body: testBodyJSON, param: paramEntireBodyPathVar},
+			want: wantParamEntireBodyPathVar,
 		},
 		{
-			args: args{event: testEventJSON, param: paramSubobjectEventPathVar},
-			want: wantParamSubobjectEventPathVar,
+			args: args{body: testBodyJSON, param: paramSubobjectBodyPathVar},
+			want: wantParamSubobjectBodyPathVar,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.args.param.Value.StringVal, func(t *testing.T) {
-			got, err := applyEventToParam(tt.args.event, tt.args.param)
+			got, err := applyBodyToParam(tt.args.body, tt.args.param)
 			if err != nil {
-				t.Errorf("applyEventToParam() error = %v", err)
+				t.Errorf("applyBodyToParam() error = %v", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("applyEventToParam(): -want +got: %s", diff)
+				t.Errorf("applyBodyToParam(): -want +got: %s", diff)
 			}
 		})
 	}
 }
 
-func Test_applyEventToParam_error(t *testing.T) {
+func Test_applyBodyToParam_error(t *testing.T) {
 	tests := []struct {
-		event []byte
+		body  []byte
 		param pipelinev1.Param
 	}{
 		{
-			event: testEventJSON,
-			param: paramOneBogusEventPathVar,
+			body:  testBodyJSON,
+			param: paramOneBogusBodyPathVar,
 		},
 		{
-			event: testEventJSON,
-			param: paramMultipleBogusEventPathVars,
+			body:  testBodyJSON,
+			param: paramMultipleBogusBodyPathVars,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.param.Value.StringVal, func(t *testing.T) {
-			got, err := applyEventToParam(tt.event, tt.param)
+			got, err := applyBodyToParam(tt.body, tt.param)
 			if err == nil {
-				t.Errorf("applyEventToParam() did not return error when expected; got: %v", got)
+				t.Errorf("applyBodyToParam() did not return error when expected; got: %v", got)
 			}
 		})
 	}
 }
 
-func Test_ApplyEventToParams(t *testing.T) {
+func Test_ApplyBodyToParams(t *testing.T) {
 	type args struct {
-		event  []byte
+		body   []byte
 		params []pipelinev1.Param
 	}
 	tests := []struct {
@@ -330,7 +461,7 @@ func Test_ApplyEventToParams(t *testing.T) {
 		{
 			name: "empty params",
 			args: args{
-				event:  testEventJSON,
+				body:   testBodyJSON,
 				params: []pipelinev1.Param{},
 			},
 			want: []pipelinev1.Param{},
@@ -338,45 +469,45 @@ func Test_ApplyEventToParams(t *testing.T) {
 		{
 			name: "one param",
 			args: args{
-				event:  testEventJSON,
-				params: []pipelinev1.Param{paramOneEventPathVar},
+				body:   testBodyJSON,
+				params: []pipelinev1.Param{paramOneBodyPathVar},
 			},
-			want: []pipelinev1.Param{wantParamOneEventPathVar},
+			want: []pipelinev1.Param{wantParamOneBodyPathVar},
 		},
 		{
 			name: "multiple params",
 			args: args{
-				event: testEventJSON,
+				body: testBodyJSON,
 				params: []pipelinev1.Param{
-					paramOneEventPathVar,
-					paramMultipleUniqueEventPathVars,
-					paramSubobjectEventPathVar,
+					paramOneBodyPathVar,
+					paramMultipleUniqueBodyPathVars,
+					paramSubobjectBodyPathVar,
 				},
 			},
 			want: []pipelinev1.Param{
-				wantParamOneEventPathVar,
-				wantParamMultipleUniqueEventPathVars,
-				wantParamSubobjectEventPathVar,
+				wantParamOneBodyPathVar,
+				wantParamMultipleUniqueBodyPathVars,
+				wantParamSubobjectBodyPathVar,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ApplyEventToParams(tt.args.event, tt.args.params)
+			got, err := ApplyBodyToParams(tt.args.body, tt.args.params)
 			if err != nil {
-				t.Errorf("ApplyEventToParams() error = %v", err)
+				t.Errorf("ApplyBodyToParams() error = %v", err)
 				return
 			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("ApplyEventToParams(): -want +got: %s", diff)
+				t.Errorf("ApplyBodyToParams(): -want +got: %s", diff)
 			}
 		})
 	}
 }
 
-func Test_ApplyEventToParams_error(t *testing.T) {
+func Test_ApplyBodyToParams_error(t *testing.T) {
 	type args struct {
-		event  []byte
+		body   []byte
 		params []pipelinev1.Param
 	}
 	tests := []struct {
@@ -384,32 +515,177 @@ func Test_ApplyEventToParams_error(t *testing.T) {
 		args args
 	}{
 		{
-			name: "error one eventpath not found",
+			name: "error one bodypath not found",
 			args: args{
-				event: testEventJSON,
+				body: testBodyJSON,
 				params: []pipelinev1.Param{
-					paramOneBogusEventPathVar,
-					paramMultipleUniqueEventPathVars,
-					paramSubobjectEventPathVar,
+					paramOneBogusBodyPathVar,
+					paramMultipleUniqueBodyPathVars,
+					paramSubobjectBodyPathVar,
 				},
 			},
 		},
 		{
-			name: "error multiple eventpaths not found",
+			name: "error multiple bodypaths not found",
 			args: args{
-				event: testEventJSON,
+				body: testBodyJSON,
 				params: []pipelinev1.Param{
-					paramOneBogusEventPathVar,
-					paramMultipleBogusEventPathVars,
+					paramOneBogusBodyPathVar,
+					paramMultipleBogusBodyPathVars,
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ApplyEventToParams(tt.args.event, tt.args.params)
+			got, err := ApplyBodyToParams(tt.args.body, tt.args.params)
 			if err == nil {
-				t.Errorf("ApplyEventToParams() did not return error when expected; got: %v", got)
+				t.Errorf("ApplyBodyToParams() did not return error when expected; got: %v", got)
+			}
+		})
+	}
+}
+
+func Test_applyHeaderToParams(t *testing.T) {
+	header := map[string][]string{"one": {"one"}, "two": {"one", "two"}, "three": {"one", "two", "three"}}
+	type args struct {
+		header map[string][]string
+		param  pipelinev1.Param
+	}
+	tests := []struct {
+		name string
+		args args
+		want pipelinev1.Param
+	}{
+		{
+			name: "empty",
+			args: args{
+				header: header,
+				param:  pipelinev1.Param{},
+			},
+			want: pipelinev1.Param{},
+		},
+		{
+			name: "no header vars",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "noHeaderVars",
+					Value: pipelinev1.ArrayOrString{StringVal: "foo"},
+				},
+			},
+			want: pipelinev1.Param{
+				Name:  "noHeaderVars",
+				Value: pipelinev1.ArrayOrString{StringVal: "foo"},
+			},
+		},
+		{
+			name: "one header var",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "oneHeaderVar",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)"},
+				},
+			},
+			want: pipelinev1.Param{
+				Name:  "oneHeaderVar",
+				Value: pipelinev1.ArrayOrString{StringVal: "one"},
+			},
+		},
+		{
+			name: "multiple header vars",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "multipleHeaderVars",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.two)-$(header.three)"},
+				},
+			},
+			want: pipelinev1.Param{
+				Name:  "multipleHeaderVars",
+				Value: pipelinev1.ArrayOrString{StringVal: `one-one two-one two three`},
+			},
+		},
+		{
+			name: "identical header vars",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "identicalHeaderVars",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.one)-$(header.one)"},
+				},
+			},
+			want: pipelinev1.Param{
+				Name:  "identicalHeaderVars",
+				Value: pipelinev1.ArrayOrString{StringVal: `one-one-one`},
+			},
+		},
+		{
+			name: "entire header var",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "entireHeaderVar",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header)"},
+				},
+			},
+			want: pipelinev1.Param{
+				Name:  "entireHeaderVar",
+				Value: pipelinev1.ArrayOrString{StringVal: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyHeaderToParam(tt.args.header, tt.args.param)
+			if err != nil {
+				t.Errorf("applyHeaderToParam() error = %v", err)
+				return
+			}
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("applyHeaderToParam(): -want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func Test_applyHeaderToParams_error(t *testing.T) {
+	header := map[string][]string{"one": {"one"}}
+	type args struct {
+		header map[string][]string
+		param  pipelinev1.Param
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "error header not found",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "oneBogusHeader",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header.bogus)"},
+				},
+			},
+		},
+		{
+			name: "error multiple headers not found",
+			args: args{
+				header: header,
+				param: pipelinev1.Param{
+					Name:  "multipleBogusHeaders",
+					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.bogus1)-$(header.bogus2)-$(header.bogus3)"},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyHeaderToParam(tt.args.header, tt.args.param)
+			if err == nil {
+				t.Errorf("applyHeaderToParam() did not return error when expected; got: %v", got)
 			}
 		})
 	}
@@ -417,7 +693,8 @@ func Test_ApplyEventToParams_error(t *testing.T) {
 
 func Test_NewResources(t *testing.T) {
 	type args struct {
-		event    []byte
+		body     []byte
+		header   map[string][]string
 		elParams []pipelinev1.Param
 		binding  ResolvedBinding
 	}
@@ -429,7 +706,8 @@ func Test_NewResources(t *testing.T) {
 		{
 			name: "empty",
 			args: args{
-				event: json.RawMessage{},
+				body:   json.RawMessage{},
+				header: map[string][]string{},
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
 					TriggerBinding:  bldr.TriggerBinding("tb", "namespace"),
@@ -440,48 +718,54 @@ func Test_NewResources(t *testing.T) {
 		{
 			name: "one resource template",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body:   json.RawMessage(`{"foo": "bar"}`),
+				header: map[string][]string{"one": {"1"}},
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
 							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)"}`)),
+							bldr.TriggerTemplateParam("param2", "description", ""),
+							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
 						),
 					),
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(event.foo)"),
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							bldr.TriggerBindingParam("param2", "$(header.one)"),
 						),
 					),
 				},
 			},
 			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar"}`),
+				json.RawMessage(`{"rt1": "bar-1"}`),
 			},
 		},
 		{
 			name: "multiple resource templates",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body:   json.RawMessage(`{"foo": "bar"}`),
+				header: map[string][]string{"one": {"1"}},
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
 							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerTemplateParam("param2", "description", "default2"),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param2)"}`)),
+							bldr.TriggerTemplateParam("param2", "description", ""),
+							bldr.TriggerTemplateParam("param3", "description", "default2"),
+							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param3)"}`)),
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
 						),
 					),
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(event.foo)"),
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							bldr.TriggerBindingParam("param2", "$(header.one)"),
 						),
 					),
 				},
 			},
 			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar"}`),
+				json.RawMessage(`{"rt1": "bar-1"}`),
 				json.RawMessage(`{"rt2": "default2"}`),
 				json.RawMessage(`{"rt3": "rt3"}`),
 			},
@@ -489,7 +773,7 @@ func Test_NewResources(t *testing.T) {
 		{
 			name: "one resource template with one uid",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body: json.RawMessage(`{"foo": "bar"}`),
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
@@ -499,7 +783,7 @@ func Test_NewResources(t *testing.T) {
 					),
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(event.foo)"),
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
 				},
@@ -511,7 +795,7 @@ func Test_NewResources(t *testing.T) {
 		{
 			name: "one resource template with three uid",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body: json.RawMessage(`{"foo": "bar"}`),
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
@@ -521,7 +805,7 @@ func Test_NewResources(t *testing.T) {
 					),
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(event.foo)"),
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
 				},
@@ -533,7 +817,7 @@ func Test_NewResources(t *testing.T) {
 		{
 			name: "multiple resource templates with multiple uid",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body: json.RawMessage(`{"foo": "bar"}`),
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
@@ -546,7 +830,7 @@ func Test_NewResources(t *testing.T) {
 					),
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(event.foo)"),
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
 				},
@@ -558,9 +842,9 @@ func Test_NewResources(t *testing.T) {
 			},
 		},
 		{
-			name: "one EventListener param",
+			name: "one BodyListener param",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body: json.RawMessage(`{"foo": "bar"}`),
 				elParams: []pipelinev1.Param{
 					{
 						Name:  "param1",
@@ -570,7 +854,7 @@ func Test_NewResources(t *testing.T) {
 				binding: ResolvedBinding{
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param2", "$(event.foo)"),
+							bldr.TriggerBindingParam("param2", "$(body.foo)"),
 						),
 					),
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
@@ -589,9 +873,9 @@ func Test_NewResources(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple EventListener params",
+			name: "multiple BodyListener params",
 			args: args{
-				event: json.RawMessage(`{"foo": "bar"}`),
+				body: json.RawMessage(`{"foo": "bar"}`),
 				elParams: []pipelinev1.Param{
 					{
 						Name:  "param1",
@@ -605,7 +889,7 @@ func Test_NewResources(t *testing.T) {
 				binding: ResolvedBinding{
 					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param2", "$(event.foo)"),
+							bldr.TriggerBindingParam("param2", "$(body.foo)"),
 						),
 					),
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
@@ -634,7 +918,7 @@ func Test_NewResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This seeds Uid() to return 'cbhtc'
 			rand.Seed(0)
-			got, err := NewResources(tt.args.event, tt.args.elParams, tt.args.binding)
+			got, err := NewResources(tt.args.body, tt.args.header, tt.args.elParams, tt.args.binding)
 			if err != nil {
 				t.Errorf("NewResources() returned unexpected error: %s", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
@@ -656,13 +940,14 @@ func convertJSONRawMessagesToString(rawMessages []json.RawMessage) []string {
 func Test_NewResources_error(t *testing.T) {
 	tests := []struct {
 		name     string
-		event    []byte
+		body     []byte
+		header   map[string][]string
 		elParams []pipelinev1.Param
 		binding  ResolvedBinding
 	}{
 		{
-			name:  "eventpath not found in event",
-			event: json.RawMessage(`{"foo": "bar"}`),
+			name: "bodypath not found in body",
+			body: json.RawMessage(`{"foo": "bar"}`),
 			binding: ResolvedBinding{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
@@ -671,7 +956,24 @@ func Test_NewResources_error(t *testing.T) {
 				),
 				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(event.bogusvalue)"),
+						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
+					),
+				),
+			},
+		},
+		{
+			name:   "header not found in event",
+			body:   json.RawMessage(`{"foo": "bar"}`),
+			header: map[string][]string{"One": {"one"}},
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+					),
+				),
+				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
+					bldr.TriggerBindingSpec(
+						bldr.TriggerBindingParam("param1", "$(header.bogusvalue)"),
 					),
 				),
 			},
@@ -692,7 +994,7 @@ func Test_NewResources_error(t *testing.T) {
 				),
 				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
 					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(event.bogusvalue)"),
+						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
 					),
 				),
 			},
@@ -700,7 +1002,7 @@ func Test_NewResources_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewResources(tt.event, tt.elParams, tt.binding)
+			got, err := NewResources(tt.body, tt.header, tt.elParams, tt.binding)
 			if err == nil {
 				t.Errorf("NewResources() did not return error when expected; got: %s", got)
 			}
@@ -708,7 +1010,7 @@ func Test_NewResources_error(t *testing.T) {
 	}
 }
 
-func TestExamplesForEventPathVariables(t *testing.T) {
+func TestExamplesForBodyPathVariables(t *testing.T) {
 	var testNames []string
 	var payloads [][]byte
 	// Populates payloads using examples
@@ -723,7 +1025,12 @@ func TestExamplesForEventPathVariables(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			payloads = append(payloads, b)
+			var buffer bytes.Buffer
+			err = json.Compact(&buffer, b)
+			if err != nil {
+				t.Errorf("Error making json compact: %s", err)
+			}
+			payloads = append(payloads, buffer.Bytes())
 			fileNameTrimmed := strings.TrimSuffix(path, ".json")
 			testNames = append(testNames, strings.Replace(strings.Title(fileNameTrimmed), "/", "", -1))
 		}
@@ -738,39 +1045,42 @@ func TestExamplesForEventPathVariables(t *testing.T) {
 		iCopy := i
 		t.Run(testNames[i], func(t *testing.T) {
 			// Grab bindings and expected values
-			eventPaths, expectedValues, err := eventPathDigger(payloads[iCopy], "")
+			bodyPaths, expectedValues, err := bodyPathDigger(payloads[iCopy], "")
 			if err != nil {
-				t.Errorf("Failed to generate event bindings for %s payload", testNames[iCopy])
+				t.Errorf("Failed to generate bindings for %s payload", testNames[iCopy])
 				return
 			}
 
 			// Grab actual values
-			for i := range eventPaths {
-				gotValue, err := getEventPathValue(payloads[iCopy], eventPaths[i])
+			for i := range bodyPaths {
+				gotValue, err := getBodyPathValue(payloads[iCopy], bodyPaths[i])
 				if err != nil {
-					t.Errorf("Error getting value for eventPath %s: %s", eventPaths[i], err)
+					t.Errorf("Error getting value for bodyPath %s: %s", bodyPaths[i], err)
 					continue
 				}
-				if json.Valid([]byte(gotValue)) && json.Valid([]byte(expectedValues[i])) {
+				// Format so compare does not care about order of keys
+				gotBytes := []byte(strings.Replace(gotValue, `\"`, `"`, -1))
+				wantBytes := []byte(strings.Replace(expectedValues[i], `\"`, `"`, -1))
+				if json.Valid(gotBytes) && json.Valid(wantBytes) {
 					// Make all formatting compact to compare content, not formatting
 					var wantUnmarshalled interface{}
-					if err = json.Unmarshal([]byte(expectedValues[i]), &wantUnmarshalled); err != nil {
-						t.Errorf("Error unmarshalling wantValue %s: %s", expectedValues[i], err)
+					if err = json.Unmarshal([]byte(wantBytes), &wantUnmarshalled); err != nil {
+						t.Errorf("Error unmarshalling wantValue %s: %s", wantBytes, err)
 						continue
 					}
 					want, _ := json.Marshal(wantUnmarshalled)
 					var gotUnmarshalled interface{}
-					if err = json.Unmarshal([]byte(gotValue), &gotUnmarshalled); err != nil {
-						t.Errorf("Error unmarshalling gotValue %s: %s", gotValue, err)
+					if err = json.Unmarshal(gotBytes, &gotUnmarshalled); err != nil {
+						t.Errorf("Error unmarshalling gotValue %s: %s", gotBytes, err)
 						continue
 					}
 					got, _ := json.Marshal(gotUnmarshalled)
 					if diff := cmp.Diff(string(want), string(got)); diff != "" {
-						t.Errorf("Error for eventPath %s: diff -want +got: %s", eventPaths[i], diff)
+						t.Errorf("Error for bodyPath %s: diff -want +got: %s", bodyPaths[i], diff)
 					}
 				} else {
 					if diff := cmp.Diff(expectedValues[i], gotValue); diff != "" {
-						t.Errorf("Error for eventPath %s -want +got: %s", eventPaths[i], diff)
+						t.Errorf("Error for bodyPath %s -want +got: %s", bodyPaths[i], diff)
 					}
 				}
 			}
@@ -778,10 +1088,10 @@ func TestExamplesForEventPathVariables(t *testing.T) {
 	}
 }
 
-// Test_eventPathDigger tests eventPathDigger to ensure all possible event paths are returned
+// Test_bodyPathDigger tests bodyPathDigger to ensure all possible body paths are returned
 // The simple digger example payload is space compacted
-func Test_eventPathDigger(t *testing.T) {
-	// Small example file/payload used to validate the functionality of eventBindingDigger
+func Test_bodyPathDigger(t *testing.T) {
+	// Small example file/payload used to validate the functionality of bodyPathDigger
 	filePath := "examples/digger.json"
 	t.Logf("Reading %s", filePath)
 	b, err := ioutil.ReadFile(filePath)
@@ -791,35 +1101,35 @@ func Test_eventPathDigger(t *testing.T) {
 	// Create assertion map
 	// The example digger payload fields have been predefined as space compacted
 	pathValueMap := map[string]string{
-		"":    string(b),
+		"":    strings.Replace(string(b), `"`, `\"`, -1),
 		"a":   "a",
 		"b":   "true",
 		"c":   "30",
 		"d":   "[]",
-		"e":   `["a"]`,
+		"e":   `[\"a\"]`,
 		"f":   "[false]",
 		"g":   "[3]",
-		"h":   `[{"a":"a"}]`,
-		"i":   `{"a":"a"}`,
+		"h":   `[{\"a\":\"a\"}]`,
+		"i":   `{\"a\":\"a\"}`,
 		"i.a": "a",
 		"j":   "",
 	}
 	// Grab values
-	eventPaths, actualValues, err := eventPathDigger(b, "")
+	bodyPaths, actualValues, err := bodyPathDigger(b, "")
 	if err != nil {
-		t.Fatalf("Failed to generate event bindings for %s payload", filePath)
+		t.Fatalf("Failed to generate body paths for %s payload", filePath)
 	}
 
 	// Ensure sizing is the same
-	if len(eventPaths) != len(pathValueMap) {
-		t.Fatalf("Length of eventBindings[%d] did not match expected[%d]", len(eventPaths), len(pathValueMap))
+	if len(bodyPaths) != len(pathValueMap) {
+		t.Fatalf("Length of bodyPaths[%d] did not match expected[%d]", len(bodyPaths), len(pathValueMap))
 	}
 	if len(actualValues) != len(pathValueMap) {
 		t.Fatalf("Length of actualValues[%d] did not match expected[%d]", len(actualValues), len(pathValueMap))
 	}
 	// Validate against assertion map
-	for i := 0; i < len(eventPaths); i++ {
-		expectedValue := pathValueMap[eventPaths[i]]
+	for i := 0; i < len(bodyPaths); i++ {
+		expectedValue := pathValueMap[bodyPaths[i]]
 		actualValue := actualValues[i]
 		if diff := cmp.Diff(expectedValue, actualValue); diff != "" {
 			t.Errorf("Diff: -want +got: %s", diff)
@@ -827,24 +1137,26 @@ func Test_eventPathDigger(t *testing.T) {
 	}
 }
 
-// eventPathDigger returns all possible event paths and corresponding expected values from the payload
+// bodyPathDigger returns all possible body paths and corresponding expected values from the payload
 // Digs into map recursively whenever the value is a json object
 // Inherent to the marshalling of json, expectedValues cannot by guaranteed in the same order as payload
-func eventPathDigger(payload []byte, location string) (eventPaths []string, expectedValues []string, err error) {
+func bodyPathDigger(payload []byte, location string) (bodyPaths []string, expectedValues []string, err error) {
 	// Trim quotes if they exist ("value" -> value)
 	value := strings.TrimPrefix(strings.TrimSuffix(string(payload), "\""), "\"")
+	// Escape double quotes
+	value = strings.Replace(value, `"`, `\"`, -1)
 	// Add the entire event payload/base
-	eventPaths = append(eventPaths, location)
+	bodyPaths = append(bodyPaths, location)
 	expectedValues = append(expectedValues, value)
 
-	// Store event as map to make it iterable
+	// Store body as map to make it iterable
 	m := make(map[string]interface{})
 	err = json.Unmarshal(payload, &m)
 	if err != nil {
 		// Payload is a value, so stop recursion
-		return eventPaths, expectedValues, nil
+		return bodyPaths, expectedValues, nil
 	}
-	// Iterate over fields (potentially recursively) to capture all event bindings and expected values
+	// Iterate over fields (potentially recursively) to capture all body paths and expected values
 	for field, value := range m {
 		var currentLocation string
 		if location == "" {
@@ -856,11 +1168,11 @@ func eventPathDigger(payload []byte, location string) (eventPaths []string, expe
 		if err != nil {
 			return nil, nil, xerrors.Errorf("Failed to marshal value %v: %s", value, err)
 		}
-		nestedPaths, nestedValues, err := eventPathDigger(b, currentLocation)
+		nestedPaths, nestedValues, err := bodyPathDigger(b, currentLocation)
 		if err != nil {
 			return nil, nil, err
 		}
-		eventPaths, expectedValues = append(eventPaths, nestedPaths...), append(expectedValues, nestedValues...)
+		bodyPaths, expectedValues = append(bodyPaths, nestedPaths...), append(expectedValues, nestedValues...)
 	}
-	return eventPaths, expectedValues, nil
+	return bodyPaths, expectedValues, nil
 }
