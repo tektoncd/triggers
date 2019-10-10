@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"path"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -64,31 +65,31 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	eventId := template.Uid()
+	eventID := template.Uid()
 	log.Printf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, eventId, string(event), request.Header)
+		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
 	// Execute each Trigger
 	for _, trigger := range el.Spec.Triggers {
-		go r.executeTrigger(event, request, trigger, eventId)
+		go r.executeTrigger(event, request, trigger, eventID)
 	}
 
 	// TODO: Do we really need to return the entire body back???
 	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, string(eventId), string(event), request.Header)
+		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
 }
 
-func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventId string) {
+func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string) {
 	if trigger.Interceptor != nil {
-		interceptorUrl, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
+		interceptorURL, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 		if err != nil {
 			log.Printf("Could not resolve Interceptor Service URI: %q", err)
 			return
 		}
 
-		modifiedPayload, err := r.processEvent(interceptorUrl, request, payload)
+		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header)
 		if err != nil {
-			log.Printf("Error Intercepting Event (EventID: %s): %q", eventId, err)
+			log.Printf("Error Intercepting Event (EventID: %s): %q", eventID, err)
 			return
 		}
 		payload = modifiedPayload
@@ -106,19 +107,31 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 		log.Print(err)
 		return
 	}
-	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventId)
+	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID)
 	if err != nil {
 		log.Print(err)
 	}
 }
 
-func (r Resource) processEvent(interceptorUrl *url.URL, request *http.Request, payload []byte) ([]byte, error) {
-	outgoing := createOutgoingRequest(context.Background(), request, interceptorUrl, payload)
+func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param) ([]byte, error) {
+	outgoing := createOutgoingRequest(context.Background(), request, interceptorURL, payload)
+	addInterceptorHeaders(outgoing.Header, headerParams)
 	respPayload, err := makeRequest(r.HttpClient, outgoing)
 	if err != nil {
 		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
 	}
 	return respPayload, nil
+}
+
+func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {
+	// This clobbers any matching headers
+	for _, param := range headerParams {
+		if param.Value.Type == pipelinev1.ParamTypeString {
+			header[param.Name] = []string{param.Value.StringVal}
+		} else {
+			header[param.Name] = param.Value.ArrayVal
+		}
+	}
 }
 
 func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {

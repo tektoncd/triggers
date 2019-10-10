@@ -21,6 +21,9 @@ type EventListenerStatusOp func(*v1alpha1.EventListenerStatus)
 // EventListenerTriggerOp is an operation which modifies the Trigger.
 type EventListenerTriggerOp func(*v1alpha1.EventListenerTrigger)
 
+// EventInterceptorOp is an operation which modifies the EventInterceptor.
+type EventInterceptorOp func(*v1alpha1.EventInterceptor)
+
 // EventListener creates an EventListener with default values.
 // Any number of EventListenerOp modifiers can be passed to transform it.
 func EventListener(name, namespace string, ops ...EventListenerOp) *v1alpha1.EventListener {
@@ -159,7 +162,7 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 }
 
 // EventListenerTriggerInterceptor adds an objectRef to an interceptor Service to the EventListenerTrigger.
-func EventListenerTriggerInterceptor(name, version, kind, namespace string) EventListenerTriggerOp {
+func EventListenerTriggerInterceptor(name, version, kind, namespace string, ops ...EventInterceptorOp) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
 		t.Interceptor = &v1alpha1.EventInterceptor{
 			ObjectRef: &corev1.ObjectReference{
@@ -169,5 +172,28 @@ func EventListenerTriggerInterceptor(name, version, kind, namespace string) Even
 				Namespace:  namespace,
 			},
 		}
+		for _, op := range ops {
+			op(t.Interceptor)
+		}
+	}
+}
+
+// EventInterceptorParam adds a parameter to the EventInterceptor.
+func EventInterceptorParam(name, value string) EventInterceptorOp {
+	return func(i *v1alpha1.EventInterceptor) {
+		for _, param := range i.Header {
+			if param.Name == name {
+				param.Value.ArrayVal = append(param.Value.ArrayVal, value)
+				return
+			}
+		}
+		i.Header = append(i.Header,
+			pipelinev1.Param{
+				Name: name,
+				Value: pipelinev1.ArrayOrString{
+					ArrayVal: []string{value},
+					Type:     pipelinev1.ParamTypeArray,
+				},
+			})
 	}
 }

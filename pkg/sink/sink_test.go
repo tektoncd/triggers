@@ -43,7 +43,7 @@ import (
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-const eventIdLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
+const eventIDLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
 func Test_createRequestURI(t *testing.T) {
 	tests := []struct {
@@ -201,14 +201,14 @@ func Test_createResource(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "my-pipelineresource",
-			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el", eventIdLabel: "12345"},
+			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el", eventIDLabel: "12345"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{},
 	}
 
 	pr2 := pr1
 	pr2.Namespace = "foo"
-	pr2.Labels = map[string]string{resourceLabel: "bar-el", eventIdLabel: "54321"}
+	pr2.Labels = map[string]string{resourceLabel: "bar-el", eventIDLabel: "54321"}
 
 	pr1Bytes, err := json.Marshal(pr1)
 	if err != nil {
@@ -232,7 +232,7 @@ func Test_createResource(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "tekton-pipelines",
-			Labels: map[string]string{resourceLabel: "test-el", eventIdLabel: "12321"},
+			Labels: map[string]string{resourceLabel: "test-el", eventIDLabel: "12321"},
 		},
 	}
 	namespaceBytes, err := json.Marshal(namespace)
@@ -378,7 +378,7 @@ func Test_HandleEvent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pipelineresource",
 			Namespace: namespace,
-			Labels:    map[string]string{"app": "foo", "tekton.dev/eventlistener": "my-eventlistener", eventIdLabel: "12345"},
+			Labels:    map[string]string{"app": "foo", "tekton.dev/eventlistener": "my-eventlistener", eventIDLabel: "12345"},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
@@ -524,6 +524,10 @@ func TestResource_processEvent(t *testing.T) {
 	})
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cmp.Diff(r.Header["Param-Header"], []string{"val"}) != "" {
+			http.Error(w, "Expected header does not match", http.StatusBadRequest)
+			return
+		}
 		_, _ = w.Write(payload)
 	}))
 	defer ts.Close()
@@ -533,8 +537,17 @@ func TestResource_processEvent(t *testing.T) {
 		t.Fatalf("Error trying to create request: %q", err)
 	}
 
-	interceptorUrl, _ := url.Parse(ts.URL)
-	resPayload, err := r.processEvent(interceptorUrl, req, payload)
+	interceptorURL, _ := url.Parse(ts.URL)
+	params := []pipelinev1.Param{
+		pipelinev1.Param{
+			Name: "Param-Header",
+			Value: pipelinev1.ArrayOrString{
+				Type:      pipelinev1.ParamTypeString,
+				StringVal: "val",
+			},
+		},
+	}
+	resPayload, err := r.processEvent(interceptorURL, req, payload, params)
 
 	if err != nil {
 		t.Errorf("Unexpected error in process event: %q", err)
@@ -542,5 +555,100 @@ func TestResource_processEvent(t *testing.T) {
 
 	if diff := cmp.Diff(payload, resPayload); diff != "" {
 		t.Errorf("Did not get expected payload back: %s", diff)
+	}
+}
+
+func Test_addInterceptorHeaders(t *testing.T) {
+	type args struct {
+		header       http.Header
+		headerParams []pipelinev1.Param
+	}
+	tests := []struct {
+		name string
+		args args
+		want http.Header
+	}{
+		{
+			name: "Empty params",
+			args: args{
+				header: map[string][]string{
+					"header1": []string{"val"},
+				},
+				headerParams: []pipelinev1.Param{},
+			},
+			want: map[string][]string{
+				"header1": []string{"val"},
+			},
+		},
+		{
+			name: "One string param",
+			args: args{
+				header: map[string][]string{
+					"header1": []string{"val"},
+				},
+				headerParams: []pipelinev1.Param{
+					pipelinev1.Param{
+						Name: "header2",
+						Value: pipelinev1.ArrayOrString{
+							Type:      pipelinev1.ParamTypeString,
+							StringVal: "val",
+						},
+					},
+				},
+			},
+			want: map[string][]string{
+				"header1": []string{"val"},
+				"header2": []string{"val"},
+			},
+		},
+		{
+			name: "One array param",
+			args: args{
+				header: map[string][]string{
+					"header1": []string{"val"},
+				},
+				headerParams: []pipelinev1.Param{
+					pipelinev1.Param{
+						Name: "header2",
+						Value: pipelinev1.ArrayOrString{
+							Type:     pipelinev1.ParamTypeArray,
+							ArrayVal: []string{"val1", "val2"},
+						},
+					},
+				},
+			},
+			want: map[string][]string{
+				"header1": []string{"val"},
+				"header2": []string{"val1", "val2"},
+			},
+		},
+		{
+			name: "Clobber param",
+			args: args{
+				header: map[string][]string{
+					"header1": []string{"val"},
+				},
+				headerParams: []pipelinev1.Param{
+					pipelinev1.Param{
+						Name: "header1",
+						Value: pipelinev1.ArrayOrString{
+							Type:     pipelinev1.ParamTypeArray,
+							ArrayVal: []string{"new_val"},
+						},
+					},
+				},
+			},
+			want: map[string][]string{
+				"header1": []string{"new_val"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addInterceptorHeaders(tt.args.header, tt.args.headerParams)
+			if diff := cmp.Diff(tt.want, tt.args.header); diff != "" {
+				t.Errorf("addInterceptorHeaders() Diff: -want +got: %s", diff)
+			}
+		})
 	}
 }
