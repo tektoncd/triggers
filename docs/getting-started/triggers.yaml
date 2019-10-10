@@ -1,0 +1,93 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: getting-started-triggertemplate
+  namespace: getting-started
+spec:
+  params:
+    - name: gitrevision
+      description: The git revision
+      default: master
+    - name: gitrepositoryurl
+      description: The git repository url
+    - name: namespace
+      description: The namespace to create the resources
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineResource
+      metadata:
+        name: source-repo-$(uid)
+        namespace: $(params.namespace)
+      spec:
+        type: git
+        params:
+        - name: revision
+          value: $(params.gitrevision)
+        - name: url
+          value: $(params.gitrepositoryurl)
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineResource
+      metadata:
+        name: image-source-$(uid)
+        namespace: $(params.namespace)
+      spec:
+        type: image
+        params:
+          - name: url
+            value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineResource
+      metadata:
+        name: event-to-sink-$(uid)
+        namespace: $(params.namespace)
+      spec:
+        type: cloudEvent
+        params:
+          - name: targetURI
+            value: http://event-display.getting-started.svc.cluster.local
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        name: getting-started-pipeline-run-$(uid)
+        namespace: $(params.namespace)
+      spec:
+        serviceAccount: tekton-triggers-admin
+        pipelineRef:
+          name: getting-started-pipeline
+        resources:
+          - name: source-repo
+            resourceRef:
+              name: source-repo-$(uid)
+          - name: image-source
+            resourceRef:
+              name: image-source-$(uid)
+          - name: event-to-sink
+            resourceRef:
+              name: event-to-sink-$(uid)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: getting-started-pipelinebinding
+  namespace: getting-started
+spec:
+  params:
+    - name: gitrevision
+      value: $(event.head_commit.id)
+    - name: namespace
+      value: getting-started
+    - name: gitrepositoryurl
+      value: $(event.head_commit.url)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: getting-started-listener
+  namespace: getting-started
+spec:
+  serviceAccountName: tekton-triggers-admin
+  triggers:
+    - binding:
+        name: getting-started-pipelinebinding
+      template:
+        name: getting-started-triggertemplate
