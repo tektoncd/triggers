@@ -25,8 +25,7 @@ You can learn more by checking out the [docs](docs/README.md)
 
 ## Want to start using Tekton Triggers
 
-Probably a bit early! In the meantime, consider
-[ramping up on Tekton Pipelines](https://github.com/tektoncd/pipeline/tree/master/docs)
+Follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
 
 ## Want to contribute
 
