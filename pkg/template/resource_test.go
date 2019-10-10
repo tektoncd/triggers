@@ -275,6 +275,30 @@ func Test_ResolveBinding(t *testing.T) {
 		t.Errorf("ResolveBinding(): -want +got: %s", diff)
 	}
 }
+
+func Test_ResolveBinding_NoBinding(t *testing.T) {
+	tmplName := "my-triggertemplate"
+	apiVersion := "v1alpha1"
+	nilBinding := triggersv1.EventListenerTrigger{
+		Template: triggersv1.EventListenerTemplate{
+			Name:       tmplName,
+			APIVersion: apiVersion,
+		},
+	}
+	for _, trigger := range []triggersv1.EventListenerTrigger{
+		bldr.Trigger("", tmplName, apiVersion),
+		nilBinding,
+	} {
+		want := ResolvedBinding{TriggerTemplate: &tt}
+		got, err := ResolveBinding(trigger, getTB, getTT)
+		if err != nil {
+			t.Errorf("ResolveBinding() returned unexpected error: %s", err)
+		} else if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("ResolveBinding(): -want +got: %s", diff)
+		}
+	}
+}
+
 func Test_ResolveBinding_error(t *testing.T) {
 	tests := []struct {
 		name    string

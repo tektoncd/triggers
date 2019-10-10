@@ -41,11 +41,15 @@ type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
 func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
-	tbName := trigger.Binding.Name
-	tb, err := getTB(tbName, metav1.GetOptions{})
-	if err != nil {
-		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerBinding %s: %s", tbName, err)
+	var tb *triggersv1.TriggerBinding
+	if tbName := trigger.Binding.Name; tbName != "" {
+		var err error
+		tb, err = getTB(tbName, metav1.GetOptions{})
+		if err != nil {
+			return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerBinding %s: %s", tbName, err)
+		}
 	}
+
 	ttName := trigger.Template.Name
 	tt, err := getTT(ttName, metav1.GetOptions{})
 	if err != nil {
