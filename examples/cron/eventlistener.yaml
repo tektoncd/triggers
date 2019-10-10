@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: cron-listener
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cron-trig
+      binding:
+        name: cron-binding
+      template:
+        name: pipeline-template
+      params:
+      - name: message
+        value: Hello from the Triggers EventListener!
