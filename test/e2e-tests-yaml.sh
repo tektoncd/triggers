@@ -14,6 +14,11 @@ for op in apply delete;do
         kubectl ${op} -f ${file}
     done
 
+    # Apply EventInterceptors
+    for file in $(find ${REPO_ROOT_DIR}/examples/event-interceptors/ -name *.yaml | sort); do
+        kubectl ${op} -f ${file}
+    done
+
     # Apply EventListeners
     for file in $(find ${REPO_ROOT_DIR}/examples/eventlisteners/ -name *.yaml | sort); do
         kubectl ${op} -f ${file}
