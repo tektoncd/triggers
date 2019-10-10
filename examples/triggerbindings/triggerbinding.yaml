@@ -5,6 +5,8 @@ metadata:
 spec:
   params:
   - name: gitrevision
-    value: $(event.head_commit.id)
+    value: $(body.head_commit.id)
   - name: gitrepositoryurl
-    value: $(event.repository.url)
+    value: $(body.repository.url)
+  - name: contenttype
+    value: $(header.Content-Type)

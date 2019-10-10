@@ -366,6 +366,7 @@ func Test_HandleEvent(t *testing.T) {
 			Params: []pipelinev1.ResourceParam{
 				{Name: "url", Value: "$(params.url)"},
 				{Name: "revision", Value: "$(params.revision)"},
+				{Name: "contenttype", Value: "$(params.contenttype)"},
 			},
 		},
 	}
@@ -384,6 +385,7 @@ func Test_HandleEvent(t *testing.T) {
 			Params: []pipelinev1.ResourceParam{
 				{Name: "url", Value: "testurl"},
 				{Name: "revision", Value: "testrevision"},
+				{Name: "contenttype", Value: "application/json"},
 			},
 		},
 	}
@@ -398,12 +400,14 @@ func Test_HandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("url", "", ""),
 			bldr.TriggerTemplateParam("revision", "", ""),
 			bldr.TriggerTemplateParam("appLabel", "", ""),
+			bldr.TriggerTemplateParam("contenttype", "", ""),
 			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
 		))
 	tb := bldr.TriggerBinding("my-triggerbinding", namespace,
 		bldr.TriggerBindingSpec(
-			bldr.TriggerBindingParam("url", "$(event.repository.url)"),
-			bldr.TriggerBindingParam("revision", "$(event.head_commit.id)"),
+			bldr.TriggerBindingParam("url", "$(body.repository.url)"),
+			bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
+			bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
 		))
 	el := bldr.EventListener("my-eventlistener", namespace,
 		bldr.EventListenerSpec(

@@ -19,6 +19,8 @@ spec:
   - name: message
     description: The message to print
     default: This is the default message
+  - name: contenttype
+    description: The Content-Type of the event
   resourcetemplates:
   - apiVersion: tekton.dev/v1alpha1
     kind: PipelineResource
@@ -41,6 +43,8 @@ spec:
       params:
       - name: message
         value: $(params.message)
+      - name: contenttype
+        value: $(params.contenttype)
       resources:
       - name: git-source
         resourceRef:

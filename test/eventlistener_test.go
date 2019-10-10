@@ -90,6 +90,10 @@ func TestEventListenerCreate(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
+			Params: []v1alpha1.ResourceParam{
+				{Name: "body", Value: "$(params.body)"},
+				{Name: "header", Value: "$(params.header)"},
+			},
 		},
 	}
 
@@ -106,6 +110,8 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.TriggerTemplateParam("twoparamname", "", ""),
 				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
 				bldr.TriggerTemplateParam("threeparam", "", ""),
+				bldr.TriggerTemplateParam("body", "", ""),
+				bldr.TriggerTemplateParam("header", "", ""),
 				bldr.TriggerResourceTemplate(pr1Bytes),
 				bldr.TriggerResourceTemplate(pr2Bytes),
 			),
@@ -119,8 +125,10 @@ func TestEventListenerCreate(t *testing.T) {
 	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
 		bldr.TriggerBinding("my-triggerbinding", "",
 			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("oneparam", "$(event.one)"),
-				bldr.TriggerBindingParam("twoparamname", "$(event.two.name)"),
+				bldr.TriggerBindingParam("oneparam", "$(body.one)"),
+				bldr.TriggerBindingParam("twoparamname", "$(body.two.name)"),
+				bldr.TriggerBindingParam("body", "$(body)"),
+				bldr.TriggerBindingParam("header", "$(header)"),
 			),
 		),
 	)
@@ -143,6 +151,9 @@ func TestEventListenerCreate(t *testing.T) {
 				"zonevalue":   "zonevalue",
 			},
 		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+		},
 	}
 
 	wantPr2 := v1alpha1.PipelineResource{
@@ -157,6 +168,13 @@ func TestEventListenerCreate(t *testing.T) {
 				resourceLabel: "my-eventlistener",
 				"zfoo":        "defaultvalue",
 				"threeparam":  "threevalue",
+			},
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+			Params: []v1alpha1.ResourceParam{
+				{Name: "body", Value: `{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`},
+				{Name: "header", Value: `{"Accept-Encoding":["gzip"],"Content-Length":["61"],"Content-Type":["application/json"],"User-Agent":["Go-http-client/1.1"]}`},
 			},
 		},
 	}
@@ -272,7 +290,10 @@ func TestEventListenerCreate(t *testing.T) {
 			delete(gotPr.Labels, eventIdLabel)
 		}
 		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
-			t.Fatalf("Diff instantiated ResourceTemplate %s: -want +got: %s", wantPr1.Name, diff)
+			t.Fatalf("Diff instantiated ResourceTemplate labels %s: -want +got: %s", wantPr.Name, diff)
+		}
+		if diff := cmp.Diff(wantPr.Spec, gotPr.Spec); diff != "" {
+			t.Fatalf("Diff instantiated ResourceTemplate spec %s: -want +got: %s", wantPr.Name, diff)
 		}
 	}
 

@@ -37,18 +37,18 @@ func Test_TriggerBindingValidate(t *testing.T) {
 			name: "multiple params",
 			tb: bldr.TriggerBinding("name", "namespace",
 				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(event.input1)"),
-					bldr.TriggerBindingParam("param2", "$(event.input2)"),
-					bldr.TriggerBindingParam("param3", "$(event.input3)"),
+					bldr.TriggerBindingParam("param1", "$(body.input1)"),
+					bldr.TriggerBindingParam("param2", "$(body.input2)"),
+					bldr.TriggerBindingParam("param3", "$(body.input3)"),
 				)),
 		},
 		{
 			name: "multiple params case sensitive",
 			tb: bldr.TriggerBinding("name", "namespace",
 				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(event.input1)"),
-					bldr.TriggerBindingParam("PARAM1", "$(event.input2)"),
-					bldr.TriggerBindingParam("Param1", "$(event.input3)"),
+					bldr.TriggerBindingParam("param1", "$(body.input1)"),
+					bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
+					bldr.TriggerBindingParam("Param1", "$(body.input3)"),
 				)),
 		},
 	}
@@ -70,9 +70,9 @@ func Test_TriggerBindingValidate_error(t *testing.T) {
 			name: "duplicate params",
 			tb: bldr.TriggerBinding("name", "namespace",
 				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(event.param1)"),
-					bldr.TriggerBindingParam("param1", "$(event.param1)"),
-					bldr.TriggerBindingParam("param3", "$(event.param1)"),
+					bldr.TriggerBindingParam("param1", "$(body.param1)"),
+					bldr.TriggerBindingParam("param1", "$(body.param1)"),
+					bldr.TriggerBindingParam("param3", "$(body.param1)"),
 				)),
 		},
 	}

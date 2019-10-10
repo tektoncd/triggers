@@ -101,7 +101,7 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 		log.Print(err)
 		return
 	}
-	resources, err := template.NewResources(payload, trigger.Params, binding)
+	resources, err := template.NewResources(payload, request.Header, trigger.Params, binding)
 	if err != nil {
 		log.Print(err)
 		return
