@@ -353,9 +353,9 @@ func Test_ApplyUIDToResourceTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This seeds Uid() to return 'cbhtc'
+			// This seeds UID() to return 'cbhtc'
 			rand.Seed(0)
-			actualRt := ApplyUIDToResourceTemplate(tt.rt, Uid())
+			actualRt := ApplyUIDToResourceTemplate(tt.rt, UID())
 			if diff := cmp.Diff(string(tt.expectedRt), string(actualRt)); diff != "" {
 				t.Errorf("ApplyUIDToResourceTemplate(): -want +got: %s", diff)
 			}

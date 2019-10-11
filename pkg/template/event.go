@@ -172,7 +172,7 @@ func NewResources(body []byte, header map[string][]string, elParams []pipelinev1
 	params = MergeInDefaultParams(params, binding.TriggerTemplate.Spec.Params)
 
 	resources := make([]json.RawMessage, len(binding.TriggerTemplate.Spec.ResourceTemplates))
-	uid := Uid()
+	uid := UID()
 	for i := range binding.TriggerTemplate.Spec.ResourceTemplates {
 		resources[i] = ApplyParamsToResourceTemplate(params, binding.TriggerTemplate.Spec.ResourceTemplates[i].RawMessage)
 		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)

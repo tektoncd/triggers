@@ -91,20 +91,20 @@ func TestCreateOutgoingRequest(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "http://event.listener.url", ioutil.NopCloser(bytes.NewBuffer(reqBody)))
 	req.Header.Add("Content-type", "application/json")
 	req.Header.Add("X-Event-Id", "blah")
-	eventProcessorUrl, _ := url.Parse("http://some.other.url")
+	eventProcessorURL, _ := url.Parse("http://some.other.url")
 
 	expectedReq, _ := http.NewRequest(http.MethodPost, "http://some.other.url", ioutil.NopCloser(bytes.NewBuffer(reqBody)))
 	expectedReq.Header.Add("Content-type", "application/json")
 	expectedReq.Header.Add("X-Event-Id", "blah")
 
-	outgoing := createOutgoingRequest(context.Background(), req, eventProcessorUrl, reqBody)
+	outgoing := createOutgoingRequest(context.Background(), req, eventProcessorURL, reqBody)
 
 	respBody, err := ioutil.ReadAll(outgoing.Body)
 	if err != nil {
 		t.Errorf("Failed to parse outgoing request body: %q", err)
 	}
 
-	if outgoing.URL != eventProcessorUrl {
+	if outgoing.URL != eventProcessorURL {
 		t.Errorf("Outgoing request has unexpected URL: %s", outgoing.URL)
 	}
 

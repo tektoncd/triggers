@@ -24,11 +24,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
 	// TODO: Add metadata validation as in pipeline
 	return t.Spec.Validate(ctx).ViaField("spec")
 }
 
+// Validate validates a TriggerTemplateSpec.
 func (s *TriggerTemplateSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(s, TriggerTemplateSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
@@ -44,7 +46,7 @@ func (s *TriggerTemplateSpec) Validate(ctx context.Context) *apis.FieldError {
 
 func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldError {
 	for i, trt := range templates {
-		apiVersion, kind := trt.getApiVersionAndKind()
+		apiVersion, kind := trt.getAPIVersionAndKind()
 
 		if apiVersion == "" {
 			return apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i))

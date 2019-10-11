@@ -38,6 +38,7 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
+// NewController creates a new instance of an EventListener controller.
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	logger := logging.FromContext(ctx)
 	kubeclientset := kubeclient.Get(ctx)

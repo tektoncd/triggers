@@ -22,13 +22,13 @@ import (
 )
 
 func Test_GetArgs(t *testing.T) {
-	if err := flag.Set(EL_NAME, "elname"); err != nil {
+	if err := flag.Set(name, "elname"); err != nil {
 		t.Errorf("Error setting flag el-name: %s", err)
 	}
-	if err := flag.Set(EL_NAMESPACE, "elnamespace"); err != nil {
+	if err := flag.Set(namespace, "elnamespace"); err != nil {
 		t.Errorf("Error setting flag el-namespace: %s", err)
 	}
-	if err := flag.Set(PORT, "port"); err != nil {
+	if err := flag.Set(port, "port"); err != nil {
 		t.Errorf("Error setting flag port: %s", err)
 	}
 	sinkArgs, err := GetArgs()
@@ -74,14 +74,14 @@ func Test_GetArgs_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := flag.Set(EL_NAME, tt.elName); err != nil {
-				t.Errorf("Error setting flag %s: %s", EL_NAME, err)
+			if err := flag.Set(name, tt.elName); err != nil {
+				t.Errorf("Error setting flag %s: %s", name, err)
 			}
 			if err := flag.Set("el-namespace", tt.elNamespace); err != nil {
-				t.Errorf("Error setting flag %s: %s", EL_NAMESPACE, err)
+				t.Errorf("Error setting flag %s: %s", namespace, err)
 			}
 			if err := flag.Set("port", tt.port); err != nil {
-				t.Errorf("Error setting flag %s: %s", PORT, err)
+				t.Errorf("Error setting flag %s: %s", port, err)
 			}
 			if sinkArgs, err := GetArgs(); err == nil {
 				t.Errorf("GetArgs() did not return error when expected; sinkArgs: %v", sinkArgs)

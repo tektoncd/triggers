@@ -176,7 +176,7 @@ func (els *EventListenerStatus) SetDeploymentConditions(deploymentConditions []a
 	}
 }
 
-// SetExistsConditions simplifies setting the exists conditions on the
+// SetExistsCondition simplifies setting the exists conditions on the
 // EventListenerStatus.
 func (els *EventListenerStatus) SetExistsCondition(cond apis.ConditionType, err error) {
 	if err != nil {

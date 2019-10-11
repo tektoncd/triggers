@@ -25,16 +25,21 @@ import (
 // Check that TriggerBinding may be validated and defaulted.
 var _ apis.Validatable = (*TriggerBinding)(nil)
 
+// TriggerBindingSpec defines the desired state of the TriggerBinding.
 type TriggerBindingSpec struct {
+	// Params defines the parameter mapping from the given input event.
 	Params []pipelinev1.Param `json:"params,omitempty"`
 }
 
+// TriggerBindingStatus defines the observed state of TriggerBinding.
 type TriggerBindingStatus struct{}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TriggerBinding
+// TriggerBinding defines a mapping of an input event to parameters. This is used
+// to extract information from events to be passed to TriggerTemplates within a
+// Trigger.
 // +k8s:openapi-gen=true
 type TriggerBinding struct {
 	metav1.TypeMeta `json:",inline"`

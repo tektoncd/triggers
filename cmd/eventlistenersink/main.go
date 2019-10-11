@@ -43,7 +43,7 @@ func main() {
 		RESTClient:             sinkClients.RESTClient,
 		TriggersClient:         sinkClients.TriggersClient,
 		PipelineClient:         sinkClients.PipelineClient,
-		HttpClient:             http.DefaultClient, // TODO: Use a different client since the default client has weird timeout values
+		HTTPClient:             http.DefaultClient, // TODO: Use a different client since the default client has weird timeout values
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,
 	}
