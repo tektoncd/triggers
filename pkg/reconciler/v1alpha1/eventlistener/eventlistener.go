@@ -20,10 +20,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"reflect"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler"
@@ -168,7 +171,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 			existingService.Spec.Selector = service.Spec.Selector
 			updated = true
 		}
-		if !reflect.DeepEqual(existingService.Spec.Ports, service.Spec.Ports) {
+		if !cmp.Equal(existingService.Spec.Ports, service.Spec.Ports, cmpopts.IgnoreFields(corev1.ServicePort{}, "NodePort")) {
 			existingService.Spec.Ports = service.Spec.Ports
 			updated = true
 		}

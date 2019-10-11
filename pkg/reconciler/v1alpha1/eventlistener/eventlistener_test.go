@@ -140,6 +140,9 @@ func Test_reconcileService(t *testing.T) {
 	service2.Labels = mergeLabels(generatedLabels, updateLabel)
 	service2.Spec.Selector = mergeLabels(generatedLabels, updateLabel)
 
+	service3 := service1.DeepCopy()
+	service3.Spec.Ports[0].NodePort = 30000
+
 	tests := []struct {
 		name           string
 		startResources test.TestResources
@@ -179,6 +182,19 @@ func Test_reconcileService(t *testing.T) {
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service1},
+			},
+		},
+		{
+			name: "service-nodeport-update",
+			startResources: test.TestResources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener1},
+				Services:       []*corev1.Service{service3},
+			},
+			endResources: test.TestResources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener1},
+				Services:       []*corev1.Service{service3},
 			},
 		},
 	}
