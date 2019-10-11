@@ -143,7 +143,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},
@@ -170,7 +170,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},
@@ -208,7 +208,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},
@@ -262,7 +262,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},
@@ -271,7 +271,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					},
 				}, {
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb2",
 						APIVersion: "v1alpha1",
 					},
@@ -313,7 +313,7 @@ func TestEventListenerBuilder(t *testing.T) {
 							APIVersion: "v1",
 						},
 					},
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},
@@ -370,7 +370,7 @@ func TestEventListenerBuilder(t *testing.T) {
 							APIVersion: "v1",
 						},
 					},
-					Binding: v1alpha1.EventListenerBinding{
+					Binding: &v1alpha1.EventListenerBinding{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
 					},

@@ -137,7 +137,7 @@ func EventListenerAddress(hostname string) EventListenerStatusOp {
 // modifiers can be passed to create/modify it.
 func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
 	t := v1alpha1.EventListenerTrigger{
-		Binding: v1alpha1.EventListenerBinding{
+		Binding: &v1alpha1.EventListenerBinding{
 			Name:       tbName,
 			APIVersion: apiVersion,
 		},

@@ -42,7 +42,8 @@ type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv
 
 func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
 	var tb *triggersv1.TriggerBinding
-	if tbName := trigger.Binding.Name; tbName != "" {
+	if trigger.Binding != nil {
+		tbName := trigger.Binding.Name
 		var err error
 		tb, err = getTB(tbName, metav1.GetOptions{})
 		if err != nil {
