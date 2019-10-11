@@ -49,17 +49,18 @@ func createOutgoingRequest(ctx context.Context, original *http.Request, url *url
 	r.RequestURI = ""
 	r.URL = url
 
-	headers := make(map[string][]string)
+	headers := make(map[string][]string, len(original.Header))
 	for k, v := range original.Header {
 		v2 := make([]string, len(v))
 		copy(v2, v)
 		headers[k] = v2
 	}
+	r.Header = headers
 
 	if s := original.TransferEncoding; s != nil {
 		s2 := make([]string, len(s))
 		copy(s2, s)
-		original.TransferEncoding = s
+		r.TransferEncoding = s
 	}
 
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
