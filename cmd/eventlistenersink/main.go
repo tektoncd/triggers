@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/tektoncd/triggers/pkg/sink"
+	"knative.dev/pkg/signals"
 )
 
 func main() {
@@ -36,6 +37,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// start watcher on TriggerBinding and TriggerTemplate
+	// set up signals so we handle the first shutdown signal gracefully
+	stopCh := signals.SetupSignalHandler()
+	// Create event broadcaster
+	recorder, err := sink.ConfigureBroadcaster()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := sink.Watcher{
+		K8s:                    sinkClients.DynamicClient,
+		TriggersClient:         sinkClients.TriggersClient,
+		EventListenerName:      sinkArgs.ElName,
+		EventListenerNamespace: sinkArgs.ElNamespace,
+		Recorder:               recorder,
+	}
+	err = w.Start(stopCh)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Watcher started")
 
 	// Create sink Resource
 	r := sink.Resource{
@@ -52,4 +75,5 @@ func main() {
 	log.Printf("Listen and serve on port %s", sinkArgs.Port)
 	http.HandleFunc("/", r.HandleEvent)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", sinkArgs.Port), nil))
+
 }

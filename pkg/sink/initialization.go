@@ -17,16 +17,24 @@ limitations under the License.
 package sink
 
 import (
+	"context"
 	"flag"
 
 	"golang.org/x/xerrors"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	discoveryclient "k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	kubeclientset "k8s.io/client-go/kubernetes"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -43,6 +51,8 @@ var (
 		"The namespace of the EventListener resource for this sink.")
 	portFlag = flag.String("port", "",
 		"The port for the EventListener sink to listen on.")
+	schemes             = runtime.NewScheme()
+	controllerAgentName = "tektoncd-trigger-sink"
 )
 
 // Args define the arguments for Sink.
@@ -61,6 +71,7 @@ type Clients struct {
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
 	PipelineClient  pipelineclientset.Interface
+	DynamicClient   dynamic.Interface
 }
 
 // GetArgs returns the flagged Args
@@ -100,11 +111,38 @@ func ConfigureClients() (Clients, error) {
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
 	}
-
+	dynamicClient, err := dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		return Clients{}, xerrors.Errorf("Failed to create DynamicClient: %s", err)
+	}
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
 		PipelineClient:  pipelineclient,
+		DynamicClient:   dynamicClient,
 	}, nil
+}
+
+// Create event broadcaster
+func ConfigureBroadcaster() (record.EventRecorder, error) {
+	err := v1alpha1.AddToScheme(schemes)
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to add scheme: %s", err)
+	}
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to get in cluster config: %s", err)
+	}
+	kubeClient, err := kubeclientset.NewForConfig(clusterConfig)
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to create KubeClient: %s", err)
+	}
+
+	logger := logging.FromContext(context.TODO())
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+
+	return eventBroadcaster.NewRecorder(schemes, corev1.EventSource{Component: controllerAgentName}), nil
 }

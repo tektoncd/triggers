@@ -5,7 +5,10 @@ metadata:
 rules:
 - apiGroups: ["tekton.dev"]
   resources: ["eventlisteners", "triggerbindings", "triggertemplates", "tasks", "taskruns"]
-  verbs: ["get"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["events"]
   verbs: ["create"]

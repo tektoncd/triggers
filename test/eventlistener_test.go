@@ -196,7 +196,11 @@ func TestEventListenerCreate(t *testing.T) {
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{"tekton.dev"},
 				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
-				Verbs:     []string{"create", "get"},
+				Verbs:     []string{"create", "get", "watch", "list"},
+			}, {
+				APIGroups: []string{""},
+				Resources: []string{"events"},
+				Verbs:     []string{"create"},
 			}}},
 	)
 	if err != nil {
@@ -299,6 +303,21 @@ func TestEventListenerCreate(t *testing.T) {
 		if diff := cmp.Diff(wantPr.Spec, gotPr.Spec); diff != "" {
 			t.Fatalf("Diff instantiated ResourceTemplate spec %s: -want +got: %s", wantPr.Name, diff)
 		}
+	}
+
+	// Delete TriggerBinding
+	err = c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Delete(tb.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		t.Fatalf("Failed to delete TriggerBinding: %s", err)
+	}
+	t.Log("Deleted TriggerBinding")
+	resourceLabels := make(map[string]string, 2)
+	resourceLabels["involvedObject.kind"] = "EventListener"
+	resourceLabels["involvedObject.name"] = el.Name
+	fieldSelector := fields.SelectorFromSet(resourceLabels).String()
+	_, err = c.KubeClient.CoreV1().Events(namespace).List(metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		t.Fatalf("Failed to get the event trigger by TriggerBinding delete: %s", err)
 	}
 
 	// Delete EventListener
