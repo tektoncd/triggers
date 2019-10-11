@@ -41,6 +41,7 @@ func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
+// Validate validates the object.
 func (i *EventInterceptor) Validate(ctx context.Context) *apis.FieldError {
 	if i.ObjectRef == nil {
 		return apis.ErrMissingField("objectRef")

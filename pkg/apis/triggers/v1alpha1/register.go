@@ -23,12 +23,23 @@ import (
 )
 
 const (
-	GroupName              = "tekton.dev"
-	EventListenerLabelKey  = "/eventlistener"
-	EventIDLabelKey        = "/triggers-eventid"
+	// GroupName is the Kubernetes resource group name for Tekton types.
+	GroupName = "tekton.dev"
+
+	// EventListenerLabelKey is used as the label identifier for an EventListener.
+	EventListenerLabelKey = "/eventlistener"
+
+	// EventIDLabelKey is used as the label identifier for an EventListener event.
+	EventIDLabelKey = "/triggers-eventid"
+
+	// TriggerBindingLabelKey is used as the label identifier for a TriggerBinding.
 	TriggerBindingLabelKey = "/triggerbinding"
-	TriggerTemplateKey     = "/triggertemplate"
-	LabelEscape            = "tekton\\.dev"
+
+	// TriggerTemplateKey is used as the label identifier for a TriggerTemplate
+	TriggerTemplateKey = "/triggertemplate"
+
+	// LabelEscape is an escaped GroupName safe for use in resource types.
+	LabelEscape = "tekton\\.dev"
 )
 
 // SchemeGroupVersion is group version used to register these objects

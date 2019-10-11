@@ -23,8 +23,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -34,6 +32,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
@@ -176,13 +175,11 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 			updated = true
 		}
 		if updated {
-			_, err = c.KubeClientSet.CoreV1().Services(el.Namespace).Update(existingService)
-			if err != nil {
+			if _, err := c.KubeClientSet.CoreV1().Services(el.Namespace).Update(existingService); err != nil {
 				c.Logger.Errorf("Error updating EventListener Service: %s", err)
 				return err
-			} else {
-				c.Logger.Infof("Updated EventListener Service %s in Namespace %s", existingService.Namespace, el.Namespace)
 			}
+			c.Logger.Infof("Updated EventListener Service %s in Namespace %s", existingService.Namespace, el.Namespace)
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Service
@@ -191,10 +188,9 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 		if err != nil {
 			c.Logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
-		} else {
-			el.Status.SetAddress(listenerHostname(service.Name, el.Namespace))
-			c.Logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 		}
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace))
+		c.Logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
 		c.Logger.Error(err)
 		return err
@@ -287,13 +283,11 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 			}
 		}
 		if updated {
-			_, err = c.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(existingDeployment)
-			if err != nil {
+			if _, err := c.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(existingDeployment); err != nil {
 				c.Logger.Errorf("Error updating EventListener Deployment: %s", err)
 				return err
-			} else {
-				c.Logger.Infof("Updated EventListener Deployment %s in Namespace %s", existingDeployment.Name, el.Namespace)
 			}
+			c.Logger.Infof("Updated EventListener Deployment %s in Namespace %s", existingDeployment.Name, el.Namespace)
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Deployment
@@ -302,10 +296,9 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		if err != nil {
 			c.Logger.Errorf("Error creating EventListener Deployment: %s", err)
 			return err
-		} else {
-			el.Status.SetDeploymentConditions(deployment.Status.Conditions)
-			c.Logger.Infof("Created EventListener Deployment %s in Namespace %s", deployment.Name, el.Namespace)
 		}
+		el.Status.SetDeploymentConditions(deployment.Status.Conditions)
+		c.Logger.Infof("Created EventListener Deployment %s in Namespace %s", deployment.Name, el.Namespace)
 	default:
 		c.Logger.Error(err)
 		return err

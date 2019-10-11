@@ -28,7 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Retrieve ObjectReference to URI
+// GetURI retrieves the ObjectReference to URI.
 func GetURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
 	// TODO: This should work for any Adressable.
 	// Use something like https://github.com/knative/eventing-contrib/blob/7c0fc5cfa8bd44da0767d9e7b250264ea6eb7d8d/pkg/controller/sinks/sinks.go#L32

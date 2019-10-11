@@ -278,7 +278,7 @@ func Test_createResource(t *testing.T) {
 		wantResource           json.RawMessage
 		eventListenerNamespace string
 		eventListenerName      string
-		eventId                string
+		eventID                string
 		wantURLPath            string
 	}{
 		{
@@ -287,7 +287,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(pr1WantBytes),
 			eventListenerNamespace: "bar",
 			eventListenerName:      "foo-el",
-			eventId:                "12345",
+			eventID:                "12345",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/bar/pipelineresources",
 		},
 		{
@@ -296,7 +296,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(pr2Bytes),
 			eventListenerNamespace: "bar",
 			eventListenerName:      "bar-el",
-			eventId:                "54321",
+			eventID:                "54321",
 			wantURLPath:            "/apis/tekton.dev/v1alpha1/namespaces/foo/pipelineresources",
 		},
 		{
@@ -305,7 +305,7 @@ func Test_createResource(t *testing.T) {
 			wantResource:           json.RawMessage(namespaceBytes),
 			eventListenerNamespace: "",
 			eventListenerName:      "test-el",
-			eventId:                "12321",
+			eventID:                "12321",
 			wantURLPath:            "/api/v1/namespaces",
 		},
 	}
@@ -337,7 +337,7 @@ func Test_createResource(t *testing.T) {
 			})
 
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventId)
+			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventID)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -513,7 +513,7 @@ func Test_HandleEvent(t *testing.T) {
 
 func TestResource_processEvent(t *testing.T) {
 	r := Resource{
-		HttpClient:             http.DefaultClient,
+		HTTPClient:             http.DefaultClient,
 		EventListenerName:      "foo-listener",
 		EventListenerNamespace: "foo",
 	}
@@ -539,7 +539,7 @@ func TestResource_processEvent(t *testing.T) {
 
 	interceptorURL, _ := url.Parse(ts.URL)
 	params := []pipelinev1.Param{
-		pipelinev1.Param{
+		{
 			Name: "Param-Header",
 			Value: pipelinev1.ArrayOrString{
 				Type:      pipelinev1.ParamTypeString,
@@ -583,22 +583,22 @@ func Test_addInterceptorHeaders(t *testing.T) {
 			name: "Empty params",
 			args: args{
 				header: map[string][]string{
-					"header1": []string{"val"},
+					"header1": {"val"},
 				},
 				headerParams: []pipelinev1.Param{},
 			},
 			want: map[string][]string{
-				"header1": []string{"val"},
+				"header1": {"val"},
 			},
 		},
 		{
 			name: "One string param",
 			args: args{
 				header: map[string][]string{
-					"header1": []string{"val"},
+					"header1": {"val"},
 				},
 				headerParams: []pipelinev1.Param{
-					pipelinev1.Param{
+					{
 						Name: "header2",
 						Value: pipelinev1.ArrayOrString{
 							Type:      pipelinev1.ParamTypeString,
@@ -608,18 +608,18 @@ func Test_addInterceptorHeaders(t *testing.T) {
 				},
 			},
 			want: map[string][]string{
-				"header1": []string{"val"},
-				"header2": []string{"val"},
+				"header1": {"val"},
+				"header2": {"val"},
 			},
 		},
 		{
 			name: "One array param",
 			args: args{
 				header: map[string][]string{
-					"header1": []string{"val"},
+					"header1": {"val"},
 				},
 				headerParams: []pipelinev1.Param{
-					pipelinev1.Param{
+					{
 						Name: "header2",
 						Value: pipelinev1.ArrayOrString{
 							Type:     pipelinev1.ParamTypeArray,
@@ -629,18 +629,18 @@ func Test_addInterceptorHeaders(t *testing.T) {
 				},
 			},
 			want: map[string][]string{
-				"header1": []string{"val"},
-				"header2": []string{"val1", "val2"},
+				"header1": {"val"},
+				"header2": {"val1", "val2"},
 			},
 		},
 		{
 			name: "Clobber param",
 			args: args{
 				header: map[string][]string{
-					"header1": []string{"val"},
+					"header1": {"val"},
 				},
 				headerParams: []pipelinev1.Param{
-					pipelinev1.Param{
+					{
 						Name: "header1",
 						Value: pipelinev1.ArrayOrString{
 							Type:     pipelinev1.ParamTypeArray,
@@ -650,7 +650,7 @@ func Test_addInterceptorHeaders(t *testing.T) {
 				},
 			},
 			want: map[string][]string{
-				"header1": []string{"new_val"},
+				"header1": {"new_val"},
 			},
 		},
 	}

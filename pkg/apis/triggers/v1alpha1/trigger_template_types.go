@@ -27,13 +27,13 @@ import (
 )
 
 // apiVersion for Tekton core types
-const tektonApiVersion = GroupName + "/v1alpha1"
+const tektonAPIVersion = GroupName + "/v1alpha1"
 
 // allowedTemplate types are the resource types identified by apiVersion + kind
 // that can be templated using TriggerResourceTemplates
 // TODO: Replace static restrictions here with SubjectAccessReview create checks
 var allowedTemplateTypes = map[string][]string{
-	tektonApiVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "clustertask", "task", "condition"},
+	tektonAPIVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "clustertask", "task", "condition"},
 }
 
 // Check that TriggerTemplate may be validated and defaulted.
@@ -46,7 +46,7 @@ type TriggerTemplateSpec struct {
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
-// TriggerTemplateResourceTemplate describes a resource to create
+// TriggerResourceTemplate describes a resource to create
 type TriggerResourceTemplate struct {
 	json.RawMessage `json:",inline"`
 }
@@ -80,18 +80,18 @@ type TriggerTemplateList struct {
 	Items           []TriggerTemplate `json:"items"`
 }
 
-// GetApiVersionAndKind returns the apiVersion and Kind for the resourceTemplate
+// getAPIVersionAndKind returns the apiVersion and Kind for the resourceTemplate
 // Missing fields are represented by empty strings
-func (trt *TriggerResourceTemplate) getApiVersionAndKind() (string, string) {
+func (trt *TriggerResourceTemplate) getAPIVersionAndKind() (string, string) {
 	apiVersion := gjson.GetBytes(trt.RawMessage, "apiVersion").String()
 	kind := gjson.GetBytes(trt.RawMessage, "kind").String()
 	return apiVersion, kind
 }
 
-// IsAllowedResourceType returns true if the resourceTemplate has an apiVersion
+// IsAllowedType returns true if the resourceTemplate has an apiVersion
 // and kind field set to one of the allowed ones.
 func (trt *TriggerResourceTemplate) IsAllowedType() bool {
-	apiVersion, kind := trt.getApiVersionAndKind()
+	apiVersion, kind := trt.getAPIVersionAndKind()
 
 	if kinds, ok := allowedTemplateTypes[apiVersion]; ok {
 		for _, allowedKind := range kinds {

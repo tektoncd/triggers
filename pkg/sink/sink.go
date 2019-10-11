@@ -40,16 +40,19 @@ import (
 	restclient "k8s.io/client-go/rest"
 )
 
+// Resource defines the sink resource for processing incoming events for the
+// EventListener.
 type Resource struct {
 	TriggersClient         triggersclientset.Interface
 	DiscoveryClient        discoveryclient.DiscoveryInterface
 	RESTClient             restclient.Interface
 	PipelineClient         pipelineclientset.Interface
-	HttpClient             *http.Client
+	HTTPClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string
 }
 
+// HandleEvent processes an incoming HTTP event for the event listener.
 func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	el, err := r.TriggersClient.TektonV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
@@ -65,7 +68,7 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	eventID := template.Uid()
+	eventID := template.UID()
 	log.Printf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
@@ -116,7 +119,7 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param) ([]byte, error) {
 	outgoing := createOutgoingRequest(context.Background(), request, interceptorURL, payload)
 	addInterceptorHeaders(outgoing.Header, headerParams)
-	respPayload, err := makeRequest(r.HttpClient, outgoing)
+	respPayload, err := makeRequest(r.HTTPClient, outgoing)
 	if err != nil {
 		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
 	}
@@ -134,9 +137,9 @@ func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) 
 	}
 }
 
-func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {
+func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string) error {
 	for _, resource := range resources {
-		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName, eventId); err != nil {
+		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName, eventID); err != nil {
 			return err
 		}
 	}
@@ -145,7 +148,7 @@ func createResources(resources []json.RawMessage, restClient restclient.Interfac
 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventId string) error {
+func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
 	kind := gjson.GetBytes(rt, "kind").String()
@@ -164,7 +167,7 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 		log.Print(err)
 		return err
 	}
-	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventIDLabelKey, eventId)
+	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventIDLabelKey, eventID)
 	if err != nil {
 		log.Print(err)
 		return err

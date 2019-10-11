@@ -32,6 +32,8 @@ import (
 // uidMatch determines the uid variable within the resource template
 var uidMatch = []byte(`$(uid)`)
 
+// ResolvedBinding contains the dereferenced TriggerBinding and
+// TriggerTemplate after resolving the k8s ObjectRef.
 type ResolvedBinding struct {
 	TriggerBinding  *triggersv1.TriggerBinding
 	TriggerTemplate *triggersv1.TriggerTemplate
@@ -40,6 +42,8 @@ type ResolvedBinding struct {
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
+// ResolveBinding takes in a trigger containing object refs to bindings and
+// templates and resolves them to their underlying values.
 func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
 	var tb *triggersv1.TriggerBinding
 	if trigger.Binding != nil {
@@ -92,8 +96,8 @@ func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) js
 	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value.StringVal), -1)
 }
 
-// Uid generates a random string like the Kubernetes apiserver generateName metafield postfix.
-func Uid() string {
+// UID generates a random string like the Kubernetes apiserver generateName metafield postfix.
+func UID() string {
 	return rand.String(5)
 }
 

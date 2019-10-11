@@ -30,72 +30,78 @@ import (
 )
 
 const (
-	EL_NAME      = "el-name"
-	EL_NAMESPACE = "el-namespace"
-	PORT         = "port"
+	// Flag definitions
+	name      = "el-name"
+	namespace = "el-namespace"
+	port      = "port"
 )
 
 var (
-	elName = flag.String(EL_NAME, "",
+	nameFlag = flag.String("el-name", "",
 		"The name of the EventListener resource for this sink.")
-	elNamespace = flag.String(EL_NAMESPACE, "",
+	namespaceFlag = flag.String("el-namespace", "",
 		"The namespace of the EventListener resource for this sink.")
-	port = flag.String(PORT, "",
+	portFlag = flag.String("port", "",
 		"The port for the EventListener sink to listen on.")
 )
 
-type SinkArgs struct {
-	ElName      string
+// Args define the arguments for Sink.
+type Args struct {
+	// ElName is the EventListener name.
+	ElName string
+	// ElNamespace is the EventListener namespace.
 	ElNamespace string
-	Port        string
+	// Port is the port the Sink should listen on.
+	Port string
 }
 
-type SinkClients struct {
+// Clients define the set of client dependencies Sink requires.
+type Clients struct {
 	DiscoveryClient discoveryclient.DiscoveryInterface
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
 	PipelineClient  pipelineclientset.Interface
 }
 
-// GetArgs returns the flagged SinkArgs
-func GetArgs() (SinkArgs, error) {
+// GetArgs returns the flagged Args
+func GetArgs() (Args, error) {
 	flag.Parse()
-	if *elName == "" {
-		return SinkArgs{}, xerrors.Errorf("-%s arg not found", EL_NAME)
+	if *nameFlag == "" {
+		return Args{}, xerrors.Errorf("-%s arg not found", name)
 	}
-	if *elNamespace == "" {
-		return SinkArgs{}, xerrors.Errorf("-%s arg not found", EL_NAMESPACE)
+	if *namespaceFlag == "" {
+		return Args{}, xerrors.Errorf("-%s arg not found", namespace)
 	}
-	if *port == "" {
-		return SinkArgs{}, xerrors.Errorf("-%s arg not found", PORT)
+	if *portFlag == "" {
+		return Args{}, xerrors.Errorf("-%s arg not found", port)
 	}
-	return SinkArgs{
-		ElName:      *elName,
-		ElNamespace: *elNamespace,
-		Port:        *port,
+	return Args{
+		ElName:      *nameFlag,
+		ElNamespace: *namespaceFlag,
+		Port:        *portFlag,
 	}, nil
 }
 
 // ConfigureClients returns the kubernetes and triggers clientsets
-func ConfigureClients() (SinkClients, error) {
+func ConfigureClients() (Clients, error) {
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		return SinkClients{}, xerrors.Errorf("Failed to get in cluster config: %s", err)
+		return Clients{}, xerrors.Errorf("Failed to get in cluster config: %s", err)
 	}
 	kubeClient, err := kubeclientset.NewForConfig(clusterConfig)
 	if err != nil {
-		return SinkClients{}, xerrors.Errorf("Failed to create KubeClient: %s", err)
+		return Clients{}, xerrors.Errorf("Failed to create KubeClient: %s", err)
 	}
 	triggersClient, err := triggersclientset.NewForConfig(clusterConfig)
 	if err != nil {
-		return SinkClients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
+		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
 	pipelineclient, err := pipelineclientset.NewForConfig(clusterConfig)
 	if err != nil {
-		return SinkClients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
+		return Clients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
 	}
 
-	return SinkClients{
+	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
