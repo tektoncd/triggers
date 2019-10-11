@@ -547,6 +547,12 @@ func TestResource_processEvent(t *testing.T) {
 			},
 		},
 	}
+	requestHeader := make(http.Header, len(req.Header))
+	for k, v := range req.Header {
+		v2 := make([]string, len(v))
+		copy(v2, v)
+		requestHeader[k] = v2
+	}
 	resPayload, err := r.processEvent(interceptorURL, req, payload, params)
 
 	if err != nil {
@@ -555,6 +561,11 @@ func TestResource_processEvent(t *testing.T) {
 
 	if diff := cmp.Diff(payload, resPayload); diff != "" {
 		t.Errorf("Did not get expected payload back: %s", diff)
+	}
+
+	// Verify that the parameter header was not added to the request header
+	if diff := cmp.Diff(req.Header, requestHeader); diff != "" {
+		t.Errorf("processEvent() changed request header unexpectedly: %s", diff)
 	}
 }
 
