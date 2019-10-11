@@ -1,8 +1,7 @@
 # Tekton Triggers
-Triggers is a Kubernetes [Custom Resource Defintion](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) (CRD) controller that allows you to extract information from events payloads (a "trigger") to create Kubernetes resources. 
+Triggers is a Kubernetes [Custom Resource Defintion](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) (CRD) controller that allows you to extract information from events payloads (a "trigger") to create Kubernetes resources.
 
-🚨 The contents of this repo are currently a WIP 🚨 We are working toward implementing
-[this design](https://docs.google.com/document/d/1fngeNn3kGD4P_FTZjAnfERcEajS7zQhSEUaN7BYIlTw/edit#heading=h.iyqzt1brkg3o)
+The contents of this repo originated from implementing [this design](https://docs.google.com/document/d/1fngeNn3kGD4P_FTZjAnfERcEajS7zQhSEUaN7BYIlTw/edit#heading=h.iyqzt1brkg3o)
 (visible to members of [the Tekton mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list)).
 
 ## Background
@@ -25,7 +24,7 @@ You can learn more by checking out the [docs](docs/README.md)
 
 ## Want to start using Tekton Triggers
 
-Follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
+Check out the [examples](./examples/README.md) or follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The getting started guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
 
 ## Want to contribute
 
