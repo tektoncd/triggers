@@ -47,7 +47,7 @@ const (
 	Port = 8080
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
-	GeneratedResourcePrefix = "el-"
+	GeneratedResourcePrefix = "el"
 )
 
 var (
