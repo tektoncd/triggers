@@ -17,13 +17,16 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/configmap"
@@ -38,6 +41,10 @@ const (
 	WebhookLogKey = "webhook"
 	// ConfigName is the name of the ConfigMap that the logging config will be stored in
 	ConfigName = "config-logging-triggers"
+)
+
+var (
+	client dynamic.Interface
 )
 
 func main() {
@@ -75,6 +82,11 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to get the client set", zap.Error(err))
 	}
+	client, err = dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		logger.Fatal("Failed to get the dynamic client set", zap.Error(err))
+	}
+
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
 	configMapWatcher.Watch(ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, WebhookLogKey))
@@ -101,9 +113,17 @@ func main() {
 		},
 		Logger:                logger,
 		DisallowUnknownFields: true,
+		// Decorate contexts with the current state of the config.
+		WithContext: func(ctx context.Context) context.Context {
+			return injectDynamicClientset(ctx)
+		},
 	}
 
 	if err := controller.Run(stopCh); err != nil {
 		logger.Fatal("Error running admission controller", zap.Error(err))
 	}
+}
+
+func injectDynamicClientset(ctx context.Context) context.Context {
+	return context.WithValue(ctx, "clientSet", client)
 }

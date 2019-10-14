@@ -105,7 +105,7 @@ func EventListenerStatus(ops ...EventListenerStatusOp) EventListenerOp {
 	}
 }
 
-// EventListenerConditition sets the specified condition on the EventListenerStatus.
+// EventListenerCondition sets the specified condition on the EventListenerStatus.
 func EventListenerCondition(t apis.ConditionType, status corev1.ConditionStatus, message, reason string) EventListenerStatusOp {
 	return func(e *v1alpha1.EventListenerStatus) {
 		e.SetCondition(&apis.Condition{
@@ -134,17 +134,20 @@ func EventListenerAddress(hostname string) EventListenerStatusOp {
 }
 
 // Trigger creates an EventListenerTrigger. Any number of EventListenerTriggerOp
-// modifiers can be passed to create/modify it.
+// modifiers can be passed to create/modify it. For an empty TriggerBinding
+// name, the pointer is left nil.
 func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
 	t := v1alpha1.EventListenerTrigger{
-		Binding: &v1alpha1.EventListenerBinding{
-			Name:       tbName,
-			APIVersion: apiVersion,
-		},
 		Template: v1alpha1.EventListenerTemplate{
 			Name:       ttName,
 			APIVersion: apiVersion,
 		},
+	}
+	if len(tbName) != 0 {
+		t.Binding = &v1alpha1.EventListenerBinding{
+			Name:       tbName,
+			APIVersion: apiVersion,
+		}
 	}
 
 	for _, op := range ops {

@@ -29,7 +29,7 @@ determines if the processing is successful and the returned body is used as
 the new event payload by the EventListener and passed on the `TriggerBinding`.
 An interceptor has an optional header field with key-value pairs that will be
 merged with event headers before being sent; [canonical](https://github.com/golang/go/blob/master/src/net/http/header.go#L214)
-names should be specified.
+names must be specified.
 
 #### Event Interceptor Services
 
@@ -53,6 +53,13 @@ spec:
   triggers:
     - name: foo-trig
       interceptor:
+        header:
+        - name: Foo-Trig-Header1
+          value: string-value
+        - name: Foo-Trig-Header2
+          value:
+          - array-val1
+          - array-val2
         objectRef:
           kind: Service
           name: gh-validate
