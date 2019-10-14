@@ -154,8 +154,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 		ObjectMeta: generateObjectMeta(el),
 		Spec: corev1.ServiceSpec{
 			Selector: mergeLabels(el.Labels, GenerateResourceLabels(el.Name)),
-			// Cannot be changed
-			Type: corev1.ServiceTypeClusterIP,
+			Type:     el.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				servicePort,
 			},
@@ -168,6 +167,13 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 		updated := reconcileObjectMeta(&existingService.ObjectMeta, service.ObjectMeta)
 		if !reflect.DeepEqual(existingService.Spec.Selector, service.Spec.Selector) {
 			existingService.Spec.Selector = service.Spec.Selector
+			updated = true
+		}
+		if existingService.Spec.Type != service.Spec.Type {
+			existingService.Spec.Type = service.Spec.Type
+			// When transitioning from NodePort or LoadBalancer to ClusterIP
+			// we need to remove NodePort from Ports
+			existingService.Spec.Ports = service.Spec.Ports
 			updated = true
 		}
 		if !cmp.Equal(existingService.Spec.Ports, service.Spec.Ports, cmpopts.IgnoreFields(corev1.ServicePort{}, "NodePort")) {
