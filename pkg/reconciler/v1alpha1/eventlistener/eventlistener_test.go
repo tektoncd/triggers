@@ -130,7 +130,7 @@ func Test_reconcileService(t *testing.T) {
 		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: corev1.ServiceSpec{
 			Selector: generatedLabels,
-			Type:     corev1.ServiceTypeClusterIP,
+			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				servicePort,
 			},
@@ -457,8 +457,11 @@ func TestReconcile(t *testing.T) {
 	eventListener2 := eventListener1.DeepCopy()
 	eventListener2.Labels = updateLabel
 
-	eventListener3 := eventListener1.DeepCopy()
+	eventListener3 := eventListener2.DeepCopy()
 	eventListener3.Spec.ServiceAccountName = updatedSa
+
+	eventListener4 := eventListener3.DeepCopy()
+	eventListener4.Spec.ServiceType = corev1.ServiceTypeNodePort
 
 	var replicas int32 = 1
 	deployment1 := &appsv1.Deployment{
@@ -507,14 +510,14 @@ func TestReconcile(t *testing.T) {
 	deployment2.Spec.Selector.MatchLabels = mergeLabels(updateLabel, generatedLabels)
 	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
 
-	deployment3 := deployment1.DeepCopy()
+	deployment3 := deployment2.DeepCopy()
 	deployment3.Spec.Template.Spec.ServiceAccountName = updatedSa
 
 	service1 := &corev1.Service{
 		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: corev1.ServiceSpec{
 			Selector: generatedLabels,
-			Type:     corev1.ServiceTypeClusterIP,
+			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				servicePort,
 			},
@@ -524,6 +527,9 @@ func TestReconcile(t *testing.T) {
 	service2 := service1.DeepCopy()
 	service2.Labels = mergeLabels(updateLabel, generatedLabels)
 	service2.Spec.Selector = mergeLabels(updateLabel, generatedLabels)
+
+	service3 := service2.DeepCopy()
+	service3.Spec.Type = corev1.ServiceTypeNodePort
 
 	tests := []struct {
 		name           string
@@ -567,14 +573,30 @@ func TestReconcile(t *testing.T) {
 			startResources: test.TestResources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener3},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				Deployments:    []*appsv1.Deployment{deployment2},
+				Services:       []*corev1.Service{service2},
 			},
 			endResources: test.TestResources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener3},
 				Deployments:    []*appsv1.Deployment{deployment3},
-				Services:       []*corev1.Service{service1},
+				Services:       []*corev1.Service{service2},
+			},
+		},
+		{
+			name: "update-eventlistener-servicetype",
+			key:  reconcileKey,
+			startResources: test.TestResources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener4},
+				Deployments:    []*appsv1.Deployment{deployment3},
+				Services:       []*corev1.Service{service2},
+			},
+			endResources: test.TestResources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener4},
+				Deployments:    []*appsv1.Deployment{deployment3},
+				Services:       []*corev1.Service{service3},
 			},
 		},
 		{
