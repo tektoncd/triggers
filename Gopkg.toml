@@ -44,7 +44,7 @@ required = [
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.12.9"
+  revision = "97dc22a90a299033b557e8bb7db6d5d22f8f7875"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"

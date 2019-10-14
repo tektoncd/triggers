@@ -19,32 +19,104 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"net/http"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"knative.dev/pkg/apis"
 )
 
+var (
+	triggerBindings  = SchemeGroupVersion.WithResource("triggerbindings")
+	triggerTemplates = SchemeGroupVersion.WithResource("triggertemplates")
+	services         = corev1.SchemeGroupVersion.WithResource("services")
+)
+
 // Validate EventListener.
-func (t *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
+func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
+	return e.Spec.validate(ctx, e)
 }
 
-// Validate EventListenerSpec.
-func (s *EventListenerSpec) Validate(ctx context.Context) *apis.FieldError {
+func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *apis.FieldError {
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}
-	for n, t := range s.Triggers {
+	clientset := ctx.Value("clientSet").(dynamic.Interface)
+
+	for i, t := range s.Triggers {
+		// Validate optional TriggerBinding
+		if t.Binding != nil {
+			if len(t.Binding.Name) == 0 {
+				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].binding.name", i))
+			}
+			_, err := clientset.Resource(triggerBindings).Namespace(el.Namespace).Get(t.Binding.Name, metav1.GetOptions{})
+			if err != nil {
+				return apis.ErrInvalidValue(err, fmt.Sprintf("spec.triggers[%d].binding.name", i))
+			}
+		}
+		// Validate required TriggerTemplate
+		// Optional explicit match
+		if len(t.Template.APIVersion) != 0 {
+			if t.Template.APIVersion != "v1alpha1" {
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), fmt.Sprintf("spec.triggers[%d].template.apiVersion", i))
+			}
+		}
+		if len(t.Template.Name) == 0 {
+			return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].template.name", i))
+		}
+		_, err := clientset.Resource(triggerTemplates).Namespace(el.Namespace).Get(t.Template.Name, metav1.GetOptions{})
+		if err != nil {
+			return apis.ErrInvalidValue(err, "spec.triggers.template.name")
+		}
 		if t.Interceptor != nil {
-			return t.Interceptor.Validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", n))
+			err := t.Interceptor.validate(ctx, el.Namespace).ViaField(fmt.Sprintf("spec.triggers[%d]", i))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-// Validate validates the object.
-func (i *EventInterceptor) Validate(ctx context.Context) *apis.FieldError {
-	if i.ObjectRef == nil {
-		return apis.ErrMissingField("objectRef")
+func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
+	if i.ObjectRef == nil || len(i.ObjectRef.Name) == 0 {
+		return apis.ErrMissingField("interceptor.objectRef")
+	}
+	// Optional explicit match
+	if len(i.ObjectRef.Kind) != 0 {
+		if i.ObjectRef.Kind != "Service" {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.objectRef.kind")
+		}
+	}
+	// Optional explicit match
+	if len(i.ObjectRef.APIVersion) != 0 {
+		if i.ObjectRef.APIVersion != "v1" {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.objectRef.apiVersion")
+		}
+	}
+	if len(i.ObjectRef.Namespace) != 0 {
+		namespace = i.ObjectRef.Namespace
+	}
+	clientset := ctx.Value("clientSet").(dynamic.Interface)
+	_, err := clientset.Resource(services).Namespace(namespace).Get(i.ObjectRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return apis.ErrInvalidValue(err, "interceptor.objectRef.name")
+	}
+	for i, header := range i.Header {
+		// Enforce non-empty canonical header keys
+		if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.header[%d].name", i))
+		}
+		// Enforce non-empty header values
+		if header.Value.Type == pipelinev1.ParamTypeString {
+			if len(header.Value.StringVal) == 0 {
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.header[%d].value", i))
+			}
+		} else if len(header.Value.ArrayVal) == 0 {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.header[%d].value", i))
+		}
 	}
 	return nil
 }

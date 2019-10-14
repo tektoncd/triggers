@@ -17,6 +17,8 @@ rules:
   - tekton.dev
   resources:
   - eventlisteners
+  - triggerbindings
+  - triggertemplates
   verbs:
   - get
   - list

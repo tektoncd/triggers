@@ -27,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"strconv"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -37,7 +39,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	knativetest "knative.dev/pkg/test"
-	"strconv"
 )
 
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
@@ -222,7 +223,10 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// EventListener
 	el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(
-		bldr.EventListener("my-eventlistener", "",
+		bldr.EventListener("my-eventlistener", namespace,
+			bldr.EventListenerMeta(
+				bldr.Label("triggers", "eventlistener"),
+			),
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
 				bldr.EventListenerTrigger(tb.Name, tt.Name, "",
