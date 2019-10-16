@@ -14,7 +14,7 @@ Before we can use the Triggers project, we need to get some dependencies out of 
       - For now, GKE users should consider using the [nginx ingress](https://kubernetes.github.io/ingress-nginx/deploy/#gce-gke).
   - [Install Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#installing-tekton-pipelines)
     - Pipelines is the backbone of Tekton and will allow us to accomplish the work we plan to do.
-  - [Install Triggers](https://github.com/tektoncd/triggers/blob/master/DEVELOPMENT.md#install-triggers)
+  - [Install Triggers](../install.md)
     - Of course we need to install our project as well, so we can accept and process events into PipelineRuns!
   - Pick a GitHub repo with a Dockerfile as your build object (or you can fork [this one](https://github.com/iancoffey/ulmaceae)).
     - Clone this repo locally -  we will come back to this repo later.
