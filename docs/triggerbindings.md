@@ -1,6 +1,6 @@
 # TriggerBindings
 As per the name, `TriggerBinding`s bind against events/triggers.
-`TriggerBinding`s enable you to capture fields within an event payload and store
+`TriggerBinding`s enable you to capture fields from an event and store
 them as parameters. The separation of `TriggerBinding`s from `TriggerTemplate`s
 was deliberate to encourage reuse between them.
 
@@ -29,6 +29,13 @@ spec:
 
 ## Event Variable Interpolation
 
+In order to parse generic events as efficiently as possible, [GJSON](https://github.com/tidwall/gjson) 
+is used internally. As a result, the binding [path syntax](https://github.com/tidwall/gjson#path-syntax)
+differs slightly from standard JSON. As of now, the following patterns are
+supported within `TriggerBinding` parameter value interpolation:
+- `$(body(.[0-9A-Za-z_-]+)*)`
+- `$(header(.[0-9A-Za-z_-]+)?)`
+
 ### Body
 HTTP Post request body data can be referenced using variable interpolation.
 Text in the form of `$(body.X.Y.Z)` is replaced by the body data at JSON path
@@ -38,13 +45,15 @@ Text in the form of `$(body.X.Y.Z)` is replaced by the body data at JSON path
 
 The following are some example variable interpolation replacements:
 ```
-$(body) -> {"key1": "value1", "key2": {"key3": "value3"}}
+$(body) -> "{\"key1\": \"value1\", \"key2\": {\"key3\": \"value3\"}, \"key4\": [\"value4\", \"value5\"]}"
 
 $(body.key1) -> "value1"
 
-$(body.key2) -> {"key3": "value3"}
+$(body.key2) -> "{\"key3\": \"value3\"}"
 
 $(body.key2.key3) -> "value3"
+
+$(body.key4.0) -> "value4"
 ```
 
 ### Header
@@ -55,9 +64,11 @@ Text in the form of `$(header.X)` is replaced by the event's header named `X`.
 
 The following are some example variable interpolation replacements:
 ```
-$(header) -> {"One":["one"], "Two":["one","two","three"]}
+$(header) -> "{\"One\":[\"one\"], \"Two\":[\"one\",\"two\",\"three\"]}"
 
-$(header.One) -> one
+$(header.One) -> "one"
 
-$(header.Two) -> one two three
+$(header.Two) -> "one two three"
+
+$(header.Two.1) -> "two"
 ```
