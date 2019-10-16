@@ -24,7 +24,7 @@ You can learn more by checking out the [docs](docs/README.md)
 
 ## Want to start using Tekton Triggers
 
-Check out the [examples](./examples/README.md) or follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The getting started guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
+[Install](./docs/install.md) Triggers, check out the [installation guide](./docs/install.md),  [examples](./examples/README.md) or follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The getting started guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
 
 ## Want to contribute
 
