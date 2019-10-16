@@ -1,19 +1,18 @@
 # EventListener
 
 `EventListener`s connect `TriggerBinding`s to `TriggerTemplate`s and provide an
-addressable endpoint, which is where webhooks/events are directed.
-
-Further, it is at this level that the service account is connected, which
-specifies what permissions the resources will be created (or at least attempted)
-with.
+addressable endpoint, which is where webhooks/events are directed. This is also
+where the service account is connected, which specifies what permissions the
+resources will be created (or at least attempted) with. Note that currently,
+JSON is the only accepted MIME type for events.
 
 When an `EventListener` is successfully created, a service is created that
 references a listener pod. This listener pod accepts the incoming events and
 does what has been specified in the corresponding
-`TriggerBinding`s/`TriggerTemplate`s. The service created is a `ClusterIP` service
-which means any other pods running in the same Kubernetes cluster can access it via the service's
-cluster DNS. For external services to connect to your cluster (e.g. GitHub
-sending webhooks), check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md)
+`TriggerBinding`s/`TriggerTemplate`s. The created service is by default of type
+`ClusterIP`; any other pods running in the same Kubernetes cluster can access
+services' via their cluster DNS. For external services to connect to your
+cluster (e.g. GitHub sending webhooks), check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md)
 
 ## Parameters
 
