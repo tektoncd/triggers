@@ -18,6 +18,7 @@ rules:
   - tekton.dev
   resources:
   - pipelineruns
+  - pipelineresources
   verbs:
   - create
 ---
