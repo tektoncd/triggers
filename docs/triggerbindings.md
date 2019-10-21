@@ -29,12 +29,12 @@ spec:
 
 ## Event Variable Interpolation
 
-In order to parse generic events as efficiently as possible, [GJSON](https://github.com/tidwall/gjson) 
+In order to parse generic events as efficiently as possible, [GJSON](https://github.com/tidwall/gjson)
 is used internally. As a result, the binding [path syntax](https://github.com/tidwall/gjson#path-syntax)
 differs slightly from standard JSON. As of now, the following patterns are
 supported within `TriggerBinding` parameter value interpolation:
-- `$(body(.[0-9A-Za-z_-]+)*)`
-- `$(header(.[0-9A-Za-z_-]+)?)`
+- `\$\(body(\.[[:alnum:]/_\-\.\\]+|\.#\([[:alnum:]=<>%!"\*_-]+\)#??)*\)`
+- `\$\(header(\.[[:alnum:]_\-]+)?\)`
 
 ### Body
 HTTP Post request body data can be referenced using variable interpolation.
