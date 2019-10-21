@@ -41,6 +41,11 @@ func Test_BodyPathVarRegex(t *testing.T) {
 		"$(body.a1)",
 		"$(body.a.b)",
 		"$(body.a.b.c)",
+		"$(body.1.b.c\\.e/f)",
+		"$(body.#(a==b))",
+		"$(body.#(a>1)#)",
+		"$(body.#(a%\"D*\")#.c)",
+		"$(body.#(a!%\"D*\").c)",
 	}
 	for _, bodyPathVar := range tests {
 		t.Run(bodyPathVar, func(t *testing.T) {
@@ -57,8 +62,10 @@ func Test_BodyPathVarRegex_invalid(t *testing.T) {
 		"$[body]",
 		"${body}",
 		"$(body.)",
-		"$(body..)",
+		"$(body.@)",
 		"$(body.$a)",
+		"$(body#a)",
+		"$(body@#)",
 		"body.a",
 		"body",
 		"${{body}",

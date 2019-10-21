@@ -27,8 +27,14 @@ import (
 )
 
 // bodyPathVarRegex determines valid body path variables
-var bodyPathVarRegex = regexp.MustCompile(`\$\(body(.[0-9A-Za-z_-]+)*\)`)
-var headerVarRegex = regexp.MustCompile(`\$\(header(.[0-9A-Za-z_-]+)?\)`)
+// The body regular expression allows for a subset of GJSON syntax, the mininum
+// required to navigate through dictionaries, query arrays and support
+// namespaced label names e.g. tekton.dev/eventlistener
+var bodyPathVarRegex = regexp.MustCompile(`\$\(body(\.[[:alnum:]/_\-\.\\]+|\.#\([[:alnum:]=<>%!"\*_-]+\)#??)*\)`)
+
+// The headers regular expression allows for simple navigation down a hierarchy
+// of dictionaries
+var headerVarRegex = regexp.MustCompile(`\$\(header(\.[[:alnum:]_\-]+)?\)`)
 
 // getBodyPathFromVar returns the body path given an body path variable
 // $(body.my.path) -> my.path
