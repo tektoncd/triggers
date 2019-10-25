@@ -6,8 +6,8 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: cron-trig
-      binding:
-        name: cron-binding
+      bindings:
+      - name: cron-binding
       template:
         name: pipeline-template
       params:

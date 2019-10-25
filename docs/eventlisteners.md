@@ -70,8 +70,8 @@ spec:
           name: gh-validate
           apiVersion: v1
           namespace: default
-      binding:
-        name: pipeline-binding
+      bindings:
+      - name: pipeline-binding
       template:
         name: pipeline-template
       params:

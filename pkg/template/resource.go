@@ -32,27 +32,26 @@ import (
 // uidMatch determines the uid variable within the resource template
 var uidMatch = []byte(`$(uid)`)
 
-// ResolvedBinding contains the dereferenced TriggerBinding and
+// ResolvedBinding contains the dereferenced TriggerBindings and
 // TriggerTemplate after resolving the k8s ObjectRef.
 type ResolvedBinding struct {
-	TriggerBinding  *triggersv1.TriggerBinding
+	TriggerBindings []*triggersv1.TriggerBinding
 	TriggerTemplate *triggersv1.TriggerTemplate
 }
 
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
-// ResolveBinding takes in a trigger containing object refs to bindings and
+// ResolveBindings takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
 func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
-	var tb *triggersv1.TriggerBinding
-	if trigger.Binding != nil {
-		tbName := trigger.Binding.Name
-		var err error
-		tb, err = getTB(tbName, metav1.GetOptions{})
+	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
+	for _, b := range trigger.Bindings {
+		tb2, err := getTB(b.Name, metav1.GetOptions{})
 		if err != nil {
-			return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerBinding %s: %s", tbName, err)
+			return ResolvedBinding{}, xerrors.Errorf("error getting TriggerBinding %s: %s", b.Name, err)
 		}
+		tb = append(tb, tb2)
 	}
 
 	ttName := trigger.Template.Name
@@ -60,7 +59,7 @@ func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	if err != nil {
 		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", ttName, err)
 	}
-	return ResolvedBinding{TriggerBinding: tb, TriggerTemplate: tt}, nil
+	return ResolvedBinding{TriggerBindings: tb, TriggerTemplate: tt}, nil
 }
 
 // MergeInDefaultParams returns the params with the addition of all

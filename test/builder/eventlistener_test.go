@@ -143,10 +143,10 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
@@ -170,10 +170,10 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
@@ -208,10 +208,10 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
@@ -262,19 +262,19 @@ func TestEventListenerBuilder(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
 				}, {
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb2",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt2",
 						APIVersion: "v1alpha1",
@@ -313,10 +313,10 @@ func TestEventListenerBuilder(t *testing.T) {
 							APIVersion: "v1",
 						},
 					},
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
@@ -370,10 +370,10 @@ func TestEventListenerBuilder(t *testing.T) {
 							APIVersion: "v1",
 						},
 					},
-					Binding: &v1alpha1.EventListenerBinding{
+					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
-					},
+					}},
 					Template: v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",

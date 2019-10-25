@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tidwall/gjson"
 	"golang.org/x/xerrors"
 )
@@ -163,7 +164,13 @@ func getHeaderValue(header map[string][]string, headerName string) (string, erro
 // NewResources returns all resources defined when applying the event and
 // elParams to the TriggerTemplate and TriggerBinding in the ResolvedBinding.
 func NewResources(body []byte, header map[string][]string, elParams []pipelinev1.Param, binding ResolvedBinding) ([]json.RawMessage, error) {
-	params, err := ApplyBodyToParams(body, binding.TriggerBinding.Spec.Params)
+
+	params, err := mergeBindingParams(binding.TriggerBindings)
+	if err != nil {
+		return []json.RawMessage{}, xerrors.Errorf("error merging TriggerBinding params: %v", err)
+	}
+
+	params, err = ApplyBodyToParams(body, params)
 	if err != nil {
 		return []json.RawMessage{}, xerrors.Errorf("Error applying body to TriggerBinding params: %s", err)
 	}
@@ -184,4 +191,18 @@ func NewResources(body []byte, header map[string][]string, elParams []pipelinev1
 		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources, nil
+}
+
+func mergeBindingParams(bindings []*triggersv1.TriggerBinding) ([]pipelinev1.Param, error) {
+	var params []pipelinev1.Param
+
+	for _, b := range bindings {
+		var err error
+		params, err = MergeParams(params, b.Spec.Params)
+		if err != nil {
+			return nil, xerrors.Errorf("error merging params: %v", err)
+		}
+	}
+
+	return params, nil
 }

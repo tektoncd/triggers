@@ -47,11 +47,11 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 
 	for i, t := range s.Triggers {
 		// Validate optional TriggerBinding
-		if t.Binding != nil {
-			if len(t.Binding.Name) == 0 {
+		for _, b := range t.Bindings {
+			if len(b.Name) == 0 {
 				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].binding.name", i))
 			}
-			_, err := clientset.Resource(triggerBindings).Namespace(el.Namespace).Get(t.Binding.Name, metav1.GetOptions{})
+			_, err := clientset.Resource(triggerBindings).Namespace(el.Namespace).Get(b.Name, metav1.GetOptions{})
 			if err != nil {
 				return apis.ErrInvalidValue(err, fmt.Sprintf("spec.triggers[%d].binding.name", i))
 			}

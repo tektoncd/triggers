@@ -6,8 +6,8 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: foo-trig
-      binding:
-        name: pipeline-binding
+      bindings:
+      - name: pipeline-binding
       template:
         name: pipeline-template
       params:

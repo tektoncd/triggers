@@ -112,8 +112,8 @@ metadata:
 spec:
   serviceAccountName: default
   triggers:
-  - binding:
-      name: pipeline-binding
+  - bindings:
+    - name: pipeline-binding
     template:
       name: pipeline-template
     params:

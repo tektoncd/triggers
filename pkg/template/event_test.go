@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	"golang.org/x/xerrors"
 
@@ -717,7 +718,7 @@ func Test_NewResources(t *testing.T) {
 				header: map[string][]string{},
 				binding: ResolvedBinding{
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
-					TriggerBinding:  bldr.TriggerBinding("tb", "namespace"),
+					TriggerBindings: []*triggersv1.TriggerBinding{bldr.TriggerBinding("tb", "namespace")},
 				},
 			},
 			want: []json.RawMessage{},
@@ -735,12 +736,14 @@ func Test_NewResources(t *testing.T) {
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
 						),
 					),
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							bldr.TriggerBindingParam("param2", "$(header.one)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+								bldr.TriggerBindingParam("param2", "$(header.one)"),
+							),
 						),
-					),
+					},
 				},
 			},
 			want: []json.RawMessage{
@@ -763,12 +766,14 @@ func Test_NewResources(t *testing.T) {
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
 						),
 					),
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							bldr.TriggerBindingParam("param2", "$(header.one)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+								bldr.TriggerBindingParam("param2", "$(header.one)"),
+							),
 						),
-					),
+					},
 				},
 			},
 			want: []json.RawMessage{
@@ -788,11 +793,13 @@ func Test_NewResources(t *testing.T) {
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)"}`)),
 						),
 					),
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							),
 						),
-					),
+					},
 				},
 			},
 			want: []json.RawMessage{
@@ -810,11 +817,13 @@ func Test_NewResources(t *testing.T) {
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)-$(uid)", "rt2": "$(uid)"}`)),
 						),
 					),
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							),
 						),
-					),
+					},
 				},
 			},
 			want: []json.RawMessage{
@@ -835,11 +844,13 @@ func Test_NewResources(t *testing.T) {
 							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
 						),
 					),
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							),
 						),
-					),
+					},
 				},
 			},
 			want: []json.RawMessage{
@@ -859,11 +870,13 @@ func Test_NewResources(t *testing.T) {
 					},
 				},
 				binding: ResolvedBinding{
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param2", "$(body.foo)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param2", "$(body.foo)"),
+							),
 						),
-					),
+					},
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
 							bldr.TriggerTemplateParam("param1", "description1", ""),
@@ -894,11 +907,13 @@ func Test_NewResources(t *testing.T) {
 					},
 				},
 				binding: ResolvedBinding{
-					TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param2", "$(body.foo)"),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param2", "$(body.foo)"),
+							),
 						),
-					),
+					},
 					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 						bldr.TriggerTemplateSpec(
 							bldr.TriggerTemplateParam("param1", "description1", ""),
@@ -918,6 +933,37 @@ func Test_NewResources(t *testing.T) {
 				json.RawMessage(`{"rt1": {"p1": "value1", "p3": "value3"}}`),
 				json.RawMessage(`{"rt2": "bar-cbhtc"}`),
 				json.RawMessage(`{"rt3": "default4"}`),
+			},
+		},
+		{
+			name: "one resource template multiple bindings",
+			args: args{
+				body:   json.RawMessage(`{"foo": "bar"}`),
+				header: map[string][]string{"one": {"1"}},
+				binding: ResolvedBinding{
+					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+						bldr.TriggerTemplateSpec(
+							bldr.TriggerTemplateParam("param1", "description", ""),
+							bldr.TriggerTemplateParam("param2", "description", ""),
+							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+						),
+					),
+					TriggerBindings: []*triggersv1.TriggerBinding{
+						bldr.TriggerBinding("tb", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							),
+						),
+						bldr.TriggerBinding("tb2", "namespace",
+							bldr.TriggerBindingSpec(
+								bldr.TriggerBindingParam("param2", "$(header.one)"),
+							),
+						),
+					},
+				},
+			},
+			want: []json.RawMessage{
+				json.RawMessage(`{"rt1": "bar-1"}`),
 			},
 		},
 	}
@@ -961,11 +1007,13 @@ func Test_NewResources_error(t *testing.T) {
 						bldr.TriggerTemplateParam("param1", "description", ""),
 					),
 				),
-				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
+						),
 					),
-				),
+				},
 			},
 		},
 		{
@@ -978,11 +1026,13 @@ func Test_NewResources_error(t *testing.T) {
 						bldr.TriggerTemplateParam("param1", "description", ""),
 					),
 				),
-				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(header.bogusvalue)"),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(header.bogusvalue)"),
+						),
 					),
-				),
+				},
 			},
 		},
 		{
@@ -999,11 +1049,35 @@ func Test_NewResources_error(t *testing.T) {
 						bldr.TriggerTemplateParam("param1", "description", ""),
 					),
 				),
-				TriggerBinding: bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
+						),
+					),
+				},
+			},
+		},
+		{
+			name: "conflicting bindings",
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
 					),
 				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "foo"),
+						),
+					),
+					bldr.TriggerBinding("tb2", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "bar"),
+						),
+					),
+				},
 			},
 		},
 	}
