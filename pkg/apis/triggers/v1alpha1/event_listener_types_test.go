@@ -300,3 +300,11 @@ func TestSetDeploymentConditions(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOwnerReference(t *testing.T) {
+	// TODO
+}
+
+func TestSetAddress(t *testing.T) {
+	// TODO
+}
