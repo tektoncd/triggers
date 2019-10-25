@@ -144,10 +144,10 @@ func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v
 		},
 	}
 	if len(tbName) != 0 {
-		t.Binding = &v1alpha1.EventListenerBinding{
+		t.Bindings = []*v1alpha1.EventListenerBinding{{
 			Name:       tbName,
 			APIVersion: apiVersion,
-		}
+		}}
 	}
 
 	for _, op := range ops {

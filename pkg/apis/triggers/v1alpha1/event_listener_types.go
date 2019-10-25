@@ -61,9 +61,9 @@ type EventListenerSpec struct {
 // and TriggerTemplate; TriggerBinding provides extracted values for
 // TriggerTemplate to then create resources from.
 type EventListenerTrigger struct {
-	Binding  *EventListenerBinding `json:"binding"`
-	Template EventListenerTemplate `json:"template"`
-	Params   []pipelinev1.Param    `json:"params,omitempty"`
+	Bindings []*EventListenerBinding `json:"bindings"`
+	Template EventListenerTemplate   `json:"template"`
+	Params   []pipelinev1.Param      `json:"params,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional

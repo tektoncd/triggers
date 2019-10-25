@@ -245,15 +245,30 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 }
 
 var (
-	tb = triggersv1.TriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-triggerbinding"},
+	triggerBindings = map[string]*triggersv1.TriggerBinding{
+		"my-triggerbinding": &triggersv1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-triggerbinding"},
+		},
+		"tb-params": &triggersv1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "tb-params"},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []pipelinev1.Param{{
+					Name: "foo",
+					Value: pipelinev1.ArrayOrString{
+						Type:      pipelinev1.ParamTypeString,
+						StringVal: "bar",
+					},
+				}},
+			},
+		},
 	}
+	tb = triggerBindings["my-triggerbinding"]
 	tt = triggersv1.TriggerTemplate{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-triggertemplate"},
 	}
 	getTB = func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error) {
-		if name == "my-triggerbinding" {
-			return &tb, nil
+		if v, ok := triggerBindings[name]; ok {
+			return v, nil
 		}
 		return nil, fmt.Errorf("Error invalid name: %s", name)
 	}
@@ -266,30 +281,66 @@ var (
 )
 
 func Test_ResolveBinding(t *testing.T) {
-	trigger := bldr.Trigger("my-triggerbinding", "my-triggertemplate", "v1alpha1")
-	want := ResolvedBinding{TriggerBinding: &tb, TriggerTemplate: &tt}
-	got, err := ResolveBinding(trigger, getTB, getTT)
-	if err != nil {
-		t.Errorf("ResolveBinding() returned unexpected error: %s", err)
-	} else if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("ResolveBinding(): -want +got: %s", diff)
-	}
-}
-
-func Test_ResolveBinding_NoBinding(t *testing.T) {
-	trigger := triggersv1.EventListenerTrigger{
-		Template: triggersv1.EventListenerTemplate{
-			Name:       "my-triggertemplate",
-			APIVersion: "v1alpha1",
+	tests := []struct {
+		name    string
+		trigger triggersv1.EventListenerTrigger
+		want    ResolvedBinding
+	}{
+		{
+			name:    "1 binding",
+			trigger: bldr.Trigger("my-triggerbinding", "my-triggertemplate", "v1alpha1"),
+			want: ResolvedBinding{
+				TriggerBindings: []*triggersv1.TriggerBinding{tb},
+				TriggerTemplate: &tt,
+			},
+		},
+		{
+			name: "no binding",
+			trigger: triggersv1.EventListenerTrigger{
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
+			want: ResolvedBinding{TriggerBindings: []*triggersv1.TriggerBinding{}, TriggerTemplate: &tt},
+		},
+		{
+			name: "multiple bindings",
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{
+					&triggersv1.EventListenerBinding{
+						Name:       "my-triggerbinding",
+						APIVersion: "v1alpha1",
+					},
+					&triggersv1.EventListenerBinding{
+						Name:       "tb-params",
+						APIVersion: "v1alpha1",
+					},
+				},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
+			want: ResolvedBinding{
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					tb,
+					triggerBindings["tb-params"],
+				},
+				TriggerTemplate: &tt,
+			},
 		},
 	}
 
-	want := ResolvedBinding{TriggerTemplate: &tt}
-	got, err := ResolveBinding(trigger, getTB, getTT)
-	if err != nil {
-		t.Errorf("ResolveBinding() returned unexpected error: %s", err)
-	} else if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("ResolveBinding(): -want +got: %s", diff)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ResolveBinding(tc.trigger, getTB, getTT)
+			if err != nil {
+				t.Errorf("ResolveBinding() returned unexpected error: %s", err)
+			} else if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ResolveBinding(): -want +got: %s", diff)
+			}
+		})
 	}
 }
 

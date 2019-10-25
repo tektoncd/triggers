@@ -42,7 +42,7 @@ func Test_EventListenerValidate_error(t *testing.T) {
 				},
 				Spec: v1alpha1.EventListenerSpec{
 					Triggers: []v1alpha1.EventListenerTrigger{{
-						Binding:     &v1alpha1.EventListenerBinding{Name: "tb"},
+						Bindings:    []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 						Template:    v1alpha1.EventListenerTemplate{Name: "tt"},
 						Interceptor: &v1alpha1.EventInterceptor{},
 					}},

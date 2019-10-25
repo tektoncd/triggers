@@ -87,7 +87,7 @@ metadata:
 spec:
   serviceAccountName: tekton-triggers-admin
   triggers:
-    - binding:
-        name: getting-started-pipelinebinding
+    - bindings:
+      - name: getting-started-pipelinebinding
       template:
         name: getting-started-triggertemplate
