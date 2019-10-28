@@ -14,5 +14,5 @@ spec:
             args:
               - wget
               - --spider
-              - el--cron-listener.default.svc.cluster.local:8080
+              - el-cron-listener.default.svc.cluster.local:8080
           restartPolicy: Never
