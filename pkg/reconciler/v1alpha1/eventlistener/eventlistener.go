@@ -195,7 +195,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 			c.Logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace))
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, Port))
 		c.Logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
 		c.Logger.Error(err)
@@ -359,6 +359,6 @@ func wrapError(err1, err2 error) error {
 }
 
 // listenerHostname returns the intended hostname for the EventListener service.
-func listenerHostname(name, namespace string) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace)
+func listenerHostname(name, namespace string, port int) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", name, namespace, port)
 }

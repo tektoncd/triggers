@@ -127,10 +127,17 @@ func EventListenerConfig(generatedResourceName string) EventListenerStatusOp {
 // EventListenerAddress sets the EventListenerAddress on the EventListenerStatus
 func EventListenerAddress(hostname string) EventListenerStatusOp {
 	return func(e *v1alpha1.EventListenerStatus) {
-		e.Address = &duckv1alpha1.Addressable{
-			Hostname: hostname,
-		}
+		e.Address = NewAddressable(hostname)
 	}
+}
+
+func NewAddressable(hostname string) *duckv1alpha1.Addressable {
+	addressable := &duckv1alpha1.Addressable{}
+	addressable.URL = &apis.URL{
+		Scheme: "http",
+		Host:   hostname,
+	}
+	return addressable
 }
 
 // Trigger creates an EventListenerTrigger. Any number of EventListenerTriggerOp

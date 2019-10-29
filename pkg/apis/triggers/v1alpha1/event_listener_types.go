@@ -227,12 +227,11 @@ func (els *EventListenerStatus) SetAddress(hostname string) {
 		els.Address = &duckv1alpha1.Addressable{}
 	}
 	if hostname != "" {
-		els.Address.Hostname = hostname
-		if u, err := apis.ParseURL(fmt.Sprintf("http://%s/", hostname)); err != nil {
-			els.Address.URL = u
+		els.Address.URL = &apis.URL{
+			Scheme: "http",
+			Host:   hostname,
 		}
 	} else {
-		els.Address.Hostname = ""
 		els.Address.URL = nil
 	}
 }

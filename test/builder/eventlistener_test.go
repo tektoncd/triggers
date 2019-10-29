@@ -57,9 +57,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			},
 			Status: v1alpha1.EventListenerStatus{
 				AddressStatus: duckv1alpha1.AddressStatus{
-					Address: &duckv1alpha1.Addressable{
-						Hostname: "hostname",
-					},
+					Address: NewAddressable("hostname"),
 				},
 				Configuration: v1alpha1.EventListenerConfig{
 					GeneratedResourceName: "generatedName",
