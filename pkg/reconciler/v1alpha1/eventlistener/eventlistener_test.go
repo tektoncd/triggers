@@ -119,8 +119,10 @@ func getEventListenerTestAssets(t *testing.T, r test.TestResources) (test.TestAs
 func Test_reconcileService(t *testing.T) {
 	eventListener1 := eventListener0.DeepCopy()
 	eventListener1.Status.SetExistsCondition(v1alpha1.ServiceExists, nil)
-	eventListener1.Status.Address = &duckv1alpha1.Addressable{
-		Hostname: listenerHostname(generatedResourceName, namespace),
+	eventListener1.Status.Address = &duckv1alpha1.Addressable{}
+	eventListener1.Status.Address.URL = &apis.URL{
+		Scheme: "http",
+		Host:   listenerHostname(generatedResourceName, namespace, Port),
 	}
 
 	eventListener2 := eventListener1.DeepCopy()
@@ -456,7 +458,7 @@ func TestReconcile(t *testing.T) {
 		),
 		bldr.EventListenerStatus(
 			bldr.EventListenerConfig(generatedResourceName),
-			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace)),
+			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, Port)),
 			bldr.EventListenerCondition(
 				v1alpha1.ServiceExists,
 				corev1.ConditionTrue,
