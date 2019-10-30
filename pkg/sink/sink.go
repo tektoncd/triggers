@@ -173,6 +173,10 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 		return err
 	}
 
+	resourcename := gjson.GetBytes(rt, "metadata.name")
+	resourcekind := gjson.GetBytes(rt, "kind")
+	log.Printf("Generating resource: kind: %v, name: %v ", resourcekind, resourcename)
+
 	uri := createRequestURI(apiVersion, apiResource.Name, namespace, apiResource.Namespaced)
 	result := restClient.Post().
 		RequestURI(uri).
