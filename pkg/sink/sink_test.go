@@ -490,6 +490,9 @@ func Test_HandleEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
 	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("Response code doesn't match: %v", resp.Status)
+	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("Error reading response body: %s", err)
