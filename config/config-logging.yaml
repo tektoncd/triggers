@@ -48,3 +48,4 @@ data:
   # Log level overrides
   loglevel.controller: "info"
   loglevel.webhook: "info"
+  loglevel.eventlistener: "info"

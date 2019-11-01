@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -34,6 +33,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
@@ -50,26 +50,27 @@ type Resource struct {
 	HTTPClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string
+	Logger                 *zap.SugaredLogger
 }
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	el, err := r.TriggersClient.TektonV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
-		log.Printf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+		r.Logger.Fatalf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	event, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		log.Printf("Error reading event body: %s", err)
+		r.Logger.Fatalf("Error reading event body: %s", err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	eventID := template.UID()
-	log.Printf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
+	r.Logger.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
 	// Execute each Trigger
@@ -86,13 +87,13 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 	if trigger.Interceptor != nil {
 		interceptorURL, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 		if err != nil {
-			log.Printf("Could not resolve Interceptor Service URI: %q", err)
+			r.Logger.Errorf("Could not resolve Interceptor Service URI: %q", err)
 			return
 		}
 
 		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header)
 		if err != nil {
-			log.Printf("Error Intercepting Event (EventID: %s): %q", eventID, err)
+			r.Logger.Errorf("Error Intercepting Event (EventID: %s): %q", eventID, err)
 			return
 		}
 		payload = modifiedPayload
@@ -102,17 +103,17 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
 		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
-		log.Print(err)
+		r.Logger.Error(err)
 		return
 	}
 	resources, err := template.NewResources(payload, request.Header, trigger.Params, binding)
 	if err != nil {
-		log.Print(err)
+		r.Logger.Error(err)
 		return
 	}
-	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID)
+	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID, r.Logger)
 	if err != nil {
-		log.Print(err)
+		r.Logger.Error(err)
 	}
 }
 
@@ -137,9 +138,9 @@ func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) 
 	}
 }
 
-func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string) error {
+func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string, logger *zap.SugaredLogger) error {
 	for _, resource := range resources {
-		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName, eventID); err != nil {
+		if err := createResource(resource, restClient, discoveryClient, eventListenerNamespace, eventListenerName, eventID, logger); err != nil {
 			return err
 		}
 	}
@@ -148,7 +149,7 @@ func createResources(resources []json.RawMessage, restClient restclient.Interfac
 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string) error {
+func createResource(rt json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string, logger *zap.SugaredLogger) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
 	kind := gjson.GetBytes(rt, "kind").String()
@@ -164,18 +165,16 @@ func createResource(rt json.RawMessage, restClient restclient.Interface, discove
 
 	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventListenerLabelKey, eventListenerName)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	rt, err = sjson.SetBytes(rt, "metadata.labels."+triggersv1.LabelEscape+triggersv1.EventIDLabelKey, eventID)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 
 	resourcename := gjson.GetBytes(rt, "metadata.name")
 	resourcekind := gjson.GetBytes(rt, "kind")
-	log.Printf("Generating resource: kind: %v, name: %v ", resourcekind, resourcename)
+	logger.Infof("Generating resource: kind: %s, name: %s ", resourcekind, resourcename)
 
 	uri := createRequestURI(apiVersion, apiResource.Name, namespace, apiResource.Namespaced)
 	result := restClient.Post().

@@ -193,11 +193,19 @@ func TestEventListenerCreate(t *testing.T) {
 	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
-			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{"tekton.dev"},
-				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
-				Verbs:     []string{"create", "get"},
-			}}},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
+					Verbs:     []string{"create", "get"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list"},
+				},
+			},
+		},
 	)
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
@@ -219,6 +227,45 @@ func TestEventListenerCreate(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Error creating RoleBinding: %s", err)
+	}
+
+	// config-logging ConfigMap
+	_, err = c.KubeClient.CoreV1().ConfigMaps(namespace).Create(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "config-logging-triggers"},
+			Data: map[string]string{
+				"loglevel.controller":    "info",
+				"loglevel.webhook":       "info",
+				"loglevel.eventlistener": "info",
+				"zap-logger-config": "{" +
+					"\"level\": \"info\"," +
+					"\"developmen\": false," +
+					"\"sampling\": {" +
+					"\"initial\": 100," +
+					"\"thereafter\": 100" +
+					"}," +
+					"\"outputPaths\": [\"stdout\"]," +
+					"\"errorOutputPaths\": [\"stderr\"]," +
+					"\"encoding\": \"json\"," +
+					"\"encoderConfig\": {" +
+					"\"timeKey\": \"\"," +
+					"\"levelKey\": \"level\"," +
+					"\"nameKey\": \"logger\"," +
+					"\"callerKey\": \"caller\"," +
+					"\"messageKey\": \"msg\"," +
+					"\"stacktraceKey\": \"stacktrace\"," +
+					"\"lineEnding\": \"\"," +
+					"\"levelEncoder\": \"\"," +
+					"\"timeEncoder\": \"\"," +
+					"\"durationEncoder\": \"\"," +
+					"\"callerEncoder\": \"\"" +
+					"}" +
+					"}",
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Failed to create EventListener: %s", err)
 	}
 
 	// EventListener

@@ -30,6 +30,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -309,6 +310,7 @@ func Test_createResource(t *testing.T) {
 			wantURLPath:            "/api/v1/namespaces",
 		},
 	}
+	logger, _ := logging.NewLogger("", "")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup fake client
@@ -337,7 +339,7 @@ func Test_createResource(t *testing.T) {
 			})
 
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventID)
+			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventID, logger)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -448,12 +450,14 @@ func Test_HandleEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating RESTClient: %s", err)
 	}
+	logger, _ := logging.NewLogger("", "")
 	r := Resource{
 		EventListenerName:      el.Name,
 		EventListenerNamespace: namespace,
 		RESTClient:             restClient,
 		DiscoveryClient:        kubeClient.Discovery(),
 		TriggersClient:         triggersClient,
+		Logger:                 logger,
 	}
 	ts := httptest.NewServer(http.HandlerFunc(r.HandleEvent))
 	defer ts.Close()
@@ -512,10 +516,12 @@ func Test_HandleEvent(t *testing.T) {
 }
 
 func TestResource_processEvent(t *testing.T) {
+	logger, _ := logging.NewLogger("", "")
 	r := Resource{
 		HTTPClient:             http.DefaultClient,
 		EventListenerName:      "foo-listener",
 		EventListenerNamespace: "foo",
+		Logger:                 logger,
 	}
 
 	payload, _ := json.Marshal(map[string]string{

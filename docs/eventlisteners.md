@@ -14,6 +14,10 @@ does what has been specified in the corresponding
 services' via their cluster DNS. For external services to connect to your
 cluster (e.g. GitHub sending webhooks), check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md)
 
+When the `EventListener` is created in the different namespace from the trigger component, `config-logging-triggers` ConfigMap
+must be created for the logging configuration in the namespace.  The ConfigMap with the defatul configuration can be created
+by applying [config-logging.yaml](../config/config-logging.yaml)
+
 ## Parameters
 
 `EventListener`s can provide `params` which are merged with the `TriggerBinding`

@@ -221,6 +221,22 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 			"-el-namespace", el.Namespace,
 			"-port", strconv.Itoa(Port),
 		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config-logging",
+				MountPath: "/etc/config-logging",
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name: "SYSTEM_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+		},
 	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
@@ -236,6 +252,19 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 				Spec: corev1.PodSpec{
 					ServiceAccountName: el.Spec.ServiceAccountName,
 					Containers:         []corev1.Container{container},
+
+					Volumes: []corev1.Volume{
+						{
+							Name: "config-logging",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "config-logging-triggers",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
