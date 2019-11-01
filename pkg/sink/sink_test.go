@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -519,13 +520,7 @@ func Test_HandleEvent(t *testing.T) {
 }
 
 func TestResource_processEvent(t *testing.T) {
-	logger, _ := logging.NewLogger("", "")
-	r := Resource{
-		HTTPClient:             http.DefaultClient,
-		EventListenerName:      "foo-listener",
-		EventListenerNamespace: "foo",
-		Logger:                 logger,
-	}
+	r := Resource{HTTPClient: http.DefaultClient}
 
 	payload, _ := json.Marshal(map[string]string{
 		"eventType": "push",
@@ -541,28 +536,20 @@ func TestResource_processEvent(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	req, err := http.NewRequest(http.MethodPost, "http://some-url/", nil)
-	if err != nil {
-		t.Fatalf("Error trying to create request: %q", err)
-	}
+	incoming := httptest.NewRequest("POST", "http://event.listener.url", nil)
+	incoming.Header.Add("Content-type", "application/json")
 
 	interceptorURL, _ := url.Parse(ts.URL)
-	params := []pipelinev1.Param{
-		{
-			Name: "Param-Header",
-			Value: pipelinev1.ArrayOrString{
-				Type:      pipelinev1.ParamTypeString,
-				StringVal: "val",
-			},
-		},
+	params := []pipelinev1.Param{{
+		Name: "Param-Header",
+		Value: pipelinev1.ArrayOrString{
+			Type:      pipelinev1.ParamTypeString,
+			StringVal: "val",
+		}},
 	}
-	requestHeader := make(http.Header, len(req.Header))
-	for k, v := range req.Header {
-		v2 := make([]string, len(v))
-		copy(v2, v)
-		requestHeader[k] = v2
-	}
-	resPayload, err := r.processEvent(interceptorURL, req, payload, params)
+	originalHeaders := incoming.Header.Clone()
+
+	resPayload, err := r.processEvent(interceptorURL, incoming, payload, params, interceptorTimeout)
 
 	if err != nil {
 		t.Errorf("Unexpected error in process event: %q", err)
@@ -573,7 +560,7 @@ func TestResource_processEvent(t *testing.T) {
 	}
 
 	// Verify that the parameter header was not added to the request header
-	if diff := cmp.Diff(req.Header, requestHeader); diff != "" {
+	if diff := cmp.Diff(incoming.Header, originalHeaders); diff != "" {
 		t.Errorf("processEvent() changed request header unexpectedly: %s", diff)
 	}
 }
@@ -670,5 +657,24 @@ func Test_addInterceptorHeaders(t *testing.T) {
 				t.Errorf("addInterceptorHeaders() Diff: -want +got: %s", diff)
 			}
 		})
+	}
+}
+
+func TestResourceProcessEvent_TimeOut(t *testing.T) {
+	r := Resource{HTTPClient: http.DefaultClient}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+	}))
+	defer ts.Close()
+
+	incoming := httptest.NewRequest("POST", "http://event.listener.url", nil)
+	interceptorURL, _ := url.Parse(ts.URL)
+
+	_, err := r.processEvent(interceptorURL, incoming, nil, nil, 10*time.Millisecond)
+
+	if err == nil {
+		t.Errorf("Did not expect err to be nil")
+	} else if !strings.Contains(err.Error(), "context deadline exceeded") {
+		t.Errorf("Unexpected type of error. Expected: deadline exceeded. Got: %q", err)
 	}
 }

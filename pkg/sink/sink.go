@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -39,6 +40,9 @@ import (
 	discoveryclient "k8s.io/client-go/discovery"
 	restclient "k8s.io/client-go/rest"
 )
+
+// Timeout for outgoing requests to interceptor services
+const interceptorTimeout = 5 * time.Second
 
 // Resource defines the sink resource for processing incoming events for the
 // EventListener.
@@ -104,7 +108,7 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 			return
 		}
 
-		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header)
+		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header, interceptorTimeout)
 		if err != nil {
 			r.Logger.Errorf("Error Intercepting Event (EventID: %s): %q", eventID, err)
 			result <- http.StatusAccepted
@@ -135,8 +139,10 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 	result <- http.StatusCreated
 }
 
-func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param) ([]byte, error) {
-	outgoing := createOutgoingRequest(context.Background(), request, interceptorURL, payload)
+func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	outgoing := createOutgoingRequest(ctx, request, interceptorURL, payload)
 	addInterceptorHeaders(outgoing.Header, headerParams)
 	respPayload, err := makeRequest(r.HTTPClient, outgoing)
 	if err != nil {

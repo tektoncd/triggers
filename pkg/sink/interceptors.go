@@ -42,27 +42,10 @@ func GetURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
 	return nil, xerrors.New("Invalid objRef")
 }
 
-// TODO: Use request.Clone once we move to go 1.13
 func createOutgoingRequest(ctx context.Context, original *http.Request, url *url.URL, payload []byte) *http.Request {
-	r := original.WithContext(ctx)
-	// RequestURI cannot be set in outgoing requests
-	r.RequestURI = ""
+	r := original.Clone(ctx)
+	r.RequestURI = "" // RequestURI cannot be set in outgoing requests
 	r.URL = url
-
-	headers := make(map[string][]string, len(original.Header))
-	for k, v := range original.Header {
-		v2 := make([]string, len(v))
-		copy(v2, v)
-		headers[k] = v2
-	}
-	r.Header = headers
-
-	if s := original.TransferEncoding; s != nil {
-		s2 := make([]string, len(s))
-		copy(s2, s)
-		r.TransferEncoding = s
-	}
-
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
 	return r
 }

@@ -88,7 +88,7 @@ func TestCreateOutgoingRequest(t *testing.T) {
 		"foo":       "bar",
 	})
 
-	req, _ := http.NewRequest(http.MethodPost, "http://event.listener.url", ioutil.NopCloser(bytes.NewBuffer(reqBody)))
+	req := httptest.NewRequest(http.MethodPost, "http://event.listener.url", ioutil.NopCloser(bytes.NewBuffer(reqBody)))
 	req.Header.Add("Content-type", "application/json")
 	req.Header.Add("X-Event-Id", "blah")
 	eventProcessorURL, _ := url.Parse("http://some.other.url")
