@@ -456,7 +456,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:7bfce62685de77102207d140d92b385d88018b13c96d60fcbc033f0da03919a4"
+  digest = "1:b07cb7802c839ecd6108a7f36aa5685a0c4c41244faeb310f89e4bbcceeca766"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
@@ -470,6 +470,7 @@
     "pkg/client/injection/client",
     "pkg/client/injection/client/fake",
     "pkg/list",
+    "pkg/logging",
     "pkg/names",
     "pkg/system",
   ]
@@ -1243,6 +1244,7 @@
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake",
     "github.com/tektoncd/pipeline/pkg/client/injection/client",
     "github.com/tektoncd/pipeline/pkg/client/injection/client/fake",
+    "github.com/tektoncd/pipeline/pkg/logging",
     "github.com/tektoncd/pipeline/pkg/names",
     "github.com/tektoncd/pipeline/pkg/system",
     "github.com/tektoncd/plumbing/scripts",

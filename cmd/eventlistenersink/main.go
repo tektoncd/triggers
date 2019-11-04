@@ -18,23 +18,56 @@ package main
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 
+	"github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/signals"
+)
+
+const (
+	// EventListenerLogKey is the name of the logger for the eventlistener cmd
+	EventListenerLogKey = "eventlistener"
+	// ConfigName is the name of the ConfigMap that the logging config will be stored in
+	ConfigName = "config-logging-triggers"
 )
 
 func main() {
-	log.Print("EventListener pod started")
+	// set up signals so we handle the first shutdown signal gracefully
+	stopCh := signals.SetupSignalHandler()
+
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("Failed to get in cluster config: %v", err)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
+	if err != nil {
+		log.Fatalf("Failed to get the client set: %v", err)
+	}
+
+	logger := logging.ConfigureLogging(EventListenerLogKey, ConfigName, stopCh, kubeClient)
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			logger.Fatalf("Failed to sync the logger", zap.Error(err))
+		}
+	}()
+
+	logger.Info("EventListener pod started")
 
 	sinkArgs, err := sink.GetArgs()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	sinkClients, err := sink.ConfigureClients()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	// Create sink Resource
@@ -46,10 +79,11 @@ func main() {
 		HTTPClient:             http.DefaultClient, // TODO: Use a different client since the default client has weird timeout values
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,
+		Logger:                 logger,
 	}
 
 	// Listen and serve
-	log.Printf("Listen and serve on port %s", sinkArgs.Port)
+	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
 	http.HandleFunc("/", r.HandleEvent)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", sinkArgs.Port), nil))
+	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", sinkArgs.Port), nil))
 }

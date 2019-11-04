@@ -204,7 +204,61 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 	return nil
 }
 
+func (c *Reconciler) reconcileLoggingConfig(el *v1alpha1.EventListener) error {
+	_, err := c.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Get("config-logging-triggers", metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		// create default config-logging ConfigMap
+		_, err = c.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "config-logging-triggers"},
+				Data: map[string]string{
+					"loglevel.eventlistener": "info",
+					"zap-logger-config": "{" +
+						"\"level\": \"info\"," +
+						"\"developmen\": false," +
+						"\"sampling\": {" +
+						"\"initial\": 100," +
+						"\"thereafter\": 100" +
+						"}," +
+						"\"outputPaths\": [\"stdout\"]," +
+						"\"errorOutputPaths\": [\"stderr\"]," +
+						"\"encoding\": \"json\"," +
+						"\"encoderConfig\": {" +
+						"\"timeKey\": \"\"," +
+						"\"levelKey\": \"level\"," +
+						"\"nameKey\": \"logger\"," +
+						"\"callerKey\": \"caller\"," +
+						"\"messageKey\": \"msg\"," +
+						"\"stacktraceKey\": \"stacktrace\"," +
+						"\"lineEnding\": \"\"," +
+						"\"levelEncoder\": \"\"," +
+						"\"timeEncoder\": \"\"," +
+						"\"durationEncoder\": \"\"," +
+						"\"callerEncoder\": \"\"" +
+						"}" +
+						"}",
+				},
+			},
+		)
+		if err != nil {
+			c.Logger.Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
+			return err
+		}
+	} else if err != nil {
+		c.Logger.Errorf("Error retrieving ConfigMap %q: %s", "config-logging-triggers", err)
+		return err
+	}
+	return nil
+}
+
 func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
+	// check logging config, create if it doesn't exist
+	err := c.reconcileLoggingConfig(el)
+	if err != nil {
+		c.Logger.Error(err)
+		return err
+	}
+
 	labels := mergeLabels(el.Labels, GenerateResourceLabels(el.Name))
 	var replicas int32 = 1
 	container := corev1.Container{
@@ -221,6 +275,22 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 			"-el-namespace", el.Namespace,
 			"-port", strconv.Itoa(Port),
 		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config-logging",
+				MountPath: "/etc/config-logging",
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name: "SYSTEM_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+		},
 	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
@@ -236,6 +306,19 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 				Spec: corev1.PodSpec{
 					ServiceAccountName: el.Spec.ServiceAccountName,
 					Containers:         []corev1.Container{container},
+
+					Volumes: []corev1.Volume{
+						{
+							Name: "config-logging",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "config-logging-triggers",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

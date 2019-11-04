@@ -18,20 +18,16 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-
+	"github.com/tektoncd/triggers/pkg/logging"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/logging"
-	"knative.dev/pkg/logging/logkey"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/webhook"
 )
@@ -48,51 +44,31 @@ var (
 )
 
 func main() {
-	flag.Parse()
-	cm, err := configmap.Load("/etc/config-logging")
-	if err != nil {
-		log.Fatalf("Error loading logging configuration: %v", err)
-	}
-	config, err := logging.NewConfigFromMap(cm)
-	if err != nil {
-		log.Fatalf("Error parsing logging configuration: %v", err)
-	}
-	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
-
-	defer func() {
-		err := logger.Sync()
-		if err != nil {
-			logger.Fatal("Failed to sync the logger", zap.Error(err))
-		}
-	}()
-
-	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
-
-	logger.Info("Starting the Configuration Webhook")
-
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		logger.Fatal("Failed to get in cluster config", zap.Error(err))
+		log.Fatalf("Failed to get in cluster config: %v", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
-		logger.Fatal("Failed to get the client set", zap.Error(err))
+		log.Fatalf("Failed to get the client set: %v", err)
 	}
 	client, err = dynamic.NewForConfig(clusterConfig)
 	if err != nil {
-		logger.Fatal("Failed to get the dynamic client set", zap.Error(err))
+		log.Fatalf("Failed to get the dynamic client set: %v", err)
 	}
 
-	// Watch the logging config map and dynamically update logging levels.
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
-	configMapWatcher.Watch(ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, WebhookLogKey))
-	if err = configMapWatcher.Start(stopCh); err != nil {
-		logger.Fatalf("failed to start configuration manager: %v", err)
-	}
+	logger := logging.ConfigureLogging(WebhookLogKey, ConfigName, stopCh, kubeClient)
+
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			logger.Fatalf("Failed to sync the logger", zap.Error(err))
+		}
+	}()
 
 	options := webhook.ControllerOptions{
 		ServiceName:    "tekton-triggers-webhook",

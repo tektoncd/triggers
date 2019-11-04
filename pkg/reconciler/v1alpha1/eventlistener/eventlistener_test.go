@@ -278,6 +278,34 @@ func Test_reconcileDeployment(t *testing.T) {
 								"-el-namespace", namespace,
 								"-port", strconv.Itoa(Port),
 							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "config-logging",
+									MountPath: "/etc/config-logging",
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SYSTEM_NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "config-logging",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "config-logging-triggers",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -491,6 +519,34 @@ func TestReconcile(t *testing.T) {
 								"-el-name", eventListenerName,
 								"-el-namespace", namespace,
 								"-port", strconv.Itoa(Port),
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "config-logging",
+									MountPath: "/etc/config-logging",
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SYSTEM_NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "config-logging",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "config-logging-triggers",
+									},
+								},
 							},
 						},
 					},

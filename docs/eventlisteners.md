@@ -3,8 +3,30 @@
 `EventListener`s connect `TriggerBinding`s to `TriggerTemplate`s and provide an
 addressable endpoint, which is where webhooks/events are directed. This is also
 where the service account is connected, which specifies what permissions the
-resources will be created (or at least attempted) with. Note that currently,
-JSON is the only accepted MIME type for events.
+resources will be created (or at least attempted) with. 
+The service account must have the following role bound.
+
+<!-- FILE: examples/role-resources/role.yaml -->
+```YAML
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-example-minimal
+rules:
+# Permissions for every EventListener deployment to function
+- apiGroups: ["tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "tasks", "taskruns"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns", "pipelineresources", "taskruns"]
+  verbs: ["create"]
+```
+
+Note that currently, JSON is the only accepted MIME type for events.
 
 When an `EventListener` is successfully created, a service is created that
 references a listener pod. This listener pod accepts the incoming events and
@@ -13,6 +35,10 @@ does what has been specified in the corresponding
 `ClusterIP`; any other pods running in the same Kubernetes cluster can access
 services' via their cluster DNS. For external services to connect to your
 cluster (e.g. GitHub sending webhooks), check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md)
+
+When the `EventListener` is created in the different namespace from the trigger component, `config-logging-triggers` ConfigMap
+is created for the logging configuration in the namespace when it doesn't exist.  The ConfigMap with the default configuration can be created
+by applying [config-logging.yaml](../config/config-logging.yaml)
 
 ## Parameters
 
