@@ -193,11 +193,19 @@ func TestEventListenerCreate(t *testing.T) {
 	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
-			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{"tekton.dev"},
-				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
-				Verbs:     []string{"create", "get"},
-			}}},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
+					Verbs:     []string{"create", "get"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+			},
+		},
 	)
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
