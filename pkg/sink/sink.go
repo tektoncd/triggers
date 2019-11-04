@@ -73,27 +73,41 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 	r.Logger.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
+	result := make(chan int, 10)
 	// Execute each Trigger
 	for _, trigger := range el.Spec.Triggers {
-		go r.executeTrigger(event, request, trigger, eventID)
+		go r.executeTrigger(event, request, trigger, eventID, result)
+	}
+
+	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
+	//only when at least one of the execution completed successfully, it returns response code 201(Accepted) otherwise it returns 202 (Created).
+	code := http.StatusAccepted
+	for i := 0; i < len(el.Spec.Triggers); i++ {
+		thiscode := <-result
+		if thiscode < code {
+			code = thiscode
+		}
 	}
 
 	// TODO: Do we really need to return the entire body back???
+	response.WriteHeader(code)
 	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
 }
 
-func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string) {
+func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string, result chan int) {
 	if trigger.Interceptor != nil {
 		interceptorURL, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 		if err != nil {
 			r.Logger.Errorf("Could not resolve Interceptor Service URI: %q", err)
+			result <- http.StatusAccepted
 			return
 		}
 
 		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header)
 		if err != nil {
 			r.Logger.Errorf("Error Intercepting Event (EventID: %s): %q", eventID, err)
+			result <- http.StatusAccepted
 			return
 		}
 		payload = modifiedPayload
@@ -104,17 +118,21 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
 		r.Logger.Error(err)
+		result <- http.StatusAccepted
 		return
 	}
 	resources, err := template.NewResources(payload, request.Header, trigger.Params, binding)
 	if err != nil {
 		r.Logger.Error(err)
+		result <- http.StatusAccepted
 		return
 	}
 	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID, r.Logger)
 	if err != nil {
 		r.Logger.Error(err)
+		result <- http.StatusAccepted
 	}
+	result <- http.StatusCreated
 }
 
 func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param) ([]byte, error) {
