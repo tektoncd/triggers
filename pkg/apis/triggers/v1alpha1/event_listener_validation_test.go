@@ -17,136 +17,127 @@ func Test_EventListenerValidate_error(t *testing.T) {
 		name     string
 		el       *v1alpha1.EventListener
 		raiseErr bool
-	}{
-		{
-			name: "TriggerTemplate Does Not Exist",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "dne", "v1alpha1"))),
-			raiseErr: true,
-		},
-		{
-			name: "Interceptor Does Not Exist",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("dne", "v1", "Service", "")))),
-			raiseErr: true,
-		},
-		{
-			name: "Interceptor Missing ObjectRef",
-			el: &v1alpha1.EventListener{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "name",
-					Namespace: "namespace",
-				},
-				Spec: v1alpha1.EventListenerSpec{
-					Triggers: []v1alpha1.EventListenerTrigger{{
-						Bindings:    []*v1alpha1.EventListenerBinding{{Name: "tb"}},
-						Template:    v1alpha1.EventListenerTemplate{Name: "tt"},
-						Interceptor: &v1alpha1.EventInterceptor{},
-					}},
-				},
+	}{{
+		name: "TriggerTemplate Does Not Exist",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "dne", "v1alpha1"))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Does Not Exist",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("dne", "v1", "Service", "")))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Missing ObjectRef",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
 			},
-			raiseErr: true,
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings:    []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template:    v1alpha1.EventListenerTemplate{Name: "tt"},
+					Interceptor: &v1alpha1.EventInterceptor{},
+				}},
+			},
 		},
-		{
-			name: "Interceptor Wrong APIVersion",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("foo", "v3", "Service", "")))),
-			raiseErr: true,
-		}, {
-			name: "Interceptor Wrong Kind",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "")))),
-			raiseErr: true,
-		}, {
-			name: "Interceptor Non-Canonical Header",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
-							bldr.EventInterceptorParam("non-canonical-header-key", "valid value"))))),
-			raiseErr: true,
-		}, {
-			name: "Interceptor Empty Header Name",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
-							bldr.EventInterceptorParam("", "valid value"))))),
-			raiseErr: true,
-		}, {
-			name: "Interceptor Empty Header Value",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
-							bldr.EventInterceptorParam("Valid-Header-Key", ""))))),
-			raiseErr: true,
-		}, {
-			name: "Valid EventListener No TriggerBinding",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("", "tt", "v1alpha1"))),
-			raiseErr: false,
-		}, {
-			name: "Valid EventListener No Interceptor",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
-			raiseErr: false,
-		},
-		{
-			name: "Valid EventListener Interceptor Name only",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("svc", "", "", "")))),
-			raiseErr: false,
-		},
-		{
-			name: "Valid EventListener Interceptor",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace")))),
-			raiseErr: false,
-		},
-		{
-			name: "Valid EventListener Interceptor With Header",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
-							bldr.EventInterceptorParam("Valid-Header-Key", "valid value"))))),
-			raiseErr: false,
-		},
-		{
-			name: "Valid EventListener Interceptor With Headers",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
-							bldr.EventInterceptorParam("Valid-Header-Key1", "valid value1"),
-							bldr.EventInterceptorParam("Valid-Header-Key1", "valid value2"),
-							bldr.EventInterceptorParam("Valid-Header-Key2", "valid value"))))),
-			raiseErr: false,
-		},
-		{
-			name: "Valid EventListener Two Triggers",
-			el: bldr.EventListener("name", "namespace",
-				bldr.EventListenerSpec(
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-						bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
-					),
-					bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
-			raiseErr: false,
-		},
+		raiseErr: true,
+	}, {
+		name: "Interceptor Wrong APIVersion",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v3", "Service", "")))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Wrong Kind",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "")))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Non-Canonical Header",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
+						bldr.EventInterceptorParam("non-canonical-header-key", "valid value"))))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Empty Header Name",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
+						bldr.EventInterceptorParam("", "valid value"))))),
+		raiseErr: true,
+	}, {
+		name: "Interceptor Empty Header Value",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
+						bldr.EventInterceptorParam("Valid-Header-Key", ""))))),
+		raiseErr: true,
+	}, {
+		name: "Valid EventListener No TriggerBinding",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("", "tt", "v1alpha1"))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener No Interceptor",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener Interceptor Name only",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "", "", "")))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener Interceptor",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace")))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener Interceptor With Header",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
+						bldr.EventInterceptorParam("Valid-Header-Key", "valid value"))))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener Interceptor With Headers",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
+						bldr.EventInterceptorParam("Valid-Header-Key1", "valid value1"),
+						bldr.EventInterceptorParam("Valid-Header-Key1", "valid value2"),
+						bldr.EventInterceptorParam("Valid-Header-Key2", "valid value"))))),
+		raiseErr: false,
+	}, {
+		name: "Valid EventListener Two Triggers",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
+				),
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
+		raiseErr: false,
+	},
 	}
 
 	tb := bldr.TriggerBinding("tb", "namespace",

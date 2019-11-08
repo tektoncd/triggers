@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -42,11 +43,12 @@ func GetURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
 	return nil, xerrors.New("Invalid objRef")
 }
 
-func createOutgoingRequest(ctx context.Context, original *http.Request, url *url.URL, payload []byte) *http.Request {
+func createOutgoingRequest(ctx context.Context, original *http.Request, url *url.URL, payload []byte, headerParams []pipelinev1.Param) *http.Request {
 	r := original.Clone(ctx)
 	r.RequestURI = "" // RequestURI cannot be set in outgoing requests
 	r.URL = url
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
+	addInterceptorHeaders(r.Header, headerParams)
 	return r
 }
 
@@ -68,4 +70,15 @@ func makeRequest(client *http.Client, request *http.Request) ([]byte, error) {
 		return nil, xerrors.Errorf("Request rejected; status: %s; message: %s", resp.Status, respBody)
 	}
 	return respBody, nil
+}
+
+func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {
+	// This clobbers any matching headers
+	for _, param := range headerParams {
+		if param.Value.Type == pipelinev1.ParamTypeString {
+			header[param.Name] = []string{param.Value.StringVal}
+		} else {
+			header[param.Name] = param.Value.ArrayVal
+		}
+	}
 }

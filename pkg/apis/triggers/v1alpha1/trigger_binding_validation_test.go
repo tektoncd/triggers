@@ -28,30 +28,26 @@ func Test_TriggerBindingValidate(t *testing.T) {
 	tests := []struct {
 		name string
 		tb   *v1alpha1.TriggerBinding
-	}{
-		{
-			name: "empty",
-			tb:   bldr.TriggerBinding("name", "namespace"),
-		},
-		{
-			name: "multiple params",
-			tb: bldr.TriggerBinding("name", "namespace",
-				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(body.input1)"),
-					bldr.TriggerBindingParam("param2", "$(body.input2)"),
-					bldr.TriggerBindingParam("param3", "$(body.input3)"),
-				)),
-		},
-		{
-			name: "multiple params case sensitive",
-			tb: bldr.TriggerBinding("name", "namespace",
-				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(body.input1)"),
-					bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
-					bldr.TriggerBindingParam("Param1", "$(body.input3)"),
-				)),
-		},
-	}
+	}{{
+		name: "empty",
+		tb:   bldr.TriggerBinding("name", "namespace"),
+	}, {
+		name: "multiple params",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$(body.input1)"),
+				bldr.TriggerBindingParam("param2", "$(body.input2)"),
+				bldr.TriggerBindingParam("param3", "$(body.input3)"),
+			)),
+	}, {
+		name: "multiple params case sensitive",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$(body.input1)"),
+				bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
+				bldr.TriggerBindingParam("Param1", "$(body.input3)"),
+			)),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.tb.Validate(context.Background()); err != nil {
@@ -65,17 +61,15 @@ func Test_TriggerBindingValidate_error(t *testing.T) {
 	tests := []struct {
 		name string
 		tb   *v1alpha1.TriggerBinding
-	}{
-		{
-			name: "duplicate params",
-			tb: bldr.TriggerBinding("name", "namespace",
-				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "$(body.param1)"),
-					bldr.TriggerBindingParam("param1", "$(body.param1)"),
-					bldr.TriggerBindingParam("param3", "$(body.param1)"),
-				)),
-		},
-	}
+	}{{
+		name: "duplicate params",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$(body.param1)"),
+				bldr.TriggerBindingParam("param1", "$(body.param1)"),
+				bldr.TriggerBindingParam("param3", "$(body.param1)"),
+			)),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.tb.Validate(context.Background()); err == nil {
