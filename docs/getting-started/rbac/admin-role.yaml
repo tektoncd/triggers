@@ -21,6 +21,14 @@ rules:
   - pipelineresources
   verbs:
   - create
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
