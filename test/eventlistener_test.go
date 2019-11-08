@@ -41,8 +41,11 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-const eventIdLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
+const (
+	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
+	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
+)
 
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
@@ -135,48 +138,6 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error creating TriggerBinding: %s", err)
 	}
 
-	// Event body & Expected ResourceTemplates after instantiation
-	eventBodyJSON := []byte(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`)
-	wantPr1 := v1alpha1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pr1",
-			Namespace: namespace,
-			Labels: map[string]string{
-				resourceLabel: "my-eventlistener",
-				"zonevalue":   "zonevalue",
-			},
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-		},
-	}
-
-	wantPr2 := v1alpha1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pr2",
-			Namespace: namespace,
-			Labels: map[string]string{
-				resourceLabel: "my-eventlistener",
-				"zfoo":        "defaultvalue",
-			},
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-			Params: []v1alpha1.ResourceParam{
-				{Name: "body", Value: `{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`},
-				{Name: "header", Value: `{"Accept-Encoding":["gzip"],"Content-Length":["61"],"Content-Type":["application/json"],"User-Agent":["Go-http-client/1.1"]}`},
-			},
-		},
-	}
-
 	// ServiceAccount + Role + RoleBinding to authorize the creation of our
 	// templated resources
 	sa, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(
@@ -247,6 +208,48 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 	t.Log("EventListener is ready")
 
+	// Event body & Expected ResourceTemplates after instantiation
+	wantPr1 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr1",
+			Namespace: namespace,
+			Labels: map[string]string{
+				resourceLabel: "my-eventlistener",
+				triggerLabel:  el.Spec.Triggers[0].Name,
+				"zonevalue":   "zonevalue",
+			},
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+		},
+	}
+	wantPr2 := v1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PipelineResource",
+			APIVersion: "tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr2",
+			Namespace: namespace,
+			Labels: map[string]string{
+				resourceLabel: "my-eventlistener",
+				triggerLabel:  el.Spec.Triggers[0].Name,
+				"zfoo":        "defaultvalue",
+			},
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+			Params: []v1alpha1.ResourceParam{
+				{Name: "body", Value: `{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`},
+				{Name: "header", Value: `{"Accept-Encoding":["gzip"],"Content-Length":["61"],"Content-Type":["application/json"],"User-Agent":["Go-http-client/1.1"]}`},
+			},
+		},
+	}
+
 	labelSelector := fields.SelectorFromSet(eventReconciler.GenerateResourceLabels(el.Name)).String()
 	// Grab EventListener sink pods
 	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
@@ -273,6 +276,7 @@ func TestEventListenerCreate(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Send POST request to EventListener sink
+	eventBodyJSON := []byte(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`)
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request: %s", err)
@@ -291,10 +295,10 @@ func TestEventListenerCreate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
 		}
-		if gotPr.Labels[eventIdLabel] == "" {
+		if gotPr.Labels[eventIDLabel] == "" {
 			t.Fatalf("Instantiated ResourceTemplate missing EventId")
 		} else {
-			delete(gotPr.Labels, eventIdLabel)
+			delete(gotPr.Labels, eventIDLabel)
 		}
 		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
 			t.Fatalf("Diff instantiated ResourceTemplate labels %s: -want +got: %s", wantPr.Name, diff)

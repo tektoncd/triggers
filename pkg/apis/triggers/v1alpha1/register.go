@@ -38,6 +38,9 @@ const (
 	// TriggerTemplateKey is used as the label identifier for a TriggerTemplate
 	TriggerTemplateKey = "/triggertemplate"
 
+	// TriggerLabelKey is used as the label identifier for a Trigger
+	TriggerLabelKey = "/trigger"
+
 	// LabelEscape is an escaped GroupName safe for use in resource types.
 	LabelEscape = "tekton\\.dev"
 )
