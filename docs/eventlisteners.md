@@ -40,12 +40,6 @@ When the `EventListener` is created in the different namespace from the trigger 
 is created for the logging configuration in the namespace when it doesn't exist.  The ConfigMap with the default configuration can be created
 by applying [config-logging.yaml](../config/config-logging.yaml)
 
-## Parameters
-
-`EventListener`s can provide `params` which are merged with the `TriggerBinding`
-`params` and passed to the `TriggerTemplate`. Each parameter has a `name` and a
-`value`.
-
 `EventListener` `spec.serviceType` can be set to `ClusterIP (default)` | `NodePort` | `LoadBalancer`
 to configure the underlying `Service` resource to make it reachable externally.
 
@@ -100,7 +94,5 @@ spec:
       - name: pipeline-binding
       template:
         name: pipeline-template
-      params:
-      - name: message
-        value: Hello from the Triggers EventListener!
 ```
+

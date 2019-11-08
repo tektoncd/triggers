@@ -86,7 +86,6 @@ func TestEventListenerCreate(t *testing.T) {
 			Name: "pr2",
 			Labels: map[string]string{
 				"$(params.twoparamname)": "$(params.twoparamvalue)",
-				"threeparam":             "$(params.threeparam)",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -110,7 +109,6 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.TriggerTemplateParam("oneparam", "", ""),
 				bldr.TriggerTemplateParam("twoparamname", "", ""),
 				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
-				bldr.TriggerTemplateParam("threeparam", "", ""),
 				bldr.TriggerTemplateParam("body", "", ""),
 				bldr.TriggerTemplateParam("header", "", ""),
 				bldr.TriggerResourceTemplate(pr1Bytes),
@@ -168,7 +166,6 @@ func TestEventListenerCreate(t *testing.T) {
 			Labels: map[string]string{
 				resourceLabel: "my-eventlistener",
 				"zfoo":        "defaultvalue",
-				"threeparam":  "threevalue",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -237,11 +234,9 @@ func TestEventListenerCreate(t *testing.T) {
 			),
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
-				bldr.EventListenerTrigger(tb.Name, tt.Name, "",
-					bldr.EventListenerTriggerParam("threeparam", "threevalue")),
+				bldr.EventListenerTrigger(tb.Name, tt.Name, ""),
 			),
-		),
-	)
+		))
 	if err != nil {
 		t.Fatalf("Failed to create EventListener: %s", err)
 	}

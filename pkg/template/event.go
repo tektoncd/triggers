@@ -163,7 +163,7 @@ func getHeaderValue(header map[string][]string, headerName string) (string, erro
 
 // NewResources returns all resources defined when applying the event and
 // elParams to the TriggerTemplate and TriggerBinding in the ResolvedBinding.
-func NewResources(body []byte, header map[string][]string, elParams []pipelinev1.Param, binding ResolvedBinding) ([]json.RawMessage, error) {
+func NewResources(body []byte, header map[string][]string, binding ResolvedBinding) ([]json.RawMessage, error) {
 
 	params, err := mergeBindingParams(binding.TriggerBindings)
 	if err != nil {
@@ -178,10 +178,7 @@ func NewResources(body []byte, header map[string][]string, elParams []pipelinev1
 	if err != nil {
 		return []json.RawMessage{}, xerrors.Errorf("Error applying header to TriggerBinding params: %s", err)
 	}
-	params, err = MergeParams(params, elParams)
-	if err != nil {
-		return []json.RawMessage{}, xerrors.Errorf("Error merging params from EventListener with TriggerBinding params: %s", err)
-	}
+
 	params = MergeInDefaultParams(params, binding.TriggerTemplate.Spec.Params)
 
 	resources := make([]json.RawMessage, len(binding.TriggerTemplate.Spec.ResourceTemplates))

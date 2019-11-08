@@ -378,7 +378,7 @@ func TestHandleEvent(t *testing.T) {
 		bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("url", "", ""),
 			bldr.TriggerTemplateParam("revision", "", ""),
-			bldr.TriggerTemplateParam("appLabel", "", ""),
+			bldr.TriggerTemplateParam("appLabel", "", "foo"),
 			bldr.TriggerTemplateParam("contenttype", "", ""),
 			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
 		))
@@ -389,10 +389,7 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
 		))
 	el := bldr.EventListener("my-eventlistener", namespace,
-		bldr.EventListenerSpec(
-			bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerParam("appLabel", "foo")),
-		))
+		bldr.EventListenerSpec(bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", "v1alpha1")))
 
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	kubeClient.Resources = []*metav1.APIResourceList{{

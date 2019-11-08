@@ -159,91 +159,6 @@ func TestEventListenerBuilder(t *testing.T) {
 			),
 		),
 	}, {
-		name: "One Trigger with One Param",
-		normal: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				ServiceAccountName: "serviceAccount",
-				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
-						APIVersion: "v1alpha1",
-					}},
-					Template: v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
-						APIVersion: "v1alpha1",
-					},
-					Params: []pipelinev1.Param{
-						{
-							Name: "param1",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
-						},
-					},
-				}},
-			},
-		},
-		builder: EventListener("name", "namespace",
-			EventListenerSpec(
-				EventListenerServiceAccount("serviceAccount"),
-				EventListenerTrigger("tb1", "tt1", "v1alpha1",
-					EventListenerTriggerParam("param1", "value1"),
-				),
-			),
-		),
-	}, {
-		name: "One Trigger with Two Params",
-		normal: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				ServiceAccountName: "serviceAccount",
-				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
-						APIVersion: "v1alpha1",
-					}},
-					Template: v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
-						APIVersion: "v1alpha1",
-					},
-					Params: []pipelinev1.Param{
-						{
-							Name: "param1",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
-						},
-						{
-							Name: "param2",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value2",
-								Type:      pipelinev1.ParamTypeString,
-							},
-						},
-					},
-				},
-				},
-			},
-		},
-		builder: EventListener("name", "namespace",
-			EventListenerSpec(
-				EventListenerServiceAccount("serviceAccount"),
-				EventListenerTrigger("tb1", "tt1", "v1alpha1",
-					EventListenerTriggerParam("param1", "value1"),
-					EventListenerTriggerParam("param2", "value2"),
-				),
-			),
-		),
-	}, {
 		name: "Two Trigger with extra Meta",
 		normal: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -319,15 +234,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
-					Params: []pipelinev1.Param{{
-						Name: "param1",
-						Value: pipelinev1.ArrayOrString{
-							StringVal: "value1",
-							Type:      pipelinev1.ParamTypeString,
-						}},
-					},
-				},
-				},
+				}},
 			},
 		},
 		builder: EventListener("name", "namespace",
@@ -335,7 +242,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tb1", "tt1", "v1alpha1",
 					EventListenerTriggerName("foo-trig"),
-					EventListenerTriggerParam("param1", "value1"),
 					EventListenerTriggerInterceptor("foo", "v1", "Service", "namespace"),
 				),
 			),
@@ -376,22 +282,13 @@ func TestEventListenerBuilder(t *testing.T) {
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
-					Params: []pipelinev1.Param{{
-						Name: "param1",
-						Value: pipelinev1.ArrayOrString{
-							StringVal: "value1",
-							Type:      pipelinev1.ParamTypeString,
-						}},
-					},
-				},
-				},
+				}},
 			}},
 		builder: EventListener("name", "namespace",
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tb1", "tt1", "v1alpha1",
 					EventListenerTriggerName("foo-trig"),
-					EventListenerTriggerParam("param1", "value1"),
 					EventListenerTriggerInterceptor("foo", "v1", "Service", "namespace",
 						EventInterceptorParam("header1", "value1"),
 					),
