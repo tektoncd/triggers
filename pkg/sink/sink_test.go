@@ -42,8 +42,11 @@ import (
 	fakerestclient "k8s.io/client-go/rest/fake"
 )
 
-const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-const eventIDLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
+const (
+	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
+	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
+)
 
 func Test_findAPIResource_error(t *testing.T) {
 	kubeClient := fakekubeclientset.NewSimpleClientset()
@@ -192,15 +195,24 @@ func TestCreateResource(t *testing.T) {
 			Kind:       "PipelineResource",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "my-pipelineresource",
-			Labels: map[string]string{"woriginal-label-1": "label-1", resourceLabel: "foo-el", eventIDLabel: "12345"},
+			Name: "my-pipelineresource",
+			Labels: map[string]string{
+				"woriginal-label-1": "label-1",
+				resourceLabel:       "foo-el",
+				triggerLabel:        "trigger",
+				eventIDLabel:        "12345",
+			},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{},
 	}
 
 	pr2 := pr1
 	pr2.Namespace = "foo"
-	pr2.Labels = map[string]string{resourceLabel: "bar-el", eventIDLabel: "54321"}
+	pr2.Labels = map[string]string{
+		resourceLabel: "bar-el",
+		triggerLabel:  "trigger",
+		eventIDLabel:  "54321",
+	}
 
 	pr1Bytes, err := json.Marshal(pr1)
 	if err != nil {
@@ -223,8 +235,12 @@ func TestCreateResource(t *testing.T) {
 			Kind:       "Namespace",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "tekton-pipelines",
-			Labels: map[string]string{resourceLabel: "test-el", eventIDLabel: "12321"},
+			Name: "tekton-pipelines",
+			Labels: map[string]string{
+				resourceLabel: "test-el",
+				triggerLabel:  "trigger",
+				eventIDLabel:  "12321",
+			},
 		},
 	}
 	namespaceBytes, err := json.Marshal(namespace)
@@ -320,9 +336,16 @@ func TestCreateResource(t *testing.T) {
 				}
 				return &http.Response{StatusCode: http.StatusCreated, Body: ioutil.NopCloser(bytes.NewReader([]byte{}))}, nil
 			})
+			r := Sink{
+				RESTClient:             restClient,
+				DiscoveryClient:        kubeClient.Discovery(),
+				EventListenerNamespace: tt.eventListenerNamespace,
+				EventListenerName:      tt.eventListenerName,
+				Logger:                 logger,
+			}
 
 			// Run test
-			err := createResource(tt.resource, restClient, kubeClient.Discovery(), tt.eventListenerNamespace, tt.eventListenerName, tt.eventID, logger)
+			err := r.createResource(tt.resource, "trigger", tt.eventID)
 			if err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
@@ -352,25 +375,6 @@ func TestHandleEvent(t *testing.T) {
 				{Name: "url", Value: "$(params.url)"},
 				{Name: "revision", Value: "$(params.revision)"},
 				{Name: "contenttype", Value: "$(params.contenttype)"},
-			},
-		},
-	}
-	wantPipelineResource := pipelinev1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "PipelineResource",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pipelineresource",
-			Namespace: namespace,
-			Labels:    map[string]string{"app": "foo", "tekton.dev/eventlistener": "my-eventlistener", eventIDLabel: "12345"},
-		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{
-				{Name: "url", Value: "testurl"},
-				{Name: "revision", Value: "testrevision"},
-				{Name: "contenttype", Value: "application/json"},
 			},
 		},
 	}
@@ -414,9 +418,38 @@ func TestHandleEvent(t *testing.T) {
 	if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
 		t.Fatalf("Error creating TriggerBinding: %s", err)
 	}
-	if _, err := triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el); err != nil {
+	el, err = triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el)
+	if err != nil {
 		t.Fatalf("Error creating EventListener: %s", err)
 	}
+
+	// Some resource data is derived from the created resources, so
+	// don't populate the desired resource until everything is created.
+	wantPipelineResource := pipelinev1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pipelineresource",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":         "foo",
+				resourceLabel: "my-eventlistener",
+				triggerLabel:  el.Spec.Triggers[0].Name,
+				eventIDLabel:  "12345",
+			},
+		},
+		Spec: pipelinev1.PipelineResourceSpec{
+			Type: pipelinev1.PipelineResourceTypeGit,
+			Params: []pipelinev1.ResourceParam{
+				{Name: "url", Value: "testurl"},
+				{Name: "revision", Value: "testrevision"},
+				{Name: "contenttype", Value: "application/json"},
+			},
+		},
+	}
+
 	restClient, err := restclient.RESTClientFor(&restclient.Config{
 		APIPath: "/fooapipath",
 		ContentConfig: restclient.ContentConfig{
@@ -492,5 +525,52 @@ func TestHandleEvent(t *testing.T) {
 	wg.Wait()
 	if numRequests != 1 {
 		t.Errorf("Expected 1 request, got %d requests", numRequests)
+	}
+}
+
+func Test_addLabels(t *testing.T) {
+	b, err := json.Marshal(map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{
+				// should be overwritten
+				"tekton.dev/a": "0",
+				// should be preserved.
+				"tekton.dev/z":    "0",
+				"best-palindrome": "tacocat",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	raw, err := addLabels(json.RawMessage(b), map[string]string{
+		"a":   "1",
+		"/b":  "2",
+		"//c": "3",
+	})
+	if err != nil {
+		t.Fatalf("addLabels: %v", err)
+	}
+
+	got := make(map[string]interface{})
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	want := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{
+				"tekton.dev/a":    "1",
+				"tekton.dev/b":    "2",
+				"tekton.dev/c":    "3",
+				"tekton.dev/z":    "0",
+				"best-palindrome": "tacocat",
+			},
+		},
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Error(diff)
 	}
 }
