@@ -100,7 +100,7 @@ Next, create a secret like so with your access token.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: webook-secret
+  name: webhook-secret
   namespace: getting-started
 stringData:
   token: YOUR-GITHUB-ACCESS-TOKEN
