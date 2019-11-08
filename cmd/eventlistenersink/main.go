@@ -70,8 +70,8 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	// Create sink Resource
-	r := sink.Resource{
+	// Create EventListener Sink
+	r := sink.Sink{
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		RESTClient:             sinkClients.RESTClient,
 		TriggersClient:         sinkClients.TriggersClient,

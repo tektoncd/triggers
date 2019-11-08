@@ -44,9 +44,9 @@ import (
 // Timeout for outgoing requests to interceptor services
 const interceptorTimeout = 5 * time.Second
 
-// Resource defines the sink resource for processing incoming events for the
+// Sink defines the sink resource for processing incoming events for the
 // EventListener.
-type Resource struct {
+type Sink struct {
 	TriggersClient         triggersclientset.Interface
 	DiscoveryClient        discoveryclient.DiscoveryInterface
 	RESTClient             restclient.Interface
@@ -58,7 +58,7 @@ type Resource struct {
 }
 
 // HandleEvent processes an incoming HTTP event for the event listener.
-func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Request) {
+func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	el, err := r.TriggersClient.TektonV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
 		r.Logger.Fatalf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
@@ -99,7 +99,7 @@ func (r Resource) HandleEvent(response http.ResponseWriter, request *http.Reques
 		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
 }
 
-func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string, result chan int) {
+func (r Sink) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string, result chan int) {
 	if trigger.Interceptor != nil {
 		interceptorURL, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 		if err != nil {
@@ -139,27 +139,16 @@ func (r Resource) executeTrigger(payload []byte, request *http.Request, trigger 
 	result <- http.StatusCreated
 }
 
-func (r Resource) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, error) {
+func (r Sink) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	outgoing := createOutgoingRequest(ctx, request, interceptorURL, payload)
+	outgoing := createOutgoingRequest(ctx, request, interceptorURL, payload, headerParams)
 	addInterceptorHeaders(outgoing.Header, headerParams)
 	respPayload, err := makeRequest(r.HTTPClient, outgoing)
 	if err != nil {
 		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
 	}
 	return respPayload, nil
-}
-
-func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {
-	// This clobbers any matching headers
-	for _, param := range headerParams {
-		if param.Value.Type == pipelinev1.ParamTypeString {
-			header[param.Name] = []string{param.Value.StringVal}
-		} else {
-			header[param.Name] = param.Value.ArrayVal
-		}
-	}
 }
 
 func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string, logger *zap.SugaredLogger) error {

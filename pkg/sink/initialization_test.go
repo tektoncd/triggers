@@ -52,26 +52,22 @@ func Test_GetArgs_error(t *testing.T) {
 		elName      string
 		elNamespace string
 		port        string
-	}{
-		{
-			name:        "no eventlistener name",
-			elName:      "",
-			elNamespace: "elnamespace",
-			port:        "port",
-		},
-		{
-			name:        "no eventlistener namespace",
-			elName:      "elname",
-			elNamespace: "",
-			port:        "port",
-		},
-		{
-			name:        "no eventlistener namespace",
-			elName:      "elname",
-			elNamespace: "elnamespace",
-			port:        "",
-		},
-	}
+	}{{
+		name:        "no eventlistener name",
+		elName:      "",
+		elNamespace: "elnamespace",
+		port:        "port",
+	}, {
+		name:        "no eventlistener namespace",
+		elName:      "elname",
+		elNamespace: "",
+		port:        "port",
+	}, {
+		name:        "no eventlistener namespace",
+		elName:      "elname",
+		elNamespace: "elnamespace",
+		port:        "",
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := flag.Set(name, tt.elName); err != nil {

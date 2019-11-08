@@ -33,65 +33,51 @@ func TestSetGetCondition(t *testing.T) {
 		name               string
 		conditions         []*apis.Condition
 		expectedConditions int
-	}{
-		{
-			name:               "No conditions",
-			conditions:         []*apis.Condition{},
-			expectedConditions: 0,
-		},
-		{
-			name: "One condition",
-			conditions: []*apis.Condition{
-				{
-					Type:    "Some Type",
-					Status:  corev1.ConditionTrue,
-					Message: "Message",
-				},
-			},
-			expectedConditions: 1,
-		},
-		{
-			name: "Two conditions",
-			conditions: []*apis.Condition{
-				{
-					Type:    "Some Type1",
-					Status:  corev1.ConditionTrue,
-					Message: "Message1",
-				},
-				{
-					Type:    "Some Type2",
-					Status:  corev1.ConditionFalse,
-					Message: "Message2",
-				},
-			},
-			expectedConditions: 2,
-		},
-		{
-			name: "Two conditions repeated",
-			conditions: []*apis.Condition{
-				{
-					Type:    "Some Type1",
-					Status:  corev1.ConditionTrue,
-					Message: "Message1",
-				},
-				{
-					Type:    "Some Type1",
-					Status:  corev1.ConditionFalse,
-					Message: "Message2",
-				},
-				{
-					Type:    "Some Type2",
-					Status:  corev1.ConditionTrue,
-					Message: "Message1",
-				},
-				{
-					Type:    "Some Type2",
-					Status:  corev1.ConditionFalse,
-					Message: "Message2",
-				},
-			},
-			expectedConditions: 2,
-		},
+	}{{
+		name:               "No conditions",
+		conditions:         []*apis.Condition{},
+		expectedConditions: 0,
+	}, {
+		name: "One condition",
+		conditions: []*apis.Condition{{
+			Type:    "Some Type",
+			Status:  corev1.ConditionTrue,
+			Message: "Message",
+		}},
+		expectedConditions: 1,
+	}, {
+		name: "Two conditions",
+		conditions: []*apis.Condition{{
+			Type:    "Some Type1",
+			Status:  corev1.ConditionTrue,
+			Message: "Message1",
+		}, {
+			Type:    "Some Type2",
+			Status:  corev1.ConditionFalse,
+			Message: "Message2",
+		}},
+		expectedConditions: 2,
+	}, {
+		name: "Two conditions repeated",
+		conditions: []*apis.Condition{{
+			Type:    "Some Type1",
+			Status:  corev1.ConditionTrue,
+			Message: "Message1",
+		}, {
+			Type:    "Some Type1",
+			Status:  corev1.ConditionFalse,
+			Message: "Message2",
+		}, {
+			Type:    "Some Type2",
+			Status:  corev1.ConditionTrue,
+			Message: "Message1",
+		}, {
+			Type:    "Some Type2",
+			Status:  corev1.ConditionFalse,
+			Message: "Message2",
+		}},
+		expectedConditions: 2,
+	},
 	}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
@@ -134,27 +120,25 @@ func TestSetExistsCondition(t *testing.T) {
 		conditionType     apis.ConditionType
 		err               error
 		expectedCondition *apis.Condition
-	}{
-		{
-			name:          "Condition with error",
-			conditionType: condType,
-			err:           fmt.Errorf("Something bad"),
-			expectedCondition: &apis.Condition{
-				Type:    condType,
-				Status:  corev1.ConditionFalse,
-				Message: "Something bad",
-			},
+	}{{
+		name:          "Condition with error",
+		conditionType: condType,
+		err:           fmt.Errorf("Something bad"),
+		expectedCondition: &apis.Condition{
+			Type:    condType,
+			Status:  corev1.ConditionFalse,
+			Message: "Something bad",
 		},
-		{
-			name:          "Condition without error",
-			conditionType: condType,
-			err:           nil,
-			expectedCondition: &apis.Condition{
-				Type:    condType,
-				Status:  corev1.ConditionTrue,
-				Message: fmt.Sprintf("%s exists", condType),
-			},
+	}, {
+		name:          "Condition without error",
+		conditionType: condType,
+		err:           nil,
+		expectedCondition: &apis.Condition{
+			Type:    condType,
+			Status:  corev1.ConditionTrue,
+			Message: fmt.Sprintf("%s exists", condType),
 		},
+	},
 	}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
@@ -174,120 +158,108 @@ func TestSetDeploymentConditions(t *testing.T) {
 		deploymentConditions []appsv1.DeploymentCondition
 		initialStatus        *EventListenerStatus
 		expectedStatus       *EventListenerStatus
-	}{
-		{
-			name:                 "No Deployment Conditions",
-			deploymentConditions: []appsv1.DeploymentCondition{},
-			initialStatus:        &EventListenerStatus{},
-			expectedStatus:       &EventListenerStatus{},
-		},
-		{
-			name: "One Deployment Condition",
-			deploymentConditions: []appsv1.DeploymentCondition{
-				{
-					Type:    appsv1.DeploymentAvailable,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Reason",
-					Message: "Message",
-				},
-			},
-			initialStatus: &EventListenerStatus{},
-			expectedStatus: &EventListenerStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentAvailable),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
+	}{{
+		name:                 "No Deployment Conditions",
+		deploymentConditions: []appsv1.DeploymentCondition{},
+		initialStatus:        &EventListenerStatus{},
+		expectedStatus:       &EventListenerStatus{},
+	}, {
+		name: "One Deployment Condition",
+		deploymentConditions: []appsv1.DeploymentCondition{{
+			Type:    appsv1.DeploymentAvailable,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Reason",
+			Message: "Message",
+		}},
+		initialStatus: &EventListenerStatus{},
+		expectedStatus: &EventListenerStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
 					},
 				},
 			},
 		},
-		{
-			name: "Two Deployment Conditions",
-			deploymentConditions: []appsv1.DeploymentCondition{
-				{
-					Type:    appsv1.DeploymentAvailable,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Reason",
-					Message: "Message",
-				},
-				{
-					Type:    appsv1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Reason",
-					Message: "Message",
-				},
-			},
-			initialStatus: &EventListenerStatus{},
-			expectedStatus: &EventListenerStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentAvailable),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentProgressing),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
+	}, {
+		name: "Two Deployment Conditions",
+		deploymentConditions: []appsv1.DeploymentCondition{{
+			Type:    appsv1.DeploymentAvailable,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Reason",
+			Message: "Message",
+		}, {
+			Type:    appsv1.DeploymentProgressing,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Reason",
+			Message: "Message",
+		}},
+		initialStatus: &EventListenerStatus{},
+		expectedStatus: &EventListenerStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
+					},
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
 					},
 				},
 			},
 		},
-		{
-			name: "Update Replica Condition",
-			deploymentConditions: []appsv1.DeploymentCondition{
-				{
-					Type:    appsv1.DeploymentAvailable,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Reason",
-					Message: "Message",
-				},
-				{
-					Type:    appsv1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Reason",
-					Message: "Message",
-				},
-			},
-			initialStatus: &EventListenerStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentReplicaFailure),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
-					},
-				},
-			},
-			expectedStatus: &EventListenerStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentAvailable),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
-						apis.Condition{
-							Type:    apis.ConditionType(appsv1.DeploymentProgressing),
-							Status:  corev1.ConditionTrue,
-							Reason:  "Reason",
-							Message: "Message",
-						},
+	}, {
+		name: "Update Replica Condition",
+		deploymentConditions: []appsv1.DeploymentCondition{{
+			Type:    appsv1.DeploymentAvailable,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Reason",
+			Message: "Message",
+		}, {
+			Type:    appsv1.DeploymentProgressing,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Reason",
+			Message: "Message",
+		}},
+		initialStatus: &EventListenerStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentReplicaFailure),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
 					},
 				},
 			},
 		},
+		expectedStatus: &EventListenerStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
+					},
+					apis.Condition{
+						Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+						Status:  corev1.ConditionTrue,
+						Reason:  "Reason",
+						Message: "Message",
+					},
+				},
+			},
+		},
+	},
 	}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {

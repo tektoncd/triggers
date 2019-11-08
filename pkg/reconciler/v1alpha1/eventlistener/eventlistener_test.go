@@ -507,51 +507,41 @@ func TestReconcile(t *testing.T) {
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: eventListener0.Spec.ServiceAccountName,
-					Containers: []corev1.Container{
-						{
-							Name:  "event-listener",
-							Image: *elImage,
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: int32(Port),
-									Protocol:      corev1.ProtocolTCP,
+					Containers: []corev1.Container{{
+						Name:  "event-listener",
+						Image: *elImage,
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: int32(Port),
+							Protocol:      corev1.ProtocolTCP,
+						}},
+						Args: []string{
+							"-el-name", eventListenerName,
+							"-el-namespace", namespace,
+							"-port", strconv.Itoa(Port),
+						},
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:      "config-logging",
+							MountPath: "/etc/config-logging",
+						}},
+						Env: []corev1.EnvVar{{
+							Name: "SYSTEM_NAMESPACE",
+							ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{
+									FieldPath: "metadata.namespace",
 								},
 							},
-							Args: []string{
-								"-el-name", eventListenerName,
-								"-el-namespace", namespace,
-								"-port", strconv.Itoa(Port),
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config-logging",
-									MountPath: "/etc/config-logging",
-								},
-							},
-							Env: []corev1.EnvVar{
-								{
-									Name: "SYSTEM_NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
+						}},
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "config-logging",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "config-logging-triggers",
 								},
 							},
 						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-logging",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "config-logging-triggers",
-									},
-								},
-							},
-						},
-					},
+					}},
 				},
 			},
 		},
@@ -594,75 +584,70 @@ func TestReconcile(t *testing.T) {
 		key            string
 		startResources test.TestResources
 		endResources   test.TestResources
-	}{
-		{
-			name: "create-eventlistener",
-			key:  reconcileKey,
-			startResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener0},
-			},
-			endResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
-			},
+	}{{
+		name: "create-eventlistener",
+		key:  reconcileKey,
+		startResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener0},
 		},
-		{
-			name: "update-eventlistener-labels",
-			key:  reconcileKey,
-			startResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener2},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
-			},
-			endResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener2},
-				Deployments:    []*appsv1.Deployment{deployment2},
-				Services:       []*corev1.Service{service2},
-			},
+		endResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener1},
+			Deployments:    []*appsv1.Deployment{deployment1},
+			Services:       []*corev1.Service{service1},
 		},
-		{
-			name: "update-eventlistener-serviceaccount",
-			key:  reconcileKey,
-			startResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener3},
-				Deployments:    []*appsv1.Deployment{deployment2},
-				Services:       []*corev1.Service{service2},
-			},
-			endResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener3},
-				Deployments:    []*appsv1.Deployment{deployment3},
-				Services:       []*corev1.Service{service2},
-			},
+	}, {
+		name: "update-eventlistener-labels",
+		key:  reconcileKey,
+		startResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener2},
+			Deployments:    []*appsv1.Deployment{deployment1},
+			Services:       []*corev1.Service{service1},
 		},
-		{
-			name: "update-eventlistener-servicetype",
-			key:  reconcileKey,
-			startResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener4},
-				Deployments:    []*appsv1.Deployment{deployment3},
-				Services:       []*corev1.Service{service2},
-			},
-			endResources: test.TestResources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener4},
-				Deployments:    []*appsv1.Deployment{deployment3},
-				Services:       []*corev1.Service{service3},
-			},
+		endResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener2},
+			Deployments:    []*appsv1.Deployment{deployment2},
+			Services:       []*corev1.Service{service2},
 		},
-		{
-			name:           "delete-eventlistener",
-			key:            reconcileKey,
-			startResources: test.TestResources{},
-			endResources:   test.TestResources{},
+	}, {
+		name: "update-eventlistener-serviceaccount",
+		key:  reconcileKey,
+		startResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener3},
+			Deployments:    []*appsv1.Deployment{deployment2},
+			Services:       []*corev1.Service{service2},
 		},
+		endResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener3},
+			Deployments:    []*appsv1.Deployment{deployment3},
+			Services:       []*corev1.Service{service2},
+		},
+	}, {
+		name: "update-eventlistener-servicetype",
+		key:  reconcileKey,
+		startResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener4},
+			Deployments:    []*appsv1.Deployment{deployment3},
+			Services:       []*corev1.Service{service2},
+		},
+		endResources: test.TestResources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener4},
+			Deployments:    []*appsv1.Deployment{deployment3},
+			Services:       []*corev1.Service{service3},
+		},
+	}, {
+		name:           "delete-eventlistener",
+		key:            reconcileKey,
+		startResources: test.TestResources{},
+		endResources:   test.TestResources{},
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -693,32 +678,27 @@ func Test_wrapError(t *testing.T) {
 		name           string
 		error1, error2 error
 		expectedError  error
-	}{
-		{
-			name:          "Both error empty",
-			error1:        nil,
-			error2:        nil,
-			expectedError: nil,
-		},
-		{
-			name:          "Error one empty",
-			error1:        nil,
-			error2:        fmt.Errorf("Error"),
-			expectedError: fmt.Errorf("Error"),
-		},
-		{
-			name:          "Error two empty",
-			error1:        fmt.Errorf("Error"),
-			error2:        nil,
-			expectedError: fmt.Errorf("Error"),
-		},
-		{
-			name:          "Both errors",
-			error1:        fmt.Errorf("Error1"),
-			error2:        fmt.Errorf("Error2"),
-			expectedError: fmt.Errorf("Error1 : Error2"),
-		},
-	}
+	}{{
+		name:          "Both error empty",
+		error1:        nil,
+		error2:        nil,
+		expectedError: nil,
+	}, {
+		name:          "Error one empty",
+		error1:        nil,
+		error2:        fmt.Errorf("Error"),
+		expectedError: fmt.Errorf("Error"),
+	}, {
+		name:          "Error two empty",
+		error1:        fmt.Errorf("Error"),
+		error2:        nil,
+		expectedError: fmt.Errorf("Error"),
+	}, {
+		name:          "Both errors",
+		error1:        fmt.Errorf("Error1"),
+		error2:        fmt.Errorf("Error2"),
+		expectedError: fmt.Errorf("Error1 : Error2"),
+	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			actualError := wrapError(tests[i].error1, tests[i].error2)
@@ -743,38 +723,32 @@ func Test_mergeLabels(t *testing.T) {
 		name           string
 		l1, l2         map[string]string
 		expectedLabels map[string]string
-	}{
-		{
-			name:           "Both maps empty",
-			l1:             nil,
-			l2:             nil,
-			expectedLabels: map[string]string{},
-		},
-		{
-			name:           "Map one empty",
-			l1:             nil,
-			l2:             map[string]string{"k": "v"},
-			expectedLabels: map[string]string{"k": "v"},
-		},
-		{
-			name:           "Map two empty",
-			l1:             map[string]string{"k": "v"},
-			l2:             nil,
-			expectedLabels: map[string]string{"k": "v"},
-		},
-		{
-			name:           "Both maps",
-			l1:             map[string]string{"k1": "v1"},
-			l2:             map[string]string{"k2": "v2"},
-			expectedLabels: map[string]string{"k1": "v1", "k2": "v2"},
-		},
-		{
-			name:           "Both maps with clobber",
-			l1:             map[string]string{"k1": "v1"},
-			l2:             map[string]string{"k1": "v2"},
-			expectedLabels: map[string]string{"k1": "v2"},
-		},
-	}
+	}{{
+		name:           "Both maps empty",
+		l1:             nil,
+		l2:             nil,
+		expectedLabels: map[string]string{},
+	}, {
+		name:           "Map one empty",
+		l1:             nil,
+		l2:             map[string]string{"k": "v"},
+		expectedLabels: map[string]string{"k": "v"},
+	}, {
+		name:           "Map two empty",
+		l1:             map[string]string{"k": "v"},
+		l2:             nil,
+		expectedLabels: map[string]string{"k": "v"},
+	}, {
+		name:           "Both maps",
+		l1:             map[string]string{"k1": "v1"},
+		l2:             map[string]string{"k2": "v2"},
+		expectedLabels: map[string]string{"k1": "v1", "k2": "v2"},
+	}, {
+		name:           "Both maps with clobber",
+		l1:             map[string]string{"k1": "v1"},
+		l2:             map[string]string{"k1": "v2"},
+		expectedLabels: map[string]string{"k1": "v2"},
+	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			actualLabels := mergeLabels(tests[i].l1, tests[i].l2)
@@ -800,65 +774,63 @@ func Test_generateObjectMeta(t *testing.T) {
 		name               string
 		el                 *v1alpha1.EventListener
 		expectedObjectMeta metav1.ObjectMeta
-	}{
-		{
-			name: "Empty EventListener",
-			el:   bldr.EventListener(eventListenerName, ""),
-			expectedObjectMeta: metav1.ObjectMeta{
-				Namespace: "",
-				Name:      "",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "EventListener",
-					Name:               eventListenerName,
-					UID:                "",
-					Controller:         &isController,
-					BlockOwnerDeletion: &blockOwnerDeletion,
-				}},
-				Labels: generatedLabels,
-			},
-		}, {
-			name: "EventListener with Configuration",
-			el: bldr.EventListener(eventListenerName, "",
-				bldr.EventListenerStatus(
-					bldr.EventListenerConfig("generatedName"),
-				),
-			),
-			expectedObjectMeta: metav1.ObjectMeta{
-				Namespace: "",
-				Name:      "generatedName",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "EventListener",
-					Name:               eventListenerName,
-					UID:                "",
-					Controller:         &isController,
-					BlockOwnerDeletion: &blockOwnerDeletion,
-				}},
-				Labels: generatedLabels,
-			},
-		}, {
-			name: "EventListener with Labels",
-			el: bldr.EventListener(eventListenerName, "",
-				bldr.EventListenerMeta(
-					bldr.Label("k", "v"),
-				),
-			),
-			expectedObjectMeta: metav1.ObjectMeta{
-				Namespace: "",
-				Name:      "",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "EventListener",
-					Name:               eventListenerName,
-					UID:                "",
-					Controller:         &isController,
-					BlockOwnerDeletion: &blockOwnerDeletion,
-				}},
-				Labels: mergeLabels(map[string]string{"k": "v"}, generatedLabels),
-			},
+	}{{
+		name: "Empty EventListener",
+		el:   bldr.EventListener(eventListenerName, ""),
+		expectedObjectMeta: metav1.ObjectMeta{
+			Namespace: "",
+			Name:      "",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "tekton.dev/v1alpha1",
+				Kind:               "EventListener",
+				Name:               eventListenerName,
+				UID:                "",
+				Controller:         &isController,
+				BlockOwnerDeletion: &blockOwnerDeletion,
+			}},
+			Labels: generatedLabels,
 		},
-	}
+	}, {
+		name: "EventListener with Configuration",
+		el: bldr.EventListener(eventListenerName, "",
+			bldr.EventListenerStatus(
+				bldr.EventListenerConfig("generatedName"),
+			),
+		),
+		expectedObjectMeta: metav1.ObjectMeta{
+			Namespace: "",
+			Name:      "generatedName",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "tekton.dev/v1alpha1",
+				Kind:               "EventListener",
+				Name:               eventListenerName,
+				UID:                "",
+				Controller:         &isController,
+				BlockOwnerDeletion: &blockOwnerDeletion,
+			}},
+			Labels: generatedLabels,
+		},
+	}, {
+		name: "EventListener with Labels",
+		el: bldr.EventListener(eventListenerName, "",
+			bldr.EventListenerMeta(
+				bldr.Label("k", "v"),
+			),
+		),
+		expectedObjectMeta: metav1.ObjectMeta{
+			Namespace: "",
+			Name:      "",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "tekton.dev/v1alpha1",
+				Kind:               "EventListener",
+				Name:               eventListenerName,
+				UID:                "",
+				Controller:         &isController,
+				BlockOwnerDeletion: &blockOwnerDeletion,
+			}},
+			Labels: mergeLabels(map[string]string{"k": "v"}, generatedLabels),
+		},
+	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			actualObjectMeta := generateObjectMeta(tests[i].el)

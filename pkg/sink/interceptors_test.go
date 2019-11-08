@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -97,7 +98,7 @@ func TestCreateOutgoingRequest(t *testing.T) {
 	expectedReq.Header.Add("Content-type", "application/json")
 	expectedReq.Header.Add("X-Event-Id", "blah")
 
-	outgoing := createOutgoingRequest(context.Background(), req, eventProcessorURL, reqBody)
+	outgoing := createOutgoingRequest(context.Background(), req, eventProcessorURL, reqBody, nil)
 
 	respBody, err := ioutil.ReadAll(outgoing.Body)
 	if err != nil {
@@ -162,6 +163,90 @@ func TestMakeRequest(t *testing.T) {
 			}
 			if diff := cmp.Diff(expectedPayload, payload); diff != "" {
 				t.Errorf("Did not get expected body back: %s", diff)
+			}
+		})
+	}
+}
+
+func Test_addInterceptorHeaders(t *testing.T) {
+	type args struct {
+		header       http.Header
+		headerParams []pipelinev1.Param
+	}
+	tests := []struct {
+		name string
+		args args
+		want http.Header
+	}{{
+		name: "Empty params",
+		args: args{
+			header: map[string][]string{
+				"header1": {"val"},
+			},
+			headerParams: []pipelinev1.Param{},
+		},
+		want: map[string][]string{
+			"header1": {"val"},
+		},
+	}, {
+		name: "One string param",
+		args: args{
+			header: map[string][]string{
+				"header1": {"val"},
+			},
+			headerParams: []pipelinev1.Param{{
+				Name: "header2",
+				Value: pipelinev1.ArrayOrString{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: "val",
+				}},
+			},
+		},
+		want: map[string][]string{
+			"header1": {"val"},
+			"header2": {"val"},
+		},
+	}, {
+		name: "One array param",
+		args: args{
+			header: map[string][]string{
+				"header1": {"val"},
+			},
+			headerParams: []pipelinev1.Param{{
+				Name: "header2",
+				Value: pipelinev1.ArrayOrString{
+					Type:     pipelinev1.ParamTypeArray,
+					ArrayVal: []string{"val1", "val2"},
+				}},
+			},
+		},
+		want: map[string][]string{
+			"header1": {"val"},
+			"header2": {"val1", "val2"},
+		},
+	}, {
+		name: "Clobber param",
+		args: args{
+			header: map[string][]string{
+				"header1": {"val"},
+			},
+			headerParams: []pipelinev1.Param{{
+				Name: "header1",
+				Value: pipelinev1.ArrayOrString{
+					Type:     pipelinev1.ParamTypeArray,
+					ArrayVal: []string{"new_val"},
+				}},
+			},
+		},
+		want: map[string][]string{
+			"header1": {"new_val"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addInterceptorHeaders(tt.args.header, tt.args.headerParams)
+			if diff := cmp.Diff(tt.want, tt.args.header); diff != "" {
+				t.Errorf("addInterceptorHeaders() Diff: -want +got: %s", diff)
 			}
 		})
 	}
