@@ -701,10 +701,9 @@ func Test_applyHeaderToParams_error(t *testing.T) {
 
 func Test_NewResources(t *testing.T) {
 	type args struct {
-		body     []byte
-		header   map[string][]string
-		elParams []pipelinev1.Param
-		binding  ResolvedBinding
+		body    []byte
+		header  map[string][]string
+		binding ResolvedBinding
 	}
 	tests := []struct {
 		name string
@@ -860,82 +859,6 @@ func Test_NewResources(t *testing.T) {
 			},
 		},
 		{
-			name: "one BodyListener param",
-			args: args{
-				body: json.RawMessage(`{"foo": "bar"}`),
-				elParams: []pipelinev1.Param{
-					{
-						Name:  "param1",
-						Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
-					},
-				},
-				binding: ResolvedBinding{
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param2", "$(body.foo)"),
-							),
-						),
-					},
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description1", ""),
-							bldr.TriggerTemplateParam("param2", "description2", ""),
-							bldr.TriggerResourceTemplate(
-								json.RawMessage(`{"rt1": {"p1": "$(params.param1)", "p2": "$(params.param2)"}}`),
-							),
-						),
-					),
-				},
-			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": {"p1": "value1", "p2": "bar"}}`),
-			},
-		},
-		{
-			name: "multiple BodyListener params",
-			args: args{
-				body: json.RawMessage(`{"foo": "bar"}`),
-				elParams: []pipelinev1.Param{
-					{
-						Name:  "param1",
-						Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
-					},
-					{
-						Name:  "param3",
-						Value: pipelinev1.ArrayOrString{StringVal: "value3", Type: pipelinev1.ParamTypeString},
-					},
-				},
-				binding: ResolvedBinding{
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param2", "$(body.foo)"),
-							),
-						),
-					},
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description1", ""),
-							bldr.TriggerTemplateParam("param2", "description2", ""),
-							bldr.TriggerTemplateParam("param3", "description3", ""),
-							bldr.TriggerTemplateParam("param4", "description4", "default4"),
-							bldr.TriggerResourceTemplate(
-								json.RawMessage(`{"rt1": {"p1": "$(params.param1)", "p3": "$(params.param3)"}}`),
-							),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param2)-$(uid)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "$(params.param4)"}`)),
-						),
-					),
-				},
-			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": {"p1": "value1", "p3": "value3"}}`),
-				json.RawMessage(`{"rt2": "bar-cbhtc"}`),
-				json.RawMessage(`{"rt3": "default4"}`),
-			},
-		},
-		{
 			name: "one resource template multiple bindings",
 			args: args{
 				body:   json.RawMessage(`{"foo": "bar"}`),
@@ -971,7 +894,7 @@ func Test_NewResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This seeds Uid() to return 'cbhtc'
 			rand.Seed(0)
-			got, err := NewResources(tt.args.body, tt.args.header, tt.args.elParams, tt.args.binding)
+			got, err := NewResources(tt.args.body, tt.args.header, tt.args.binding)
 			if err != nil {
 				t.Errorf("NewResources() returned unexpected error: %s", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
@@ -1083,7 +1006,7 @@ func Test_NewResources_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewResources(tt.body, tt.header, tt.elParams, tt.binding)
+			got, err := NewResources(tt.body, tt.header, tt.binding)
 			if err == nil {
 				t.Errorf("NewResources() did not return error when expected; got: %s", got)
 			}

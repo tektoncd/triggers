@@ -81,20 +81,6 @@ func EventListenerTrigger(tbName, ttName, apiVersion string, ops ...EventListene
 	}
 }
 
-// EventListenerTriggerParam adds a param to the EventListenerTrigger
-func EventListenerTriggerParam(name, value string) EventListenerTriggerOp {
-	return func(trigger *v1alpha1.EventListenerTrigger) {
-		trigger.Params = append(trigger.Params,
-			pipelinev1.Param{
-				Name: name,
-				Value: pipelinev1.ArrayOrString{
-					StringVal: value,
-					Type:      pipelinev1.ParamTypeString,
-				},
-			})
-	}
-}
-
 // EventListenerStatus sets the specified status of the EventListener.
 // Any number of EventListenerStatusOp modifiers can be passed to create/modify it.
 func EventListenerStatus(ops ...EventListenerStatusOp) EventListenerOp {

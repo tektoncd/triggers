@@ -222,13 +222,6 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 		}
 	}
 	out.Template = in.Template
-	if in.Params != nil {
-		in, out := &in.Params, &out.Params
-		*out = make([]pipelinev1alpha1.Param, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	if in.Interceptor != nil {
 		in, out := &in.Interceptor, &out.Interceptor
 		*out = new(EventInterceptor)
