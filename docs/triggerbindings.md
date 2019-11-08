@@ -49,7 +49,7 @@ in the form of `$(body.X.Y.Z)` is replaced by the body data at JSON path
 
 `$(body)` is replaced by the entire body.
 
-The following are some example variable interpolation replacements: 
+The following are some example variable interpolation replacements:
 ``` $(body)
 -> "{\"key1\": \"value1\", \"key2\": {\"key3\": \"value3\"}, \"key4\":
 [\"value4\", \"value5\"]}"
@@ -60,7 +60,7 @@ $(body.key2) -> "{\"key3\": \"value3\"}"
 
 $(body.key2.key3) -> "value3"
 
-$(body.key4.0) -> "value4" 
+$(body.key4.0) -> "value4"
 ```
 
 ### Header
@@ -78,7 +78,7 @@ $(header.One) -> "one"
 
 $(header.Two) -> "one two three"
 
-$(header.Two.1) -> "two" 
+$(header.Two.1) -> "two"
 ```
 
 ## Multiple Bindings
@@ -126,13 +126,13 @@ metadata:
 spec:
   triggers:
     - name: prod-trigger
-      binding:
+      bindings:
         - name: event-binding
         - name: prod-env
       template:
         name: pipeline-template
     - name: staging-trigger
-      binding:
+      bindings:
         - name: event-binding
         - name: staging-env
       template:
