@@ -72,14 +72,19 @@ type EventListenerTrigger struct {
 
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor struct {
-	// Header is a group of key-value pairs that can be appended to the
-	// interceptor request headers. This allows the interceptor to make
-	// decisions specific to an EventListenerTrigger.
-	Header []pipelinev1.Param `json:"header,omitempty"`
+	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
+}
+
+// WebhookInterceptor provides a webhook to intercept and pre-process events
+type WebhookInterceptor struct {
 	// ObjectRef is a reference to an object that will resolve to a cluster DNS
 	// name to use as the EventInterceptor. Either objectRef or url can be specified
 	// +optional
 	ObjectRef *corev1.ObjectReference `json:"objectRef,omitempty"`
+	// Header is a group of key-value pairs that can be appended to the
+	// interceptor request headers. This allows the interceptor to make
+	// decisions specific to an EventListenerTrigger.
+	Header []pipelinev1.Param `json:"header,omitempty"`
 }
 
 // EventListenerBinding refers to a particular TriggerBinding resource.

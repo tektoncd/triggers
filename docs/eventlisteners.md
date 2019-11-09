@@ -78,18 +78,19 @@ spec:
   triggers:
     - name: foo-trig
       interceptor:
-        header:
-        - name: Foo-Trig-Header1
-          value: string-value
-        - name: Foo-Trig-Header2
-          value:
-          - array-val1
-          - array-val2
-        objectRef:
-          kind: Service
-          name: gh-validate
-          apiVersion: v1
-          namespace: default
+        webhook:
+          header:
+          - name: Foo-Trig-Header1
+            value: string-value
+          - name: Foo-Trig-Header2
+            value:
+            - array-val1
+            - array-val2
+          objectRef:
+            kind: Service
+            name: gh-validate
+            apiVersion: v1
+            namespace: default
       bindings:
       - name: pipeline-binding
       template:

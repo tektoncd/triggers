@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package sink
+package webhook
 
 import (
 	"bytes"

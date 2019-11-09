@@ -219,11 +219,13 @@ func TestEventListenerBuilder(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
 					Interceptor: &v1alpha1.EventInterceptor{
-						ObjectRef: &corev1.ObjectReference{
-							Kind:       "Service",
-							Namespace:  "namespace",
-							Name:       "foo",
-							APIVersion: "v1",
+						Webhook: &v1alpha1.WebhookInterceptor{
+							ObjectRef: &corev1.ObjectReference{
+								Kind:       "Service",
+								Namespace:  "namespace",
+								Name:       "foo",
+								APIVersion: "v1",
+							},
 						},
 					},
 					Bindings: []*v1alpha1.EventListenerBinding{{
@@ -258,20 +260,22 @@ func TestEventListenerBuilder(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
 					Interceptor: &v1alpha1.EventInterceptor{
-						Header: []pipelinev1.Param{
-							{
-								Name: "header1",
-								Value: pipelinev1.ArrayOrString{
-									ArrayVal: []string{"value1"},
-									Type:     pipelinev1.ParamTypeArray,
+						Webhook: &v1alpha1.WebhookInterceptor{
+							ObjectRef: &corev1.ObjectReference{
+								Kind:       "Service",
+								Namespace:  "namespace",
+								Name:       "foo",
+								APIVersion: "v1",
+							},
+							Header: []pipelinev1.Param{
+								{
+									Name: "header1",
+									Value: pipelinev1.ArrayOrString{
+										ArrayVal: []string{"value1"},
+										Type:     pipelinev1.ParamTypeArray,
+									},
 								},
 							},
-						},
-						ObjectRef: &corev1.ObjectReference{
-							Kind:       "Service",
-							Namespace:  "namespace",
-							Name:       "foo",
-							APIVersion: "v1",
 						},
 					},
 					Bindings: []*v1alpha1.EventListenerBinding{{

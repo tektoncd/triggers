@@ -23,11 +23,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -47,7 +45,15 @@ import (
 const resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
 const eventIDLabel = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
-func TestCreateRequestURI(t *testing.T) {
+func Test_findAPIResource_error(t *testing.T) {
+	kubeClient := fakekubeclientset.NewSimpleClientset()
+	_, err := findAPIResource(kubeClient.Discovery(), "v1", "Pod")
+	if err == nil {
+		t.Error("findAPIResource() did not return error when expected")
+	}
+}
+
+func Test_createRequestURI(t *testing.T) {
 	tests := []struct {
 		apiVersion string
 		namePlural string
@@ -486,70 +492,5 @@ func TestHandleEvent(t *testing.T) {
 	wg.Wait()
 	if numRequests != 1 {
 		t.Errorf("Expected 1 request, got %d requests", numRequests)
-	}
-}
-
-func TestResourceProcessEvent(t *testing.T) {
-	r := Sink{HTTPClient: http.DefaultClient}
-
-	payload, _ := json.Marshal(map[string]string{
-		"eventType": "push",
-		"foo":       "bar",
-	})
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cmp.Diff(r.Header["Param-Header"], []string{"val"}) != "" {
-			http.Error(w, "Expected header does not match", http.StatusBadRequest)
-			return
-		}
-		_, _ = w.Write(payload)
-	}))
-	defer ts.Close()
-
-	incoming := httptest.NewRequest("POST", "http://event.listener.url", nil)
-	incoming.Header.Add("Content-type", "application/json")
-
-	interceptorURL, _ := url.Parse(ts.URL)
-	params := []pipelinev1.Param{{
-		Name: "Param-Header",
-		Value: pipelinev1.ArrayOrString{
-			Type:      pipelinev1.ParamTypeString,
-			StringVal: "val",
-		}},
-	}
-	originalHeaders := incoming.Header.Clone()
-
-	resPayload, err := r.processEvent(interceptorURL, incoming, payload, params, interceptorTimeout)
-
-	if err != nil {
-		t.Errorf("Unexpected error in process event: %q", err)
-	}
-
-	if diff := cmp.Diff(payload, resPayload); diff != "" {
-		t.Errorf("Did not get expected payload back: %s", diff)
-	}
-
-	// Verify that the parameter header was not added to the request header
-	if diff := cmp.Diff(incoming.Header, originalHeaders); diff != "" {
-		t.Errorf("processEvent() changed request header unexpectedly: %s", diff)
-	}
-}
-
-func TestResourceProcessEvent_TimeOut(t *testing.T) {
-	r := Sink{HTTPClient: http.DefaultClient}
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(50 * time.Millisecond)
-	}))
-	defer ts.Close()
-
-	incoming := httptest.NewRequest("POST", "http://event.listener.url", nil)
-	interceptorURL, _ := url.Parse(ts.URL)
-
-	_, err := r.processEvent(interceptorURL, incoming, nil, nil, 10*time.Millisecond)
-
-	if err == nil {
-		t.Errorf("Did not expect err to be nil")
-	} else if !strings.Contains(err.Error(), "context deadline exceeded") {
-		t.Errorf("Unexpected type of error. Expected: deadline exceeded. Got: %q", err)
 	}
 }

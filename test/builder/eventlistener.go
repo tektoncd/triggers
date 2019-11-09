@@ -161,11 +161,13 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 func EventListenerTriggerInterceptor(name, version, kind, namespace string, ops ...EventInterceptorOp) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
 		t.Interceptor = &v1alpha1.EventInterceptor{
-			ObjectRef: &corev1.ObjectReference{
-				Kind:       kind,
-				Name:       name,
-				APIVersion: version,
-				Namespace:  namespace,
+			Webhook: &v1alpha1.WebhookInterceptor{
+				ObjectRef: &corev1.ObjectReference{
+					Kind:       kind,
+					Name:       name,
+					APIVersion: version,
+					Namespace:  namespace,
+				},
 			},
 		}
 		for _, op := range ops {
@@ -177,19 +179,21 @@ func EventListenerTriggerInterceptor(name, version, kind, namespace string, ops 
 // EventInterceptorParam adds a parameter to the EventInterceptor.
 func EventInterceptorParam(name, value string) EventInterceptorOp {
 	return func(i *v1alpha1.EventInterceptor) {
-		for _, param := range i.Header {
-			if param.Name == name {
-				param.Value.ArrayVal = append(param.Value.ArrayVal, value)
-				return
+		if i.Webhook != nil {
+			for _, param := range i.Webhook.Header {
+				if param.Name == name {
+					param.Value.ArrayVal = append(param.Value.ArrayVal, value)
+					return
+				}
 			}
+			i.Webhook.Header = append(i.Webhook.Header,
+				pipelinev1.Param{
+					Name: name,
+					Value: pipelinev1.ArrayOrString{
+						ArrayVal: []string{value},
+						Type:     pipelinev1.ParamTypeArray,
+					},
+				})
 		}
-		i.Header = append(i.Header,
-			pipelinev1.Param{
-				Name: name,
-				Value: pipelinev1.ArrayOrString{
-					ArrayVal: []string{value},
-					Type:     pipelinev1.ParamTypeArray,
-				},
-			})
 	}
 }
