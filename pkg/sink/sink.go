@@ -17,32 +17,30 @@ limitations under the License.
 package sink
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path"
-	"time"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 
-	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-	"go.uber.org/zap"
 	"golang.org/x/xerrors"
+
+	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
+
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/template"
+	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
 	restclient "k8s.io/client-go/rest"
 )
-
-// Timeout for outgoing requests to interceptor services
-const interceptorTimeout = 5 * time.Second
 
 // Sink defines the sink resource for processing incoming events for the
 // EventListener.
@@ -79,8 +77,46 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 
 	result := make(chan int, 10)
 	// Execute each Trigger
+
 	for _, trigger := range el.Spec.Triggers {
-		go r.executeTrigger(event, request, trigger, eventID, result)
+		t := trigger
+		var interceptor interceptors.Interceptor
+		if t.Interceptor != nil {
+			switch {
+			case t.Interceptor.Webhook != nil:
+				interceptor = webhook.NewInterceptor(t.Interceptor, r.HTTPClient, r.EventListenerNamespace, r.Logger)
+			}
+		}
+		go func() {
+			finalPayload := event
+			if interceptor != nil {
+				payload, err := interceptor.ExecuteTrigger(event, request, t, eventID)
+				if err != nil {
+					r.Logger.Error(err)
+					result <- http.StatusAccepted
+					return
+				}
+				finalPayload = payload
+			}
+			binding, err := template.ResolveBinding(t,
+				r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
+				r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
+			if err != nil {
+				r.Logger.Error(err)
+				result <- http.StatusAccepted
+				return
+			}
+			resources, err := template.NewResources(finalPayload, request.Header, binding)
+			if err != nil {
+				r.Logger.Error(err)
+				result <- http.StatusAccepted
+				return
+			}
+			if err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID, r.Logger); err != nil {
+				r.Logger.Error(err)
+			}
+			result <- http.StatusCreated
+		}()
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
@@ -97,58 +133,6 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	response.WriteHeader(code)
 	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
-}
-
-func (r Sink) executeTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string, result chan int) {
-	if trigger.Interceptor != nil {
-		interceptorURL, err := GetURI(trigger.Interceptor.ObjectRef, r.EventListenerNamespace) // TODO: Cache this result or do this on initialization
-		if err != nil {
-			r.Logger.Errorf("Could not resolve Interceptor Service URI: %q", err)
-			result <- http.StatusAccepted
-			return
-		}
-
-		modifiedPayload, err := r.processEvent(interceptorURL, request, payload, trigger.Interceptor.Header, interceptorTimeout)
-		if err != nil {
-			r.Logger.Errorf("Error Intercepting Event (EventID: %s): %q", eventID, err)
-			result <- http.StatusAccepted
-			return
-		}
-		payload = modifiedPayload
-	}
-
-	binding, err := template.ResolveBinding(trigger,
-		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
-		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
-	if err != nil {
-		r.Logger.Error(err)
-		result <- http.StatusAccepted
-		return
-	}
-	resources, err := template.NewResources(payload, request.Header, binding)
-	if err != nil {
-		r.Logger.Error(err)
-		result <- http.StatusAccepted
-		return
-	}
-	err = createResources(resources, r.RESTClient, r.DiscoveryClient, r.EventListenerNamespace, r.EventListenerName, eventID, r.Logger)
-	if err != nil {
-		r.Logger.Error(err)
-		result <- http.StatusAccepted
-	}
-	result <- http.StatusCreated
-}
-
-func (r Sink) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	outgoing := createOutgoingRequest(ctx, request, interceptorURL, payload, headerParams)
-	addInterceptorHeaders(outgoing.Header, headerParams)
-	respPayload, err := makeRequest(r.HTTPClient, outgoing)
-	if err != nil {
-		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
-	}
-	return respPayload, nil
 }
 
 func createResources(resources []json.RawMessage, restClient restclient.Interface, discoveryClient discoveryclient.DiscoveryInterface, eventListenerNamespace string, eventListenerName string, eventID string, logger *zap.SugaredLogger) error {

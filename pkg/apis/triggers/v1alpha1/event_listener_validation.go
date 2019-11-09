@@ -81,41 +81,43 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 }
 
 func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
-	if i.ObjectRef == nil || len(i.ObjectRef.Name) == 0 {
-		return apis.ErrMissingField("interceptor.objectRef")
-	}
 	// Optional explicit match
-	if len(i.ObjectRef.Kind) != 0 {
-		if i.ObjectRef.Kind != "Service" {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.objectRef.kind")
+	if i.Webhook == nil || i.Webhook.ObjectRef == nil || len(i.Webhook.ObjectRef.Name) == 0 {
+		return apis.ErrMissingField("interceptor.webhook")
+	}
+	w := i.Webhook
+	if len(w.ObjectRef.Kind) != 0 {
+		if w.ObjectRef.Kind != "Service" {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.webhook.objectRef.kind")
 		}
 	}
 	// Optional explicit match
-	if len(i.ObjectRef.APIVersion) != 0 {
-		if i.ObjectRef.APIVersion != "v1" {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.objectRef.apiVersion")
+	if len(w.ObjectRef.APIVersion) != 0 {
+		if w.ObjectRef.APIVersion != "v1" {
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
 		}
 	}
-	if len(i.ObjectRef.Namespace) != 0 {
-		namespace = i.ObjectRef.Namespace
+	if len(w.ObjectRef.Namespace) != 0 {
+		namespace = w.ObjectRef.Namespace
 	}
+
 	clientset := ctx.Value("clientSet").(dynamic.Interface)
-	_, err := clientset.Resource(services).Namespace(namespace).Get(i.ObjectRef.Name, metav1.GetOptions{})
+	_, err := clientset.Resource(services).Namespace(namespace).Get(w.ObjectRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return apis.ErrInvalidValue(err, "interceptor.objectRef.name")
+		return apis.ErrInvalidValue(err, "interceptor.webhook.objectRef.name")
 	}
-	for i, header := range i.Header {
+	for i, header := range w.Header {
 		// Enforce non-empty canonical header keys
 		if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.header[%d].name", i))
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i))
 		}
 		// Enforce non-empty header values
 		if header.Value.Type == pipelinev1.ParamTypeString {
 			if len(header.Value.StringVal) == 0 {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.header[%d].value", i))
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 			}
 		} else if len(header.Value.ArrayVal) == 0 {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.header[%d].value", i))
+			return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 		}
 	}
 	return nil
