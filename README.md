@@ -26,6 +26,13 @@ You can learn more by checking out the [docs](docs/README.md)
 
 [Install](./docs/install.md) Triggers, check out the [installation guide](./docs/install.md),  [examples](./examples/README.md) or follow the [getting started guide](./docs/getting-started/README.md) to become familiar with the project. The getting started guide walks through setting up an end-to-end image building solution, which will be triggered from GitHub `push` events.
 
+### Read the docs
+
+| Version | Docs | Examples | Getting Started |
+| ------- | ---- | -------- | --------------- |
+| [HEAD](DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](/docs/README.md) | [Examples @ HEAD](/examples) | [Getting Started @ HEAD](/docs/getting-started#getting-started-with-triggers) |
+| [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) | [Docs @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs#tekton-triggers) | [Examples @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/examples#examples) | [Getting Started @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs/getting-started#getting-started-with-triggers) |
+
 ## Want to contribute
 
 Hooray!
