@@ -50,5 +50,4 @@ for a full range of configuration options.
     ```
 
 1. Try it out! Get the address of the Ingress by running `kubectl get ingress ingress-resource` 
-and noting the address field. You can `curl` this IP or setup a Github webhook to send events to it. 
-
+and noting the address field. You can `curl` this IP or setup a GitHub webhook to send events to it.

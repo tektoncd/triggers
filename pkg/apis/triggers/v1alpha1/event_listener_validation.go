@@ -81,44 +81,68 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 }
 
 func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
-	// Optional explicit match
-	if i.Webhook == nil || i.Webhook.ObjectRef == nil || len(i.Webhook.ObjectRef.Name) == 0 {
-		return apis.ErrMissingField("interceptor.webhook")
-	}
-	w := i.Webhook
-	if len(w.ObjectRef.Kind) != 0 {
-		if w.ObjectRef.Kind != "Service" {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.webhook.objectRef.kind")
-		}
-	}
-	// Optional explicit match
-	if len(w.ObjectRef.APIVersion) != 0 {
-		if w.ObjectRef.APIVersion != "v1" {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
-		}
-	}
-	if len(w.ObjectRef.Namespace) != 0 {
-		namespace = w.ObjectRef.Namespace
+	// Validate at least one
+	if i.Webhook == nil && i.Github == nil {
+		return apis.ErrMissingField(("interceptor"))
 	}
 
-	clientset := ctx.Value("clientSet").(dynamic.Interface)
-	_, err := clientset.Resource(services).Namespace(namespace).Get(w.ObjectRef.Name, metav1.GetOptions{})
-	if err != nil {
-		return apis.ErrInvalidValue(err, "interceptor.webhook.objectRef.name")
+	// Enforce oneof
+	numSet := 0
+	if i.Webhook != nil {
+		numSet++
 	}
-	for i, header := range w.Header {
-		// Enforce non-empty canonical header keys
-		if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i))
+	if i.Github != nil {
+		numSet++
+	}
+
+	if numSet > 1 {
+		return apis.ErrMultipleOneOf("interceptor.webhook", "interceptor.github")
+	}
+
+	if i.Webhook != nil {
+		if i.Webhook.ObjectRef == nil || len(i.Webhook.ObjectRef.Name) == 0 {
+			return apis.ErrMissingField("interceptor.webhook")
 		}
-		// Enforce non-empty header values
-		if header.Value.Type == pipelinev1.ParamTypeString {
-			if len(header.Value.StringVal) == 0 {
+		w := i.Webhook
+		if len(w.ObjectRef.Kind) != 0 {
+			if w.ObjectRef.Kind != "Service" {
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.webhook.objectRef.kind")
+			}
+		}
+		// Optional explicit match
+		if len(w.ObjectRef.APIVersion) != 0 {
+			if w.ObjectRef.APIVersion != "v1" {
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
+			}
+		}
+		if len(w.ObjectRef.Namespace) != 0 {
+			namespace = w.ObjectRef.Namespace
+		}
+
+		clientset := ctx.Value("clientSet").(dynamic.Interface)
+		_, err := clientset.Resource(services).Namespace(namespace).Get(w.ObjectRef.Name, metav1.GetOptions{})
+		if err != nil {
+			return apis.ErrInvalidValue(err, "interceptor.webhook.objectRef.name")
+		}
+		for i, header := range w.Header {
+			// Enforce non-empty canonical header keys
+			if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
+				return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i))
+			}
+			// Enforce non-empty header values
+			if header.Value.Type == pipelinev1.ParamTypeString {
+				if len(header.Value.StringVal) == 0 {
+					return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
+				}
+			} else if len(header.Value.ArrayVal) == 0 {
 				return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 			}
-		} else if len(header.Value.ArrayVal) == 0 {
-			return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 		}
 	}
+
+	// No github validation required yet.
+	// if i.Github != nil {
+	//
+	// }
 	return nil
 }
