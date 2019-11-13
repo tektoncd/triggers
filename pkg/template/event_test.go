@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-func Test_BodyPathVarRegex(t *testing.T) {
+func TestBodyPathVarRegex(t *testing.T) {
 	tests := []string{
 		"$(body)",
 		"$(body.a-b)",
@@ -57,7 +57,7 @@ func Test_BodyPathVarRegex(t *testing.T) {
 	}
 }
 
-func Test_BodyPathVarRegex_invalid(t *testing.T) {
+func TestBodyPathVarRegex_invalid(t *testing.T) {
 	tests := []string{
 		"$body",
 		"$[body]",
@@ -81,7 +81,7 @@ func Test_BodyPathVarRegex_invalid(t *testing.T) {
 	}
 }
 
-func Test_HeaderVarRegex(t *testing.T) {
+func TestHeaderVarRegex(t *testing.T) {
 	tests := []string{
 		"$(header)",
 		"$(header.a-b)",
@@ -96,7 +96,7 @@ func Test_HeaderVarRegex(t *testing.T) {
 	}
 }
 
-func Test_HeaderVarRegex_invalid(t *testing.T) {
+func TestHeaderVarRegex_invalid(t *testing.T) {
 	tests := []string{
 		"$(header.a.b)",
 		"$(header.a.b.c)",
@@ -120,7 +120,7 @@ func Test_HeaderVarRegex_invalid(t *testing.T) {
 	}
 }
 
-func Test_GetBodyPathFromVar(t *testing.T) {
+func TestGetBodyPathFromVar(t *testing.T) {
 	tests := []struct {
 		bodyPathVar string
 		want        string
@@ -140,7 +140,7 @@ func Test_GetBodyPathFromVar(t *testing.T) {
 	}
 }
 
-func Test_GetHeaderFromVar(t *testing.T) {
+func TestGetHeaderFromVar(t *testing.T) {
 	tests := []struct {
 		headerVar string
 		want      string
@@ -169,50 +169,43 @@ func Test_getBodyPathValue(t *testing.T) {
 	tests := []struct {
 		args args
 		want string
-	}{
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "",
-			},
-			want: strings.Replace(body, `"`, `\"`, -1),
+	}{{
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "",
 		},
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "one",
-			},
-			want: "one",
+		want: strings.Replace(body, `"`, `\"`, -1),
+	}, {
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "one",
 		},
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "two",
-			},
-			want: `{\"two\": \"twovalue\"}`,
+		want: "one",
+	}, {
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "two",
 		},
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "three.three.three.three.three",
-			},
-			want: "threevalue",
+		want: `{\"two\": \"twovalue\"}`,
+	}, {
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "three.three.three.three.three",
 		},
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "empty",
-			},
-			want: "",
+		want: "threevalue",
+	}, {
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "empty",
 		},
-		{
-			args: args{
-				body:     bodyJSON,
-				bodyPath: "null",
-			},
-			want: "null",
+		want: "",
+	}, {
+		args: args{
+			body:     bodyJSON,
+			bodyPath: "null",
 		},
-	}
+		want: "null",
+	}}
 	for _, tt := range tests {
 		t.Run(tt.args.bodyPath, func(t *testing.T) {
 			got, err := getBodyPathValue(tt.args.body, tt.args.bodyPath)
@@ -230,19 +223,16 @@ func Test_getBodyPathValue_error(t *testing.T) {
 	tests := []struct {
 		body     []byte
 		bodyPath string
-	}{
-		{
-			body:     bodyJSON,
-			bodyPath: "boguspath",
-		},
-		{
-			body:     bodyJSON,
-			bodyPath: "two.bogus",
-		},
-		{
-			body:     bodyJSON,
-			bodyPath: "three.three.bogus.three",
-		},
+	}{{
+		body:     bodyJSON,
+		bodyPath: "boguspath",
+	}, {
+		body:     bodyJSON,
+		bodyPath: "two.bogus",
+	}, {
+		body:     bodyJSON,
+		bodyPath: "three.three.bogus.three",
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.bodyPath, func(t *testing.T) {
@@ -263,36 +253,31 @@ func Test_getHeaderValue(t *testing.T) {
 	tests := []struct {
 		args args
 		want string
-	}{
-		{
-			args: args{
-				header:     header,
-				headerName: "",
-			},
-			want: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`,
+	}{{
+		args: args{
+			header:     header,
+			headerName: "",
 		},
-		{
-			args: args{
-				header:     header,
-				headerName: "one",
-			},
-			want: "one",
+		want: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`,
+	}, {
+		args: args{
+			header:     header,
+			headerName: "one",
 		},
-		{
-			args: args{
-				header:     header,
-				headerName: "two",
-			},
-			want: "one two",
+		want: "one",
+	}, {
+		args: args{
+			header:     header,
+			headerName: "two",
 		},
-		{
-			args: args{
-				header:     header,
-				headerName: "three",
-			},
-			want: "one two three",
+		want: "one two",
+	}, {
+		args: args{
+			header:     header,
+			headerName: "three",
 		},
-	}
+		want: "one two three",
+	}}
 	for _, tt := range tests {
 		t.Run(tt.args.headerName, func(t *testing.T) {
 			got, err := getHeaderValue(tt.args.header, tt.args.headerName)
@@ -310,12 +295,10 @@ func Test_getHeaderValue_error(t *testing.T) {
 	tests := []struct {
 		header     map[string][]string
 		headerName string
-	}{
-		{
-			header:     header,
-			headerName: "bogusheadername",
-		},
-	}
+	}{{
+		header:     header,
+		headerName: "bogusheadername",
+	}}
 	for _, tt := range tests {
 		t.Run(tt.headerName, func(t *testing.T) {
 			got, err := getHeaderValue(tt.header, tt.headerName)
@@ -394,32 +377,25 @@ func Test_applyBodyToParam(t *testing.T) {
 	tests := []struct {
 		args args
 		want pipelinev1.Param
-	}{
-		{
-			args: args{body: []byte{}, param: paramNoBodyPathVar},
-			want: wantParamNoBodyPathVar,
-		},
-		{
-			args: args{body: testBodyJSON, param: paramOneBodyPathVar},
-			want: wantParamOneBodyPathVar,
-		},
-		{
-			args: args{body: testBodyJSON, param: paramMultipleIdenticalBodyPathVars},
-			want: wantParamMultipleIdenticalBodyPathVars,
-		},
-		{
-			args: args{body: testBodyJSON, param: paramMultipleUniqueBodyPathVars},
-			want: wantParamMultipleUniqueBodyPathVars,
-		},
-		{
-			args: args{body: testBodyJSON, param: paramEntireBodyPathVar},
-			want: wantParamEntireBodyPathVar,
-		},
-		{
-			args: args{body: testBodyJSON, param: paramSubobjectBodyPathVar},
-			want: wantParamSubobjectBodyPathVar,
-		},
-	}
+	}{{
+		args: args{body: []byte{}, param: paramNoBodyPathVar},
+		want: wantParamNoBodyPathVar,
+	}, {
+		args: args{body: testBodyJSON, param: paramOneBodyPathVar},
+		want: wantParamOneBodyPathVar,
+	}, {
+		args: args{body: testBodyJSON, param: paramMultipleIdenticalBodyPathVars},
+		want: wantParamMultipleIdenticalBodyPathVars,
+	}, {
+		args: args{body: testBodyJSON, param: paramMultipleUniqueBodyPathVars},
+		want: wantParamMultipleUniqueBodyPathVars,
+	}, {
+		args: args{body: testBodyJSON, param: paramEntireBodyPathVar},
+		want: wantParamEntireBodyPathVar,
+	}, {
+		args: args{body: testBodyJSON, param: paramSubobjectBodyPathVar},
+		want: wantParamSubobjectBodyPathVar,
+	}}
 	for _, tt := range tests {
 		t.Run(tt.args.param.Value.StringVal, func(t *testing.T) {
 			got, err := applyBodyToParam(tt.args.body, tt.args.param)
@@ -436,16 +412,13 @@ func Test_applyBodyToParam_error(t *testing.T) {
 	tests := []struct {
 		body  []byte
 		param pipelinev1.Param
-	}{
-		{
-			body:  testBodyJSON,
-			param: paramOneBogusBodyPathVar,
-		},
-		{
-			body:  testBodyJSON,
-			param: paramMultipleBogusBodyPathVars,
-		},
-	}
+	}{{
+		body:  testBodyJSON,
+		param: paramOneBogusBodyPathVar,
+	}, {
+		body:  testBodyJSON,
+		param: paramMultipleBogusBodyPathVars,
+	}}
 	for _, tt := range tests {
 		t.Run(tt.param.Value.StringVal, func(t *testing.T) {
 			got, err := applyBodyToParam(tt.body, tt.param)
@@ -465,40 +438,36 @@ func Test_ApplyBodyToParams(t *testing.T) {
 		name string
 		args args
 		want []pipelinev1.Param
-	}{
-		{
-			name: "empty params",
-			args: args{
-				body:   testBodyJSON,
-				params: []pipelinev1.Param{},
-			},
-			want: []pipelinev1.Param{},
+	}{{
+		name: "empty params",
+		args: args{
+			body:   testBodyJSON,
+			params: []pipelinev1.Param{},
 		},
-		{
-			name: "one param",
-			args: args{
-				body:   testBodyJSON,
-				params: []pipelinev1.Param{paramOneBodyPathVar},
-			},
-			want: []pipelinev1.Param{wantParamOneBodyPathVar},
+		want: []pipelinev1.Param{},
+	}, {
+		name: "one param",
+		args: args{
+			body:   testBodyJSON,
+			params: []pipelinev1.Param{paramOneBodyPathVar},
 		},
-		{
-			name: "multiple params",
-			args: args{
-				body: testBodyJSON,
-				params: []pipelinev1.Param{
-					paramOneBodyPathVar,
-					paramMultipleUniqueBodyPathVars,
-					paramSubobjectBodyPathVar,
-				},
-			},
-			want: []pipelinev1.Param{
-				wantParamOneBodyPathVar,
-				wantParamMultipleUniqueBodyPathVars,
-				wantParamSubobjectBodyPathVar,
+		want: []pipelinev1.Param{wantParamOneBodyPathVar},
+	}, {
+		name: "multiple params",
+		args: args{
+			body: testBodyJSON,
+			params: []pipelinev1.Param{
+				paramOneBodyPathVar,
+				paramMultipleUniqueBodyPathVars,
+				paramSubobjectBodyPathVar,
 			},
 		},
-	}
+		want: []pipelinev1.Param{
+			wantParamOneBodyPathVar,
+			wantParamMultipleUniqueBodyPathVars,
+			wantParamSubobjectBodyPathVar,
+		},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ApplyBodyToParams(tt.args.body, tt.args.params)
@@ -521,28 +490,26 @@ func Test_ApplyBodyToParams_error(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-	}{
-		{
-			name: "error one bodypath not found",
-			args: args{
-				body: testBodyJSON,
-				params: []pipelinev1.Param{
-					paramOneBogusBodyPathVar,
-					paramMultipleUniqueBodyPathVars,
-					paramSubobjectBodyPathVar,
-				},
+	}{{
+		name: "error one bodypath not found",
+		args: args{
+			body: testBodyJSON,
+			params: []pipelinev1.Param{
+				paramOneBogusBodyPathVar,
+				paramMultipleUniqueBodyPathVars,
+				paramSubobjectBodyPathVar,
 			},
 		},
-		{
-			name: "error multiple bodypaths not found",
-			args: args{
-				body: testBodyJSON,
-				params: []pipelinev1.Param{
-					paramOneBogusBodyPathVar,
-					paramMultipleBogusBodyPathVars,
-				},
+	}, {
+		name: "error multiple bodypaths not found",
+		args: args{
+			body: testBodyJSON,
+			params: []pipelinev1.Param{
+				paramOneBogusBodyPathVar,
+				paramMultipleBogusBodyPathVars,
 			},
 		},
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -564,85 +531,79 @@ func Test_applyHeaderToParams(t *testing.T) {
 		name string
 		args args
 		want pipelinev1.Param
-	}{
-		{
-			name: "empty",
-			args: args{
-				header: header,
-				param:  pipelinev1.Param{},
-			},
-			want: pipelinev1.Param{},
+	}{{
+		name: "empty",
+		args: args{
+			header: header,
+			param:  pipelinev1.Param{},
 		},
-		{
-			name: "no header vars",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "noHeaderVars",
-					Value: pipelinev1.ArrayOrString{StringVal: "foo"},
-				},
-			},
-			want: pipelinev1.Param{
+		want: pipelinev1.Param{},
+	}, {
+		name: "no header vars",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
 				Name:  "noHeaderVars",
 				Value: pipelinev1.ArrayOrString{StringVal: "foo"},
 			},
 		},
-		{
-			name: "one header var",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "oneHeaderVar",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)"},
-				},
-			},
-			want: pipelinev1.Param{
+		want: pipelinev1.Param{
+			Name:  "noHeaderVars",
+			Value: pipelinev1.ArrayOrString{StringVal: "foo"},
+		},
+	}, {
+		name: "one header var",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
 				Name:  "oneHeaderVar",
-				Value: pipelinev1.ArrayOrString{StringVal: "one"},
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)"},
 			},
 		},
-		{
-			name: "multiple header vars",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "multipleHeaderVars",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.two)-$(header.three)"},
-				},
-			},
-			want: pipelinev1.Param{
+		want: pipelinev1.Param{
+			Name:  "oneHeaderVar",
+			Value: pipelinev1.ArrayOrString{StringVal: "one"},
+		},
+	}, {
+		name: "multiple header vars",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
 				Name:  "multipleHeaderVars",
-				Value: pipelinev1.ArrayOrString{StringVal: `one-one two-one two three`},
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.two)-$(header.three)"},
 			},
 		},
-		{
-			name: "identical header vars",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "identicalHeaderVars",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.one)-$(header.one)"},
-				},
-			},
-			want: pipelinev1.Param{
+		want: pipelinev1.Param{
+			Name:  "multipleHeaderVars",
+			Value: pipelinev1.ArrayOrString{StringVal: `one-one two-one two three`},
+		},
+	}, {
+		name: "identical header vars",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
 				Name:  "identicalHeaderVars",
-				Value: pipelinev1.ArrayOrString{StringVal: `one-one-one`},
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.one)-$(header.one)"},
 			},
 		},
-		{
-			name: "entire header var",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "entireHeaderVar",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header)"},
-				},
-			},
-			want: pipelinev1.Param{
+		want: pipelinev1.Param{
+			Name:  "identicalHeaderVars",
+			Value: pipelinev1.ArrayOrString{StringVal: `one-one-one`},
+		},
+	}, {
+		name: "entire header var",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
 				Name:  "entireHeaderVar",
-				Value: pipelinev1.ArrayOrString{StringVal: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`},
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header)"},
 			},
 		},
+		want: pipelinev1.Param{
+			Name:  "entireHeaderVar",
+			Value: pipelinev1.ArrayOrString{StringVal: `{\"one\":[\"one\"],\"three\":[\"one\",\"two\",\"three\"],\"two\":[\"one\",\"two\"]}`},
+		},
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -667,28 +628,25 @@ func Test_applyHeaderToParams_error(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-	}{
-		{
-			name: "error header not found",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "oneBogusHeader",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header.bogus)"},
-				},
+	}{{
+		name: "error header not found",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
+				Name:  "oneBogusHeader",
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header.bogus)"},
 			},
 		},
-		{
-			name: "error multiple headers not found",
-			args: args{
-				header: header,
-				param: pipelinev1.Param{
-					Name:  "multipleBogusHeaders",
-					Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.bogus1)-$(header.bogus2)-$(header.bogus3)"},
-				},
+	}, {
+		name: "error multiple headers not found",
+		args: args{
+			header: header,
+			param: pipelinev1.Param{
+				Name:  "multipleBogusHeaders",
+				Value: pipelinev1.ArrayOrString{StringVal: "$(header.one)-$(header.bogus1)-$(header.bogus2)-$(header.bogus3)"},
 			},
 		},
-	}
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := applyHeaderToParam(tt.args.header, tt.args.param)
@@ -709,186 +667,179 @@ func Test_NewResources(t *testing.T) {
 		name string
 		args args
 		want []json.RawMessage
-	}{
-		{
-			name: "empty",
-			args: args{
-				body:   json.RawMessage{},
-				header: map[string][]string{},
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
-					TriggerBindings: []*triggersv1.TriggerBinding{bldr.TriggerBinding("tb", "namespace")},
-				},
+	}{{
+		name: "empty",
+		args: args{
+			body:   json.RawMessage{},
+			header: map[string][]string{},
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
+				TriggerBindings: []*triggersv1.TriggerBinding{bldr.TriggerBinding("tb", "namespace")},
 			},
-			want: []json.RawMessage{},
 		},
-		{
-			name: "one resource template",
-			args: args{
-				body:   json.RawMessage(`{"foo": "bar"}`),
-				header: map[string][]string{"one": {"1"}},
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerTemplateParam("param2", "description", ""),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+		want: []json.RawMessage{},
+	}, {
+		name: "one resource template",
+		args: args{
+			body:   json.RawMessage(`{"foo": "bar"}`),
+			header: map[string][]string{"one": {"1"}},
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerTemplateParam("param2", "description", ""),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							bldr.TriggerBindingParam("param2", "$(header.one)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-								bldr.TriggerBindingParam("param2", "$(header.one)"),
-							),
-						),
-					},
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-1"}`),
-			},
 		},
-		{
-			name: "multiple resource templates",
-			args: args{
-				body:   json.RawMessage(`{"foo": "bar"}`),
-				header: map[string][]string{"one": {"1"}},
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerTemplateParam("param2", "description", ""),
-							bldr.TriggerTemplateParam("param3", "description", "default2"),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param3)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-1"}`),
+		},
+	}, {
+		name: "multiple resource templates",
+		args: args{
+			body:   json.RawMessage(`{"foo": "bar"}`),
+			header: map[string][]string{"one": {"1"}},
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerTemplateParam("param2", "description", ""),
+						bldr.TriggerTemplateParam("param3", "description", "default2"),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param3)"}`)),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
+							bldr.TriggerBindingParam("param2", "$(header.one)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-								bldr.TriggerBindingParam("param2", "$(header.one)"),
-							),
-						),
-					},
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-1"}`),
-				json.RawMessage(`{"rt2": "default2"}`),
-				json.RawMessage(`{"rt3": "rt3"}`),
-			},
 		},
-		{
-			name: "one resource template with one uid",
-			args: args{
-				body: json.RawMessage(`{"foo": "bar"}`),
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)"}`)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-1"}`),
+			json.RawMessage(`{"rt2": "default2"}`),
+			json.RawMessage(`{"rt3": "rt3"}`),
+		},
+	}, {
+		name: "one resource template with one uid",
+		args: args{
+			body: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							),
-						),
-					},
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-cbhtc"}`),
-			},
 		},
-		{
-			name: "one resource template with three uid",
-			args: args{
-				body: json.RawMessage(`{"foo": "bar"}`),
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)-$(uid)", "rt2": "$(uid)"}`)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-cbhtc"}`),
+		},
+	}, {
+		name: "one resource template with three uid",
+		args: args{
+			body: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)-$(uid)", "rt2": "$(uid)"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							),
-						),
-					},
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-cbhtc-cbhtc", "rt2": "cbhtc"}`),
-			},
 		},
-		{
-			name: "multiple resource templates with multiple uid",
-			args: args{
-				body: json.RawMessage(`{"foo": "bar"}`),
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerTemplateParam("param2", "description", "default2"),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)", "$(uid)": "$(uid)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param2)-$(uid)"}`)),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-cbhtc-cbhtc", "rt2": "cbhtc"}`),
+		},
+	}, {
+		name: "multiple resource templates with multiple uid",
+		args: args{
+			body: json.RawMessage(`{"foo": "bar"}`),
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerTemplateParam("param2", "description", "default2"),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)", "$(uid)": "$(uid)"}`)),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param2)-$(uid)"}`)),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							),
-						),
-					},
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-cbhtc", "cbhtc": "cbhtc"}`),
-				json.RawMessage(`{"rt2": "default2-cbhtc"}`),
-				json.RawMessage(`{"rt3": "rt3"}`),
-			},
 		},
-		{
-			name: "one resource template multiple bindings",
-			args: args{
-				body:   json.RawMessage(`{"foo": "bar"}`),
-				header: map[string][]string{"one": {"1"}},
-				binding: ResolvedBinding{
-					TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-						bldr.TriggerTemplateSpec(
-							bldr.TriggerTemplateParam("param1", "description", ""),
-							bldr.TriggerTemplateParam("param2", "description", ""),
-							bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-cbhtc", "cbhtc": "cbhtc"}`),
+			json.RawMessage(`{"rt2": "default2-cbhtc"}`),
+			json.RawMessage(`{"rt3": "rt3"}`),
+		},
+	}, {
+		name: "one resource template multiple bindings",
+		args: args{
+			body:   json.RawMessage(`{"foo": "bar"}`),
+			header: map[string][]string{"one": {"1"}},
+			binding: ResolvedBinding{
+				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
+					bldr.TriggerTemplateSpec(
+						bldr.TriggerTemplateParam("param1", "description", ""),
+						bldr.TriggerTemplateParam("param2", "description", ""),
+						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
+					),
+				),
+				TriggerBindings: []*triggersv1.TriggerBinding{
+					bldr.TriggerBinding("tb", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param1", "$(body.foo)"),
 						),
 					),
-					TriggerBindings: []*triggersv1.TriggerBinding{
-						bldr.TriggerBinding("tb", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							),
+					bldr.TriggerBinding("tb2", "namespace",
+						bldr.TriggerBindingSpec(
+							bldr.TriggerBindingParam("param2", "$(header.one)"),
 						),
-						bldr.TriggerBinding("tb2", "namespace",
-							bldr.TriggerBindingSpec(
-								bldr.TriggerBindingParam("param2", "$(header.one)"),
-							),
-						),
-					},
+					),
 				},
 			},
-			want: []json.RawMessage{
-				json.RawMessage(`{"rt1": "bar-1"}`),
-			},
 		},
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "bar-1"}`),
+		},
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
