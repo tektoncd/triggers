@@ -55,8 +55,18 @@ tekton.dev/eventid | UID of the incoming event.
 
 ## Event Interceptors
 
-Triggers within an `EventListener` can optionally specify an interceptor field
-which contains an [`ObjectReference`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.12/#objectreference-v1-core) to a Kubernetes Service. If an interceptor
+Triggers within an `EventListener` can optionally specify an interceptor field.
+
+Event Interceptors can take several different forms today:
+
+* Webhook Interceptors
+* GitHub Interceptors
+
+### Webhook Interceptors
+
+Webhook interceptors allow users to configure an external k8s object which contains
+business logic. These are currently specified under the `Webhook` field,
+which contains an [`ObjectReference`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.12/#objectreference-v1-core) to a Kubernetes Service. If a Webhook interceptor
 is specified, the `EventListener` sink will forward incoming events to the
 service referenced by the interceptor over HTTP. The service is expected to
 process the event and return a response back. The status code of the response
@@ -67,6 +77,7 @@ merged with event headers before being sent; [canonical](https://github.com/gola
 names must be specified.
 
 #### Event Interceptor Services
+
 
 To be an Event Interceptor, a Kubernetes object should:
 * Be fronted by a regular Kubernetes v1 Service over port 80
@@ -107,3 +118,33 @@ spec:
         name: pipeline-template
 ```
 
+### GitHub Interceptors
+
+GitHub interceptors contain logic to validate that a webhook actually came from GitHub,
+using the logic outlined in GitHub [documentation](https://developer.github.com/webhooks/securing/).
+
+To use this interceptor, create a secret string using the method of your choice, and configure the GitHub
+webhook to use that secret value.
+Create a Kubernetes secret containing this value, and pass that as a reference to the `github` interceptor:
+
+<!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: foo-trig
+      interceptor:
+        github:
+          secretRef:
+            secretName: foo
+            secretKey: bar
+            namespace: baz
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```

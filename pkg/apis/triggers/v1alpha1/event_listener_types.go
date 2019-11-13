@@ -73,6 +73,7 @@ type EventListenerTrigger struct {
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor struct {
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
+	Github  *GithubInterceptor  `json:"github,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -85,6 +86,20 @@ type WebhookInterceptor struct {
 	// interceptor request headers. This allows the interceptor to make
 	// decisions specific to an EventListenerTrigger.
 	Header []pipelinev1.Param `json:"header,omitempty"`
+}
+
+// GithubInterceptor provides a webhook to intercept and pre-process events
+type GithubInterceptor struct {
+	SecretRef *SecretRef `json:"secretRef,omitempty"`
+}
+
+// SecretRef contains the information required to reference a single secret string
+// This is needed because the other secretRef types are not cross-namespace and do not
+// actually contain the "SecretName" field, which allows us to access a single secret value.
+type SecretRef struct {
+	SecretKey  string `json:"secretKey,omitempty"`
+	SecretName string `json:"secretName,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
 }
 
 // EventListenerBinding refers to a particular TriggerBinding resource.

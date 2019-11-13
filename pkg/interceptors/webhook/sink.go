@@ -41,16 +41,16 @@ type Interceptor struct {
 	Webhook                *triggersv1.WebhookInterceptor
 }
 
-func NewInterceptor(ei *triggersv1.EventInterceptor, c *http.Client, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		HTTPClient:             c,
 		EventListenerNamespace: ns,
 		Logger:                 l,
-		Webhook:                ei.Webhook,
+		Webhook:                wh,
 	}
 }
 
-func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, trigger triggersv1.EventListenerTrigger, eventID string) ([]byte, error) {
+func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, error) {
 	interceptorURL, err := GetURI(w.Webhook.ObjectRef, w.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 	if err != nil {
 		return nil, err

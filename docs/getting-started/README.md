@@ -60,7 +60,7 @@ The Triggers project will pickup from there.
 
 ## Add Ingress and GitHub-Webook Tasks
 
-We will need an ingress to handle incoming webhooks and we will make use of our new ingress by configuring Github with our GitHub Task.
+We will need an ingress to handle incoming webhooks and we will make use of our new ingress by configuring GitHub with our GitHub Task.
 
 First lets create our ingress Task.
 
@@ -90,7 +90,7 @@ When you are ready, run the ingress Task.
 
 ## Run GitHub Webhook Task
 
-You will need to create a [Github Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line#creating-a-token) with the following access.
+You will need to create a [GitHub Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line#creating-a-token) with the following access.
 - `public_repo`
 - `admin:repo_hook`
 

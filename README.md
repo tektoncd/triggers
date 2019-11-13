@@ -7,7 +7,7 @@ The contents of this repo originated from implementing [this design](https://doc
 ## Background
 [Tekton](https://github.com/tektoncd/pipeline) is a **Kubernetes-native**, continuous integration and delivery (CI/CD) framework that enables you to create containerized, composable, and configurable workloads declaratively through CRDs.
 Naturally, CI/CD events contain information that should:
-- Identify the kind of event (Github Push, Gitlab Issue, Docker Hub Webhook, etc.)
+- Identify the kind of event (GitHub Push, Gitlab Issue, Docker Hub Webhook, etc.)
 - Be accessible from and map to particular pipelines (Take SHA from payload to use it in pipeline X)
 - Deterministically trigger pipelines (Events/pipelines that trigger pipelines based on certain payload values)
 
