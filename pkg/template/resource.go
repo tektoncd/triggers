@@ -106,30 +106,26 @@ func ApplyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage 
 	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
 }
 
-// MergeParams merges two param arrays. An error is returned if there are
-// multiple params with the same name.
-func MergeParams(params1 []pipelinev1.Param, params2 []pipelinev1.Param) ([]pipelinev1.Param, error) {
-	// Assume params1 does not have any duplicate names within itself
-	// Assume params2 does not have any duplicate names within itself
-	paramMap := map[string]pipelinev1.ArrayOrString{}
-	for _, p1 := range params1 {
-		paramMap[p1.Name] = p1.Value
-	}
-	for _, p2 := range params2 {
-		if _, ok := paramMap[p2.Name]; ok {
-			return []pipelinev1.Param{}, fmt.Errorf("%s", p2.Name)
-		}
-		paramMap[p2.Name] = p2.Value
-	}
-	return convertParamMapToArray(paramMap), nil
-}
-
 func convertParamMapToArray(paramMap map[string]pipelinev1.ArrayOrString) []pipelinev1.Param {
-	params := make([]pipelinev1.Param, len(paramMap))
-	i := 0
+	params := []pipelinev1.Param{}
 	for name, value := range paramMap {
-		params[i] = pipelinev1.Param{Name: name, Value: value}
-		i++
+		params = append(params, pipelinev1.Param{Name: name, Value: value})
 	}
 	return params
+}
+
+// MergeBindingParams merges params across multiple bindings.
+func MergeBindingParams(bindings []*triggersv1.TriggerBinding) ([]pipelinev1.Param, error) {
+	params := []pipelinev1.Param{}
+	for _, b := range bindings {
+		params = append(params, b.Spec.Params...)
+	}
+	seen := make(map[string]bool, len(params))
+	for _, p := range params {
+		if seen[p.Name] {
+			return nil, fmt.Errorf("duplicate param name: %s", p.Name)
+		}
+		seen[p.Name] = true
+	}
+	return params, nil
 }
