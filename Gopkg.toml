@@ -61,11 +61,6 @@ required = [
   revision = "2032732871ff807958e045858b462d372eec9587"
 
 [[constraint]]
-  name = "github.com/tektoncd/plumbing"
-  # HEAD as of 2019-07-23
-  revision = "a268939d0be5ed810f541269f9dd606bb2e66090"
-
-[[constraint]]
   name = "github.com/knative/test-infra"
   # HEAD as of 2019-06-25
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
