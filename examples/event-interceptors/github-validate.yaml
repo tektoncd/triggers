@@ -24,7 +24,7 @@ spec:
       app: gh-validate
   template:
     metadata:
-     labels:
+      labels:
         app: gh-validate
     spec:
       serviceAccountName: default
