@@ -276,16 +276,16 @@ var (
 	}
 )
 
-func Test_ResolveBinding(t *testing.T) {
+func Test_ResolveTrigger(t *testing.T) {
 	tests := []struct {
 		name    string
 		trigger triggersv1.EventListenerTrigger
-		want    ResolvedBinding
+		want    ResolvedTrigger
 	}{
 		{
 			name:    "1 binding",
 			trigger: bldr.Trigger("my-triggerbinding", "my-triggertemplate", "v1alpha1"),
-			want: ResolvedBinding{
+			want: ResolvedTrigger{
 				TriggerBindings: []*triggersv1.TriggerBinding{tb},
 				TriggerTemplate: &tt,
 			},
@@ -298,7 +298,7 @@ func Test_ResolveBinding(t *testing.T) {
 					APIVersion: "v1alpha1",
 				},
 			},
-			want: ResolvedBinding{TriggerBindings: []*triggersv1.TriggerBinding{}, TriggerTemplate: &tt},
+			want: ResolvedTrigger{TriggerBindings: []*triggersv1.TriggerBinding{}, TriggerTemplate: &tt},
 		},
 		{
 			name: "multiple bindings",
@@ -318,7 +318,7 @@ func Test_ResolveBinding(t *testing.T) {
 					APIVersion: "v1alpha1",
 				},
 			},
-			want: ResolvedBinding{
+			want: ResolvedTrigger{
 				TriggerBindings: []*triggersv1.TriggerBinding{
 					tb,
 					triggerBindings["tb-params"],
@@ -330,17 +330,17 @@ func Test_ResolveBinding(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ResolveBinding(tc.trigger, getTB, getTT)
+			got, err := ResolveTrigger(tc.trigger, getTB, getTT)
 			if err != nil {
-				t.Errorf("ResolveBinding() returned unexpected error: %s", err)
+				t.Errorf("ResolveTrigger() returned unexpected error: %s", err)
 			} else if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("ResolveBinding(): -want +got: %s", diff)
+				t.Errorf("ResolveTrigger(): -want +got: %s", diff)
 			}
 		})
 	}
 }
 
-func Test_ResolveBinding_error(t *testing.T) {
+func Test_ResolveTrigger_error(t *testing.T) {
 	tests := []struct {
 		name    string
 		trigger triggersv1.EventListenerTrigger
@@ -368,9 +368,9 @@ func Test_ResolveBinding_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ResolveBinding(tt.trigger, tt.getTB, tt.getTT)
+			_, err := ResolveTrigger(tt.trigger, tt.getTB, tt.getTT)
 			if err == nil {
-				t.Error("ResolveBinding() did not return error when expected")
+				t.Error("ResolveTrigger() did not return error when expected")
 			}
 		})
 	}

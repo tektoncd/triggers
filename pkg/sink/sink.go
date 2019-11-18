@@ -78,55 +78,60 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 
 	eventID := template.UID()
-	r.Logger.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
+	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
+	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
 	result := make(chan int, 10)
 	// Execute each Trigger
 
-	for _, trigger := range el.Spec.Triggers {
-		t := trigger
+	for _, t := range el.Spec.Triggers {
+		log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
+
 		var interceptor interceptors.Interceptor
 		if t.Interceptor != nil {
 			switch {
 			case t.Interceptor.Webhook != nil:
-				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, r.Logger)
+				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
 			case t.Interceptor.Github != nil:
-				interceptor = github.NewInterceptor(t.Interceptor.Github, r.KubeClientSet, r.EventListenerNamespace, r.Logger)
+				interceptor = github.NewInterceptor(t.Interceptor.Github, r.KubeClientSet, r.EventListenerNamespace, log)
 			case t.Interceptor.Gitlab != nil:
-				interceptor = gitlab.NewInterceptor(t.Interceptor.Gitlab, r.KubeClientSet, r.EventListenerNamespace, r.Logger)
+				interceptor = gitlab.NewInterceptor(t.Interceptor.Gitlab, r.KubeClientSet, r.EventListenerNamespace, log)
 			}
 		}
-		go func() {
+		go func(t triggersv1.EventListenerTrigger) {
 			finalPayload := event
 			if interceptor != nil {
 				payload, err := interceptor.ExecuteTrigger(event, request, &t, eventID)
 				if err != nil {
-					r.Logger.Error(err)
+					log.Error(err)
 					result <- http.StatusAccepted
 					return
 				}
 				finalPayload = payload
 			}
-			binding, err := template.ResolveBinding(t,
+			rt, err := template.ResolveTrigger(t,
 				r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
 				r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 			if err != nil {
-				r.Logger.Error(err)
+				log.Error(err)
 				result <- http.StatusAccepted
 				return
 			}
-			resources, err := template.NewResources(finalPayload, request.Header, binding)
+
+			params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, request.Header, rt.TriggerTemplate.Spec.Params)
 			if err != nil {
-				r.Logger.Error(err)
+				log.Error(err)
 				result <- http.StatusAccepted
 				return
 			}
+			log.Info("params: %+v", params)
+			resources := template.ResolveResources(rt.TriggerTemplate, params)
 			if err := r.createResources(resources, t.Name, eventID); err != nil {
-				r.Logger.Error(err)
+				log.Error(err)
 			}
 			result <- http.StatusCreated
-		}()
+		}(t)
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
