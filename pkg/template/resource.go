@@ -32,9 +32,9 @@ import (
 // uidMatch determines the uid variable within the resource template
 var uidMatch = []byte(`$(uid)`)
 
-// ResolvedBinding contains the dereferenced TriggerBindings and
+// ResolvedTrigger contains the dereferenced TriggerBindings and
 // TriggerTemplate after resolving the k8s ObjectRef.
-type ResolvedBinding struct {
+type ResolvedTrigger struct {
 	TriggerBindings []*triggersv1.TriggerBinding
 	TriggerTemplate *triggersv1.TriggerTemplate
 }
@@ -44,12 +44,12 @@ type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv
 
 // ResolveBindings takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
-func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedBinding, error) {
+func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
 	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
 	for _, b := range trigger.Bindings {
 		tb2, err := getTB(b.Name, metav1.GetOptions{})
 		if err != nil {
-			return ResolvedBinding{}, xerrors.Errorf("error getting TriggerBinding %s: %s", b.Name, err)
+			return ResolvedTrigger{}, xerrors.Errorf("error getting TriggerBinding %s: %s", b.Name, err)
 		}
 		tb = append(tb, tb2)
 	}
@@ -57,9 +57,9 @@ func ResolveBinding(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	ttName := trigger.Template.Name
 	tt, err := getTT(ttName, metav1.GetOptions{})
 	if err != nil {
-		return ResolvedBinding{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", ttName, err)
+		return ResolvedTrigger{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", ttName, err)
 	}
-	return ResolvedBinding{TriggerBindings: tb, TriggerTemplate: tt}, nil
+	return ResolvedTrigger{TriggerBindings: tb, TriggerTemplate: tt}, nil
 }
 
 // MergeInDefaultParams returns the params with the addition of all

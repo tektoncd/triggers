@@ -22,19 +22,22 @@ import (
 	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tidwall/gjson"
 	"golang.org/x/xerrors"
 )
 
-// bodyPathVarRegex determines valid body path variables
-// The body regular expression allows for a subset of GJSON syntax, the mininum
-// required to navigate through dictionaries, query arrays and support
-// namespaced label names e.g. tekton.dev/eventlistener
-var bodyPathVarRegex = regexp.MustCompile(`\$\(body(\.[[:alnum:]/_\-\.\\]+|\.#\([[:alnum:]=<>%!"\*_-]+\)#??)*\)`)
+var (
+	// bodyPathVarRegex determines valid body path variables
+	// The body regular expression allows for a subset of GJSON syntax, the mininum
+	// required to navigate through dictionaries, query arrays and support
+	// namespaced label names e.g. tekton.dev/eventlistener
+	bodyPathVarRegex = regexp.MustCompile(`\$\(body(\.[[:alnum:]/_\-\.\\]+|\.#\([[:alnum:]=<>%!"\*_-]+\)#??)*\)`)
 
-// The headers regular expression allows for simple navigation down a hierarchy
-// of dictionaries
-var headerVarRegex = regexp.MustCompile(`\$\(header(\.[[:alnum:]_\-]+)?\)`)
+	// The headers regular expression allows for simple navigation down a hierarchy
+	// of dictionaries
+	headerVarRegex = regexp.MustCompile(`\$\(header(\.[[:alnum:]_\-]+)?\)`)
+)
 
 // getBodyPathFromVar returns the body path given an body path variable
 // $(body.my.path) -> my.path
@@ -54,6 +57,7 @@ func getHeaderFromVar(headerVar string) string {
 	if headerVar == "$(header)" {
 		return ""
 	}
+
 	return strings.TrimSuffix(strings.TrimPrefix(headerVar, "$(header."), ")")
 }
 
@@ -160,29 +164,31 @@ func getHeaderValue(header map[string][]string, headerName string) (string, erro
 	return strings.Replace(headerValue, `"`, `\"`, -1), nil
 }
 
-// NewResources returns all resources defined when applying the event and
-// elParams to the TriggerTemplate and TriggerBinding in the ResolvedBinding.
-func NewResources(body []byte, header map[string][]string, binding ResolvedBinding) ([]json.RawMessage, error) {
-	params, err := MergeBindingParams(binding.TriggerBindings)
+// ResolveParams takes a given trigger binding and produces the resulting
+// resource params.
+func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header map[string][]string, params []pipelinev1.ParamSpec) ([]pipelinev1.Param, error) {
+	out, err := MergeBindingParams(bindings)
 	if err != nil {
-		return []json.RawMessage{}, xerrors.Errorf("error merging TriggerBinding params: %v", err)
+		return nil, xerrors.Errorf("error merging trigger params: %v", err)
 	}
-	params, err = ApplyBodyToParams(body, params)
+	out, err = ApplyBodyToParams(body, out)
 	if err != nil {
-		return []json.RawMessage{}, xerrors.Errorf("Error applying body to TriggerBinding params: %s", err)
+		return nil, xerrors.Errorf("error applying body to trigger params: %s", err)
 	}
-	params, err = ApplyHeaderToParams(header, params)
+	out, err = ApplyHeaderToParams(header, out)
 	if err != nil {
-		return []json.RawMessage{}, xerrors.Errorf("Error applying header to TriggerBinding params: %s", err)
+		return nil, xerrors.Errorf("error applying header to trigger params: %s", err)
 	}
 
-	params = MergeInDefaultParams(params, binding.TriggerTemplate.Spec.Params)
+	return MergeInDefaultParams(out, params), nil
+}
 
-	resources := make([]json.RawMessage, len(binding.TriggerTemplate.Spec.ResourceTemplates))
+func ResolveResources(template *triggersv1.TriggerTemplate, params []pipelinev1.Param) []json.RawMessage {
+	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
 	uid := UID()
-	for i := range binding.TriggerTemplate.Spec.ResourceTemplates {
-		resources[i] = ApplyParamsToResourceTemplate(params, binding.TriggerTemplate.Spec.ResourceTemplates[i].RawMessage)
+	for i := range template.Spec.ResourceTemplates {
+		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawMessage)
 		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
-	return resources, nil
+	return resources
 }

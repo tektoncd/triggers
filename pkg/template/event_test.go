@@ -661,7 +661,7 @@ func Test_NewResources(t *testing.T) {
 	type args struct {
 		body    []byte
 		header  map[string][]string
-		binding ResolvedBinding
+		binding ResolvedTrigger
 	}
 	tests := []struct {
 		name string
@@ -672,7 +672,7 @@ func Test_NewResources(t *testing.T) {
 		args: args{
 			body:   json.RawMessage{},
 			header: map[string][]string{},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
 				TriggerBindings: []*triggersv1.TriggerBinding{bldr.TriggerBinding("tb", "namespace")},
 			},
@@ -683,7 +683,7 @@ func Test_NewResources(t *testing.T) {
 		args: args{
 			body:   json.RawMessage(`{"foo": "bar"}`),
 			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -709,7 +709,7 @@ func Test_NewResources(t *testing.T) {
 		args: args{
 			body:   json.RawMessage(`{"foo": "bar"}`),
 			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -739,7 +739,7 @@ func Test_NewResources(t *testing.T) {
 		name: "one resource template with one uid",
 		args: args{
 			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -762,7 +762,7 @@ func Test_NewResources(t *testing.T) {
 		name: "one resource template with three uid",
 		args: args{
 			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -785,7 +785,7 @@ func Test_NewResources(t *testing.T) {
 		name: "multiple resource templates with multiple uid",
 		args: args{
 			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -814,7 +814,7 @@ func Test_NewResources(t *testing.T) {
 		args: args{
 			body:   json.RawMessage(`{"foo": "bar"}`),
 			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -845,12 +845,14 @@ func Test_NewResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This seeds Uid() to return 'cbhtc'
 			rand.Seed(0)
-			got, err := NewResources(tt.args.body, tt.args.header, tt.args.binding)
+			params, err := ResolveParams(tt.args.binding.TriggerBindings, tt.args.body, tt.args.header, tt.args.binding.TriggerTemplate.Spec.Params)
 			if err != nil {
-				t.Errorf("NewResources() returned unexpected error: %s", err)
-			} else if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
+			}
+			got := ResolveResources(tt.args.binding.TriggerTemplate, params)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
 				stringDiff := cmp.Diff(convertJSONRawMessagesToString(tt.want), convertJSONRawMessagesToString(got))
-				t.Errorf("NewResources(): -want +got: %s", stringDiff)
+				t.Errorf("ResolveResources(): -want +got: %s", stringDiff)
 			}
 		})
 	}
@@ -870,12 +872,12 @@ func Test_NewResources_error(t *testing.T) {
 		body     []byte
 		header   map[string][]string
 		elParams []pipelinev1.Param
-		binding  ResolvedBinding
+		binding  ResolvedTrigger
 	}{
 		{
 			name: "bodypath not found in body",
 			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -894,7 +896,7 @@ func Test_NewResources_error(t *testing.T) {
 			name:   "header not found in event",
 			body:   json.RawMessage(`{"foo": "bar"}`),
 			header: map[string][]string{"One": {"one"}},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -917,7 +919,7 @@ func Test_NewResources_error(t *testing.T) {
 					Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
 				},
 			},
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -934,7 +936,7 @@ func Test_NewResources_error(t *testing.T) {
 		},
 		{
 			name: "conflicting bindings",
-			binding: ResolvedBinding{
+			binding: ResolvedTrigger{
 				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
 					bldr.TriggerTemplateSpec(
 						bldr.TriggerTemplateParam("param1", "description", ""),
@@ -957,7 +959,7 @@ func Test_NewResources_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewResources(tt.body, tt.header, tt.binding)
+			got, err := ResolveParams(tt.binding.TriggerBindings, tt.body, tt.header, tt.binding.TriggerTemplate.Spec.Params)
 			if err == nil {
 				t.Errorf("NewResources() did not return error when expected; got: %s", got)
 			}
