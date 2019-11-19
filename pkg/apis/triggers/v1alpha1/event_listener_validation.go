@@ -82,7 +82,7 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 
 func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
 	// Validate at least one
-	if i.Webhook == nil && i.Github == nil {
+	if i.Webhook == nil && i.Github == nil && i.Gitlab == nil {
 		return apis.ErrMissingField(("interceptor"))
 	}
 
@@ -94,9 +94,12 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 	if i.Github != nil {
 		numSet++
 	}
+	if i.Gitlab != nil {
+		numSet++
+	}
 
 	if numSet > 1 {
-		return apis.ErrMultipleOneOf("interceptor.webhook", "interceptor.github")
+		return apis.ErrMultipleOneOf("interceptor.webhook", "interceptor.github", "interceptor.gitlab")
 	}
 
 	if i.Webhook != nil {
@@ -142,6 +145,11 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 
 	// No github validation required yet.
 	// if i.Github != nil {
+	//
+	// }
+
+	// No gitlab validation required yet.
+	// if i.Gitlab != nil {
 	//
 	// }
 	return nil

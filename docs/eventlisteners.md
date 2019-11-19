@@ -61,6 +61,7 @@ Event Interceptors can take several different forms today:
 
 * Webhook Interceptors
 * GitHub Interceptors
+* GitLub Interceptors
 
 ### Webhook Interceptors
 
@@ -139,6 +140,37 @@ spec:
     - name: foo-trig
       interceptor:
         github:
+          secretRef:
+            secretName: foo
+            secretKey: bar
+            namespace: baz
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```
+
+### GitLab Interceptors
+
+GitLab interceptors contain logic to validate that a webhook actually came from Gitlab,
+using the logic outlined in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html/).
+
+To use this interceptor, create a secret string using the method of your choice, and configure the Gitlab
+webhook to use that secret value.
+Create a Kubernetes secret containing this value, and pass that as a reference to the `gitlab` interceptor:
+
+<!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: gitlab-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: foo-trig
+      interceptor:
+        gitlab:
           secretRef:
             secretName: foo
             secretKey: bar

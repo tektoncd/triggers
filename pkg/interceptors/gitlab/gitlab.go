@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package github
+package gitlab
 
 import (
+	"crypto/subtle"
 	"errors"
 	"net/http"
-
-	gh "github.com/google/go-github/github"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
@@ -33,14 +32,14 @@ import (
 type Interceptor struct {
 	KubeClientSet          kubernetes.Interface
 	Logger                 *zap.SugaredLogger
-	Github                 *triggersv1.GithubInterceptor
+	Gitlab                 *triggersv1.GitlabInterceptor
 	EventListenerNamespace string
 }
 
-func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gl *triggersv1.GitlabInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
-		Github:                 gh,
+		Gitlab:                 gl,
 		KubeClientSet:          k,
 		EventListenerNamespace: ns,
 	}
@@ -48,20 +47,22 @@ func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns
 
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
 	// No secret set, just continue
-	if w.Github.SecretRef == nil {
+	if w.Gitlab.SecretRef == nil {
 		return payload, nil
 	}
-	header := request.Header.Get("X-Hub-Signature")
+	header := request.Header.Get("X-Gitlab-Token")
 	if header == "" {
-		return nil, errors.New("no X-Hub-Signature header set")
+		return nil, errors.New("no X-Gitlab-Token header set")
 	}
 
-	secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Github.SecretRef, w.EventListenerNamespace)
+	secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Gitlab.SecretRef, w.EventListenerNamespace)
 	if err != nil {
 		return nil, err
 	}
-	if err := gh.ValidateSignature(header, payload, secretToken); err != nil {
-		return nil, err
+
+	// Make sure to use a constant time comparison here.
+	if subtle.ConstantTimeCompare([]byte(header), secretToken) == 0 {
+		return nil, errors.New("Invalid X-Gitlab-Token")
 	}
 
 	return payload, nil
