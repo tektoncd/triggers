@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
+	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
@@ -92,6 +93,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, r.Logger)
 			case t.Interceptor.Github != nil:
 				interceptor = github.NewInterceptor(t.Interceptor.Github, r.KubeClientSet, r.EventListenerNamespace, r.Logger)
+			case t.Interceptor.Gitlab != nil:
+				interceptor = gitlab.NewInterceptor(t.Interceptor.Gitlab, r.KubeClientSet, r.EventListenerNamespace, r.Logger)
 			}
 		}
 		go func() {

@@ -20,9 +20,24 @@ import (
 	"net/http"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Interceptor is the interface that all interceptors implement.
 type Interceptor interface {
 	ExecuteTrigger(payload []byte, req *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, error)
+}
+
+func GetSecretToken(cs kubernetes.Interface, sr *triggersv1.SecretRef, eventListenerNamespace string) ([]byte, error) {
+	ns := sr.Namespace
+	if ns == "" {
+		ns = eventListenerNamespace
+	}
+	secret, err := cs.CoreV1().Secrets(ns).Get(sr.SecretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return secret.Data[sr.SecretKey], nil
 }

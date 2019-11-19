@@ -74,6 +74,7 @@ type EventListenerTrigger struct {
 type EventInterceptor struct {
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
 	Github  *GithubInterceptor  `json:"github,omitempty"`
+	Gitlab  *GitlabInterceptor  `json:"gitlab,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -90,6 +91,11 @@ type WebhookInterceptor struct {
 
 // GithubInterceptor provides a webhook to intercept and pre-process events
 type GithubInterceptor struct {
+	SecretRef *SecretRef `json:"secretRef,omitempty"`
+}
+
+// GitlabInterceptor provides a webhook to intercept and pre-process events
+type GitlabInterceptor struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`
 }
 
