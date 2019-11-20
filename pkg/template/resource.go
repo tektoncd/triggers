@@ -96,9 +96,7 @@ func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) js
 }
 
 // UID generates a random string like the Kubernetes apiserver generateName metafield postfix.
-func UID() string {
-	return rand.String(5)
-}
+var UID = func() string { return rand.String(5) }
 
 // ApplyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.

@@ -934,7 +934,7 @@
   version = "kubernetes-1.12.9"
 
 [[projects]]
-  digest = "1:832a467706e645a2c4d6b5f67ce25f359583a32765b11116c478cd098eb40091"
+  digest = "1:85d9e569bf3651a0fb9e8a5f268354d6f1474af5b17cddda085501ffb60ee31b"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1085,7 +1085,6 @@
     "plugin/pkg/client/auth/gcp",
     "plugin/pkg/client/auth/oidc",
     "rest",
-    "rest/fake",
     "rest/watch",
     "testing",
     "third_party/forked/golang/template",
@@ -1241,6 +1240,7 @@
     "github.com/google/go-cmp/cmp/cmpopts",
     "github.com/google/go-github/github",
     "github.com/knative/test-infra/tools/dep-collector",
+    "github.com/tektoncd/pipeline/pkg/apis/pipeline",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake",
@@ -1261,6 +1261,7 @@
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
+    "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
@@ -1283,7 +1284,6 @@
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/plugin/pkg/client/auth/oidc",
     "k8s.io/client-go/rest",
-    "k8s.io/client-go/rest/fake",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/record",
