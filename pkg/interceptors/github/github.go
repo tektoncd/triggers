@@ -18,6 +18,7 @@ package github
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	gh "github.com/google/go-github/github"
@@ -47,21 +48,35 @@ func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns
 }
 
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
-	// No secret set, just continue
-	if w.Github.SecretRef == nil {
-		return payload, nil
-	}
-	header := request.Header.Get("X-Hub-Signature")
-	if header == "" {
-		return nil, errors.New("no X-Hub-Signature header set")
+	// Validate secrets first before anything else, if set
+	if w.Github.SecretRef != nil {
+		header := request.Header.Get("X-Hub-Signature")
+		if header == "" {
+			return nil, errors.New("no X-Hub-Signature header set")
+		}
+
+		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Github.SecretRef, w.EventListenerNamespace)
+		if err != nil {
+			return nil, err
+		}
+		if err := gh.ValidateSignature(header, payload, secretToken); err != nil {
+			return nil, err
+		}
 	}
 
-	secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Github.SecretRef, w.EventListenerNamespace)
-	if err != nil {
-		return nil, err
-	}
-	if err := gh.ValidateSignature(header, payload, secretToken); err != nil {
-		return nil, err
+	// Next see if the event type is in the allow-list
+	if w.Github.EventTypes != nil {
+		actualEvent := request.Header.Get("X-Github-Event")
+		isAllowed := false
+		for _, allowedEvent := range w.Github.EventTypes {
+			if actualEvent == allowedEvent {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			return nil, fmt.Errorf("event type %s is not allowed", actualEvent)
+		}
 	}
 
 	return payload, nil

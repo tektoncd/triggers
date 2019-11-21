@@ -12,6 +12,8 @@ spec:
             secretName: foo
             secretKey: bar
             namespace: baz
+          eventTypes:
+          - pull_request
       bindings:
       - name: pipeline-binding
       template:
