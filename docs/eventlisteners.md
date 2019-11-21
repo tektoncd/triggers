@@ -61,7 +61,7 @@ Event Interceptors can take several different forms today:
 
 * Webhook Interceptors
 * GitHub Interceptors
-* GitLub Interceptors
+* GitLab Interceptors
 
 ### Webhook Interceptors
 
