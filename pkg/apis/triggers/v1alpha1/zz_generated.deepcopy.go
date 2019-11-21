@@ -251,6 +251,11 @@ func (in *GithubInterceptor) DeepCopyInto(out *GithubInterceptor) {
 		*out = new(SecretRef)
 		**out = **in
 	}
+	if in.EventTypes != nil {
+		in, out := &in.EventTypes, &out.EventTypes
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

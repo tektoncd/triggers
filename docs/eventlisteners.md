@@ -61,7 +61,7 @@ Event Interceptors can take several different forms today:
 
 * Webhook Interceptors
 * GitHub Interceptors
-* GitLub Interceptors
+* GitLab Interceptors
 
 ### Webhook Interceptors
 
@@ -121,12 +121,17 @@ spec:
 
 ### GitHub Interceptors
 
-GitHub interceptors contain logic to validate that a webhook actually came from GitHub,
-using the logic outlined in GitHub [documentation](https://developer.github.com/webhooks/securing/).
+GitHub interceptors contain logic to validate and filter webhooks that come from GitHub.
+Supported features include validating webhooks actually came rom GitHub using the logic outlined
+in GitHub [documentation](https://developer.github.com/webhooks/securing/), as well as
+filtering incoming events.
 
-To use this interceptor, create a secret string using the method of your choice, and configure the GitHub
-webhook to use that secret value.
-Create a Kubernetes secret containing this value, and pass that as a reference to the `github` interceptor:
+To use this interceptor as a validator, create a secret string using the method of your choice,
+and configure the GitHub webhook to use that secret value.
+Create a Kubernetes secret containing this value, and pass that as a reference to the `github` interceptor.
+
+To use this interceptor as a filter, add the event types you would like to accept to the `eventTypes` field.
+Valid values can be found in Github [docs](https://developer.github.com/webhooks/#events).
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
 ```YAML
@@ -144,6 +149,8 @@ spec:
             secretName: foo
             secretKey: bar
             namespace: baz
+          eventTypes:
+          - pull_request
       bindings:
       - name: pipeline-binding
       template:
