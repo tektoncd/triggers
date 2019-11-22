@@ -17,11 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tidwall/gjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -83,9 +83,11 @@ type TriggerTemplateList struct {
 // getAPIVersionAndKind returns the apiVersion and Kind for the resourceTemplate
 // Missing fields are represented by empty strings
 func (trt *TriggerResourceTemplate) getAPIVersionAndKind() (string, string) {
-	apiVersion := gjson.GetBytes(trt.RawMessage, "apiVersion").String()
-	kind := gjson.GetBytes(trt.RawMessage, "kind").String()
-	return apiVersion, kind
+	var tm metav1.TypeMeta
+	if err := json.NewDecoder(bytes.NewReader(trt.RawMessage)).Decode(&tm); err != nil {
+		return "", ""
+	}
+	return tm.APIVersion, tm.Kind
 }
 
 // IsAllowedType returns true if the resourceTemplate has an apiVersion
