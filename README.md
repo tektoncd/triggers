@@ -18,7 +18,7 @@ The Tekton API enables functionality to be seperated from configuration (e.g. [P
 
 
 Using `tektoncd/triggers` in conjunction with `tektoncd/pipeline` enables you to easily create full-fledged CI/CD systems where the execution is defined **entirely** through Kubernetes resources.
-This repo draws inspiration from `Tekton`, but can used stand alone since `TriggerTemplates` can create any Kubernetes resource.
+This repo draws inspiration from `Tekton`, but can be used stand alone since `TriggerTemplates` can create any Kubernetes resource.
 
 You can learn more by checking out the [docs](docs/README.md)
 
