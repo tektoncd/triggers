@@ -17,12 +17,7 @@ limitations under the License.
 package template
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,8 +25,6 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
-	"golang.org/x/xerrors"
-
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -965,171 +958,4 @@ func Test_NewResources_error(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestExamplesForBodyPathVariables(t *testing.T) {
-	var testNames []string
-	var payloads [][]byte
-	// Populates payloads using examples
-	err := filepath.Walk("./examples", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			t.Errorf("Failure accessing path %q: %v\n", path, err)
-			return err
-		}
-		if !info.IsDir() {
-			t.Logf("Reading %s", path)
-			b, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			var buffer bytes.Buffer
-			err = json.Compact(&buffer, b)
-			if err != nil {
-				t.Errorf("Error making json compact: %s", err)
-			}
-			payloads = append(payloads, buffer.Bytes())
-			fileNameTrimmed := strings.TrimSuffix(path, ".json")
-			testNames = append(testNames, strings.Replace(strings.Title(fileNameTrimmed), "/", "", -1))
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("Unable to load example payloads: %s", err)
-	}
-
-	// Validate all fields can be pulled for each respective payload
-	for i := range payloads {
-		iCopy := i
-		t.Run(testNames[i], func(t *testing.T) {
-			// Grab bindings and expected values
-			bodyPaths, expectedValues, err := bodyPathDigger(payloads[iCopy], "")
-			if err != nil {
-				t.Errorf("Failed to generate bindings for %s payload", testNames[iCopy])
-				return
-			}
-
-			// Grab actual values
-			for i := range bodyPaths {
-				gotValue, err := getBodyPathValue(payloads[iCopy], bodyPaths[i])
-				if err != nil {
-					t.Errorf("Error getting value for bodyPath %s: %s", bodyPaths[i], err)
-					continue
-				}
-				// Format so compare does not care about order of keys
-				gotBytes := []byte(strings.Replace(gotValue, `\"`, `"`, -1))
-				wantBytes := []byte(strings.Replace(expectedValues[i], `\"`, `"`, -1))
-				if json.Valid(gotBytes) && json.Valid(wantBytes) {
-					// Make all formatting compact to compare content, not formatting
-					var wantUnmarshalled interface{}
-					if err = json.Unmarshal([]byte(wantBytes), &wantUnmarshalled); err != nil {
-						t.Errorf("Error unmarshalling wantValue %s: %s", wantBytes, err)
-						continue
-					}
-					want, _ := json.Marshal(wantUnmarshalled)
-					var gotUnmarshalled interface{}
-					if err = json.Unmarshal(gotBytes, &gotUnmarshalled); err != nil {
-						t.Errorf("Error unmarshalling gotValue %s: %s", gotBytes, err)
-						continue
-					}
-					got, _ := json.Marshal(gotUnmarshalled)
-					if diff := cmp.Diff(string(want), string(got)); diff != "" {
-						t.Errorf("Error for bodyPath %s: diff -want +got: %s", bodyPaths[i], diff)
-					}
-				} else {
-					if diff := cmp.Diff(expectedValues[i], gotValue); diff != "" {
-						t.Errorf("Error for bodyPath %s -want +got: %s", bodyPaths[i], diff)
-					}
-				}
-			}
-		})
-	}
-}
-
-// Test_bodyPathDigger tests bodyPathDigger to ensure all possible body paths are returned
-// The simple digger example payload is space compacted
-func Test_bodyPathDigger(t *testing.T) {
-	// Small example file/payload used to validate the functionality of bodyPathDigger
-	filePath := "examples/digger.json"
-	t.Logf("Reading %s", filePath)
-	b, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		t.Fatalf("Error reading file %s: %s", filePath, err)
-	}
-	// Create assertion map
-	// The example digger payload fields have been predefined as space compacted
-	pathValueMap := map[string]string{
-		"":    strings.Replace(string(b), `"`, `\"`, -1),
-		"a":   "a",
-		"b":   "true",
-		"c":   "30",
-		"d":   "[]",
-		"e":   `[\"a\"]`,
-		"f":   "[false]",
-		"g":   "[3]",
-		"h":   `[{\"a\":\"a\"}]`,
-		"i":   `{\"a\":\"a\"}`,
-		"i.a": "a",
-		"j":   "",
-	}
-	// Grab values
-	bodyPaths, actualValues, err := bodyPathDigger(b, "")
-	if err != nil {
-		t.Fatalf("Failed to generate body paths for %s payload", filePath)
-	}
-
-	// Ensure sizing is the same
-	if len(bodyPaths) != len(pathValueMap) {
-		t.Fatalf("Length of bodyPaths[%d] did not match expected[%d]", len(bodyPaths), len(pathValueMap))
-	}
-	if len(actualValues) != len(pathValueMap) {
-		t.Fatalf("Length of actualValues[%d] did not match expected[%d]", len(actualValues), len(pathValueMap))
-	}
-	// Validate against assertion map
-	for i := 0; i < len(bodyPaths); i++ {
-		expectedValue := pathValueMap[bodyPaths[i]]
-		actualValue := actualValues[i]
-		if diff := cmp.Diff(expectedValue, actualValue); diff != "" {
-			t.Errorf("Diff: -want +got: %s", diff)
-		}
-	}
-}
-
-// bodyPathDigger returns all possible body paths and corresponding expected values from the payload
-// Digs into map recursively whenever the value is a json object
-// Inherent to the marshalling of json, expectedValues cannot by guaranteed in the same order as payload
-func bodyPathDigger(payload []byte, location string) (bodyPaths []string, expectedValues []string, err error) {
-	// Trim quotes if they exist ("value" -> value)
-	value := strings.TrimPrefix(strings.TrimSuffix(string(payload), "\""), "\"")
-	// Escape double quotes
-	value = strings.Replace(value, `"`, `\"`, -1)
-	// Add the entire event payload/base
-	bodyPaths = append(bodyPaths, location)
-	expectedValues = append(expectedValues, value)
-
-	// Store body as map to make it iterable
-	m := make(map[string]interface{})
-	err = json.Unmarshal(payload, &m)
-	if err != nil {
-		// Payload is a value, so stop recursion
-		return bodyPaths, expectedValues, nil
-	}
-	// Iterate over fields (potentially recursively) to capture all body paths and expected values
-	for field, value := range m {
-		var currentLocation string
-		if location == "" {
-			currentLocation = field
-		} else {
-			currentLocation = fmt.Sprintf("%s.%s", location, field)
-		}
-		b, err := json.Marshal(value)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("Failed to marshal value %v: %s", value, err)
-		}
-		nestedPaths, nestedValues, err := bodyPathDigger(b, currentLocation)
-		if err != nil {
-			return nil, nil, err
-		}
-		bodyPaths, expectedValues = append(bodyPaths, nestedPaths...), append(expectedValues, nestedValues...)
-	}
-	return bodyPaths, expectedValues, nil
 }
