@@ -299,6 +299,41 @@ func TestEventListenerBuilder(t *testing.T) {
 				),
 			),
 		),
+	}, {
+		name: "One Trigger with CEL Interceptor",
+		normal: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				ServiceAccountName: "serviceAccount",
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Name: "foo-trig",
+					Interceptor: &v1alpha1.EventInterceptor{
+						CEL: &v1alpha1.CELInterceptor{
+							Filter: "body.value == 'test'"},
+					},
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Name:       "tb1",
+						APIVersion: "v1alpha1",
+					}},
+					Template: v1alpha1.EventListenerTemplate{
+						Name:       "tt1",
+						APIVersion: "v1alpha1",
+					},
+				}},
+			},
+		},
+		builder: EventListener("name", "namespace",
+			EventListenerSpec(
+				EventListenerServiceAccount("serviceAccount"),
+				EventListenerTrigger("tb1", "tt1", "v1alpha1",
+					EventListenerTriggerName("foo-trig"),
+					EventListenerCELInterceptor("body.value == 'test'"),
+				),
+			),
+		),
 	},
 	}
 	for _, tt := range tests {

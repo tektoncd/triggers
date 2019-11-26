@@ -25,6 +25,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
@@ -97,6 +98,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				interceptor = github.NewInterceptor(t.Interceptor.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
 			case t.Interceptor.GitLab != nil:
 				interceptor = gitlab.NewInterceptor(t.Interceptor.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
+			case t.Interceptor.CEL != nil:
+				interceptor = cel.NewInterceptor(t.Interceptor.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
 			}
 		}
 		go func(t triggersv1.EventListenerTrigger) {

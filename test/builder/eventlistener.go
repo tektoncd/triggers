@@ -197,3 +197,17 @@ func EventInterceptorParam(name, value string) EventInterceptorOp {
 		}
 	}
 }
+
+// EventListenerCELInterceptor adds a CEL filter to the EventListenerTrigger.
+func EventListenerCELInterceptor(filter string, ops ...EventInterceptorOp) EventListenerTriggerOp {
+	return func(t *v1alpha1.EventListenerTrigger) {
+		t.Interceptor = &v1alpha1.EventInterceptor{
+			CEL: &v1alpha1.CELInterceptor{
+				Filter: filter,
+			},
+		}
+		for _, op := range ops {
+			op(t.Interceptor)
+		}
+	}
+}

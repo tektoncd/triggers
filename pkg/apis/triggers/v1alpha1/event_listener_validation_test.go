@@ -59,6 +59,12 @@ func Test_EventListenerValidate(t *testing.T) {
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
 				),
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
+	}, {
+		name: "Valid EventListener with CEL interceptor",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerCELInterceptor("body.value == 'test'")))),
 	}}
 
 	for _, test := range tests {
@@ -232,6 +238,23 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Interceptor: &v1alpha1.EventInterceptor{
 						GitHub: &v1alpha1.GitHubInterceptor{},
 						GitLab: &v1alpha1.GitLabInterceptor{},
+					},
+				}},
+			},
+		},
+	}, {
+		name: "CEL interceptor with no filter",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
+					Interceptor: &v1alpha1.EventInterceptor{
+						CEL: &v1alpha1.CELInterceptor{},
 					},
 				}},
 			},
