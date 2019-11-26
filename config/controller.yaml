@@ -17,6 +17,9 @@ kind: Deployment
 metadata:
   name: tekton-triggers-controller
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-triggers
+    app.kubernetes.io/component: controller
 spec:
   replicas: 1
   selector:
