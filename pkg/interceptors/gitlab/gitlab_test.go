@@ -34,9 +34,10 @@ import (
 
 func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	type args struct {
-		payload []byte
-		secret  *corev1.Secret
-		token   string
+		payload   []byte
+		secret    *corev1.Secret
+		token     string
+		eventType string
 	}
 	tests := []struct {
 		name    string
@@ -100,6 +101,101 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			wantErr: false,
 			want:    []byte("somepayload"),
 		},
+		{
+			name: "valid event",
+			Gitlab: &triggersv1.GitlabInterceptor{
+				EventTypes: []string{"foo", "bar"},
+			},
+			args: args{
+				eventType: "foo",
+				payload:   []byte("somepayload"),
+			},
+			wantErr: false,
+			want:    []byte("somepayload"),
+		},
+		{
+			name: "invalid event",
+			Gitlab: &triggersv1.GitlabInterceptor{
+				EventTypes: []string{"foo", "bar"},
+			},
+			args: args{
+				eventType: "baz",
+				payload:   []byte("somepayload"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid event, invalid secret",
+			Gitlab: &triggersv1.GitlabInterceptor{
+				EventTypes: []string{"foo", "bar"},
+				SecretRef: &triggersv1.SecretRef{
+					SecretName: "mysecret",
+					SecretKey:  "token",
+				},
+			},
+			args: args{
+				eventType: "bar",
+				payload:   []byte("somepayload"),
+				token:     "foo",
+				secret: &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mysecret",
+					},
+					Data: map[string][]byte{
+						"token": []byte("secrettoken"),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid event, valid secret",
+			Gitlab: &triggersv1.GitlabInterceptor{
+				EventTypes: []string{"foo", "bar"},
+				SecretRef: &triggersv1.SecretRef{
+					SecretName: "mysecret",
+					SecretKey:  "token",
+				},
+			},
+			args: args{
+				eventType: "baz",
+				payload:   []byte("somepayload"),
+				token:     "secrettoken",
+				secret: &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mysecret",
+					},
+					Data: map[string][]byte{
+						"token": []byte("secrettoken"),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid event, valid secret",
+			Gitlab: &triggersv1.GitlabInterceptor{
+				EventTypes: []string{"foo", "bar"},
+				SecretRef: &triggersv1.SecretRef{
+					SecretName: "mysecret",
+					SecretKey:  "token",
+				},
+			},
+			args: args{
+				eventType: "bar",
+				payload:   []byte("somepayload"),
+				token:     "secrettoken",
+				secret: &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mysecret",
+					},
+					Data: map[string][]byte{
+						"token": []byte("secrettoken"),
+					},
+				},
+			},
+			want: []byte("somepayload"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -114,6 +210,9 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			}
 			if tt.args.token != "" {
 				request.Header.Add("X-Gitlab-Token", tt.args.token)
+			}
+			if tt.args.eventType != "" {
+				request.Header.Add("X-Gitlab-Event", tt.args.eventType)
 			}
 			if tt.args.secret != nil {
 				ns := tt.Gitlab.SecretRef.Namespace

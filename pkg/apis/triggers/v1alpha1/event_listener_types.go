@@ -97,7 +97,8 @@ type GithubInterceptor struct {
 
 // GitlabInterceptor provides a webhook to intercept and pre-process events
 type GitlabInterceptor struct {
-	SecretRef *SecretRef `json:"secretRef,omitempty"`
+	SecretRef  *SecretRef `json:"secretRef,omitempty"`
+	EventTypes []string   `json:"eventTypes,omitempty"`
 }
 
 // SecretRef contains the information required to reference a single secret string
