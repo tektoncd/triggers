@@ -17,6 +17,9 @@ kind: Deployment
 metadata:
   name: tekton-triggers-webhook
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-triggers
+    app.kubernetes.io/component: webhook-controller
 spec:
   replicas: 1
   selector:
