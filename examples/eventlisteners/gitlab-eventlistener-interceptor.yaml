@@ -12,6 +12,8 @@ spec:
             secretName: foo
             secretKey: bar
             namespace: baz
+          eventTypes:
+          - Push Hook
       bindings:
       - name: pipeline-binding
       template:
