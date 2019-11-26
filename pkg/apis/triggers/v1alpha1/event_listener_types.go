@@ -79,6 +79,7 @@ type EventInterceptor struct {
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
 	GitHub  *GitHubInterceptor  `json:"github,omitempty"`
 	GitLab  *GitLabInterceptor  `json:"gitlab,omitempty"`
+	CEL     *CELInterceptor     `json:"cel,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -103,6 +104,11 @@ type GitHubInterceptor struct {
 type GitLabInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
+}
+
+// CELInterceptor provides a webhook to intercept and pre-process events
+type CELInterceptor struct {
+	Filter string `json:"filter,omitempty"`
 }
 
 // SecretRef contains the information required to reference a single secret string

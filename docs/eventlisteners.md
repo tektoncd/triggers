@@ -194,3 +194,32 @@ spec:
       template:
         name: pipeline-template
 ```
+
+### CEL Interceptors
+
+CEL interceptors parse expressions to filter requests based on JSON bodies and request headers, using the
+[CEL](https://github.com/google/cel-go) expression language.
+
+Supported features include case-insensitive matching on request headers.
+
+<!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: cel-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptor:
+        cel:
+          filter: "headers.match('X-GitHub-Event', 'push')"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```
+
+The `expression` must return a `true` value, otherwise the request will be filtered
+out.
