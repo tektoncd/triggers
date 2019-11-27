@@ -42,7 +42,7 @@ type ResolvedTrigger struct {
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
-// ResolveBindings takes in a trigger containing object refs to bindings and
+// ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
 func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
 	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))

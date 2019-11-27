@@ -53,16 +53,19 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		return apis.ErrMissingField("spec.triggers")
 	}
 	clientset := ctx.Value(clientKey{}).(dynamic.Interface)
-
 	for i, t := range s.Triggers {
+		// Validate that only one of binding or bindings is set
+		if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
+			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].binding", i), fmt.Sprintf("spec.triggers[%d].binding", i))
+		}
 		// Validate optional TriggerBinding
-		for _, b := range t.Bindings {
+		for j, b := range t.Bindings {
 			if len(b.Name) == 0 {
-				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].binding.name", i))
+				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
 			}
 			_, err := clientset.Resource(triggerBindings).Namespace(el.Namespace).Get(b.Name, metav1.GetOptions{})
 			if err != nil {
-				return apis.ErrInvalidValue(err, fmt.Sprintf("spec.triggers[%d].binding.name", i))
+				return apis.ErrInvalidValue(err, fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
 			}
 		}
 		// Validate required TriggerTemplate
