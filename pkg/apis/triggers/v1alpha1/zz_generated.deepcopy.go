@@ -230,6 +230,11 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 		*out = new(EventInterceptor)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DeprecatedBinding != nil {
+		in, out := &in.DeprecatedBinding, &out.DeprecatedBinding
+		*out = new(EventListenerBinding)
+		**out = **in
+	}
 	return
 }
 

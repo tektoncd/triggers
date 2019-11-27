@@ -125,6 +125,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) (returnError err
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, el *v1alpha1.EventListener) error {
+	// We may be reading a version of the object that was stored at an older version
+	// and may not have had all of the assumed default specified.
+	el.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+
 	// TODO(dibyom): Once #70 is merged, we should validate triggerTemplate here
 	// and update the StatusCondition
 

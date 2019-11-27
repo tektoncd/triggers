@@ -31,6 +31,7 @@ import (
 
 // Check that EventListener may be validated and defaulted.
 var _ apis.Validatable = (*EventListener)(nil)
+var _ apis.Defaultable = (*EventListener)(nil)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -66,8 +67,11 @@ type EventListenerTrigger struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional
-	// TODO(dibyom): Allow multiple interceptors
+	// TODO(#249): Allow multiple interceptors
 	Interceptor *EventInterceptor `json:"interceptor,omitempty"`
+
+	// TODO(#248): Remove this before 0.3 release
+	DeprecatedBinding *EventListenerBinding `json:"binding,omitempty"`
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events
