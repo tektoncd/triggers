@@ -1,4 +1,3 @@
----
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
@@ -27,12 +26,6 @@ spec:
   - name: builtWebhookImage
     resourceRef:
       name: triggers-webhook-image
-  - name: builtDigestExporterImage
+  - name: builtEventListenerSinkImage
     resourceRef:
-      name: digest-exporter-image
-  - name: builtPullRequestInitImage
-    resourceRef:
-      name: pull-request-init-image
-  - name: builtGcsFetcherImage
-    resourceRef:
-      name: gcs-fetcher-image
+      name: event-listener-sink-image
