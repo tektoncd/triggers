@@ -144,10 +144,9 @@ metadata:
   name: event-display
   namespace: getting-started
   labels:
-    name: event-display
+    app: event-display
 spec:
   hostname: event-display
   containers:
   - image: gcr.io/knative-releases/github.com/knative/eventing-sources/cmd/event_display
     name: web
-
