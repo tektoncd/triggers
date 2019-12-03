@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 
@@ -504,6 +503,7 @@ func TestHandleEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
 	}
+
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("Response code doesn't match: %v", resp.Status)
 	}
@@ -512,14 +512,29 @@ func TestHandleEvent(t *testing.T) {
 		t.Fatalf("Error reading response body: %s", err)
 		return
 	}
-	wantPayload := `EventListener: my-eventlistener in Namespace: foo handling event`
 
-	if !strings.Contains(string(body), "event (EventID: ") {
-		t.Errorf("Response body doesn't have eventid")
+	respData := struct {
+		EventListener string
+		Namespace     string
+		EventID       string
+	}{}
+
+	err = json.Unmarshal(body, &respData)
+	if err != nil {
+		t.Fatalf("Error unmarshalling response body: %s", err)
+		return
 	}
 
-	if !strings.Contains(string(body), wantPayload) {
-		t.Errorf("Diff response body: %s, should have: %s", string(body), wantPayload)
+	if respData.EventID == "" {
+		t.Fatalf("EventID isn't available: %s", err)
+		return
+	}
+	if respData.EventListener != el.Name {
+		t.Errorf("Diff EventListener name: %s, should: %s", respData.EventListener, el.Name)
+	}
+
+	if respData.Namespace != el.Namespace {
+		t.Errorf("Diff EventListener namespace: %s, should: %s", respData.Namespace, el.Namespace)
 	}
 
 	wg.Wait()

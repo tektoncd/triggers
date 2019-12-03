@@ -144,10 +144,26 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	// TODO: Do we really need to return the entire body back???
+	js, err := json.Marshal(
+		struct {
+			EventListener string
+			Namespace     string
+			EventID       string
+		}{
+			r.EventListenerName,
+			r.EventListenerNamespace,
+			eventID,
+		},
+	)
+	if err != nil {
+		http.Error(response, "Error Marshaling response"+
+			err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	response.WriteHeader(code)
-	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
+	response.Header().Set("Content-Type", "application/json")
+	response.Write(js)
 }
 
 func (r Sink) createResources(resources []json.RawMessage, triggerName, eventID string) error {
