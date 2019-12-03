@@ -18,7 +18,6 @@ package sink
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -54,6 +53,16 @@ type Sink struct {
 	EventListenerName      string
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
+}
+
+// Response defines the HTTP body that the Sink responds to events with.
+type Response struct {
+	// EventListener is the name of the eventListener
+	EventListener string `json:"eventListener"`
+	// Namespace is the namespace that the eventListener is running in
+	Namespace string `json:"namespace,omitempty"`
+	// EventID is a uniqueID that gets assigned to each incoming request
+	EventID string `json:"eventID,omitempty"`
 }
 
 // HandleEvent processes an incoming HTTP event for the event listener.
@@ -139,10 +148,16 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	// TODO: Do we really need to return the entire body back???
 	response.WriteHeader(code)
-	fmt.Fprintf(response, "EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, string(eventID), string(event), request.Header)
+	response.Header().Set("Content-Type", "application/json")
+	body := Response{
+		EventListener: r.EventListenerName,
+		Namespace:     r.EventListenerNamespace,
+		EventID:       eventID,
+	}
+	if err := json.NewEncoder(response).Encode(body); err != nil {
+		eventLog.Errorf("failed to write back sink response: %w", err)
+	}
 }
 
 func (r Sink) createResources(res []json.RawMessage, triggerName, eventID string) error {

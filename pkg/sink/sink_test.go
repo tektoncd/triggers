@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 
@@ -144,20 +143,27 @@ func TestHandleEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
 	}
+
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("Response code doesn't match: %v", resp.Status)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("Error reading response body: %s", err)
-		return
 	}
-	if !strings.Contains(string(body), "event (EventID: ") {
-		t.Errorf("Response body doesn't have eventid")
+
+	wantBody := Response{
+		EventListener: el.Name,
+		Namespace:     el.Namespace,
+		EventID:       eventID,
 	}
-	wantPayload := `EventListener: my-eventlistener in Namespace: foo handling event`
-	if !strings.Contains(string(body), wantPayload) {
-		t.Errorf("Diff response body: %s, should have: %s", string(body), wantPayload)
+
+	got := Response{}
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("Error unmarshalling response body: %s", err)
+	}
+	if diff := cmp.Diff(wantBody, got); diff != "" {
+		t.Errorf("did not get expected response back -want,+got: %s", diff)
 	}
 
 	wg.Wait()
