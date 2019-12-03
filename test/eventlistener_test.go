@@ -24,16 +24,17 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"strconv"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
+	"github.com/tektoncd/triggers/pkg/sink"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -284,9 +285,27 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error creating POST request: %s", err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	_, err = http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("Error sending POST request: %s", err)
+	}
+
+	if resp.StatusCode > http.StatusAccepted {
+		t.Errorf("sink did not return 2xx response. Got status code: %d", resp.StatusCode)
+	}
+	wantBody := sink.Response{
+		EventListener: "my-eventlistener",
+		Namespace:     namespace,
+	}
+	var gotBody sink.Response
+	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
+		t.Fatalf("failed to read/decode sink response: %v", err)
+	}
+	if diff := cmp.Diff(wantBody, gotBody, cmpopts.IgnoreFields(sink.Response{}, "EventID")); diff != "" {
+		t.Errorf("unexpected sink response -want/+got: %s", diff)
+	}
+	if gotBody.EventID == "" {
+		t.Errorf("sink response no eventID")
 	}
 
 	for _, wantPr := range []v1alpha1.PipelineResource{wantPr1, wantPr2} {
