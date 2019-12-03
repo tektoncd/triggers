@@ -26,7 +26,7 @@ import (
 
 // Interceptor is the interface that all interceptors implement.
 type Interceptor interface {
-	ExecuteTrigger(payload []byte, req *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, error)
+	ExecuteTrigger(payload []byte, req *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, http.Header, error)
 }
 
 func GetSecretToken(cs kubernetes.Interface, sr *triggersv1.SecretRef, eventListenerNamespace string) ([]byte, error) {

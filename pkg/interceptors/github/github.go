@@ -47,20 +47,20 @@ func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns
 	}
 }
 
-func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
+func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, http.Header, error) {
 	// Validate secrets first before anything else, if set
 	if w.Github.SecretRef != nil {
 		header := request.Header.Get("X-Hub-Signature")
 		if header == "" {
-			return nil, errors.New("no X-Hub-Signature header set")
+			return nil, nil, errors.New("no X-Hub-Signature header set")
 		}
 
 		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Github.SecretRef, w.EventListenerNamespace)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := gh.ValidateSignature(header, payload, secretToken); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -75,9 +75,9 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 			}
 		}
 		if !isAllowed {
-			return nil, fmt.Errorf("event type %s is not allowed", actualEvent)
+			return nil, nil, fmt.Errorf("event type %s is not allowed", actualEvent)
 		}
 	}
 
-	return payload, nil
+	return payload, nil, nil
 }

@@ -52,24 +52,24 @@ func createOutgoingRequest(ctx context.Context, original *http.Request, url *url
 	return r
 }
 
-func makeRequest(client *http.Client, request *http.Request) ([]byte, error) {
+func makeRequest(client *http.Client, request *http.Request) ([]byte, http.Header, error) {
 	resp, err := client.Do(request)
 	if err != nil {
 		// TODO: Add Error types - ValidationError and other General ProcessingErrors
-		return nil, xerrors.Errorf("Failed to proxy request to interceptor: %w", err.Error())
+		return nil, nil, xerrors.Errorf("Failed to proxy request to interceptor: %w", err.Error())
 	}
 	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, xerrors.Errorf("Failed to parse response body")
+		return nil, nil, xerrors.Errorf("Failed to parse response body")
 	}
 
 	// Wrap error and return
 	if resp.StatusCode != http.StatusOK {
-		return nil, xerrors.Errorf("Request rejected; status: %s; message: %s", resp.Status, respBody)
+		return nil, nil, xerrors.Errorf("Request rejected; status: %s; message: %s", resp.Status, respBody)
 	}
-	return respBody, nil
+	return respBody, resp.Header, nil
 }
 
 func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {

@@ -50,27 +50,27 @@ func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string
 	}
 }
 
-func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, error) {
+func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, http.Header, error) {
 	interceptorURL, err := GetURI(w.Webhook.ObjectRef, w.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	modifiedPayload, err := w.processEvent(interceptorURL, request, payload, w.Webhook.Header, interceptorTimeout)
+	modifiedPayload, responseHeader, err := w.processEvent(interceptorURL, request, payload, w.Webhook.Header, interceptorTimeout)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return modifiedPayload, nil
+	return modifiedPayload, responseHeader, nil
 }
 
-func (w *Interceptor) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, error) {
+func (w *Interceptor) processEvent(interceptorURL *url.URL, request *http.Request, payload []byte, headerParams []pipelinev1.Param, timeout time.Duration) ([]byte, http.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	outgoing := createOutgoingRequest(ctx, request, interceptorURL, payload, headerParams)
 	addInterceptorHeaders(outgoing.Header, headerParams)
-	respPayload, err := makeRequest(w.HTTPClient, outgoing)
+	respPayload, respHeader, err := makeRequest(w.HTTPClient, outgoing)
 	if err != nil {
-		return nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
+		return nil, nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
 	}
-	return respPayload, nil
+	return respPayload, respHeader, nil
 }

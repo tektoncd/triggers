@@ -88,6 +88,8 @@ To be an Event Interceptor, a Kubernetes object should:
 * Return a JSON body back. This will be used by the EventListener as the event
   payload for any further processing. If the interceptor does not need to modify
   the body, it can simply return the body that it received.
+* Custom HTTP headers returned will be merged with the headers received by the EventListener.
+  Headers that already exist will not be overwritten.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
 ```YAML

@@ -102,12 +102,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		go func(t triggersv1.EventListenerTrigger) {
 			finalPayload := event
 			if interceptor != nil {
-				payload, err := interceptor.ExecuteTrigger(event, request, &t, eventID)
+				payload, header, err := interceptor.ExecuteTrigger(event, request, &t, eventID)
 				if err != nil {
 					log.Error(err)
 					result <- http.StatusAccepted
 					return
 				}
+				mergeHeader(request.Header, header)
 				finalPayload = payload
 			}
 			rt, err := template.ResolveTrigger(t,
@@ -241,4 +242,15 @@ func addLabels(rt json.RawMessage, labels map[string]string) (json.RawMessage, e
 		}
 	}
 	return rt, err
+}
+
+// mergeHeader merges two http.Header maps (a and b) into a.
+// If a key from b already exists in a it will not be overwritten.
+// If a key from b does not exist in a it's value will be added to header a.
+func mergeHeader(a, b http.Header) {
+	for k, v := range b {
+		if _, ok := a[k]; !ok {
+			a[k] = v
+		}
+	}
 }
