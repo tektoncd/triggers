@@ -26,6 +26,7 @@ import (
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
 	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
 	fakedeployinformer "knative.dev/pkg/injection/informers/kubeinformers/appsv1/deployment/fake"
+	fakeconfigmapinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/configmap/fake"
 	fakeserviceinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/service/fake"
 
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -45,6 +46,7 @@ type Resources struct {
 	EventListeners []*v1alpha1.EventListener
 	Deployments    []*appsv1.Deployment
 	Services       []*corev1.Service
+	ConfigMaps     []*corev1.ConfigMap
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -73,6 +75,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	elInformer := fakeeventlistenerinformer.Get(ctx)
 	deployInformer := fakedeployinformer.Get(ctx)
 	serviceInformer := fakeserviceinformer.Get(ctx)
+	configMapInformer := fakeconfigmapinformer.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -106,6 +109,16 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 	}
+
+	for _, cfg := range r.ConfigMaps {
+		if err := configMapInformer.Informer().GetIndexer().Add(cfg); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Kube.CoreV1().ConfigMaps(cfg.Namespace).Create(cfg); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	c.Kube.ClearActions()
 	c.Triggers.ClearActions()
 	c.Pipeline.ClearActions()
@@ -148,6 +161,15 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		for _, svc := range svcList.Items {
 			testResources.Services = append(testResources.Services, svc.DeepCopy())
 		}
+		// Add ConfigMaps
+		cfgList, err := c.Kube.CoreV1().ConfigMaps(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, cfg := range cfgList.Items {
+			testResources.ConfigMaps = append(testResources.ConfigMaps, cfg.DeepCopy())
+		}
+
 	}
 	return testResources, nil
 }
