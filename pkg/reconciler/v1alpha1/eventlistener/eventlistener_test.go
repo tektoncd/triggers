@@ -304,7 +304,7 @@ func Test_reconcileDeployment(t *testing.T) {
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "config-logging-triggers",
+										Name: eventListenerConfigMapName,
 									},
 								},
 							},
@@ -537,7 +537,7 @@ func TestReconcile(t *testing.T) {
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "config-logging-triggers",
+									Name: eventListenerConfigMapName,
 								},
 							},
 						},
@@ -579,6 +579,9 @@ func TestReconcile(t *testing.T) {
 	service3 := service2.DeepCopy()
 	service3.Spec.Type = corev1.ServiceTypeNodePort
 
+	loggingConfigMap := defaultLoggingConfigMap()
+	loggingConfigMap.ObjectMeta.Namespace = namespace
+
 	tests := []struct {
 		name           string
 		key            string
@@ -596,6 +599,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{eventListener1},
 			Deployments:    []*appsv1.Deployment{deployment1},
 			Services:       []*corev1.Service{service1},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
 		name: "update-eventlistener-labels",
@@ -611,6 +615,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{eventListener2},
 			Deployments:    []*appsv1.Deployment{deployment2},
 			Services:       []*corev1.Service{service2},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
 		name: "update-eventlistener-serviceaccount",
@@ -626,6 +631,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{eventListener3},
 			Deployments:    []*appsv1.Deployment{deployment3},
 			Services:       []*corev1.Service{service2},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
 		name: "update-eventlistener-servicetype",
@@ -641,12 +647,38 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{eventListener4},
 			Deployments:    []*appsv1.Deployment{deployment3},
 			Services:       []*corev1.Service{service3},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
 		name:           "delete-eventlistener",
 		key:            reconcileKey,
 		startResources: test.Resources{},
 		endResources:   test.Resources{},
+	}, {
+		name: "delete-last-eventlistener",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+			ConfigMaps: []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+		},
+	}, {
+		name: "delete-eventlistener-with-remaining-eventlistener",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener1},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{eventListener1},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{deployment1},
+			Services:       []*corev1.Service{service1},
+		},
 	},
 	}
 	for _, tt := range tests {
