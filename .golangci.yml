@@ -3,4 +3,12 @@ run:
   - e2e
   skip-dirs:
   - vendor
-  - pkg/client/clientset/versioned/fake
+  - pkg/client/clientset/(.*)/fake
+linters:
+  enable:
+  - errcheck
+  - gofmt
+  - goimports
+  - gosec
+  - gocritic
+  - golint
