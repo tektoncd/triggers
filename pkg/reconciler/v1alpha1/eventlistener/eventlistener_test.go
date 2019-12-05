@@ -87,8 +87,8 @@ var (
 )
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
-// given TestResources r where r represents the state of the system
-func getEventListenerTestAssets(t *testing.T, r test.TestResources) (test.TestAssets, context.CancelFunc) {
+// given test.Resources r where r represents the state of the system
+func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
@@ -108,9 +108,9 @@ func getEventListenerTestAssets(t *testing.T, r test.TestResources) (test.TestAs
 			// Pass modified resource and react using the default catch all reactor
 			return kubeClient.ReactionChain[len(kubeClient.ReactionChain)-1].React(action)
 		})
-	clients := test.SeedTestResources(t, ctx, r)
+	clients := test.SeedResources(t, ctx, r)
 	cmw := configmap.NewInformedWatcher(clients.Kube, system.GetNamespace())
-	return test.TestAssets{
+	return test.Assets{
 		Controller: NewController(ctx, cmw),
 		Clients:    clients,
 	}, cancel
@@ -147,40 +147,40 @@ func Test_reconcileService(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		startResources test.TestResources
-		endResources   test.TestResources
+		startResources test.Resources
+		endResources   test.Resources
 	}{
 		{
 			name: "create-service",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener0},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service1},
 			},
 		},
 		{
 			name: "eventlistener-label-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener2},
 				Services:       []*corev1.Service{service1},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				EventListeners: []*v1alpha1.EventListener{eventListener2},
 				Services:       []*corev1.Service{service2},
 			},
 		},
 		{
 			name: "service-label-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service2},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service1},
@@ -188,12 +188,12 @@ func Test_reconcileService(t *testing.T) {
 		},
 		{
 			name: "service-nodeport-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service3},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Services:       []*corev1.Service{service3},
@@ -213,7 +213,7 @@ func Test_reconcileService(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := test.GetTestResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -335,16 +335,16 @@ func Test_reconcileDeployment(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		startResources test.TestResources
-		endResources   test.TestResources
+		startResources test.Resources
+		endResources   test.Resources
 	}{
 		{
 			name: "create-deployment",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener0},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment1},
@@ -352,12 +352,12 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 		{
 			name: "eventlistener-label-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener2},
 				Deployments:    []*appsv1.Deployment{deployment1},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener2},
 				Deployments:    []*appsv1.Deployment{deployment2},
@@ -365,12 +365,12 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 		{
 			name: "deployment-label-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment2},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment1},
@@ -378,12 +378,12 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 		{
 			name: "deployment-replica-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment3},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment3},
@@ -391,12 +391,12 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 		{
 			name: "eventlistener-replica-failure-status-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener3},
 				Deployments:    []*appsv1.Deployment{deployment1},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener1},
 				Deployments:    []*appsv1.Deployment{deployment1},
@@ -404,12 +404,12 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 		{
 			name: "eventlistener-serviceaccount-update",
-			startResources: test.TestResources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener4},
 				Deployments:    []*appsv1.Deployment{deployment1},
 			},
-			endResources: test.TestResources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener4},
 				Deployments:    []*appsv1.Deployment{deployment4},
@@ -429,7 +429,7 @@ func Test_reconcileDeployment(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := test.GetTestResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -582,16 +582,16 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		startResources test.TestResources
-		endResources   test.TestResources
+		startResources test.Resources
+		endResources   test.Resources
 	}{{
 		name: "create-eventlistener",
 		key:  reconcileKey,
-		startResources: test.TestResources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener0},
 		},
-		endResources: test.TestResources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener1},
 			Deployments:    []*appsv1.Deployment{deployment1},
@@ -600,13 +600,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "update-eventlistener-labels",
 		key:  reconcileKey,
-		startResources: test.TestResources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener2},
 			Deployments:    []*appsv1.Deployment{deployment1},
 			Services:       []*corev1.Service{service1},
 		},
-		endResources: test.TestResources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener2},
 			Deployments:    []*appsv1.Deployment{deployment2},
@@ -615,13 +615,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "update-eventlistener-serviceaccount",
 		key:  reconcileKey,
-		startResources: test.TestResources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener3},
 			Deployments:    []*appsv1.Deployment{deployment2},
 			Services:       []*corev1.Service{service2},
 		},
-		endResources: test.TestResources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener3},
 			Deployments:    []*appsv1.Deployment{deployment3},
@@ -630,13 +630,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "update-eventlistener-servicetype",
 		key:  reconcileKey,
-		startResources: test.TestResources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener4},
 			Deployments:    []*appsv1.Deployment{deployment3},
 			Services:       []*corev1.Service{service2},
 		},
-		endResources: test.TestResources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener4},
 			Deployments:    []*appsv1.Deployment{deployment3},
@@ -645,8 +645,8 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:           "delete-eventlistener",
 		key:            reconcileKey,
-		startResources: test.TestResources{},
-		endResources:   test.TestResources{},
+		startResources: test.Resources{},
+		endResources:   test.Resources{},
 	},
 	}
 	for _, tt := range tests {
@@ -662,7 +662,7 @@ func TestReconcile(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := test.GetTestResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}

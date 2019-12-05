@@ -18,13 +18,14 @@ package logging
 
 import (
 	"flag"
+	"log"
+
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
-	"log"
 )
 
 // Configure logging
