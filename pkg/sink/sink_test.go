@@ -578,20 +578,20 @@ func Test_addLabels(t *testing.T) {
 
 func Test_mergeHeader(t *testing.T) {
 	want := http.Header{
-		"server":           []string{"nginx"},
-		"content-type":     []string{"application/json"},
-		"x-custom-header1": []string{"fizz"},
-		"x-custom-header2": []string{"buzz"},
+		"Server":           []string{"nginx"},
+		"Content-Type":     []string{"application/json"},
+		"X-Custom-Header1": []string{"fizz"},
+		"X-Custom-Header2": []string{"buzz"},
 	}
 	h1 := http.Header{
-		"server":           want["server"],
-		"content-type":     want["content-type"],
-		"x-custom-header1": want["x-custom-header1"],
+		"Server":           want["Server"],
+		"Content-Type":     want["Content-Type"],
+		"X-Custom-Header1": want["X-Custom-Header1"],
 	}
 	h2 := http.Header{
-		"server":           []string{"apache"},
-		"content-type":     []string{"text/html"},
-		"x-custom-header2": want["x-custom-header2"],
+		"Server":           []string{"apache"},
+		"Content-Type":     []string{"text/html"},
+		"X-Custom-Header2": want["X-Custom-Header2"],
 	}
 	mergeHeader(h1, h2)
 	if !reflect.DeepEqual(want, h1) {
