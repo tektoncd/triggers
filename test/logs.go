@@ -26,9 +26,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// CollectPodLogsWithLabel will get the logs of all the Pods given a LabelSelector
-func CollectPodLogsWithLabel(c kubernetes.Interface, namespace, LabelSelector string) (string, error) {
-	pods, err := c.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: LabelSelector})
+// CollectPodLogsWithLabel will get the logs of all the Pods given a labelSelector
+func CollectPodLogsWithLabel(c kubernetes.Interface, namespace, labelSelector string) (string, error) {
+	pods, err := c.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return "", err
 	}

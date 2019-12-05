@@ -34,6 +34,15 @@ var (
 	services         = corev1.SchemeGroupVersion.WithResource("services")
 )
 
+// clientKey is used as the key for associating information
+// with a context.Context.
+type clientKey struct{}
+
+// WithClientSet adds the dynamic clientset to the context.
+func WithClientSet(ctx context.Context, i dynamic.Interface) context.Context {
+	return context.WithValue(ctx, clientKey{}, i)
+}
+
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 	return e.Spec.validate(ctx, e)
@@ -43,7 +52,7 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}
-	clientset := ctx.Value("clientSet").(dynamic.Interface)
+	clientset := ctx.Value(clientKey{}).(dynamic.Interface)
 
 	for i, t := range s.Triggers {
 		// Validate optional TriggerBinding
@@ -122,7 +131,7 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 			namespace = w.ObjectRef.Namespace
 		}
 
-		clientset := ctx.Value("clientSet").(dynamic.Interface)
+		clientset := ctx.Value(clientKey{}).(dynamic.Interface)
 		_, err := clientset.Resource(services).Namespace(namespace).Get(w.ObjectRef.Name, metav1.GetOptions{})
 		if err != nil {
 			return apis.ErrInvalidValue(err, "interceptor.webhook.objectRef.name")

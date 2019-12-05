@@ -39,10 +39,6 @@ const (
 	ConfigName = "config-logging-triggers"
 )
 
-var (
-	client dynamic.Interface
-)
-
 func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -56,7 +52,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to get the client set: %v", err)
 	}
-	client, err = dynamic.NewForConfig(clusterConfig)
+	client, err := dynamic.NewForConfig(clusterConfig)
 	if err != nil {
 		log.Fatalf("Failed to get the dynamic client set: %v", err)
 	}
@@ -91,15 +87,11 @@ func main() {
 		DisallowUnknownFields: true,
 		// Decorate contexts with the current state of the config.
 		WithContext: func(ctx context.Context) context.Context {
-			return injectDynamicClientset(ctx)
+			return v1alpha1.WithClientSet(ctx, client)
 		},
 	}
 
 	if err := controller.Run(stopCh); err != nil {
 		logger.Fatal("Error running admission controller", zap.Error(err))
 	}
-}
-
-func injectDynamicClientset(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "clientSet", client)
 }

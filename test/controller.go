@@ -38,9 +38,9 @@ import (
 	"knative.dev/pkg/controller"
 )
 
-// TestResources represents the desired state of the system (i.e. existing resources)
+// Resources represents the desired state of the system (i.e. existing resources)
 // to seed controllers with.
-type TestResources struct {
+type Resources struct {
 	Namespaces     []*corev1.Namespace
 	EventListeners []*v1alpha1.EventListener
 	Deployments    []*appsv1.Deployment
@@ -54,14 +54,15 @@ type Clients struct {
 	Pipeline *fakepipelineclientset.Clientset
 }
 
-// TestAssets holds references to the controller and clients.
-type TestAssets struct {
+// Assets holds references to the controller and clients.
+type Assets struct {
 	Controller *controller.Impl
 	Clients    Clients
 }
 
-// SeedTestResources returns Clients populated with the given TestResources
-func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clients {
+// SeedResources returns Clients populated with the given Resources
+// nolint: golint
+func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
 	c := Clients{
 		Kube:     fakekubeclient.Get(ctx),
@@ -79,7 +80,7 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 			t.Fatal(err)
 		}
 	}
-	// Create TestResources
+	// Create test Resources
 	for _, el := range r.EventListeners {
 		if err := elInformer.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatal(err)
@@ -111,10 +112,11 @@ func SeedTestResources(t *testing.T, ctx context.Context, r TestResources) Clien
 	return c
 }
 
-// GetTestResourcesFromClients returns the TestResources in the Clients provided
-// Precondition: all Namespaces used in TestResources must be listed in TestResources.Namespaces
-func GetTestResourcesFromClients(c Clients) (*TestResources, error) {
-	testResources := &TestResources{}
+// GetResourcesFromClients returns the Resources in the Clients provided
+// Precondition: all Namespaces used in Resources must be listed in Resources.Namespaces
+// nolint: golint
+func GetResourcesFromClients(c Clients) (*Resources, error) {
+	testResources := &Resources{}
 	nsList, err := c.Kube.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err

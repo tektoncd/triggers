@@ -259,7 +259,8 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// Port forward sink pod for http request
 	portString := strconv.Itoa(eventReconciler.Port)
-	cmd := exec.Command("kubectl", "port-forward", sinkPods.Items[0].Name, "-n", namespace, fmt.Sprintf("%s:%s", portString, portString))
+	podName := sinkPods.Items[0].Name
+	cmd := exec.Command("kubectl", "port-forward", podName, "-n", namespace, fmt.Sprintf("%s:%s", portString, portString))
 	err = cmd.Start()
 	if err != nil {
 		t.Fatalf("Error starting port-forward command: %s", err)

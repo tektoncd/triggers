@@ -176,8 +176,7 @@ func Test_EventListenerValidate_error(t *testing.T) {
 	)
 
 	dynamicClient := fakedynamicclient.NewSimpleDynamicClient(scheme, tb, tt, svc)
-	ctx := context.TODO()
-	ctx = context.WithValue(ctx, "clientSet", dynamicClient)
+	ctx := v1alpha1.WithClientSet(context.TODO(), dynamicClient)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.el.Validate(ctx)
