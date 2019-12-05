@@ -36,11 +36,19 @@ func Test_processEvent(t *testing.T) {
 		"eventType": "push",
 		"foo":       "bar",
 	})
+	addedHeaders := map[string]string{
+		"X-Custom-Header1": "foo",
+		"X-Custom-Header2": "bar",
+	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if cmp.Diff(r.Header["Param-Header"], []string{"val"}) != "" {
 			http.Error(w, "Expected header does not match", http.StatusBadRequest)
 			return
+		}
+		h := w.Header()
+		for k, v := range addedHeaders {
+			h.Set(k, v)
 		}
 		_, _ = w.Write(payload)
 	}))
@@ -59,7 +67,7 @@ func Test_processEvent(t *testing.T) {
 	}
 	originalHeaders := incoming.Header.Clone()
 
-	resPayload, err := i.processEvent(interceptorURL, incoming, payload, params, interceptorTimeout)
+	resPayload, headers, err := i.processEvent(interceptorURL, incoming, payload, params, interceptorTimeout)
 
 	if err != nil {
 		t.Errorf("Unexpected error in process event: %q", err)
@@ -73,6 +81,12 @@ func Test_processEvent(t *testing.T) {
 	if diff := cmp.Diff(incoming.Header, originalHeaders); diff != "" {
 		t.Errorf("processEvent() changed request header unexpectedly: %s", diff)
 	}
+
+	for k, v := range addedHeaders {
+		if headers.Get(k) != v {
+			t.Errorf("Did not get expected header back: %s: %s", k, v)
+		}
+	}
 }
 
 func TestProcessEvent_TimeOut(t *testing.T) {
@@ -85,7 +99,7 @@ func TestProcessEvent_TimeOut(t *testing.T) {
 	incoming := httptest.NewRequest("POST", "http://event.listener.url", nil)
 	interceptorURL, _ := url.Parse(ts.URL)
 
-	_, err := r.processEvent(interceptorURL, incoming, nil, nil, 10*time.Millisecond)
+	_, _, err := r.processEvent(interceptorURL, incoming, nil, nil, 10*time.Millisecond)
 
 	if err == nil {
 		t.Errorf("Did not expect err to be nil")

@@ -228,7 +228,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				Gitlab:        tt.Gitlab,
 				Logger:        logger,
 			}
-			got, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")
+			got, _, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
 				return

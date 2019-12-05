@@ -123,18 +123,28 @@ func TestMakeRequest(t *testing.T) {
 		"eventType": "push",
 		"foo":       "bar",
 	})
+	addedHeaders := map[string]string{
+		"X-Custom-Header1": "foo",
+		"X-Custom-Header2": "bar",
+	}
 
 	tcs := []struct {
 		name            string
 		handler         http.HandlerFunc
+		expectedHeaders map[string]string
 		expectedPayload []byte
 		wantErr         bool
 	}{{
 		name: "status 200",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			p, _ := ioutil.ReadAll(r.Body)
+			h := w.Header()
+			for k, v := range addedHeaders {
+				h.Set(k, v)
+			}
 			_, _ = w.Write(p)
 		},
+		expectedHeaders: addedHeaders,
 		expectedPayload: reqBody,
 		wantErr:         false,
 	}, {
@@ -154,7 +164,7 @@ func TestMakeRequest(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error trying to create request: %q", err)
 			}
-			payload, err := makeRequest(http.DefaultClient, req)
+			payload, headers, err := makeRequest(http.DefaultClient, req)
 			expectedPayload := tc.expectedPayload
 			if err != nil {
 				if !tc.wantErr {
@@ -163,6 +173,11 @@ func TestMakeRequest(t *testing.T) {
 			}
 			if diff := cmp.Diff(expectedPayload, payload); diff != "" {
 				t.Errorf("Did not get expected body back: %s", diff)
+			}
+			for k, v := range tc.expectedHeaders {
+				if headers.Get(k) != v {
+					t.Errorf("Did not get expected header back: %s: %s", k, v)
+				}
 			}
 		})
 	}
