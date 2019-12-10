@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/logging"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/signals"
@@ -51,10 +50,6 @@ func main() {
 	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
 		log.Fatalf("Failed to get the client set: %v", err)
-	}
-	client, err := dynamic.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the dynamic client set: %v", err)
 	}
 
 	logger := logging.ConfigureLogging(WebhookLogKey, ConfigName, stopCh, kubeClient)
@@ -87,8 +82,7 @@ func main() {
 
 	// Decorate contexts with the current state of the config.
 	ctxFunc := func(ctx context.Context) context.Context {
-		return v1alpha1.WithClientSet(ctx, client)
-
+		return ctx
 	}
 
 	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)
