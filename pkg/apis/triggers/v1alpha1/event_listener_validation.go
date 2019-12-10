@@ -22,26 +22,8 @@ import (
 	"net/http"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/dynamic"
 	"knative.dev/pkg/apis"
 )
-
-var (
-	triggerBindings  = SchemeGroupVersion.WithResource("triggerbindings")
-	triggerTemplates = SchemeGroupVersion.WithResource("triggertemplates")
-	services         = corev1.SchemeGroupVersion.WithResource("services")
-)
-
-// clientKey is used as the key for associating information
-// with a context.Context.
-type clientKey struct{}
-
-// WithClientSet adds the dynamic clientset to the context.
-func WithClientSet(ctx context.Context, i dynamic.Interface) context.Context {
-	return context.WithValue(ctx, clientKey{}, i)
-}
 
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
@@ -52,7 +34,6 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}
-	clientset := ctx.Value(clientKey{}).(dynamic.Interface)
 	for i, t := range s.Triggers {
 		// Validate that only one of binding or bindings is set
 		if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
@@ -62,10 +43,6 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		for j, b := range t.Bindings {
 			if len(b.Name) == 0 {
 				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
-			}
-			_, err := clientset.Resource(triggerBindings).Namespace(el.Namespace).Get(b.Name, metav1.GetOptions{})
-			if err != nil {
-				return apis.ErrInvalidValue(err, fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
 			}
 		}
 		// Validate required TriggerTemplate
@@ -77,10 +54,6 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		}
 		if len(t.Template.Name) == 0 {
 			return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].template.name", i))
-		}
-		_, err := clientset.Resource(triggerTemplates).Namespace(el.Namespace).Get(t.Template.Name, metav1.GetOptions{})
-		if err != nil {
-			return apis.ErrInvalidValue(err, "spec.triggers.template.name")
 		}
 		if t.Interceptor != nil {
 			err := t.Interceptor.validate(ctx, el.Namespace).ViaField(fmt.Sprintf("spec.triggers[%d]", i))
@@ -95,7 +68,7 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
 	// Validate at least one
 	if i.Webhook == nil && i.Github == nil && i.Gitlab == nil {
-		return apis.ErrMissingField(("interceptor"))
+		return apis.ErrMissingField("interceptor")
 	}
 
 	// Enforce oneof
@@ -130,15 +103,7 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
 			}
 		}
-		if len(w.ObjectRef.Namespace) != 0 {
-			namespace = w.ObjectRef.Namespace
-		}
 
-		clientset := ctx.Value(clientKey{}).(dynamic.Interface)
-		_, err := clientset.Resource(services).Namespace(namespace).Get(w.ObjectRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return apis.ErrInvalidValue(err, "interceptor.webhook.objectRef.name")
-		}
 		for i, header := range w.Header {
 			// Enforce non-empty canonical header keys
 			if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {

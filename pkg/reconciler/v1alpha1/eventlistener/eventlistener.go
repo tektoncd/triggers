@@ -253,33 +253,27 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *elImage,
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: int32(Port),
-				Protocol:      corev1.ProtocolTCP,
-			},
-		},
+		Ports: []corev1.ContainerPort{{
+			ContainerPort: int32(Port),
+			Protocol:      corev1.ProtocolTCP,
+		}},
 		Args: []string{
 			"-el-name", el.Name,
 			"-el-namespace", el.Namespace,
 			"-port", strconv.Itoa(Port),
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config-logging",
-				MountPath: "/etc/config-logging",
-			},
-		},
-		Env: []corev1.EnvVar{
-			{
-				Name: "SYSTEM_NAMESPACE",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "config-logging",
+			MountPath: "/etc/config-logging",
+		}},
+		Env: []corev1.EnvVar{{
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
 				},
 			},
-		},
+		}},
 	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
@@ -296,18 +290,16 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 					ServiceAccountName: el.Spec.ServiceAccountName,
 					Containers:         []corev1.Container{container},
 
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-logging",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: eventListenerConfigMapName,
-									},
+					Volumes: []corev1.Volume{{
+						Name: "config-logging",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: eventListenerConfigMapName,
 								},
 							},
 						},
-					},
+					}},
 				},
 			},
 		},
