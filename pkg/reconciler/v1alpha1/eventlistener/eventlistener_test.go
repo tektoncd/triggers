@@ -37,8 +37,8 @@ import (
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/configmap"
-	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
