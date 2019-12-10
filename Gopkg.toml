@@ -16,7 +16,7 @@ required = [
 
 [[constraint]]
   name = "github.com/tektoncd/pipeline"
-  version = "v0.6.0"
+  version = "v0.9.1"
 
 [[override]]
   name = "k8s.io/klog"
@@ -32,28 +32,27 @@ required = [
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.12"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.12"
 
 [[override]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.12"
 
 [[override]]
   name = "k8s.io/client-go"
-  revision = "97dc22a90a299033b557e8bb7db6d5d22f8f7875"
+  version = "kubernetes-1.13.12"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.12"
 
 [[override]]
   name = "k8s.io/kubernetes"
-  # version = "1.13.3"
-  revision = "721bfa751924da8d1680787490c54b9179b1fed0"
+  version = "1.13.12"
 
 [[constraint]]
   name = "knative.dev/caching"
@@ -67,8 +66,8 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  # HEAD as of 2019-07-23 💖
-  revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
+  # HEAD as of 2019-09-09 💖
+  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
 
 [[override]]
   name = "go.uber.org/zap"
