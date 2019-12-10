@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -244,8 +245,8 @@ func TestEventListenerCreate(t *testing.T) {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
 			Params: []v1alpha1.ResourceParam{
-				{Name: "body", Value: `{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`},
-				{Name: "header", Value: `{"Accept-Encoding":["gzip"],"Content-Length":["61"],"Content-Type":["application/json"],"User-Agent":["Go-http-client/1.1"]}`},
+				{Name: "body", Value: strings.Replace(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`, " ", "", -1)},
+				{Name: "header", Value: `{"Accept-Encoding":"gzip","Content-Length":"61","Content-Type":"application/json","User-Agent":"Go-http-client/1.1"}`},
 			},
 		},
 	}

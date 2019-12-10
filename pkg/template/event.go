@@ -18,177 +18,82 @@ package template
 
 import (
 	"encoding/json"
-	"regexp"
+	"fmt"
+	"net/http"
 	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"github.com/tidwall/gjson"
-	"golang.org/x/xerrors"
 )
-
-var (
-	// bodyPathVarRegex determines valid body path variables
-	// The body regular expression allows for a subset of GJSON syntax, the mininum
-	// required to navigate through dictionaries, query arrays and support
-	// namespaced label names e.g. tekton.dev/eventlistener
-	bodyPathVarRegex = regexp.MustCompile(`\$\(body(\.[[:alnum:]/_\-\.\\]+|\.#\([[:alnum:]=<>%!"\*_-]+\)#??)*\)`)
-
-	// The headers regular expression allows for simple navigation down a hierarchy
-	// of dictionaries
-	headerVarRegex = regexp.MustCompile(`\$\(header(\.[[:alnum:]_\-]+)?\)`)
-)
-
-// getBodyPathFromVar returns the body path given an body path variable
-// $(body.my.path) -> my.path
-// $(body) returns an empty string "" because there is no body path
-func getBodyPathFromVar(bodyPathVar string) string {
-	// Assume bodyPathVar matches the bodyPathVarRegex
-	if bodyPathVar == "$(body)" {
-		return ""
-	}
-	return strings.TrimSuffix(strings.TrimPrefix(bodyPathVar, "$(body."), ")")
-}
-
-// getHeaderFromVar returns the header given a header variable
-// $(header.example) -> example
-func getHeaderFromVar(headerVar string) string {
-	// Assume headerVar matches the headerVarRegex
-	if headerVar == "$(header)" {
-		return ""
-	}
-
-	return strings.TrimSuffix(strings.TrimPrefix(headerVar, "$(header."), ")")
-}
-
-// ApplyBodyToParams returns the params with each body path variable replaced
-// with the appropriate data from the body. Returns an error when the body
-// path variable is not found in the body.
-func ApplyBodyToParams(body []byte, params []pipelinev1.Param) ([]pipelinev1.Param, error) {
-	for i := range params {
-		param, err := applyBodyToParam(body, params[i])
-		if err != nil {
-			return nil, err
-		}
-		params[i] = param
-	}
-	return params, nil
-}
-
-// applyBodyToParam returns the param with each body path variable replaced
-// with the appropriate data from the body. Returns an error when the body
-// path variable is not found in the body.
-func applyBodyToParam(body []byte, param pipelinev1.Param) (pipelinev1.Param, error) {
-	// Get each body path variable in the param
-	bodyPathVars := bodyPathVarRegex.FindAllString(param.Value.StringVal, -1)
-	for _, bodyPathVar := range bodyPathVars {
-		bodyPath := getBodyPathFromVar(bodyPathVar)
-		bodyPathValue, err := getBodyPathValue(body, bodyPath)
-		if err != nil {
-			return param, err
-		}
-		param.Value.StringVal = strings.Replace(param.Value.StringVal, bodyPathVar, bodyPathValue, -1)
-	}
-	return param, nil
-}
-
-// getBodyPathValue returns the value of the bodyPath in the body. An error
-// is returned if the bodyPath is not found in the body.
-func getBodyPathValue(body []byte, bodyPath string) (string, error) {
-	var bodyPathValue string
-	if bodyPath == "" {
-		// $(body) has an empty bodyPath, so use the entire body as the bodyValue
-		bodyPathValue = string(body)
-	} else {
-		bodyPathResult := gjson.GetBytes(body, bodyPath)
-		if bodyPathResult.Index == 0 {
-			return "", xerrors.Errorf("Error body path %s not found in the body %s", bodyPath, string(body))
-		}
-		bodyPathValue = bodyPathResult.String()
-		if bodyPathResult.Type == gjson.Null {
-			bodyPathValue = "null"
-		}
-	}
-	return strings.Replace(bodyPathValue, `"`, `\"`, -1), nil
-}
-
-// ApplyHeaderToParams returns the params with each header variable replaced
-// with the appropriate header value. Returns an error when the header variable
-// is not found.
-func ApplyHeaderToParams(header map[string][]string, params []pipelinev1.Param) ([]pipelinev1.Param, error) {
-	for i := range params {
-		param, err := applyHeaderToParam(header, params[i])
-		if err != nil {
-			return nil, err
-		}
-		params[i] = param
-	}
-	return params, nil
-}
-
-// applyHeaderToParam returns the param with each header variable replaced
-// with the appropriate header value. Returns an error when the header variable
-// is not found.
-func applyHeaderToParam(header map[string][]string, param pipelinev1.Param) (pipelinev1.Param, error) {
-	// Get each header variable in the param
-	headerVars := headerVarRegex.FindAllString(param.Value.StringVal, -1)
-	for _, headerVar := range headerVars {
-		headerName := getHeaderFromVar(headerVar)
-		headerValue, err := getHeaderValue(header, headerName)
-		if err != nil {
-			return param, err
-		}
-		param.Value.StringVal = strings.Replace(param.Value.StringVal, headerVar, headerValue, -1)
-	}
-	return param, nil
-}
-
-// getHeaderValue returns a string representation of the headerName in the event
-// header. An error is returned if the headerName is not found in the header.
-func getHeaderValue(header map[string][]string, headerName string) (string, error) {
-	var headerValue string
-	if headerName == "" {
-		// $(header) has an empty headerName, so use all the headers in the headerValue
-		b, err := json.Marshal(&header)
-		if err != nil {
-			return "", xerrors.Errorf("Error marshalling header %s: %s", header, err)
-		}
-		headerValue = string(b)
-	} else {
-		value, ok := header[headerName]
-		if !ok {
-			return "", xerrors.Errorf("Error headerName %s not found in the event header %s", headerName, header)
-		}
-		headerValue = strings.Join(value, " ")
-	}
-	return strings.Replace(headerValue, `"`, `\"`, -1), nil
-}
 
 // ResolveParams takes a given trigger binding and produces the resulting
 // resource params.
-func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header map[string][]string, params []pipelinev1.ParamSpec) ([]pipelinev1.Param, error) {
+func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header http.Header, params []pipelinev1.ParamSpec) ([]pipelinev1.Param, error) {
 	out, err := MergeBindingParams(bindings)
 	if err != nil {
-		return nil, xerrors.Errorf("error merging trigger params: %v", err)
+		return nil, fmt.Errorf("error merging trigger params: %w", err)
 	}
-	out, err = ApplyBodyToParams(body, out)
+	event, err := newEvent(body, header)
 	if err != nil {
-		return nil, xerrors.Errorf("error applying body to trigger params: %s", err)
+		return nil, fmt.Errorf("failed to create Event: %w", err)
 	}
-	out, err = ApplyHeaderToParams(header, out)
+	out, err = applyEventValuesToParams(out, event)
 	if err != nil {
-		return nil, xerrors.Errorf("error applying header to trigger params: %s", err)
+		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
-
 	return MergeInDefaultParams(out, params), nil
 }
 
+// ResolveResources resolves a templated resource by replacing params with their values.
 func ResolveResources(template *triggersv1.TriggerTemplate, params []pipelinev1.Param) []json.RawMessage {
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
-	uid := UID()
 	for i := range template.Spec.ResourceTemplates {
 		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawMessage)
-		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
+		resources[i] = ApplyUIDToResourceTemplate(resources[i], UID())
 	}
 	return resources
+}
+
+// event represents a HTTP event that Triggers processes
+type event struct {
+	Header map[string]string `json:"header"`
+	Body   interface{}       `json:"body"`
+}
+
+// newEvent returns a new Event from HTTP headers and body
+func newEvent(body []byte, headers http.Header) (*event, error) {
+	var data interface{}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &data); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal request body: %w", err)
+		}
+	}
+	joinedHeaders := make(map[string]string, len(headers))
+	for k, v := range headers {
+		joinedHeaders[k] = strings.Join(v, ",")
+	}
+
+	return &event{
+		Header: joinedHeaders,
+		Body:   data,
+	}, nil
+}
+
+// applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
+// with values from the event body and headers.
+func applyEventValuesToParams(params []pipelinev1.Param, ec *event) ([]pipelinev1.Param, error) {
+	for idx, p := range params {
+		pValue := p.Value.StringVal
+		// Find all expressions wrapped in $() from the value
+		expressions := tektonVar.FindAllString(pValue, -1)
+		for _, expr := range expressions {
+			val, err := ParseJSONPath(ec, expr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
+			}
+			pValue = strings.ReplaceAll(pValue, expr, val)
+		}
+		params[idx].Value = pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: pValue}
+	}
+	return params, nil
 }

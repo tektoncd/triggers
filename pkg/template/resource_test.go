@@ -176,6 +176,18 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 				rt:    rtMultipleParamVars,
 			},
 			want: wantRtMultipleParamVars,
+		}, {
+			name: "espcae quotes in param val",
+			args: args{
+				param: pipelinev1.Param{
+					Name: "p1",
+					Value: pipelinev1.ArrayOrString{
+						StringVal: `{"a":"b"}`,
+					},
+				},
+				rt: json.RawMessage(`{"foo": "$(params.p1)"}`),
+			},
+			want: json.RawMessage(`{"foo": "{\"a\":\"b\"}"}`),
 		},
 	}
 	for _, tt := range tests {
