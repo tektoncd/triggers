@@ -77,8 +77,7 @@ func TestParseJSONPath(t *testing.T) {
 			}
 			got, err := ParseJSONPath(data, tt.expr)
 			if err != nil {
-				t.Errorf("ParseJSONPath() error = %v", err)
-				return
+				t.Fatalf("ParseJSONPath() error = %v", err)
 			}
 			if diff := cmp.Diff(strings.Replace(tt.want, " ", "", -1), got); diff != "" {
 				t.Errorf("ParseJSONPath() -want,+got: %s", diff)
@@ -103,7 +102,6 @@ func TestParseJSONPath_Error(t *testing.T) {
 	err := json.Unmarshal([]byte(testJSON), &data)
 	if err != nil {
 		t.Fatalf("Could not unmarshall body : %q", err)
-		return
 	}
 
 	for _, expr := range invalidExprs {
