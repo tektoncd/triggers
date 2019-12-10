@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	fake "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/factory/fake"
+	fake "github.com/tektoncd/triggers/pkg/client/injection/informers/factory/fake"
 	eventlistener "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
