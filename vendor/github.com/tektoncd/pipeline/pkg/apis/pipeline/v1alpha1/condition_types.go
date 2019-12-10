@@ -23,10 +23,6 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-// Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*Condition)(nil)
-var _ apis.Defaultable = (*Condition)(nil)
-
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -73,6 +69,10 @@ type ConditionSpec struct {
 	// is evaluated
 	// +optional
 	Params []ParamSpec `json:"params,omitempty"`
+
+	// Resources is a list of the ConditionResources required to run the condition.
+	// +optional
+	Resources []ResourceDeclaration `json:"resources,omitempty"`
 }
 
 // ConditionCheck represents a single evaluation of a Condition step.

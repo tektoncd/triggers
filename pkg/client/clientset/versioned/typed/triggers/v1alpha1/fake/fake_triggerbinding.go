@@ -131,7 +131,7 @@ func (c *FakeTriggerBindings) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched triggerBinding.
 func (c *FakeTriggerBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TriggerBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(triggerbindingsResource, c.ns, name, data, subresources...), &v1alpha1.TriggerBinding{})
+		Invokes(testing.NewPatchSubresourceAction(triggerbindingsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TriggerBinding{})
 
 	if obj == nil {
 		return nil, err
