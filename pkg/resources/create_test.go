@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -233,7 +234,8 @@ func TestCreateResource(t *testing.T) {
 }
 
 func Test_AddLabels(t *testing.T) {
-	b, err := json.Marshal(map[string]interface{}{
+	data := new(unstructured.Unstructured)
+	data.SetUnstructuredContent(map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{
 				// should be overwritten
@@ -244,37 +246,22 @@ func Test_AddLabels(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
-	}
 
-	raw, err := AddLabels(json.RawMessage(b), map[string]string{
+	data = AddLabels(data, map[string]string{
 		"a":   "1",
 		"/b":  "2",
 		"//c": "3",
 	})
-	if err != nil {
-		t.Fatalf("addLabels: %v", err)
+
+	want := map[string]string{
+		"tekton.dev/a":    "1",
+		"tekton.dev/b":    "2",
+		"tekton.dev/c":    "3",
+		"tekton.dev/z":    "0",
+		"best-palindrome": "tacocat",
 	}
 
-	got := make(map[string]interface{})
-	if err := json.Unmarshal(raw, &got); err != nil {
-		t.Fatalf("json.Unmarshal: %v", err)
-	}
-
-	want := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				"tekton.dev/a":    "1",
-				"tekton.dev/b":    "2",
-				"tekton.dev/c":    "3",
-				"tekton.dev/z":    "0",
-				"best-palindrome": "tacocat",
-			},
-		},
-	}
-
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Error(diff)
+	if diff := cmp.Diff(want, data.GetLabels()); diff != "" {
+		t.Errorf("-want/+got: %s", diff)
 	}
 }
