@@ -47,6 +47,7 @@ func createOutgoingRequest(ctx context.Context, original *http.Request, url *url
 	r := original.Clone(ctx)
 	r.RequestURI = "" // RequestURI cannot be set in outgoing requests
 	r.URL = url
+	r.Host = url.Host
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
 	addInterceptorHeaders(r.Header, headerParams)
 	return r

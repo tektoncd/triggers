@@ -18,6 +18,7 @@ package sink
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 
@@ -87,54 +88,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	// Execute each Trigger
 
 	for _, t := range el.Spec.Triggers {
-		log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
-
-		var interceptor interceptors.Interceptor
-		if t.Interceptor != nil {
-			switch {
-			case t.Interceptor.Webhook != nil:
-				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
-			case t.Interceptor.GitHub != nil:
-				interceptor = github.NewInterceptor(t.Interceptor.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
-			case t.Interceptor.GitLab != nil:
-				interceptor = gitlab.NewInterceptor(t.Interceptor.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
-			case t.Interceptor.CEL != nil:
-				interceptor = cel.NewInterceptor(t.Interceptor.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
-			}
-		}
-		go func(t triggersv1.EventListenerTrigger) {
-			finalPayload := event
-			if interceptor != nil {
-				payload, err := interceptor.ExecuteTrigger(event, request, &t, eventID)
-				if err != nil {
-					log.Error(err)
-					result <- http.StatusAccepted
-					return
-				}
-				finalPayload = payload
-			}
-			rt, err := template.ResolveTrigger(t,
-				r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
-				r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
-			if err != nil {
-				log.Error(err)
+		go func(t *triggersv1.EventListenerTrigger) {
+			if err := r.processTrigger(t, request, event, eventID, eventLog); err != nil {
 				result <- http.StatusAccepted
 				return
-			}
-
-			params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, request.Header, rt.TriggerTemplate.Spec.Params)
-			if err != nil {
-				log.Error(err)
-				result <- http.StatusAccepted
-				return
-			}
-			log.Infof("params: %+v", params)
-			res := template.ResolveResources(rt.TriggerTemplate, params)
-			if err := r.createResources(res, t.Name, eventID); err != nil {
-				log.Errorf("Could not create resources for %q: %v", t.Name, err)
 			}
 			result <- http.StatusCreated
-		}(t)
+		}(&t)
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
@@ -157,6 +117,65 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	if err := json.NewEncoder(response).Encode(body); err != nil {
 		eventLog.Errorf("failed to write back sink response: %w", err)
 	}
+}
+
+func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+	if t == nil {
+		return errors.New("EventListenerTrigger not defined")
+	}
+	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
+
+	finalPayload, err := r.executeInterceptors(t, request, event, eventID, log)
+	if err != nil {
+		return err
+	}
+
+	rt, err := template.ResolveTrigger(*t,
+		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
+		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, request.Header, rt.TriggerTemplate.Spec.Params)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info("params: %+v", params)
+	resources := template.ResolveResources(rt.TriggerTemplate, params)
+	if err := r.createResources(resources, t.Name, eventID); err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, error) {
+	for _, i := range t.Interceptors {
+		var interceptor interceptors.Interceptor
+		switch {
+		case i.Webhook != nil:
+			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
+		case i.GitHub != nil:
+			interceptor = github.NewInterceptor(i.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
+		case i.GitLab != nil:
+			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
+		case i.CEL != nil:
+			interceptor = cel.NewInterceptor(i.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
+		}
+
+		// TODO(#269): Chain interceptors
+		// together using HTTP request/response.
+		var err error
+		event, err = interceptor.ExecuteTrigger(event, request, t, eventID)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+	}
+	return event, nil
 }
 
 func (r Sink) createResources(res []json.RawMessage, triggerName, eventID string) error {

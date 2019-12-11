@@ -103,7 +103,46 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-	}}
+	},
+		{
+			name: "with upgrade context - both interceptor and interceptors present",
+			in: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{
+						DeprecatedInterceptor: &v1alpha1.EventInterceptor{Webhook: &v1alpha1.WebhookInterceptor{}},
+						Interceptors:          []*v1alpha1.EventInterceptor{{Webhook: &v1alpha1.WebhookInterceptor{}}},
+					}},
+				},
+			},
+			want: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{
+						DeprecatedInterceptor: &v1alpha1.EventInterceptor{Webhook: &v1alpha1.WebhookInterceptor{}},
+						Interceptors:          []*v1alpha1.EventInterceptor{{Webhook: &v1alpha1.WebhookInterceptor{}}},
+					}},
+				},
+			},
+			wc: v1alpha1.WithUpgradeViaDefaulting,
+		},
+		{
+			name: "with upgrade context - deprecated interceptor",
+			in: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{
+						DeprecatedInterceptor: &v1alpha1.EventInterceptor{Webhook: &v1alpha1.WebhookInterceptor{}},
+					}},
+				},
+			},
+			want: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{
+						Interceptors: []*v1alpha1.EventInterceptor{{Webhook: &v1alpha1.WebhookInterceptor{}}},
+					}},
+				},
+			},
+			wc: v1alpha1.WithUpgradeViaDefaulting,
+		},
+	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.in

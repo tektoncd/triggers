@@ -2,12 +2,19 @@
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: listener-interceptor
+  name: listener-multiinterceptor
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: foo-trig
       interceptors:
+        - github:
+            secretRef:
+              secretName: foo
+              secretKey: bar
+              namespace: baz
+            eventTypes:
+              - pull_request
         - webhook:
             header:
               - name: Foo-Trig-Header1

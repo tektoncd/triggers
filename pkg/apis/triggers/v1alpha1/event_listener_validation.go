@@ -37,8 +37,13 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 	for i, t := range s.Triggers {
 		// Validate that only one of binding or bindings is set
 		if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
-			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].binding", i), fmt.Sprintf("spec.triggers[%d].binding", i))
+			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].binding", i), fmt.Sprintf("spec.triggers[%d].bindings", i))
 		}
+		// Validate that only one of inteceptor or interceptors is set
+		if t.DeprecatedInterceptor != nil && len(t.Interceptors) > 0 {
+			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].interceptor", i), fmt.Sprintf("spec.triggers[%d].interceptors", i))
+		}
+
 		// Validate optional TriggerBinding
 		for j, b := range t.Bindings {
 			if b.Name == "" {
@@ -55,9 +60,8 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		if t.Template.Name == "" {
 			return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].template.name", i))
 		}
-		if t.Interceptor != nil {
-			err := t.Interceptor.validate(ctx, el.Namespace).ViaField(fmt.Sprintf("spec.triggers[%d]", i))
-			if err != nil {
+		for j, interceptor := range t.Interceptors {
+			if err := interceptor.validate(ctx, el.Namespace).ViaField(fmt.Sprintf("spec.triggers[%d].interceptors[%d]", i, j)); err != nil {
 				return err
 			}
 		}

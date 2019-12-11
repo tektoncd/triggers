@@ -246,10 +246,21 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 		}
 	}
 	out.Template = in.Template
-	if in.Interceptor != nil {
-		in, out := &in.Interceptor, &out.Interceptor
+	if in.DeprecatedInterceptor != nil {
+		in, out := &in.DeprecatedInterceptor, &out.DeprecatedInterceptor
 		*out = new(EventInterceptor)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Interceptors != nil {
+		in, out := &in.Interceptors, &out.Interceptors
+		*out = make([]*EventInterceptor, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(EventInterceptor)
+				(*in).DeepCopyInto(*out)
+			}
+		}
 	}
 	if in.DeprecatedBinding != nil {
 		in, out := &in.DeprecatedBinding, &out.DeprecatedBinding
