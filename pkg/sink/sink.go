@@ -28,7 +28,6 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
-	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"golang.org/x/xerrors"
 
@@ -163,22 +162,8 @@ func (r Sink) createResources(resources []json.RawMessage, triggerName, eventID 
 // createResource uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
 func (r Sink) createResource(rt json.RawMessage, triggerName string, eventID string) error {
-	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
-	apiVersion := gjson.GetBytes(rt, "apiVersion").String()
-	kind := gjson.GetBytes(rt, "kind").String()
-	namespace := gjson.GetBytes(rt, "metadata.namespace").String()
-	// Default the resource creation to the EventListenerNamespace if not found in the resource template
-	if namespace == "" {
-		namespace = r.EventListenerNamespace
-	}
-
-	// Resolve resource kind to the underlying API Resource type.
-	apiResource, err := r.findAPIResource(apiVersion, kind)
-	if err != nil {
-		return err
-	}
-
-	rt, err = addLabels(rt, map[string]string{
+	// Add common labels
+	rt, err := addLabels(rt, map[string]string{
 		triggersv1.EventListenerLabelKey: r.EventListenerName,
 		triggersv1.EventIDLabelKey:       eventID,
 		triggersv1.TriggerLabelKey:       triggerName,
@@ -187,8 +172,29 @@ func (r Sink) createResource(rt json.RawMessage, triggerName string, eventID str
 		return err
 	}
 
-	resourcename := gjson.GetBytes(rt, "metadata.name")
-	r.Logger.Infof("Generating resource: kind: %+v, name: %s", apiResource, resourcename)
+	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
+	data := new(unstructured.Unstructured)
+	if err := data.UnmarshalJSON(rt); err != nil {
+		return err
+	}
+
+	namespace := data.GetNamespace()
+	// Default the resource creation to the EventListenerNamespace if not found in the resource template
+	if namespace == "" {
+		namespace = r.EventListenerNamespace
+	}
+
+	// Resolve resource kind to the underlying API Resource type.
+	apiResource, err := r.findAPIResource(data.GetAPIVersion(), data.GetKind())
+	if err != nil {
+		return err
+	}
+
+	name := data.GetName()
+	if name == "" {
+		name = data.GetGenerateName()
+	}
+	r.Logger.Infof("Generating resource: kind: %+v, name: %s", apiResource, name)
 
 	gvr := schema.GroupVersionResource{
 		Group:    apiResource.Group,
@@ -196,10 +202,6 @@ func (r Sink) createResource(rt json.RawMessage, triggerName string, eventID str
 		Resource: apiResource.Name,
 	}
 
-	data := new(unstructured.Unstructured)
-	if err := data.UnmarshalJSON(rt); err != nil {
-		return err
-	}
 	_, err = r.DynamicClient.Resource(gvr).Namespace(namespace).Create(data, metav1.CreateOptions{})
 	return err
 }

@@ -1271,7 +1271,6 @@
     "github.com/tektoncd/pipeline/pkg/names",
     "github.com/tektoncd/pipeline/pkg/system",
     "github.com/tektoncd/plumbing/scripts",
-    "github.com/tidwall/gjson",
     "github.com/tidwall/sjson",
     "go.uber.org/zap",
     "golang.org/x/xerrors",
