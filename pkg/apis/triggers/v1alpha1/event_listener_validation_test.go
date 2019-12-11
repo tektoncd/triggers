@@ -6,6 +6,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,12 +29,6 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
-	}, {
-		name: "Valid EventListener Interceptor Name only",
-		el: bldr.EventListener("name", "namespace",
-			bldr.EventListenerSpec(
-				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
-					bldr.EventListenerTriggerInterceptor("svc", "", "", "")))),
 	}, {
 		name: "Valid EventListener Interceptor",
 		el: bldr.EventListener("name", "namespace",
@@ -64,12 +59,11 @@ func Test_EventListenerValidate(t *testing.T) {
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
 				),
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
-	},
-	}
+	}}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.el.Validate(context.TODO())
+			err := test.el.Validate(context.Background())
 			if err != nil {
 				t.Errorf("EventListener.Validate() expected no error, but got one, EventListener: %v, error: %v", test.el, err)
 			}
@@ -82,6 +76,31 @@ func TestEventListenerValidate_error(t *testing.T) {
 		name string
 		el   *v1alpha1.EventListener
 	}{{
+		name: "no triggers",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "n",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: nil,
+			},
+		},
+	}, {
+		name: "Binding missing name",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: ""}},
+					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
+				}},
+			},
+		},
+	}, {
 		name: "Both Binding and Bindings Present",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -97,6 +116,40 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Template with wrong apiVersion",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template: v1alpha1.EventListenerTemplate{Name: "tt", APIVersion: "invalid"},
+				}},
+			},
+		},
+	}, {
+		name: "Template with missing name",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template: v1alpha1.EventListenerTemplate{Name: ""},
+				}},
+			},
+		},
+	}, {
+		name: "Interceptor Name only",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerInterceptor("svc", "", "", "")))),
+	}, {
 		name: "Interceptor Missing ObjectRef",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -108,6 +161,27 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Bindings:    []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 					Template:    v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptor: &v1alpha1.EventInterceptor{},
+				}},
+			},
+		},
+	}, {
+		name: "Interceptor Empty ObjectRef",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
+					Interceptor: &v1alpha1.EventInterceptor{
+						Webhook: &v1alpha1.WebhookInterceptor{
+							ObjectRef: &corev1.ObjectReference{
+								Name: "",
+							},
+						},
+					},
 				}},
 			},
 		},
@@ -144,11 +218,29 @@ func TestEventListenerValidate_error(t *testing.T) {
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
 					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
 						bldr.EventInterceptorParam("Valid-Header-Key", ""))))),
+	}, {
+		name: "Multiple interceptors set",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
+					Interceptor: &v1alpha1.EventInterceptor{
+						Github: &v1alpha1.GithubInterceptor{},
+						Gitlab: &v1alpha1.GitlabInterceptor{},
+					},
+				}},
+			},
+		},
 	}}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.el.Validate(context.TODO())
+			err := test.el.Validate(context.Background())
 			if err == nil {
 				t.Errorf("EventListener.Validate() expected error, but get none, EventListener: %v", test.el)
 			}
