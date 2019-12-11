@@ -41,18 +41,18 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		}
 		// Validate optional TriggerBinding
 		for j, b := range t.Bindings {
-			if len(b.Name) == 0 {
+			if b.Name == "" {
 				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
 			}
 		}
 		// Validate required TriggerTemplate
 		// Optional explicit match
-		if len(t.Template.APIVersion) != 0 {
+		if t.Template.APIVersion != "" {
 			if t.Template.APIVersion != "v1alpha1" {
 				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), fmt.Sprintf("spec.triggers[%d].template.apiVersion", i))
 			}
 		}
-		if len(t.Template.Name) == 0 {
+		if t.Template.Name == "" {
 			return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].template.name", i))
 		}
 		if t.Interceptor != nil {
@@ -88,20 +88,17 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 	}
 
 	if i.Webhook != nil {
-		if i.Webhook.ObjectRef == nil || len(i.Webhook.ObjectRef.Name) == 0 {
-			return apis.ErrMissingField("interceptor.webhook")
+		if i.Webhook.ObjectRef == nil || i.Webhook.ObjectRef.Name == "" {
+			return apis.ErrMissingField("interceptor.webhook.objectRef")
 		}
 		w := i.Webhook
-		if len(w.ObjectRef.Kind) != 0 {
-			if w.ObjectRef.Kind != "Service" {
-				return apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind")
-			}
+		if w.ObjectRef.Kind != "Service" {
+			return apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind")
 		}
+
 		// Optional explicit match
-		if len(w.ObjectRef.APIVersion) != 0 {
-			if w.ObjectRef.APIVersion != "v1" {
-				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
-			}
+		if w.ObjectRef.APIVersion != "v1" {
+			return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
 		}
 
 		for i, header := range w.Header {
