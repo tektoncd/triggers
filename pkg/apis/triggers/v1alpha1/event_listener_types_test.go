@@ -123,11 +123,11 @@ func TestSetExistsCondition(t *testing.T) {
 	}{{
 		name:          "Condition with error",
 		conditionType: condType,
-		err:           fmt.Errorf("Something bad"),
+		err:           fmt.Errorf("something bad"),
 		expectedCondition: &apis.Condition{
 			Type:    condType,
 			Status:  corev1.ConditionFalse,
-			Message: "Something bad",
+			Message: "something bad",
 		},
 	}, {
 		name:          "Condition without error",

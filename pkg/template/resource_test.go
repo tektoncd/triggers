@@ -278,13 +278,13 @@ var (
 		if v, ok := triggerBindings[name]; ok {
 			return v, nil
 		}
-		return nil, fmt.Errorf("Error invalid name: %s", name)
+		return nil, fmt.Errorf("error invalid name: %s", name)
 	}
 	getTT = func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error) {
 		if name == "my-triggertemplate" {
 			return &tt, nil
 		}
-		return nil, fmt.Errorf("Error invalid name: %s", name)
+		return nil, fmt.Errorf("error invalid name: %s", name)
 	}
 )
 

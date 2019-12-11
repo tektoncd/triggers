@@ -24,7 +24,7 @@ func (i errorResourceInterface) Namespace(string) dynamic.ResourceInterface {
 }
 
 func (i errorResourceInterface) err() error {
-	return fmt.Errorf("Resource %+v not supported", i.resource)
+	return fmt.Errorf("resource %+v not supported", i.resource)
 }
 
 func (i errorResourceInterface) Create(obj *unstructured.Unstructured, options metav1.CreateOptions, subresources ...string) (*unstructured.Unstructured, error) {
