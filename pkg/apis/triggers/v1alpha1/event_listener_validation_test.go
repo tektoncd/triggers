@@ -164,9 +164,9 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings:    []*v1alpha1.EventListenerBinding{{Name: "tb"}},
-					Template:    v1alpha1.EventListenerTemplate{Name: "tt"},
-					Interceptor: &v1alpha1.EventInterceptor{},
+					Bindings:     []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template:     v1alpha1.EventListenerTemplate{Name: "tt"},
+					Interceptors: []*v1alpha1.EventInterceptor{{}},
 				}},
 			},
 		},
@@ -181,13 +181,13 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
 							ObjectRef: &corev1.ObjectReference{
 								Name: "",
 							},
 						},
-					},
+					}},
 				}},
 			},
 		},
@@ -235,10 +235,26 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						GitHub: &v1alpha1.GitHubInterceptor{},
 						GitLab: &v1alpha1.GitLabInterceptor{},
-					},
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "Both Interceptor and Interceptors Present",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings:              []*v1alpha1.EventListenerBinding{{Name: "tb"}},
+					Template:              v1alpha1.EventListenerTemplate{Name: "tt"},
+					DeprecatedInterceptor: &v1alpha1.EventInterceptor{},
+					Interceptors:          []*v1alpha1.EventInterceptor{{}, {}},
 				}},
 			},
 		},
@@ -253,9 +269,9 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						CEL: &v1alpha1.CELInterceptor{},
-					},
+					}},
 				}},
 			},
 		},

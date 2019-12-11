@@ -160,7 +160,7 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 // EventListenerTriggerInterceptor adds an objectRef to an interceptor Service to the EventListenerTrigger.
 func EventListenerTriggerInterceptor(name, version, kind, namespace string, ops ...EventInterceptorOp) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
-		t.Interceptor = &v1alpha1.EventInterceptor{
+		i := &v1alpha1.EventInterceptor{
 			Webhook: &v1alpha1.WebhookInterceptor{
 				ObjectRef: &corev1.ObjectReference{
 					Kind:       kind,
@@ -171,8 +171,9 @@ func EventListenerTriggerInterceptor(name, version, kind, namespace string, ops 
 			},
 		}
 		for _, op := range ops {
-			op(t.Interceptor)
+			op(i)
 		}
+		t.Interceptors = append(t.Interceptors, i)
 	}
 }
 
@@ -201,13 +202,14 @@ func EventInterceptorParam(name, value string) EventInterceptorOp {
 // EventListenerCELInterceptor adds a CEL filter to the EventListenerTrigger.
 func EventListenerCELInterceptor(filter string, ops ...EventInterceptorOp) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
-		t.Interceptor = &v1alpha1.EventInterceptor{
+		i := &v1alpha1.EventInterceptor{
 			CEL: &v1alpha1.CELInterceptor{
 				Filter: filter,
 			},
 		}
 		for _, op := range ops {
-			op(t.Interceptor)
+			op(i)
 		}
+		t.Interceptors = append(t.Interceptors, i)
 	}
 }

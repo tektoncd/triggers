@@ -218,7 +218,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
 							ObjectRef: &corev1.ObjectReference{
 								Kind:       "Service",
@@ -227,7 +227,7 @@ func TestEventListenerBuilder(t *testing.T) {
 								APIVersion: "v1",
 							},
 						},
-					},
+					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
@@ -259,7 +259,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
 							ObjectRef: &corev1.ObjectReference{
 								Kind:       "Service",
@@ -277,7 +277,7 @@ func TestEventListenerBuilder(t *testing.T) {
 								},
 							},
 						},
-					},
+					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",
@@ -310,10 +310,10 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
-					Interceptor: &v1alpha1.EventInterceptor{
+					Interceptors: []*v1alpha1.EventInterceptor{{
 						CEL: &v1alpha1.CELInterceptor{
 							Filter: "body.value == 'test'"},
-					},
+					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
 						APIVersion: "v1alpha1",

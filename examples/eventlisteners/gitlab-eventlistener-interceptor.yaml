@@ -1,3 +1,4 @@
+---
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
@@ -6,15 +7,15 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: foo-trig
-      interceptor:
-        gitlab:
-          secretRef:
-            secretName: foo
-            secretKey: bar
-            namespace: baz
-          eventTypes:
-          - Push Hook
+      interceptors:
+        - gitlab:
+            secretRef:
+              secretName: foo
+              secretKey: bar
+              namespace: baz
+            eventTypes:
+              - Push Hook
       bindings:
-      - name: pipeline-binding
+        - name: pipeline-binding
       template:
         name: pipeline-template

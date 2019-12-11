@@ -22,11 +22,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/gorilla/mux"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -36,6 +40,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -223,5 +228,131 @@ func TestHandleEvent(t *testing.T) {
 	want := []ktesting.Action{ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))}
 	if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
 		t.Error(diff)
+	}
+}
+
+// sequentialInterceptor is a HTTP server that will return sequential responses.
+type sequentialInterceptor struct {
+	i int32
+}
+
+func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"i": atomic.AddInt32(&f.i, 1),
+	}
+	_ = json.NewEncoder(w).Encode(data)
+}
+
+// TestExecuteInterceptor tests that two interceptors can be called
+// sequentially. It uses a HTTP server that returns a sequential response
+// and two webhook interceptors pointing at the test server, validating
+// that the last response is as expected.
+func TestExecuteInterceptor(t *testing.T) {
+	srv := httptest.NewServer(&sequentialInterceptor{})
+	defer srv.Close()
+	client := srv.Client()
+	// Redirect all requests to the fake server.
+	u, _ := url.Parse(srv.URL)
+	client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+
+	logger, _ := logging.NewLogger("", "")
+	r := Sink{
+		HTTPClient: srv.Client(),
+		Logger:     logger,
+	}
+
+	a := &triggersv1.EventInterceptor{
+		Webhook: &triggersv1.WebhookInterceptor{
+			ObjectRef: &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Service",
+				Name:       "foo",
+			},
+		},
+	}
+	trigger := &triggersv1.EventListenerTrigger{
+		Interceptors: []*triggersv1.EventInterceptor{a, a},
+	}
+
+	resp, err := r.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger)
+	if err != nil {
+		t.Fatalf("executeInterceptors: %v", err)
+	}
+
+	var got map[string]int
+	if err := json.Unmarshal(resp, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	want := map[string]int{"i": 2}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("-want +got: %s", diff)
+	}
+}
+
+// errorInterceptor is a HTTP server that will always return an error response.
+type errorInterceptor struct{}
+
+func (e *errorInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+func TestExecuteInterceptor_error(t *testing.T) {
+	// Route requests to either the error interceptor or sequential interceptor
+	// based on the host.
+	errHost := "error"
+	match := func(r *http.Request, _ *mux.RouteMatch) bool {
+		return strings.Contains(r.Host, errHost)
+	}
+	r := mux.NewRouter()
+	r.MatcherFunc(match).Handler(&errorInterceptor{})
+	si := &sequentialInterceptor{}
+	r.Handle("/", si)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	client := srv.Client()
+	u, _ := url.Parse(srv.URL)
+	// Redirect all requests to the fake server.
+	client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+
+	logger, _ := logging.NewLogger("", "")
+	s := Sink{
+		HTTPClient: client,
+		Logger:     logger,
+	}
+
+	trigger := &triggersv1.EventListenerTrigger{
+		Interceptors: []*triggersv1.EventInterceptor{
+			// Error interceptor needs to come first.
+			{
+				Webhook: &triggersv1.WebhookInterceptor{
+					ObjectRef: &corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       errHost,
+					},
+				},
+			},
+			{
+				Webhook: &triggersv1.WebhookInterceptor{
+					ObjectRef: &corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       "foo",
+					},
+				},
+			},
+		},
+	}
+	if resp, err := s.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger); err == nil {
+		t.Errorf("expected error, got: %+v, %v", string(resp), err)
+	}
+
+	if si.i != 0 {
+		t.Errorf("expected sequential interceptor to not be called, was called %d times", si.i)
 	}
 }

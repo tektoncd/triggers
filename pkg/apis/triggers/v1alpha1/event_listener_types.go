@@ -67,10 +67,12 @@ type EventListenerTrigger struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional
-	// TODO(#249): Allow multiple interceptors
-	Interceptor *EventInterceptor `json:"interceptor,omitempty"`
+	// DEPRECATED. Use Interceptors instead.
+	// TODO(#290): Remove this before 0.3 release.
+	DeprecatedInterceptor *EventInterceptor   `json:"interceptor,omitempty"`
+	Interceptors          []*EventInterceptor `json:"interceptors,omitempty"`
 
-	// TODO(#248): Remove this before 0.3 release
+	// TODO(#248): Remove this before 0.3 release.
 	DeprecatedBinding *EventListenerBinding `json:"binding,omitempty"`
 }
 
