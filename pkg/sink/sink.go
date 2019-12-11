@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/resources"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
-
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
