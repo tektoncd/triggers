@@ -72,7 +72,7 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 		// Optional explicit match
 		if len(t.Template.APIVersion) != 0 {
 			if t.Template.APIVersion != "v1alpha1" {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), fmt.Sprintf("spec.triggers[%d].template.apiVersion", i))
+				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), fmt.Sprintf("spec.triggers[%d].template.apiVersion", i))
 			}
 		}
 		if len(t.Template.Name) == 0 {
@@ -121,13 +121,13 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 		w := i.Webhook
 		if len(w.ObjectRef.Kind) != 0 {
 			if w.ObjectRef.Kind != "Service" {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid kind"), "interceptor.webhook.objectRef.kind")
+				return apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind")
 			}
 		}
 		// Optional explicit match
 		if len(w.ObjectRef.APIVersion) != 0 {
 			if w.ObjectRef.APIVersion != "v1" {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
+				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion")
 			}
 		}
 		if len(w.ObjectRef.Namespace) != 0 {
@@ -142,15 +142,15 @@ func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis
 		for i, header := range w.Header {
 			// Enforce non-empty canonical header keys
 			if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i))
+				return apis.ErrInvalidValue(fmt.Errorf("invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i))
 			}
 			// Enforce non-empty header values
 			if header.Value.Type == pipelinev1.ParamTypeString {
 				if len(header.Value.StringVal) == 0 {
-					return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
+					return apis.ErrInvalidValue(fmt.Errorf("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 				}
 			} else if len(header.Value.ArrayVal) == 0 {
-				return apis.ErrInvalidValue(fmt.Errorf("Invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
+				return apis.ErrInvalidValue(fmt.Errorf("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i))
 			}
 		}
 	}

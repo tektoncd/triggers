@@ -718,18 +718,18 @@ func Test_wrapError(t *testing.T) {
 	}, {
 		name:          "Error one empty",
 		error1:        nil,
-		error2:        fmt.Errorf("Error"),
-		expectedError: fmt.Errorf("Error"),
+		error2:        fmt.Errorf("error"),
+		expectedError: fmt.Errorf("error"),
 	}, {
 		name:          "Error two empty",
-		error1:        fmt.Errorf("Error"),
+		error1:        fmt.Errorf("error"),
 		error2:        nil,
-		expectedError: fmt.Errorf("Error"),
+		expectedError: fmt.Errorf("error"),
 	}, {
 		name:          "Both errors",
-		error1:        fmt.Errorf("Error1"),
-		error2:        fmt.Errorf("Error2"),
-		expectedError: fmt.Errorf("Error1 : Error2"),
+		error1:        fmt.Errorf("error1"),
+		error2:        fmt.Errorf("error2"),
+		expectedError: fmt.Errorf("error1 : error2"),
 	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
