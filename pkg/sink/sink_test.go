@@ -19,7 +19,6 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -35,9 +34,9 @@ import (
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/template"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -50,232 +49,12 @@ const (
 	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
 	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
-	triggerName = "trigger"
-	eventID     = "12345"
+	eventID = "12345"
 )
 
 func init() {
 	// Override UID generator for consistent test results.
 	template.UID = func() string { return eventID }
-}
-
-func Test_findAPIResource_error(t *testing.T) {
-	s := Sink{DiscoveryClient: fakekubeclientset.NewSimpleClientset().Discovery()}
-	if _, err := s.findAPIResource("v1", "Pod"); err == nil {
-		t.Error("findAPIResource() did not return error when expected")
-	}
-}
-
-func addTektonResources(clientset *fakekubeclientset.Clientset) {
-	nameKind := map[string]string{
-		"triggertemplates":  "TriggerTemplate",
-		"pipelineruns":      "PipelineRun",
-		"taskruns":          "TaskRun",
-		"pipelineresources": "PipelineResource",
-	}
-	resources := make([]metav1.APIResource, 0, len(nameKind))
-	for name, kind := range nameKind {
-		resources = append(resources, metav1.APIResource{
-			Group:      "tekton.dev",
-			Version:    "v1alpha1",
-			Namespaced: true,
-			Name:       name,
-			Kind:       kind,
-		})
-	}
-
-	clientset.Resources = append(clientset.Resources, &metav1.APIResourceList{
-		GroupVersion: "tekton.dev/v1alpha1",
-		APIResources: resources,
-	})
-}
-
-func TestFindAPIResource(t *testing.T) {
-	// Create fake kubeclient with list of resources
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	kubeClient.Resources = []*metav1.APIResourceList{{
-		GroupVersion: "v1",
-		APIResources: []metav1.APIResource{{
-			Name:       "pods",
-			Namespaced: true,
-			Kind:       "Pod",
-		}, {
-			Name:       "namespaces",
-			Namespaced: false,
-			Kind:       "Namespace",
-		}},
-	}}
-	addTektonResources(kubeClient)
-	s := Sink{DiscoveryClient: kubeClient.Discovery()}
-
-	tests := []struct {
-		apiVersion string
-		kind       string
-		want       *metav1.APIResource
-	}{{
-		apiVersion: "v1",
-		kind:       "Pod",
-		want: &metav1.APIResource{
-			Name:       "pods",
-			Namespaced: true,
-			Version:    "v1",
-			Kind:       "Pod",
-		},
-	}, {
-		apiVersion: "v1",
-		kind:       "Namespace",
-		want: &metav1.APIResource{
-			Name:       "namespaces",
-			Namespaced: false,
-			Version:    "v1",
-			Kind:       "Namespace",
-		},
-	}, {
-		apiVersion: "tekton.dev/v1alpha1",
-		kind:       "TriggerTemplate",
-		want: &metav1.APIResource{
-			Group:      "tekton.dev",
-			Version:    "v1alpha1",
-			Name:       "triggertemplates",
-			Namespaced: true,
-			Kind:       "TriggerTemplate",
-		},
-	}, {
-		apiVersion: "tekton.dev/v1alpha1",
-		kind:       "PipelineRun",
-		want: &metav1.APIResource{
-			Group:      "tekton.dev",
-			Version:    "v1alpha1",
-			Name:       "pipelineruns",
-			Namespaced: true,
-			Kind:       "PipelineRun",
-		},
-	},
-	}
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s_%s", tt.apiVersion, tt.kind), func(t *testing.T) {
-			got, err := s.findAPIResource(tt.apiVersion, tt.kind)
-			if err != nil {
-				t.Errorf("findAPIResource() returned error: %s", err)
-			} else if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("findAPIResource() Diff: -want +got: %s", diff)
-			}
-		})
-	}
-}
-
-func TestCreateResource(t *testing.T) {
-	elName := "foo-el"
-	elNamespace := "bar"
-
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	addTektonResources(kubeClient)
-
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-
-	logger, _ := logging.NewLogger("", "")
-
-	tests := []struct {
-		name     string
-		resource pipelinev1.PipelineResource
-		want     pipelinev1.PipelineResource
-	}{{
-		name: "PipelineResource without namespace",
-		resource: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "my-pipelineresource",
-				Labels: map[string]string{"woriginal-label-1": "label-1"},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
-		want: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-pipelineresource",
-				Labels: map[string]string{
-					"woriginal-label-1": "label-1",
-					resourceLabel:       elName,
-					triggerLabel:        triggerName,
-					eventIDLabel:        eventID,
-				},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
-	}, {
-		name: "PipelineResource with namespace",
-		resource: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "my-pipelineresource",
-				Labels:    map[string]string{"woriginal-label-1": "label-1"},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
-		want: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "my-pipelineresource",
-				Labels: map[string]string{
-					"woriginal-label-1": "label-1",
-					resourceLabel:       elName,
-					triggerLabel:        triggerName,
-					eventIDLabel:        eventID,
-				},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dynamicClient.ClearActions()
-
-			r := Sink{
-				DynamicClient:          dynamicSet,
-				DiscoveryClient:        kubeClient.Discovery(),
-				EventListenerNamespace: elNamespace,
-				EventListenerName:      elName,
-				Logger:                 logger,
-			}
-
-			b, err := json.Marshal(tt.resource)
-			if err != nil {
-				t.Fatalf("error marshalling resource: %v", tt.resource)
-			}
-			if err := r.createResource(b, triggerName, eventID); err != nil {
-				t.Errorf("createResource() returned error: %s", err)
-			}
-
-			gvr := schema.GroupVersionResource{
-				Group:    "tekton.dev",
-				Version:  "v1alpha1",
-				Resource: "pipelineresources",
-			}
-			namespace := tt.want.Namespace
-			if namespace == "" {
-				namespace = elNamespace
-			}
-			want := []ktesting.Action{ktesting.NewCreateAction(gvr, namespace, toUnstructured(t, tt.want))}
-			if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
-				t.Error(diff)
-			}
-		})
-	}
 }
 
 func TestHandleEvent(t *testing.T) {
@@ -323,7 +102,7 @@ func TestHandleEvent(t *testing.T) {
 		bldr.EventListenerSpec(bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", "v1alpha1")))
 
 	kubeClient := fakekubeclientset.NewSimpleClientset()
-	addTektonResources(kubeClient)
+	test.AddTektonResources(kubeClient)
 
 	triggersClient := faketriggersclientset.NewSimpleClientset()
 	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
@@ -411,70 +190,8 @@ func TestHandleEvent(t *testing.T) {
 		Version:  "v1alpha1",
 		Resource: "pipelineresources",
 	}
-	want := []ktesting.Action{ktesting.NewCreateAction(gvr, "foo", toUnstructured(t, wantResource))}
+	want := []ktesting.Action{ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))}
 	if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func toUnstructured(t *testing.T, in interface{}) *unstructured.Unstructured {
-	t.Helper()
-
-	b, err := json.Marshal(in)
-	if err != nil {
-		t.Fatalf("error encoding to JSON: %v", err)
-	}
-
-	out := new(unstructured.Unstructured)
-	if err := out.UnmarshalJSON(b); err != nil {
-		t.Fatalf("error encoding to unstructured: %v", err)
-	}
-	return out
-}
-
-func Test_addLabels(t *testing.T) {
-	b, err := json.Marshal(map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				// should be overwritten
-				"tekton.dev/a": "0",
-				// should be preserved.
-				"tekton.dev/z":    "0",
-				"best-palindrome": "tacocat",
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
-	}
-
-	raw, err := addLabels(json.RawMessage(b), map[string]string{
-		"a":   "1",
-		"/b":  "2",
-		"//c": "3",
-	})
-	if err != nil {
-		t.Fatalf("addLabels: %v", err)
-	}
-
-	got := make(map[string]interface{})
-	if err := json.Unmarshal(raw, &got); err != nil {
-		t.Fatalf("json.Unmarshal: %v", err)
-	}
-
-	want := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				"tekton.dev/a":    "1",
-				"tekton.dev/b":    "2",
-				"tekton.dev/c":    "3",
-				"tekton.dev/z":    "0",
-				"best-palindrome": "tacocat",
-			},
-		},
-	}
-
-	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error(diff)
 	}
 }
