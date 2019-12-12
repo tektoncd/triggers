@@ -122,7 +122,7 @@ spec:
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from GitHub.
-Supported features include validating webhooks actually came rom GitHub using the logic outlined
+Supported features include validating webhooks actually came from GitHub using the logic outlined
 in GitHub [documentation](https://developer.github.com/webhooks/securing/), as well as
 filtering incoming events.
 
