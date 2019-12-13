@@ -161,7 +161,7 @@ spec:
 
 GitLab interceptors contain logic to validate and filter requests that come from Gitlab.
 Supported features include validating that a webhook actually came from Gitlab, using the logic outlined
-in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html/),
+in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html),
 and to filter incoming events based on the event types.
 Event types can be found in Gitlab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#events).
 

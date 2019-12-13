@@ -59,8 +59,8 @@ To add the Tekton Triggers component to an existing cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
    ```
 
-   _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
-   https://storage.googleapis.com/tekton-releases/triggers/previous/v0.1.0/release.yaml.)_
+   _Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
+   https://storage.googleapis.com/tekton-releases/triggers/previous/v0.1.0/release.yaml_
 
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
