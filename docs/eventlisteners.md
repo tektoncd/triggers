@@ -85,11 +85,12 @@ To be an Event Interceptor, a Kubernetes object should:
 * Accept JSON payloads over HTTP
 * Return a HTTP 200 OK Status if the EventListener should continue processing
   the event
+* Return HTTP headers back. These will be used by the EventListener as the event
+  headers for any further processing. If any of the webhook headers are needed
+  copy those and return them back as headers.
 * Return a JSON body back. This will be used by the EventListener as the event
   payload for any further processing. If the interceptor does not need to modify
   the body, it can simply return the body that it received.
-* Custom HTTP headers returned will be merged with the headers received by the EventListener.
-  Headers that already exist will not be overwritten.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
 ```YAML

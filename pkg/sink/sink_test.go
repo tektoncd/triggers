@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -573,28 +572,5 @@ func Test_addLabels(t *testing.T) {
 
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error(diff)
-	}
-}
-
-func Test_mergeHeader(t *testing.T) {
-	want := http.Header{
-		"Server":           []string{"nginx"},
-		"Content-Type":     []string{"application/json"},
-		"X-Custom-Header1": []string{"fizz"},
-		"X-Custom-Header2": []string{"buzz"},
-	}
-	h1 := http.Header{
-		"Server":           want["Server"],
-		"Content-Type":     want["Content-Type"],
-		"X-Custom-Header1": want["X-Custom-Header1"],
-	}
-	h2 := http.Header{
-		"Server":           []string{"apache"},
-		"Content-Type":     []string{"text/html"},
-		"X-Custom-Header2": want["X-Custom-Header2"],
-	}
-	mergeHeader(h1, h2)
-	if !reflect.DeepEqual(want, h1) {
-		t.Errorf("wanted: %v got: %v", want, h1)
 	}
 }
