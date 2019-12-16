@@ -89,7 +89,16 @@ func textValue(v reflect.Value) ([]byte, error) {
 
 	switch t.Kind() {
 	// evalToText() returns <map> ....; return JSON string instead.
-	case reflect.Map, reflect.Slice:
+	case reflect.String:
+		b, err := json.Marshal(v.Interface())
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal string value %v: %v", v, err)
+		}
+		// A valid json string is surrounded by quotation marks; we are using this function to
+		// create a representation of the json value that can be embedded in a CRD definition and
+		// we want to leave it up to the user if they want the surrounding quotation marks or not.
+		return b[1 : len(b)-1], nil
+	case reflect.Map, reflect.Slice, reflect.Int:
 		return json.Marshal(v.Interface())
 	default:
 		return evalToText(v)

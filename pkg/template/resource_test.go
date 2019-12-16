@@ -25,15 +25,11 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
-
-// Allows us to sort Params by Name
-func compareParam(x, y pipelinev1.Param) bool {
-	return x.Name < y.Name
-}
 
 func Test_MergeInDefaultParams(t *testing.T) {
 	var (
@@ -114,7 +110,7 @@ func Test_MergeInDefaultParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := MergeInDefaultParams(tt.args.params, tt.args.paramSpecs)
-			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(compareParam)); diff != "" {
+			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
 				t.Errorf("MergeInDefaultParams(): -want +got: %s", diff)
 			}
 		})

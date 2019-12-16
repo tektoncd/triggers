@@ -128,10 +128,10 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				result <- http.StatusAccepted
 				return
 			}
-			log.Info("params: %+v", params)
+			log.Infof("params: %+v", params)
 			res := template.ResolveResources(rt.TriggerTemplate, params)
 			if err := r.createResources(res, t.Name, eventID); err != nil {
-				log.Error(err)
+				log.Errorf("Could not create resources for %q: %v", t.Name, err)
 			}
 			result <- http.StatusCreated
 		}(t)

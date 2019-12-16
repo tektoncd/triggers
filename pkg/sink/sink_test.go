@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -56,9 +57,24 @@ func init() {
 	template.UID = func() string { return eventID }
 }
 
+func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return false
+	case <-time.After(timeout):
+		return true
+	}
+}
+
 func TestHandleEvent(t *testing.T) {
 	namespace := "foo"
-	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}}`)
+	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+
 	pipelineResource := pipelinev1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
@@ -75,6 +91,7 @@ func TestHandleEvent(t *testing.T) {
 				{Name: "url", Value: "$(params.url)"},
 				{Name: "revision", Value: "$(params.revision)"},
 				{Name: "contenttype", Value: "$(params.contenttype)"},
+				{Name: "foo", Value: "$(params.foo)"},
 			},
 		},
 	}
@@ -89,6 +106,7 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("revision", "", ""),
 			bldr.TriggerTemplateParam("appLabel", "", "foo"),
 			bldr.TriggerTemplateParam("contenttype", "", ""),
+			bldr.TriggerTemplateParam("foo", "", ""),
 			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
 		))
 	tb := bldr.TriggerBinding("my-triggerbinding", namespace,
@@ -96,6 +114,7 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerBindingParam("url", "$(body.repository.url)"),
 			bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
 			bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
+			bldr.TriggerBindingParam("foo", "$(body.foo)"),
 		))
 	el := bldr.EventListener("my-eventlistener", namespace,
 		bldr.EventListenerSpec(bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", "v1alpha1")))
@@ -166,7 +185,11 @@ func TestHandleEvent(t *testing.T) {
 		t.Errorf("did not get expected response back -want,+got: %s", diff)
 	}
 
-	wg.Wait()
+	// We expect that the EventListener will be able to immediately handle the event so we
+	// can use a very short timeout
+	if waitTimeout(&wg, time.Second) {
+		t.Fatalf("timed out waiting for reactor to fire")
+	}
 	wantResource := pipelinev1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
@@ -188,6 +211,7 @@ func TestHandleEvent(t *testing.T) {
 				{Name: "url", Value: "testurl"},
 				{Name: "revision", Value: "testrevision"},
 				{Name: "contenttype", Value: "application/json"},
+				{Name: "foo", Value: "bar\t\r\nbaz昨"},
 			},
 		},
 	}
