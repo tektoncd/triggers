@@ -21,13 +21,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// TODO(#252): Split NewResourcesTests into separate tests for ResolveParams and ResolveResources
+// TODO(#252): Split testcases from NewResourcesTests into TestResolveParams and TestResolveResources
 func Test_NewResources(t *testing.T) {
 	type args struct {
 		body    []byte
@@ -310,6 +312,56 @@ func Test_NewResources(t *testing.T) {
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				stringDiff := cmp.Diff(convertJSONRawMessagesToString(tt.want), convertJSONRawMessagesToString(got))
 				t.Errorf("ResolveResources(): -want +got: %s", stringDiff)
+			}
+		})
+	}
+}
+
+func TestResolveParams(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     []byte
+		params   []pipelinev1.ParamSpec
+		bindings []*triggersv1.TriggerBinding
+		want     []pipelinev1.Param
+	}{{
+		name: "values with newlines",
+		body: json.RawMessage(`{"foo": "bar\r\nbaz"}`),
+		params: []pipelinev1.ParamSpec{{
+			Name: "param1",
+		}, {
+			Name: "param2",
+		}},
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("tb", "namespace",
+				bldr.TriggerBindingSpec(
+					bldr.TriggerBindingParam("param1", "qux"),
+					bldr.TriggerBindingParam("param2", "$(body.foo)"),
+				),
+			),
+		},
+		want: []pipelinev1.Param{{
+			Name: "param1",
+			Value: pipelinev1.ArrayOrString{
+				StringVal: "qux",
+				Type:      pipelinev1.ParamTypeString,
+			},
+		}, {
+			Name: "param2",
+			Value: pipelinev1.ArrayOrString{
+				StringVal: "bar\\r\\nbaz",
+				Type:      pipelinev1.ParamTypeString,
+			},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, err := ResolveParams(tt.bindings, tt.body, map[string][]string{}, tt.params)
+			if err != nil {
+				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
+			}
+			if diff := cmp.Diff(tt.want, params, cmpopts.SortSlices(test.CompareParams)); diff != "" {
+				t.Errorf("didn't get expected params -want + got: %s", diff)
 			}
 		})
 	}

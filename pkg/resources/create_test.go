@@ -140,22 +140,12 @@ func TestCreateResource(t *testing.T) {
 	logger, _ := logging.NewLogger("", "")
 
 	tests := []struct {
-		name     string
-		resource pipelinev1.PipelineResource
-		want     pipelinev1.PipelineResource
+		name string
+		json []byte
+		want pipelinev1.PipelineResource
 	}{{
 		name: "PipelineResource without namespace",
-		resource: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "my-pipelineresource",
-				Labels: map[string]string{"woriginal-label-1": "label-1"},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
+		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":[{"name":"foo","value":"bar\r\nbaz"}]},"status":{}}`),
 		want: pipelinev1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1alpha1",
@@ -170,22 +160,16 @@ func TestCreateResource(t *testing.T) {
 					eventIDLabel:        eventID,
 				},
 			},
-			Spec: pipelinev1.PipelineResourceSpec{},
+			Spec: pipelinev1.PipelineResourceSpec{
+				Params: []pipelinev1.ResourceParam{{
+					Name:  "foo",
+					Value: "bar\r\nbaz",
+				}},
+			},
 		},
 	}, {
 		name: "PipelineResource with namespace",
-		resource: pipelinev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "my-pipelineresource",
-				Labels:    map[string]string{"woriginal-label-1": "label-1"},
-			},
-			Spec: pipelinev1.PipelineResourceSpec{},
-		},
+		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","namespace":"foo","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":null},"status":{}}`),
 		want: pipelinev1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1alpha1",
@@ -207,12 +191,7 @@ func TestCreateResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dynamicClient.ClearActions()
-
-			b, err := json.Marshal(tt.resource)
-			if err != nil {
-				t.Fatalf("error marshalling resource: %v", tt.resource)
-			}
-			if err := Create(logger, b, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicSet); err != nil {
+			if err := Create(logger, tt.json, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicSet); err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
 

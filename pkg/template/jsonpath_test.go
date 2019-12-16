@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-var objects = `{"a":"v","c":{"d":"e"},"empty": "","null": null, "number": 42}`
+var objects = `{"a":"v\r\n烈","c":{"d":"e"},"empty": "","null": null, "number": 42}`
 var arrays = `[{"a": "b"}, {"c": "d"}, {"e": "f"}]`
 
 // Checks that we print JSON strings when the JSONPath selects
@@ -41,12 +41,7 @@ func TestParseJSONPath(t *testing.T) {
 		name: "string values",
 		in:   objectBody,
 		expr: "$(body.a)",
-		want: "v",
-	}, {
-		name: "string values",
-		in:   objectBody,
-		expr: "$(body.a)",
-		want: "v",
+		want: "v\\r\\n烈",
 	}, {
 		name: "empty string",
 		in:   objectBody,

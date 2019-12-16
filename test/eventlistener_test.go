@@ -22,10 +22,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +48,18 @@ const (
 	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
 	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
 	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
+
+	examplePRJsonFilename = "pr.json"
 )
+
+func loadExamplePREventBytes() ([]byte, error) {
+	path := filepath.Join("testdata", examplePRJsonFilename)
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't load testdata example PullRequest event data: %v", err)
+	}
+	return bytes, nil
+}
 
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
@@ -96,8 +108,9 @@ func TestEventListenerCreate(t *testing.T) {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
 			Params: []v1alpha1.ResourceParam{
-				{Name: "body", Value: "$(params.body)"},
+				{Name: "license", Value: "$(params.license)"},
 				{Name: "header", Value: "$(params.header)"},
+				{Name: "prmessage", Value: "$(params.prmessage)"},
 			},
 		},
 	}
@@ -114,8 +127,9 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.TriggerTemplateParam("oneparam", "", ""),
 				bldr.TriggerTemplateParam("twoparamname", "", ""),
 				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
-				bldr.TriggerTemplateParam("body", "", ""),
+				bldr.TriggerTemplateParam("license", "", ""),
 				bldr.TriggerTemplateParam("header", "", ""),
+				bldr.TriggerTemplateParam("prmessage", "", ""),
 				bldr.TriggerResourceTemplate(pr1Bytes),
 				bldr.TriggerResourceTemplate(pr2Bytes),
 			),
@@ -129,10 +143,11 @@ func TestEventListenerCreate(t *testing.T) {
 	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
 		bldr.TriggerBinding("my-triggerbinding", "",
 			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("oneparam", "$(body.one)"),
-				bldr.TriggerBindingParam("twoparamname", "$(body.two.name)"),
-				bldr.TriggerBindingParam("body", "$(body)"),
+				bldr.TriggerBindingParam("oneparam", "$(body.action)"),
+				bldr.TriggerBindingParam("twoparamname", "$(body.pull_request.state)"),
+				bldr.TriggerBindingParam("license", "$(body.repository.license)"),
 				bldr.TriggerBindingParam("header", "$(header)"),
+				bldr.TriggerBindingParam("prmessage", "$(body.pull_request.body)"),
 			),
 		),
 	)
@@ -210,6 +225,12 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 	t.Log("EventListener is ready")
 
+	// Load the example pull request event data
+	eventBodyJSON, err := loadExamplePREventBytes()
+	if err != nil {
+		t.Fatalf("Couldn't load test data: %v", err)
+	}
+
 	// Event body & Expected ResourceTemplates after instantiation
 	wantPr1 := v1alpha1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
@@ -222,7 +243,7 @@ func TestEventListenerCreate(t *testing.T) {
 			Labels: map[string]string{
 				resourceLabel: "my-eventlistener",
 				triggerLabel:  el.Spec.Triggers[0].Name,
-				"zonevalue":   "zonevalue",
+				"edited":      "edited",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -240,14 +261,15 @@ func TestEventListenerCreate(t *testing.T) {
 			Labels: map[string]string{
 				resourceLabel: "my-eventlistener",
 				triggerLabel:  el.Spec.Triggers[0].Name,
-				"zfoo":        "defaultvalue",
+				"open":        "defaultvalue",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
 			Params: []v1alpha1.ResourceParam{
-				{Name: "body", Value: strings.Replace(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`, " ", "", -1)},
-				{Name: "header", Value: `{"Accept-Encoding":"gzip","Content-Length":"61","Content-Type":"application/json","User-Agent":"Go-http-client/1.1"}`},
+				{Name: "license", Value: `{"key":"apache-2.0","name":"Apache License 2.0","spdx_id":"Apache-2.0","url":"https://api.github.com/licenses/apache-2.0","node_id":"MDc6TGljZW5zZTI="}`},
+				{Name: "header", Value: `{"Accept-Encoding":"gzip","Content-Length":"2154","Content-Type":"application/json","User-Agent":"Go-http-client/1.1"}`},
+				{Name: "prmessage", Value: "Git admission control\r\n\r\nNow with new lines!\r\n\r\n# :sunglasses: \r\n\r\naw yis"},
 			},
 		},
 	}
@@ -279,7 +301,6 @@ func TestEventListenerCreate(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Send POST request to EventListener sink
-	eventBodyJSON := []byte(`{"one": "zonevalue", "two": {"name": "zfoo", "value": "bar"}}`)
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request: %s", err)
@@ -314,18 +335,18 @@ func TestEventListenerCreate(t *testing.T) {
 		}
 		gotPr, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
+			t.Errorf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
 		}
 		if gotPr.Labels[eventIDLabel] == "" {
-			t.Fatalf("Instantiated ResourceTemplate missing EventId")
+			t.Errorf("Instantiated ResourceTemplate missing EventId")
 		} else {
 			delete(gotPr.Labels, eventIDLabel)
 		}
 		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
-			t.Fatalf("Diff instantiated ResourceTemplate labels %s: -want +got: %s", wantPr.Name, diff)
+			t.Errorf("Diff instantiated ResourceTemplate labels %s: -want +got: %s", wantPr.Name, diff)
 		}
-		if diff := cmp.Diff(wantPr.Spec, gotPr.Spec); diff != "" {
-			t.Fatalf("Diff instantiated ResourceTemplate spec %s: -want +got: %s", wantPr.Name, diff)
+		if diff := cmp.Diff(wantPr.Spec, gotPr.Spec, cmp.Comparer(compareParamsWithLicenseJSON)); diff != "" {
+			t.Errorf("Diff instantiated ResourceTemplate spec %s: -want +got: %s", wantPr.Name, diff)
 		}
 	}
 
@@ -347,4 +368,41 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Failed to delete EventListener Service: %s", err)
 	}
 	t.Log("EventListener's Service was deleted")
+}
+
+// The structure of this field corresponds to values for the `license` key in
+// testdata/pr.json, and can be used to unmarshal the dat.
+type license struct {
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	SpdxID string `json:"spdx_id"`
+	URL    string `json:"url"`
+	NodeID string `json:"node_id"`
+}
+
+// compareParamsWithLicenseJSON will compare the passed in ResourceParams by further checking
+// when the values aren't equal if they can be unmarshalled into the license object and if they are
+// then equal. This is because the order of values in a dictionary is not deterministic and dictionary
+// values passed through an event listener may change order.
+func compareParamsWithLicenseJSON(x, y v1alpha1.ResourceParam) bool {
+	xData := license{}
+	yData := license{}
+	if x.Name == y.Name {
+		if x.Value != y.Value {
+			// In order to compare these values, we are first unmarshalling them into the expected
+			// structures because differences in the dictionary order of keys can cause
+			// a string comparison to fail.
+			if err := json.Unmarshal([]byte(x.Value), &xData); err != nil {
+				return false
+			}
+			if err := json.Unmarshal([]byte(y.Value), &yData); err != nil {
+				return false
+			}
+			if diff := cmp.Diff(xData, yData); diff != "" {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
