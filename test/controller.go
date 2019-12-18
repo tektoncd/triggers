@@ -24,6 +24,8 @@ import (
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
+	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding/fake"
+	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
@@ -42,11 +44,13 @@ import (
 // Resources represents the desired state of the system (i.e. existing resources)
 // to seed controllers with.
 type Resources struct {
-	Namespaces     []*corev1.Namespace
-	EventListeners []*v1alpha1.EventListener
-	Deployments    []*appsv1.Deployment
-	Services       []*corev1.Service
-	ConfigMaps     []*corev1.ConfigMap
+	Namespaces       []*corev1.Namespace
+	EventListeners   []*v1alpha1.EventListener
+	TriggerBindings  []*v1alpha1.TriggerBinding
+	TriggerTemplates []*v1alpha1.TriggerTemplate
+	Deployments      []*appsv1.Deployment
+	Services         []*corev1.Service
+	ConfigMaps       []*corev1.ConfigMap
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -73,6 +77,8 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	}
 	// Setup fake informer for reconciler tests
 	elInformer := fakeeventlistenerinformer.Get(ctx)
+	ttInformer := faketriggertemplateinformer.Get(ctx)
+	tbInformer := faketriggerbindinginformer.Get(ctx)
 	deployInformer := fakedeployinformer.Get(ctx)
 	serviceInformer := fakeserviceinformer.Get(ctx)
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
@@ -89,6 +95,22 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Triggers.TektonV1alpha1().EventListeners(el.Namespace).Create(el); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tb := range r.TriggerBindings {
+		if err := tbInformer.Informer().GetIndexer().Add(tb); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Triggers.TektonV1alpha1().TriggerBindings(tb.Namespace).Create(tb); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tt := range r.TriggerTemplates {
+		if err := ttInformer.Informer().GetIndexer().Add(tt); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Triggers.TektonV1alpha1().TriggerTemplates(tt.Namespace).Create(tt); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -144,6 +166,22 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		}
 		for _, el := range elList.Items {
 			testResources.EventListeners = append(testResources.EventListeners, el.DeepCopy())
+		}
+		// Add TriggerBindings
+		tbList, err := c.Triggers.TektonV1alpha1().TriggerBindings(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, tb := range tbList.Items {
+			testResources.TriggerBindings = append(testResources.TriggerBindings, tb.DeepCopy())
+		}
+		// Add TriggerTemplates
+		ttList, err := c.Triggers.TektonV1alpha1().TriggerTemplates(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, tt := range ttList.Items {
+			testResources.TriggerTemplates = append(testResources.TriggerTemplates, tt.DeepCopy())
 		}
 		// Add Deployments
 		dList, err := c.Kube.AppsV1().Deployments(ns.Name).List(metav1.ListOptions{})

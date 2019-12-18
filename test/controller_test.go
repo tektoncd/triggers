@@ -50,6 +50,30 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Name:      "my-eventlistener2",
 		},
 	}
+	triggerBinding1 := &v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerBinding1",
+		},
+	}
+	triggerBinding2 := &v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerBinding2",
+		},
+	}
+	triggerTemplate1 := &v1alpha1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerTemplate1",
+		},
+	}
+	triggerTemplate2 := &v1alpha1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerTemplate2",
+		},
+	}
 	deployment1 := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -92,19 +116,23 @@ func TestGetResourcesFromClients(t *testing.T) {
 		{
 			name: "one resource each",
 			Resources: Resources{
-				Namespaces:     []*corev1.Namespace{nsFoo},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				Namespaces:       []*corev1.Namespace{nsFoo},
+				EventListeners:   []*v1alpha1.EventListener{eventListener1},
+				TriggerBindings:  []*v1alpha1.TriggerBinding{triggerBinding1},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1},
+				Deployments:      []*appsv1.Deployment{deployment1},
+				Services:         []*corev1.Service{service1},
 			},
 		},
 		{
 			name: "two resources each",
 			Resources: Resources{
-				Namespaces:     []*corev1.Namespace{nsFoo, nsTektonPipelines},
-				EventListeners: []*v1alpha1.EventListener{eventListener1, eventListener2},
-				Deployments:    []*appsv1.Deployment{deployment1, deployment2},
-				Services:       []*corev1.Service{service1, service2},
+				Namespaces:       []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				EventListeners:   []*v1alpha1.EventListener{eventListener1, eventListener2},
+				TriggerBindings:  []*v1alpha1.TriggerBinding{triggerBinding1, triggerBinding2},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1, triggerTemplate2},
+				Deployments:      []*appsv1.Deployment{deployment1, deployment2},
+				Services:         []*corev1.Service{service1, service2},
 			},
 		},
 		{
@@ -118,6 +146,20 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Resources: Resources{
 				Namespaces:     []*corev1.Namespace{nsFoo, nsTektonPipelines},
 				EventListeners: []*v1alpha1.EventListener{eventListener1, eventListener2},
+			},
+		},
+		{
+			name: "only triggerBindings (and namespaces)",
+			Resources: Resources{
+				Namespaces:      []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				TriggerBindings: []*v1alpha1.TriggerBinding{triggerBinding1, triggerBinding2},
+			},
+		},
+		{
+			name: "only triggerTemplates (and namespaces)",
+			Resources: Resources{
+				Namespaces:       []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1, triggerTemplate2},
 			},
 		},
 		{
