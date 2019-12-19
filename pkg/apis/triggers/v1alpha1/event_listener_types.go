@@ -77,7 +77,7 @@ type EventListenerTrigger struct {
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor struct {
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
-	Github  *GithubInterceptor  `json:"github,omitempty"`
+	GitHub  *GitHubInterceptor  `json:"github,omitempty"`
 	GitLab  *GitLabInterceptor  `json:"gitlab,omitempty"`
 }
 
@@ -93,8 +93,8 @@ type WebhookInterceptor struct {
 	Header []pipelinev1.Param `json:"header,omitempty"`
 }
 
-// GithubInterceptor provides a webhook to intercept and pre-process events
-type GithubInterceptor struct {
+// GitHubInterceptor provides a webhook to intercept and pre-process events
+type GitHubInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
 }

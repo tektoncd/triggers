@@ -131,7 +131,7 @@ and configure the GitHub webhook to use that secret value.
 Create a Kubernetes secret containing this value, and pass that as a reference to the `github` interceptor.
 
 To use this interceptor as a filter, add the event types you would like to accept to the `eventTypes` field.
-Valid values can be found in Github [docs](https://developer.github.com/webhooks/#events).
+Valid values can be found in GitHub [docs](https://developer.github.com/webhooks/#events).
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
 ```YAML
