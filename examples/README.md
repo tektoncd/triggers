@@ -2,15 +2,17 @@
 
 ## Note that this example uses Tekton Pipeline resources, so make sure you've [installed](https://github.com/tektoncd/pipeline/blob/master/docs/install.md) that first!
 
-In this example you will use Triggers to create a PipelineRun and PipelineResource that simply clones a GitHub repository and prints a couple of messages.
+In this example you will use Triggers to create a PipelineRun and
+PipelineResource that simply clones a GitHub repository and prints a couple of
+messages.
 
 1. Create the resources for the example
 
 ```yaml
-kubectl apply -f role-resources
-kubectl apply -f triggertemplates/triggertemplate.yaml
-kubectl apply -f triggerbindings/triggerbinding.yaml
-kubectl apply -f eventlisteners/eventlistener.yaml
+kubectl apply -f role-resources kubectl apply -f
+triggertemplates/triggertemplate.yaml kubectl apply -f
+triggerbindings/triggerbinding.yaml kubectl apply -f
+eventlisteners/eventlistener.yaml
 ```
 
 2. Check required pods and services are available and healthy
@@ -35,17 +37,23 @@ tekton-triggers-controller-594d4fcfdf-l4c9m    1/1       Running   0          6m
 tekton-triggers-webhook-5985cfcfc5-cq5hp       1/1       Running   0          6m50s
 ```
 
-3. Apply an example pipeline and tasks that will be run (in this case named `simple-pipeline`):
+3. Apply an example pipeline and tasks that will be run (in this case named
+   `simple-pipeline`):
 
 ```bash
 kubectl apply -f example-pipeline.yaml
 ```
 
-This is intentionally very simple and operates on a created Git resource. The trigger created Git resource will have the repository URL and revision parameters.
+This is intentionally very simple and operates on a created Git resource. The
+trigger created Git resource will have the repository URL and revision
+parameters.
 
 4. Send a payload to the listener
 
-Assuming we have a listener available at `localhost:8080` (and port-forwarded for this example, with `kubectl port-forward $(kubectl get pod -o=name -l eventlistener=listener) 8080`), run the following command in your shell of choice or using Postman:
+Assuming we have a listener available at `localhost:8080` (and port-forwarded
+for this example, with
+`kubectl port-forward $(kubectl get pod -o=name -l eventlistener=listener) 8080`),
+run the following command in your shell of choice or using Postman:
 
 ```bash
 curl -X POST \
@@ -87,7 +95,8 @@ simple-pipeline-runnd654-say-hello-djs4v-pod-64cfef   0/2       Init:0/2   0    
 
 # What just happened?
 
-1. A `PipelineResource` was created for us: notice the parameters matching with our POST data.
+1. A `PipelineResource` was created for us: notice the parameters matching with
+   our POST data.
 
 ```
 tekton:examples user$ kubectl get pipelineresource git-source-g8j7r  -o yaml
@@ -108,7 +117,8 @@ spec:
   type: git
 ```
 
-2. A `PipelineRun` was created using this resource and the specified Tekton Pipeline:
+2. A `PipelineRun` was created using this resource and the specified Tekton
+   Pipeline:
 
 ```
 spec:
@@ -135,7 +145,8 @@ status:
   ...
 ```
 
-3. The three Pods (one per Task) finish their work and the PipelineRun is marked as successful:
+3. The three Pods (one per Task) finish their work and the PipelineRun is marked
+   as successful:
 
 ```
 tekton:examples user$ kubectl logs simple-pipeline-runn4qps-say-hello-29ztk-pod-118fbd --all-containers
@@ -169,4 +180,5 @@ kubectl delete all -l generatedBy=triggers-example
 
 # Conclusion
 
-We hope you've found this example useful, please do get involved and contribute more useful examples!
+We hope you've found this example useful, please do get involved and contribute
+more useful examples!
