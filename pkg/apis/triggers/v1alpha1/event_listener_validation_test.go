@@ -230,7 +230,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptor: &v1alpha1.EventInterceptor{
-						Github: &v1alpha1.GithubInterceptor{},
+						GitHub: &v1alpha1.GitHubInterceptor{},
 						GitLab: &v1alpha1.GitLabInterceptor{},
 					},
 				}},

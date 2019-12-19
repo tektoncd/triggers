@@ -21,17 +21,14 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
-	"github.com/tektoncd/triggers/pkg/resources"
-
-	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
-
-	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,8 +93,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 			switch {
 			case t.Interceptor.Webhook != nil:
 				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
-			case t.Interceptor.Github != nil:
-				interceptor = github.NewInterceptor(t.Interceptor.Github, r.KubeClientSet, r.EventListenerNamespace, log)
+			case t.Interceptor.GitHub != nil:
+				interceptor = github.NewInterceptor(t.Interceptor.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
 			case t.Interceptor.GitLab != nil:
 				interceptor = gitlab.NewInterceptor(t.Interceptor.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
 			}
