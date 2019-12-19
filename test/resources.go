@@ -41,7 +41,7 @@ func ToUnstructured(t *testing.T, in interface{}) *unstructured.Unstructured {
 	return out
 }
 
-// AddTektonResources will update clientset to konw it knows about the types it is
+// AddTektonResources will update clientset to know it knows about the types it is
 // expected to be able to interact with.
 func AddTektonResources(clientset *fakekubeclientset.Clientset) {
 	nameKind := map[string]string{

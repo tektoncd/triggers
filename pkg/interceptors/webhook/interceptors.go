@@ -31,7 +31,7 @@ import (
 
 // GetURI retrieves the ObjectReference to URI.
 func GetURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
-	// TODO: This should work for any Adressable.
+	// TODO: This should work for any Addressable.
 	// Use something like https://github.com/knative/eventing-contrib/blob/7c0fc5cfa8bd44da0767d9e7b250264ea6eb7d8d/pkg/controller/sinks/sinks.go#L32
 	if objRef.Kind == "Service" && objRef.APIVersion == "v1" {
 		// TODO: Also assuming port 80 and http here. Use DNS/or the env vars?
