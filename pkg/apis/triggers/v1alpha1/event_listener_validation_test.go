@@ -231,7 +231,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptor: &v1alpha1.EventInterceptor{
 						Github: &v1alpha1.GithubInterceptor{},
-						Gitlab: &v1alpha1.GitlabInterceptor{},
+						GitLab: &v1alpha1.GitLabInterceptor{},
 					},
 				}},
 			},
