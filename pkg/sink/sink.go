@@ -98,8 +98,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				interceptor = webhook.NewInterceptor(t.Interceptor.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
 			case t.Interceptor.Github != nil:
 				interceptor = github.NewInterceptor(t.Interceptor.Github, r.KubeClientSet, r.EventListenerNamespace, log)
-			case t.Interceptor.Gitlab != nil:
-				interceptor = gitlab.NewInterceptor(t.Interceptor.Gitlab, r.KubeClientSet, r.EventListenerNamespace, log)
+			case t.Interceptor.GitLab != nil:
+				interceptor = gitlab.NewInterceptor(t.Interceptor.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
 			}
 		}
 		go func(t triggersv1.EventListenerTrigger) {
