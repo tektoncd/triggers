@@ -18,7 +18,7 @@ kubectl apply -f eventlisteners/eventlistener.yaml
 ```bash
 tekton:examples user$ kubectl get svc
 NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
-listener                      ClusterIP      10.100.151.220   <none>        8080/TCP         48s  <--- this will receive the event
+el-listener                      ClusterIP      10.100.151.220   <none>        8080/TCP         48s  <--- this will receive the event
 tekton-pipelines-controller   ClusterIP      10.103.144.96    <none>        9090/TCP         8m34s
 tekton-pipelines-webhook      ClusterIP      10.96.198.4      <none>        443/TCP          8m34s
 tekton-triggers-controller    ClusterIP      10.102.221.96    <none>        9090/TCP         7m56s
@@ -28,7 +28,7 @@ tekton-triggers-webhook       ClusterIP      10.99.59.231     <none>        443/
 ```bash
 tekton:examples user$ kubectl get pods
 NAME                                           READY     STATUS    RESTARTS   AGE
-listener-5c744f47c5-m9kdn                      1/1       Running   0          78s
+el-listener-5c744f47c5-m9kdn                      1/1       Running   0          78s
 tekton-pipelines-controller-55c6b5b9f6-qsdnn   1/1       Running   0          9m4s
 tekton-pipelines-webhook-6794d5bcc8-p4p8c      1/1       Running   0          9m4s
 tekton-triggers-controller-594d4fcfdf-l4c9m    1/1       Running   0          6m57s
