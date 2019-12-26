@@ -6,7 +6,7 @@ In this example you will use Triggers to create a PipelineRun and PipelineResour
 
 1. Create the resources for the example
 
-```yaml
+```sh
 kubectl apply -f role-resources
 kubectl apply -f triggertemplates/triggertemplate.yaml
 kubectl apply -f triggerbindings/triggerbinding.yaml
@@ -163,7 +163,7 @@ simple-pipeline-runn4qps   True        Succeeded   5m          4m
 
 # Cleaning up
 
-```yaml
+```sh
 kubectl delete all -l generatedBy=triggers-example
 ```
 
