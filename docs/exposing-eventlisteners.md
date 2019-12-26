@@ -20,12 +20,12 @@ The following instructions have been tested on GKE cluster running version `1.13
 Instructions for installing nginx Ingress on other Kubernetes services can be found [here](https://kubernetes.github.io/ingress-nginx/deploy/).
 
 1. First, install Nginx ingress controller:
-    ```yaml
+    ```sh
       kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml
       kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/cloud-generic.yaml
     ```
 1. Find the service name expose by the GitHub service:
-    ```yaml
+    ```sh
      kubectl get el -o=jsonpath='{.status.configuration.generatedName} <EVENTLISTENR_NAME> '
     ```
 1. Create the Ingress resource. A sample Ingress is below. Check the docs [here](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/)
