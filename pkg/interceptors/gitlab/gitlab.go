@@ -47,21 +47,22 @@ func NewInterceptor(gl *triggersv1.GitlabInterceptor, k kubernetes.Interface, ns
 }
 
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, http.Header, error) {
+	responseHeader := make(http.Header)
 	// Validate the secret first, if set.
 	if w.Gitlab.SecretRef != nil {
 		header := request.Header.Get("X-Gitlab-Token")
 		if header == "" {
-			return nil, nil, errors.New("no X-Gitlab-Token header set")
+			return nil, responseHeader, errors.New("no X-Gitlab-Token header set")
 		}
 
 		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Gitlab.SecretRef, w.EventListenerNamespace)
 		if err != nil {
-			return nil, nil, err
+			return nil, responseHeader, err
 		}
 
 		// Make sure to use a constant time comparison here.
 		if subtle.ConstantTimeCompare([]byte(header), secretToken) == 0 {
-			return nil, nil, errors.New("Invalid X-Gitlab-Token")
+			return nil, responseHeader, errors.New("Invalid X-Gitlab-Token")
 		}
 	}
 	if w.Gitlab.EventTypes != nil {
@@ -74,9 +75,9 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 			}
 		}
 		if !isAllowed {
-			return nil, nil, fmt.Errorf("event type %s is not allowed", actualEvent)
+			return nil, responseHeader, fmt.Errorf("event type %s is not allowed", actualEvent)
 		}
 	}
 
-	return payload, nil, nil
+	return payload, responseHeader, nil
 }

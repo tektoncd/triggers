@@ -108,9 +108,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 					result <- http.StatusAccepted
 					return
 				}
-				if header != nil {
-					request.Header = header
-				}
+				request.Header = header
 				finalPayload = payload
 			}
 			rt, err := template.ResolveTrigger(t,
