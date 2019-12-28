@@ -51,14 +51,15 @@ func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string
 }
 
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, trigger *triggersv1.EventListenerTrigger, eventID string) ([]byte, http.Header, error) {
+	responseHeader := make(http.Header)
 	interceptorURL, err := GetURI(w.Webhook.ObjectRef, w.EventListenerNamespace) // TODO: Cache this result or do this on initialization
 	if err != nil {
-		return nil, nil, err
+		return nil, responseHeader, err
 	}
 
 	modifiedPayload, responseHeader, err := w.processEvent(interceptorURL, request, payload, w.Webhook.Header, interceptorTimeout)
 	if err != nil {
-		return nil, nil, err
+		return nil, responseHeader, err
 	}
 	return modifiedPayload, responseHeader, nil
 }
@@ -70,7 +71,7 @@ func (w *Interceptor) processEvent(interceptorURL *url.URL, request *http.Reques
 	addInterceptorHeaders(outgoing.Header, headerParams)
 	respPayload, respHeader, err := makeRequest(w.HTTPClient, outgoing)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("Not OK response from Event Processor: %w", err)
+		return nil, respHeader, xerrors.Errorf("Not OK response from Event Processor: %w", err)
 	}
 	return respPayload, respHeader, nil
 }
