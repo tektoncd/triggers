@@ -52,7 +52,7 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 	if w.GitLab.SecretRef != nil {
 		header := request.Header.Get("X-GitLab-Token")
 		if header == "" {
-			return nil, responseHeader, errors.New("no X-Gitlab-Token header set")
+			return nil, responseHeader, errors.New("no X-GitLab-Token header set")
 		}
 
 		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.GitLab.SecretRef, w.EventListenerNamespace)
@@ -62,7 +62,7 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 
 		// Make sure to use a constant time comparison here.
 		if subtle.ConstantTimeCompare([]byte(header), secretToken) == 0 {
-			return nil, responseHeader, errors.New("Invalid X-Gitlab-Token")
+			return nil, responseHeader, errors.New("Invalid X-GitLab-Token")
 		}
 	}
 	if w.GitLab.EventTypes != nil {
