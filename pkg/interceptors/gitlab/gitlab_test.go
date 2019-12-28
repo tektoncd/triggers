@@ -28,7 +28,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -41,14 +41,14 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		Gitlab  *triggersv1.GitlabInterceptor
+		GitLab  *triggersv1.GitLabInterceptor
 		args    args
 		want    []byte
 		wantErr bool
 	}{
 		{
 			name:   "no secret",
-			Gitlab: &triggersv1.GitlabInterceptor{},
+			GitLab: &triggersv1.GitLabInterceptor{},
 			args: args{
 				payload: []byte("somepayload"),
 				token:   "foo",
@@ -58,7 +58,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "invalid header for secret",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -80,7 +80,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "valid header for secret",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -103,7 +103,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "valid event",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				EventTypes: []string{"foo", "bar"},
 			},
 			args: args{
@@ -115,7 +115,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "invalid event",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				EventTypes: []string{"foo", "bar"},
 			},
 			args: args{
@@ -126,7 +126,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "valid event, invalid secret",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				EventTypes: []string{"foo", "bar"},
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
@@ -150,7 +150,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "invalid event, valid secret",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				EventTypes: []string{"foo", "bar"},
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
@@ -174,7 +174,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name: "valid event, valid secret",
-			Gitlab: &triggersv1.GitlabInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{
 				EventTypes: []string{"foo", "bar"},
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
@@ -209,13 +209,13 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				},
 			}
 			if tt.args.token != "" {
-				request.Header.Add("X-Gitlab-Token", tt.args.token)
+				request.Header.Add("X-GitLab-Token", tt.args.token)
 			}
 			if tt.args.eventType != "" {
-				request.Header.Add("X-Gitlab-Event", tt.args.eventType)
+				request.Header.Add("X-GitLab-Event", tt.args.eventType)
 			}
 			if tt.args.secret != nil {
-				ns := tt.Gitlab.SecretRef.Namespace
+				ns := tt.GitLab.SecretRef.Namespace
 				if ns == "" {
 					ns = metav1.NamespaceDefault
 				}
@@ -225,7 +225,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			}
 			w := &Interceptor{
 				KubeClientSet: kubeClient,
-				Gitlab:        tt.Gitlab,
+				GitLab:        tt.GitLab,
 				Logger:        logger,
 			}
 			got, _, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")

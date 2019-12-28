@@ -20,10 +20,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -42,14 +42,14 @@ type ResolvedTrigger struct {
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
 
-// ResolveBindings takes in a trigger containing object refs to bindings and
+// ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
 func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
 	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
 	for _, b := range trigger.Bindings {
 		tb2, err := getTB(b.Name, metav1.GetOptions{})
 		if err != nil {
-			return ResolvedTrigger{}, xerrors.Errorf("error getting TriggerBinding %s: %s", b.Name, err)
+			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
 		}
 		tb = append(tb, tb2)
 	}
@@ -57,7 +57,7 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	ttName := trigger.Template.Name
 	tt, err := getTT(ttName, metav1.GetOptions{})
 	if err != nil {
-		return ResolvedTrigger{}, xerrors.Errorf("Error getting TriggerTemplate %s: %s", ttName, err)
+		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
 	}
 	return ResolvedTrigger{TriggerBindings: tb, TriggerTemplate: tt}, nil
 }
@@ -92,13 +92,14 @@ func ApplyParamsToResourceTemplate(params []pipelinev1.Param, rt json.RawMessage
 func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(params.%s)", param.Name)
-	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value.StringVal), -1)
+	// Escape quotes so that that JSON strings can be appended to regular strings.
+	// See #257 for discussion on this behavior.
+	paramValue := strings.Replace(param.Value.StringVal, `"`, `\"`, -1)
+	return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
 }
 
 // UID generates a random string like the Kubernetes apiserver generateName metafield postfix.
-func UID() string {
-	return rand.String(5)
-}
+var UID = func() string { return rand.String(5) }
 
 // ApplyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.

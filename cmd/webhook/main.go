@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/logging"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/signals"
@@ -37,10 +36,6 @@ const (
 	WebhookLogKey = "webhook"
 	// ConfigName is the name of the ConfigMap that the logging config will be stored in
 	ConfigName = "config-logging-triggers"
-)
-
-var (
-	client dynamic.Interface
 )
 
 func main() {
@@ -56,10 +51,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to get the client set: %v", err)
 	}
-	client, err = dynamic.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the dynamic client set: %v", err)
-	}
 
 	logger := logging.ConfigureLogging(WebhookLogKey, ConfigName, stopCh, kubeClient)
 
@@ -71,35 +62,35 @@ func main() {
 	}()
 
 	options := webhook.ControllerOptions{
-		ServiceName:    "tekton-triggers-webhook",
-		DeploymentName: "tekton-triggers-webhook",
-		Namespace:      system.GetNamespace(),
-		Port:           8443,
-		SecretName:     "triggers-webhook-certs",
-		WebhookName:    "triggers-webhook.tekton.dev",
+		ServiceName:                     "tekton-triggers-webhook",
+		DeploymentName:                  "tekton-triggers-webhook",
+		Namespace:                       system.GetNamespace(),
+		Port:                            8443,
+		SecretName:                      "triggers-webhook-certs",
+		WebhookName:                     "triggers-webhook.tekton.dev",
+		ResourceAdmissionControllerPath: "/",
 	}
-	//TODO add validations here
-	controller := webhook.AdmissionController{
-		Client:  kubeClient,
-		Options: options,
-		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
-			v1alpha1.SchemeGroupVersion.WithKind("EventListener"):   &v1alpha1.EventListener{},
-			v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):  &v1alpha1.TriggerBinding{},
-			v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"): &v1alpha1.TriggerTemplate{},
-		},
-		Logger:                logger,
-		DisallowUnknownFields: true,
-		// Decorate contexts with the current state of the config.
-		WithContext: func(ctx context.Context) context.Context {
-			return injectDynamicClientset(ctx)
-		},
+	resourceHandlers := map[schema.GroupVersionKind]webhook.GenericCRD{
+		v1alpha1.SchemeGroupVersion.WithKind("EventListener"):   &v1alpha1.EventListener{},
+		v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):  &v1alpha1.TriggerBinding{},
+		v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"): &v1alpha1.TriggerTemplate{},
+	}
+	resourceAdmissionController := webhook.NewResourceAdmissionController(resourceHandlers, options, true)
+	admissionControllers := map[string]webhook.AdmissionController{
+		options.ResourceAdmissionControllerPath: resourceAdmissionController,
+	}
+
+	// Decorate contexts with the current state of the config.
+	ctxFunc := func(ctx context.Context) context.Context {
+		return ctx
+	}
+
+	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)
+	if err != nil {
+		logger.Fatal("Error creating admission controller", zap.Error(err))
 	}
 
 	if err := controller.Run(stopCh); err != nil {
 		logger.Fatal("Error running admission controller", zap.Error(err))
 	}
-}
-
-func injectDynamicClientset(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "clientSet", client)
 }

@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"k8s.io/klog"
 	"knative.dev/pkg/injection/sharedmain"
 
 	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
@@ -27,6 +28,7 @@ const (
 )
 
 func main() {
+	klog.InitFlags(nil)
 	sharedmain.Main(ControllerLogKey,
 		eventlistener.NewController,
 	)

@@ -125,7 +125,7 @@ spec:
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from GitHub.
-Supported features include validating webhooks actually came rom GitHub using the logic outlined
+Supported features include validating webhooks actually came from GitHub using the logic outlined
 in GitHub [documentation](https://developer.github.com/webhooks/securing/), as well as
 filtering incoming events.
 
@@ -134,7 +134,7 @@ and configure the GitHub webhook to use that secret value.
 Create a Kubernetes secret containing this value, and pass that as a reference to the `github` interceptor.
 
 To use this interceptor as a filter, add the event types you would like to accept to the `eventTypes` field.
-Valid values can be found in Github [docs](https://developer.github.com/webhooks/#events).
+Valid values can be found in GitHub [docs](https://developer.github.com/webhooks/#events).
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
 ```YAML
@@ -162,14 +162,14 @@ spec:
 
 ### GitLab Interceptors
 
-GitLab interceptors contain logic to validate and filter requests that come from Gitlab.
-Supported features include validating that a webhook actually came from Gitlab, using the logic outlined
-in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html/),
+GitLab interceptors contain logic to validate and filter requests that come from GitLab.
+Supported features include validating that a webhook actually came from GitLab, using the logic outlined
+in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html),
 and to filter incoming events based on the event types.
-Event types can be found in Gitlab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#events).
+Event types can be found in GitLab [documentation](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#events).
 
 To use this interceptor as a validator, create a secret string using the method of your choice, and configure
-the Gitlab webhook to use that secret value.
+the GitLab webhook to use that secret value.
 Create a Kubernetes secret containing this value, and pass that as a reference to the `gitlab` interceptor.
 
 To use this interceptor as a filter, add the event types you would like to accept to the `eventTypes` field.

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-		http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,16 @@ package main
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 
+	"go.uber.org/zap"
+
+	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
+	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/signals"
@@ -47,8 +51,14 @@ func main() {
 
 	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
-		log.Fatalf("Failed to get the client set: %v", err)
+		log.Fatalf("Failed to get the Kubernetes client set: %v", err)
 	}
+
+	dynamicClient, err := dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		log.Fatalf("Failed to get the dynamic client: %v", err)
+	}
+	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
 
 	logger := logging.ConfigureLogging(EventListenerLogKey, ConfigName, stopCh, kubeClient)
 	defer func() {
@@ -74,7 +84,7 @@ func main() {
 	r := sink.Sink{
 		KubeClientSet:          kubeClient,
 		DiscoveryClient:        sinkClients.DiscoveryClient,
-		RESTClient:             sinkClients.RESTClient,
+		DynamicClient:          dynamicCS,
 		TriggersClient:         sinkClients.TriggersClient,
 		PipelineClient:         sinkClients.PipelineClient,
 		HTTPClient:             http.DefaultClient,

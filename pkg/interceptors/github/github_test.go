@@ -11,7 +11,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -24,14 +24,14 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		Github  *triggersv1.GithubInterceptor
+		GitHub  *triggersv1.GitHubInterceptor
 		args    args
 		want    []byte
 		wantErr bool
 	}{
 		{
 			name:   "no secret",
-			Github: &triggersv1.GithubInterceptor{},
+			GitHub: &triggersv1.GitHubInterceptor{},
 			args: args{
 				payload:   []byte("somepayload"),
 				signature: "foo",
@@ -41,7 +41,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "invalid header for secret",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -63,7 +63,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "valid header for secret",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -88,7 +88,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "no secret, matching event",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 			},
 			args: args{
@@ -100,7 +100,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "no secret, failing event",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 			},
 			args: args{
@@ -111,7 +111,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "valid header for secret and matching event",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -138,7 +138,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "valid header for secret, failing event",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -164,7 +164,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		},
 		{
 			name: "invalid header for secret, matching event",
-			Github: &triggersv1.GithubInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretName: "mysecret",
 					SecretKey:  "token",
@@ -205,7 +205,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				request.Header.Add("X-Hub-Signature", tt.args.signature)
 			}
 			if tt.args.secret != nil {
-				ns := tt.Github.SecretRef.Namespace
+				ns := tt.GitHub.SecretRef.Namespace
 				if ns == "" {
 					ns = metav1.NamespaceDefault
 				}
@@ -215,7 +215,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			}
 			w := &Interceptor{
 				KubeClientSet: kubeClient,
-				Github:        tt.Github,
+				GitHub:        tt.GitHub,
 				Logger:        logger,
 			}
 			got, _, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")

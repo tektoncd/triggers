@@ -29,9 +29,11 @@ spec:
         name: golangci-lint
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: flags
-          value: -v
+          value: "-v --timeout=30m"
+        - name: version
+          value: "v1.21.0"
       resources:
         inputs:
           - name: source
@@ -42,7 +44,9 @@ spec:
         name: golang-test
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
+        - name: version
+          value: "1.13"
       resources:
         inputs:
           - name: source
@@ -53,7 +57,9 @@ spec:
         name: golang-build
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
+        - name: version
+          value: "1.13"
       resources:
         inputs:
           - name: source
@@ -64,11 +70,11 @@ spec:
         name: publish-tekton-triggers
       params:
         - name: pathToProject
-          value: ${params.package}
+          value: $(params.package)
         - name: versionTag
-          value: ${params.versionTag}
+          value: $(params.versionTag)
         - name: imageRegistry
-          value: ${params.imageRegistry}
+          value: $(params.imageRegistry)
       resources:
         inputs:
           - name: source

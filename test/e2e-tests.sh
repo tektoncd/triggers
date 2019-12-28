@@ -24,8 +24,8 @@ initialize $@
 failed=0
 
 header "Setting up environment"
-install_triggers_crd
 install_pipeline_crd
+install_triggers_crd
 
 header "Running yaml tests"
 $(dirname $0)/e2e-tests-yaml.sh || failed=1

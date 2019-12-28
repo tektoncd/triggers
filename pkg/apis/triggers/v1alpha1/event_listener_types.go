@@ -31,6 +31,7 @@ import (
 
 // Check that EventListener may be validated and defaulted.
 var _ apis.Validatable = (*EventListener)(nil)
+var _ apis.Defaultable = (*EventListener)(nil)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -66,15 +67,18 @@ type EventListenerTrigger struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional
-	// TODO(dibyom): Allow multiple interceptors
+	// TODO(#249): Allow multiple interceptors
 	Interceptor *EventInterceptor `json:"interceptor,omitempty"`
+
+	// TODO(#248): Remove this before 0.3 release
+	DeprecatedBinding *EventListenerBinding `json:"binding,omitempty"`
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor struct {
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
-	Github  *GithubInterceptor  `json:"github,omitempty"`
-	Gitlab  *GitlabInterceptor  `json:"gitlab,omitempty"`
+	GitHub  *GitHubInterceptor  `json:"github,omitempty"`
+	GitLab  *GitLabInterceptor  `json:"gitlab,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -89,14 +93,14 @@ type WebhookInterceptor struct {
 	Header []pipelinev1.Param `json:"header,omitempty"`
 }
 
-// GithubInterceptor provides a webhook to intercept and pre-process events
-type GithubInterceptor struct {
+// GitHubInterceptor provides a webhook to intercept and pre-process events
+type GitHubInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
 }
 
-// GitlabInterceptor provides a webhook to intercept and pre-process events
-type GitlabInterceptor struct {
+// GitLabInterceptor provides a webhook to intercept and pre-process events
+type GitLabInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
 }

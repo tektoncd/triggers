@@ -44,7 +44,7 @@ spec:
     - "/workspace/output/bucket/triggers/previous/"
 
   - name: run-ko
-    image: gcr.io/tekton-releases/ko-ci
+    image: gcr.io/tekton-nightly/ko-ci # tekton-releases broken, see https://github.com/tektoncd/plumbing/issues/128
     env:
     - name: KO_DOCKER_REPO
       value: $(inputs.params.imageRegistry)

@@ -58,7 +58,7 @@ The Triggers project will pickup from there.
     - `kubectl apply -f ./docs/getting-started/triggers.yaml`
   - If that succeeded, your cluster is ready to start handling Events.
 
-## Add Ingress and GitHub-Webook Tasks
+## Add Ingress and GitHub-Webhook Tasks
 
 We will need an ingress to handle incoming webhooks and we will make use of our new ingress by configuring GitHub with our GitHub Task.
 

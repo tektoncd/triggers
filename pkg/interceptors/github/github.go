@@ -22,11 +22,8 @@ import (
 	"net/http"
 
 	gh "github.com/google/go-github/github"
-
-	"github.com/tektoncd/triggers/pkg/interceptors"
-
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 )
@@ -34,14 +31,14 @@ import (
 type Interceptor struct {
 	KubeClientSet          kubernetes.Interface
 	Logger                 *zap.SugaredLogger
-	Github                 *triggersv1.GithubInterceptor
+	GitHub                 *triggersv1.GitHubInterceptor
 	EventListenerNamespace string
 }
 
-func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gh *triggersv1.GitHubInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
-		Github:                 gh,
+		GitHub:                 gh,
 		KubeClientSet:          k,
 		EventListenerNamespace: ns,
 	}
@@ -50,13 +47,13 @@ func NewInterceptor(gh *triggersv1.GithubInterceptor, k kubernetes.Interface, ns
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, http.Header, error) {
 	responseHeader := make(http.Header)
 	// Validate secrets first before anything else, if set
-	if w.Github.SecretRef != nil {
+	if w.GitHub.SecretRef != nil {
 		header := request.Header.Get("X-Hub-Signature")
 		if header == "" {
 			return nil, responseHeader, errors.New("no X-Hub-Signature header set")
 		}
 
-		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Github.SecretRef, w.EventListenerNamespace)
+		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.GitHub.SecretRef, w.EventListenerNamespace)
 		if err != nil {
 			return nil, responseHeader, err
 		}
@@ -66,10 +63,10 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 	}
 
 	// Next see if the event type is in the allow-list
-	if w.Github.EventTypes != nil {
-		actualEvent := request.Header.Get("X-Github-Event")
+	if w.GitHub.EventTypes != nil {
+		actualEvent := request.Header.Get("X-GitHub-Event")
 		isAllowed := false
-		for _, allowedEvent := range w.Github.EventTypes {
+		for _, allowedEvent := range w.GitHub.EventTypes {
 			if actualEvent == allowedEvent {
 				isAllowed = true
 				break

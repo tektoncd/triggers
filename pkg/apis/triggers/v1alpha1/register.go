@@ -32,17 +32,8 @@ const (
 	// EventIDLabelKey is used as the label identifier for an EventListener event.
 	EventIDLabelKey = "/triggers-eventid"
 
-	// TriggerBindingLabelKey is used as the label identifier for a TriggerBinding.
-	TriggerBindingLabelKey = "/triggerbinding"
-
-	// TriggerTemplateKey is used as the label identifier for a TriggerTemplate
-	TriggerTemplateKey = "/triggertemplate"
-
 	// TriggerLabelKey is used as the label identifier for a Trigger
 	TriggerLabelKey = "/trigger"
-
-	// LabelEscape is an escaped GroupName safe for use in resource types.
-	LabelEscape = "tekton\\.dev"
 )
 
 // SchemeGroupVersion is group version used to register these objects

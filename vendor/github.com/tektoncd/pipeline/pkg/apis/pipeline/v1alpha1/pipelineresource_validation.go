@@ -18,14 +18,20 @@ package v1alpha1
 
 import (
 	"context"
+	"net/url"
+	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
+	logging "knative.dev/pkg/logging"
 )
 
+var _ apis.Validatable = (*PipelineResource)(nil)
+
 func (r *PipelineResource) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(r.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(r.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 
@@ -37,7 +43,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 	if rs.Type == PipelineResourceTypeCluster {
-		var usernameFound, cadataFound, nameFound bool
+		var authFound, cadataFound, nameFound, isInsecure bool
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
@@ -45,30 +51,39 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 					return err
 				}
 			case strings.EqualFold(param.Name, "Username"):
-				usernameFound = true
+				authFound = true
 			case strings.EqualFold(param.Name, "CAData"):
+				authFound = true
 				cadataFound = true
+			case strings.EqualFold(param.Name, "Token"):
+				authFound = true
 			case strings.EqualFold(param.Name, "name"):
 				nameFound = true
+			case strings.EqualFold(param.Name, "insecure"):
+				b, _ := strconv.ParseBool(param.Value)
+				isInsecure = b
 			}
 		}
 
 		for _, secret := range rs.SecretParams {
 			switch {
 			case strings.EqualFold(secret.FieldName, "Username"):
-				usernameFound = true
+				authFound = true
 			case strings.EqualFold(secret.FieldName, "CAData"):
+				authFound = true
 				cadataFound = true
 			}
 		}
 
-		if !nameFound {
-			return apis.ErrMissingField("name param")
+		if nameFound {
+			logging.FromContext(ctx).Warn(
+				"The name parameter on the cluster resource is deprecated. Support will be removed in a future release")
 		}
-		if !usernameFound {
-			return apis.ErrMissingField("username param")
+		// One auth method must be supplied
+		if !(authFound) {
+			return apis.ErrMissingField("username or CAData  or token param")
 		}
-		if !cadataFound {
+		if !cadataFound && !isInsecure {
 			return apis.ErrMissingField("CAData param")
 		}
 	}
@@ -112,4 +127,15 @@ func AllowedStorageType(gotType string) bool {
 		return true
 	}
 	return false
+}
+
+func validateURL(u, path string) *apis.FieldError {
+	if u == "" {
+		return nil
+	}
+	_, err := url.ParseRequestURI(u)
+	if err != nil {
+		return apis.ErrInvalidValue(u, path)
+	}
+	return nil
 }

@@ -68,7 +68,13 @@ function wait_until_pod_started() {
 function get_eventlistener_service() {
   echo "Getting ServiceName for EventListener $1"
   for i in {1..150}; do  # timeout after 5 minutes
-    SERVICE_NAME=$(kubectl get eventlistener $1 -o=jsonpath='{.status.configuration.generatedName}') && return || sleep 2
+    SERVICE_NAME=$(kubectl get eventlistener $1 -o=jsonpath='{.status.configuration.generatedName}')
+    if [[ -z "$SERVICE_NAME" ]]
+    then
+      sleep 2
+    else
+      break
+    fi
   done
 }
 
@@ -76,7 +82,13 @@ function get_eventlistener_service() {
 function get_service_uid() {
   echo "Getting UID for Service $1"
   for i in {1..150}; do  # timeout after 5 minutes
-    SERVICE_UID=$(kubectl get svc $1 -o=jsonpath='{.metadata.uid}') && return || sleep 2
+    SERVICE_UID=$(kubectl get svc $1 -o=jsonpath='{.metadata.uid}')
+    if [ -z "${SERVICE_UID}" ];
+    then
+        sleep 2
+    else
+      break
+    fi
   done
 }
 
@@ -93,6 +105,7 @@ function matchOrFail() {
 
 set -o errexit
 set -o pipefail
+set -x
 
 # Apply ClusterRole/ClusterRoleBinding for default SA to run create Ingress Task
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress

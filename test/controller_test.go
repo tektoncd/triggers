@@ -27,7 +27,7 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
-func TestGetTestResourcesFromClients(t *testing.T) {
+func TestGetResourcesFromClients(t *testing.T) {
 	nsFoo := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
@@ -48,6 +48,30 @@ func TestGetTestResourcesFromClients(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "my-eventlistener2",
+		},
+	}
+	triggerBinding1 := &v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerBinding1",
+		},
+	}
+	triggerBinding2 := &v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerBinding2",
+		},
+	}
+	triggerTemplate1 := &v1alpha1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerTemplate1",
+		},
+	}
+	triggerTemplate2 := &v1alpha1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-triggerTemplate2",
 		},
 	}
 	deployment1 := &appsv1.Deployment{
@@ -74,71 +98,102 @@ func TestGetTestResourcesFromClients(t *testing.T) {
 			Name:      "my-service2",
 		},
 	}
+	configMap1 := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-config-map-1",
+		},
+	}
 
 	tests := []struct {
-		name          string
-		testResources TestResources
+		name      string
+		Resources Resources
 	}{
 		{
-			name:          "empty",
-			testResources: TestResources{},
+			name:      "empty",
+			Resources: Resources{},
 		},
 		{
 			name: "one resource each",
-			testResources: TestResources{
-				Namespaces:     []*corev1.Namespace{nsFoo},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+			Resources: Resources{
+				Namespaces:       []*corev1.Namespace{nsFoo},
+				EventListeners:   []*v1alpha1.EventListener{eventListener1},
+				TriggerBindings:  []*v1alpha1.TriggerBinding{triggerBinding1},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1},
+				Deployments:      []*appsv1.Deployment{deployment1},
+				Services:         []*corev1.Service{service1},
 			},
 		},
 		{
 			name: "two resources each",
-			testResources: TestResources{
-				Namespaces:     []*corev1.Namespace{nsFoo, nsTektonPipelines},
-				EventListeners: []*v1alpha1.EventListener{eventListener1, eventListener2},
-				Deployments:    []*appsv1.Deployment{deployment1, deployment2},
-				Services:       []*corev1.Service{service1, service2},
+			Resources: Resources{
+				Namespaces:       []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				EventListeners:   []*v1alpha1.EventListener{eventListener1, eventListener2},
+				TriggerBindings:  []*v1alpha1.TriggerBinding{triggerBinding1, triggerBinding2},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1, triggerTemplate2},
+				Deployments:      []*appsv1.Deployment{deployment1, deployment2},
+				Services:         []*corev1.Service{service1, service2},
 			},
 		},
 		{
 			name: "only namespaces",
-			testResources: TestResources{
+			Resources: Resources{
 				Namespaces: []*corev1.Namespace{nsFoo, nsTektonPipelines},
 			},
 		},
 		{
 			name: "only eventlisteners (and namespaces)",
-			testResources: TestResources{
+			Resources: Resources{
 				Namespaces:     []*corev1.Namespace{nsFoo, nsTektonPipelines},
 				EventListeners: []*v1alpha1.EventListener{eventListener1, eventListener2},
 			},
 		},
 		{
+			name: "only triggerBindings (and namespaces)",
+			Resources: Resources{
+				Namespaces:      []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				TriggerBindings: []*v1alpha1.TriggerBinding{triggerBinding1, triggerBinding2},
+			},
+		},
+		{
+			name: "only triggerTemplates (and namespaces)",
+			Resources: Resources{
+				Namespaces:       []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				TriggerTemplates: []*v1alpha1.TriggerTemplate{triggerTemplate1, triggerTemplate2},
+			},
+		},
+		{
 			name: "only Deployments (and namespaces)",
-			testResources: TestResources{
+			Resources: Resources{
 				Namespaces:  []*corev1.Namespace{nsFoo, nsTektonPipelines},
 				Deployments: []*appsv1.Deployment{deployment1, deployment2},
 			},
 		},
 		{
 			name: "only Services (and namespaces)",
-			testResources: TestResources{
+			Resources: Resources{
 				Namespaces: []*corev1.Namespace{nsFoo, nsTektonPipelines},
 				Services:   []*corev1.Service{service1},
+			},
+		},
+		{
+			name: "only ConfigMaps (and namespaces)",
+			Resources: Resources{
+				Namespaces: []*corev1.Namespace{nsFoo, nsTektonPipelines},
+				ConfigMaps: []*corev1.ConfigMap{configMap1},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
-			clients := SeedTestResources(t, ctx, tt.testResources)
-			actualTestResources, err := GetTestResourcesFromClients(clients)
+			clients := SeedResources(t, ctx, tt.Resources)
+			actualResources, err := GetResourcesFromClients(clients)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tt.testResources, *actualTestResources); diff != "" {
-				t.Errorf("Diff request body: -want +got: %s", cmp.Diff(tt.testResources, *actualTestResources))
+			if diff := cmp.Diff(tt.Resources, *actualResources); diff != "" {
+				t.Errorf("Diff request body: -want +got: %s", cmp.Diff(tt.Resources, *actualResources))
 			}
 		})
 	}

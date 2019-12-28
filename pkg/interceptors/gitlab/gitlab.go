@@ -33,14 +33,14 @@ import (
 type Interceptor struct {
 	KubeClientSet          kubernetes.Interface
 	Logger                 *zap.SugaredLogger
-	Gitlab                 *triggersv1.GitlabInterceptor
+	GitLab                 *triggersv1.GitLabInterceptor
 	EventListenerNamespace string
 }
 
-func NewInterceptor(gl *triggersv1.GitlabInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gl *triggersv1.GitLabInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
-		Gitlab:                 gl,
+		GitLab:                 gl,
 		KubeClientSet:          k,
 		EventListenerNamespace: ns,
 	}
@@ -49,13 +49,13 @@ func NewInterceptor(gl *triggersv1.GitlabInterceptor, k kubernetes.Interface, ns
 func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, http.Header, error) {
 	responseHeader := make(http.Header)
 	// Validate the secret first, if set.
-	if w.Gitlab.SecretRef != nil {
-		header := request.Header.Get("X-Gitlab-Token")
+	if w.GitLab.SecretRef != nil {
+		header := request.Header.Get("X-GitLab-Token")
 		if header == "" {
 			return nil, responseHeader, errors.New("no X-Gitlab-Token header set")
 		}
 
-		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.Gitlab.SecretRef, w.EventListenerNamespace)
+		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.GitLab.SecretRef, w.EventListenerNamespace)
 		if err != nil {
 			return nil, responseHeader, err
 		}
@@ -65,10 +65,10 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 			return nil, responseHeader, errors.New("Invalid X-Gitlab-Token")
 		}
 	}
-	if w.Gitlab.EventTypes != nil {
-		actualEvent := request.Header.Get("X-Gitlab-Event")
+	if w.GitLab.EventTypes != nil {
+		actualEvent := request.Header.Get("X-GitLab-Event")
 		isAllowed := false
-		for _, allowedEvent := range w.Gitlab.EventTypes {
+		for _, allowedEvent := range w.GitLab.EventTypes {
 			if actualEvent == allowedEvent {
 				isAllowed = true
 				break

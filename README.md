@@ -31,7 +31,7 @@ You can learn more by checking out the [docs](docs/README.md)
 | Version | Docs | Examples | Getting Started |
 | ------- | ---- | -------- | --------------- |
 | [HEAD](https://github.com/tektoncd/triggers/blob/master/DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](https://github.com/tektoncd/triggers/blob/master/docs/README.md) | [Examples @ HEAD](https://github.com/tektoncd/triggers/blob/master/examples) | [Getting Started @ HEAD](https://github.com/tektoncd/triggers/blob/master/docs/getting-started#getting-started-with-triggers) |
-| [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) | [Docs @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs#tekton-triggers) | [Examples @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/examples#examples) | [Getting Started @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs/getting-started#getting-started-with-triggers) |
+| [v0.1.0](https://github.com/tektoncd/triggers/releases/tag/v0.1.0) | [Docs @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs#tekton-triggers) | [Examples @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/examples#examples) | [Getting Started @ v0.1.0](https://github.com/tektoncd/triggers/tree/v0.1.0/docs/getting-started#getting-started-with-triggers) |
 
 ## Want to contribute
 
