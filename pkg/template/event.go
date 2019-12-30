@@ -47,9 +47,10 @@ func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header ht
 // ResolveResources resolves a templated resource by replacing params with their values.
 func ResolveResources(template *triggersv1.TriggerTemplate, params []pipelinev1.Param) []json.RawMessage {
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
+	uid := UID()
 	for i := range template.Spec.ResourceTemplates {
 		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawMessage)
-		resources[i] = ApplyUIDToResourceTemplate(resources[i], UID())
+		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources
 }
