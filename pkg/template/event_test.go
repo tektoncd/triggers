@@ -179,7 +179,7 @@ func Test_NewResources(t *testing.T) {
 		},
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "bar-cbhtc", "cbhtc": "cbhtc"}`),
-			json.RawMessage(`{"rt2": "default2-bsvjp"}`),
+			json.RawMessage(`{"rt2": "default2-cbhtc"}`),
 			json.RawMessage(`{"rt3": "rt3"}`),
 		},
 	}, {
