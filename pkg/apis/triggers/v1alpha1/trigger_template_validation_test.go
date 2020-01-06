@@ -29,8 +29,9 @@ import (
 )
 
 var simpleResourceTemplate = json.RawMessage(`{ "apiVersion": "tekton.dev/v1alpha1", "kind": "pipelinerun"}`)
+var paramResourceTemplate = json.RawMessage(`{"apiVersion": "tekton.dev/v1alpha1", "kind": "pipelinerun", "spec": "$(params.foo)"}`)
 
-func TestTriggerTemplateSpec_Validate(t *testing.T) {
+func TestTriggerTemplate_Validate(t *testing.T) {
 	tcs := []struct {
 		name     string
 		template *v1alpha1.TriggerTemplate
@@ -84,6 +85,21 @@ func TestTriggerTemplateSpec_Validate(t *testing.T) {
 		want: &apis.FieldError{
 			Message: "invalid value: resource type not allowed: apiVersion: foo, kind: tekton.dev/v1alpha1",
 			Paths:   []string{"spec.resourcetemplates[0]"},
+		},
+	}, {
+		name: "params used in resource template are declared",
+		template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
+			b.TriggerTemplateParam("foo", "desc", "val"),
+			b.TriggerResourceTemplate(paramResourceTemplate))),
+		want: nil,
+	}, {
+		name: "params used in resource template are not declared",
+		template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
+			b.TriggerResourceTemplate(paramResourceTemplate))),
+		want: &apis.FieldError{
+			Message: "invalid value: undeclared param '$(params.foo)'",
+			Paths:   []string{"spec.resourcetemplates[0]"},
+			Details: "'$(params.foo)' must be declared in spec.params",
 		},
 	}}
 

@@ -19,10 +19,15 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"regexp"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
+
+// paramsRegexp captures TriggerTemplate parameter names $(params.NAME)
+var paramsRegexp = regexp.MustCompile(`\$\(params.(?P<var>[_a-zA-Z][_a-zA-Z0-9.-]*)\)`)
 
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
@@ -39,6 +44,9 @@ func (s *TriggerTemplateSpec) validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("resourcetemplates")
 	}
 	if err := validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"); err != nil {
+		return err
+	}
+	if err := verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"); err != nil {
 		return err
 	}
 	return nil
@@ -62,5 +70,30 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldE
 				fmt.Sprintf("[%d]", i))
 		}
 	}
+	return nil
+}
+
+// Verify every param in the ResourceTemplates is declared with a ParamSpec
+func verifyParamDeclarations(params []pipelinev1.ParamSpec, templates []TriggerResourceTemplate) *apis.FieldError {
+	declaredParamNames := map[string]struct{}{}
+	for _, param := range params {
+		declaredParamNames[param.Name] = struct{}{}
+	}
+	for i, template := range templates {
+		// Get all params in the template $(params.NAME)
+		templateParams := paramsRegexp.FindAllSubmatch(template.RawMessage, -1)
+		for _, templateParam := range templateParams {
+			templateParamName := string(templateParam[1])
+			if _, ok := declaredParamNames[templateParamName]; !ok {
+				fieldErr := apis.ErrInvalidValue(
+					fmt.Sprintf("undeclared param '$(params.%s)'", templateParamName),
+					fmt.Sprintf("[%d]", i),
+				)
+				fieldErr.Details = fmt.Sprintf("'$(params.%s)' must be declared in spec.params", templateParamName)
+				return fieldErr
+			}
+		}
+	}
+
 	return nil
 }
