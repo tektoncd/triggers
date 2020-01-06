@@ -213,34 +213,93 @@ func TestCreateResource(t *testing.T) {
 }
 
 func Test_AddLabels(t *testing.T) {
-	data := new(unstructured.Unstructured)
-	data.SetUnstructuredContent(map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				// should be overwritten
-				"tekton.dev/a": "0",
-				// should be preserved.
-				"tekton.dev/z":    "0",
-				"best-palindrome": "tacocat",
+	tests := []struct {
+		name        string
+		us          *unstructured.Unstructured
+		labelsToAdd map[string]string
+		want        *unstructured.Unstructured
+	}{
+		{
+			name: "add to empty labels",
+			us: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+				}},
+			labelsToAdd: map[string]string{"foo": "bar"},
+			want: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"labels": map[string]interface{}{
+							"tekton.dev/foo": "bar",
+						},
+					},
+				},
 			},
 		},
-	})
-
-	data = AddLabels(data, map[string]string{
-		"a":   "1",
-		"/b":  "2",
-		"//c": "3",
-	})
-
-	want := map[string]string{
-		"tekton.dev/a":    "1",
-		"tekton.dev/b":    "2",
-		"tekton.dev/c":    "3",
-		"tekton.dev/z":    "0",
-		"best-palindrome": "tacocat",
+		{
+			name: "overwrite label",
+			us: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"labels": map[string]interface{}{
+							"tekton.dev/foo": "bar",
+						},
+					},
+				}},
+			labelsToAdd: map[string]string{"foo": "foo"},
+			want: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"labels": map[string]interface{}{
+							"tekton.dev/foo": "foo",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "add and overwrite labels",
+			us: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"labels": map[string]interface{}{
+							// should be overwritten
+							"tekton.dev/foo":   "bar",
+							"tekton.dev/hello": "world",
+							// should be preserved
+							"tekton.dev/z":    "0",
+							"best-palindrome": "tacocat",
+						},
+					},
+				}},
+			labelsToAdd: map[string]string{
+				"foo":   "foo",
+				"hello": "there",
+				"a":     "a",
+				"b":     "b",
+			},
+			want: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"labels": map[string]interface{}{
+							"tekton.dev/foo":   "foo",
+							"tekton.dev/hello": "there",
+							"tekton.dev/z":     "0",
+							"best-palindrome":  "tacocat",
+							"tekton.dev/a":     "a",
+							"tekton.dev/b":     "b",
+						},
+					},
+				},
+			},
+		},
 	}
-
-	if diff := cmp.Diff(want, data.GetLabels()); diff != "" {
-		t.Errorf("-want/+got: %s", diff)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := AddLabels(tt.us, tt.labelsToAdd)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("AddLabels(): -want +got: %s", diff)
+			}
+		})
 	}
 }
