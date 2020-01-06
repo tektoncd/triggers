@@ -80,7 +80,7 @@ $(header.Two.1) -> "two"
 In an [`EventListener`](eventlisteners.md), you may specify multiple bindings as
 part of your trigger. This allows you to create reusable bindings that can be
 mixed and matched with various triggers. For example, a trigger with one binding
-that extracts event information, and another bind that provides deploy
+that extracts event information, and another binding that provides deploy
 environment information:
 
 ```yaml

@@ -16,20 +16,9 @@ spec:
     description: The Content-Type of the event
   resourcetemplates:
   - apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: git-source-$(uid)
-    spec:
-      type: git
-      params:
-      - name: revision
-        value: $(params.gitrevision)
-      - name: url
-        value: $(params.gitrepositoryurl)
-  - apiVersion: tekton.dev/v1alpha1
     kind: PipelineRun
     metadata:
-      generateName: simple-pipeline-run
+      generateName: simple-pipeline-run-
     spec:
       pipelineRef:
         name: simple-pipeline
@@ -40,5 +29,10 @@ spec:
         value: $(params.contenttype)
       resources:
       - name: git-source
-        resourceRef:
-          name: git-source-$(uid)
+        resourceSpec:
+          type: git
+          params:
+          - name: revision
+            value: $(params.gitrevision)
+          - name: url
+            value: $(params.gitrepositoryurl)

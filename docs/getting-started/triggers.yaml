@@ -14,38 +14,6 @@ spec:
       description: The namespace to create the resources
   resourcetemplates:
     - apiVersion: tekton.dev/v1alpha1
-      kind: PipelineResource
-      metadata:
-        name: source-repo-$(uid)
-        namespace: $(params.namespace)
-      spec:
-        type: git
-        params:
-        - name: revision
-          value: $(params.gitrevision)
-        - name: url
-          value: $(params.gitrepositoryurl)
-    - apiVersion: tekton.dev/v1alpha1
-      kind: PipelineResource
-      metadata:
-        name: image-source-$(uid)
-        namespace: $(params.namespace)
-      spec:
-        type: image
-        params:
-          - name: url
-            value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
-    - apiVersion: tekton.dev/v1alpha1
-      kind: PipelineResource
-      metadata:
-        name: event-to-sink-$(uid)
-        namespace: $(params.namespace)
-      spec:
-        type: cloudEvent
-        params:
-          - name: targetURI
-            value: http://event-display.getting-started.svc.cluster.local
-    - apiVersion: tekton.dev/v1alpha1
       kind: PipelineRun
       metadata:
         name: getting-started-pipeline-run-$(uid)
@@ -56,14 +24,25 @@ spec:
           name: getting-started-pipeline
         resources:
           - name: source-repo
-            resourceRef:
-              name: source-repo-$(uid)
+            resourceSpec:
+              type: git
+              params:
+              - name: revision
+                value: $(params.gitrevision)
+              - name: url
+                value: $(params.gitrepositoryurl)
           - name: image-source
-            resourceRef:
-              name: image-source-$(uid)
+            resourceSpec:
+              type: image
+              params:
+                - name: url
+                  value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
           - name: event-to-sink
-            resourceRef:
-              name: event-to-sink-$(uid)
+            resourceSpec:
+              type: cloudEvent
+              params:
+                - name: targetURI
+                  value: http://event-display.getting-started.svc.cluster.local
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
