@@ -8,5 +8,6 @@ spec:
     - name: foo-trig
       bindings:
       - name: pipeline-binding
+      - name: message-binding
       template:
         name: pipeline-template

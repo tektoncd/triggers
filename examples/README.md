@@ -10,6 +10,7 @@ In this example you will use Triggers to create a PipelineRun and PipelineResour
 kubectl apply -f role-resources
 kubectl apply -f triggertemplates/triggertemplate.yaml
 kubectl apply -f triggerbindings/triggerbinding.yaml
+kubectl apply -f triggerbindings/triggerbinding-message.yaml
 kubectl apply -f eventlisteners/eventlistener.yaml
 ```
 
@@ -64,14 +65,7 @@ curl -X POST \
 }'
 ```
 
-5. Observe created PipelineRun and PipelineResources
-
-```bash
-tekton:examples user$ kubectl get pipelineresources
-NAME               AGE
-git-source-g8j7r   1s
-```
-
+5. Observe created PipelineRun
 ```bash
 tekton:examples user$ kubectl get pipelinerun
 NAME                       SUCCEEDED   REASON    STARTTIME   COMPLETIONTIME
@@ -87,55 +81,33 @@ simple-pipeline-runnd654-say-hello-djs4v-pod-64cfef   0/2       Init:0/2   0    
 
 # What just happened?
 
-1. A `PipelineResource` was created for us: notice the parameters matching with our POST data.
+1. A `PipelineRun` with an embedded `resourceSpec` was created for us using our POST data and the specified Tekton Pipeline:
 
-```
-tekton:examples user$ kubectl get pipelineresource git-source-g8j7r  -o yaml
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  labels:
-    triggertemplated: "true"
-  name: git-source-g8j7r
-  namespace: tekton-pipelines
+```yaml
 ...
 spec:
   params:
-  - name: revision
-    value: master
-  - name: url
-    value: https://github.com/tektoncd/triggers.git
-  type: git
-```
-
-2. A `PipelineRun` was created using this resource and the specified Tekton Pipeline:
-
-```
-spec:
+  - name: message
+    value: Hello from the Triggers EventListener!
+  - name: contenttype
+    value: application/json
   pipelineRef:
     name: simple-pipeline
   podTemplate: {}
   resources:
   - name: git-source
-    resourceRef:
-      name: git-source-g8j7r
-  params:
-  - name: message
-    value: Hello from the Triggers EventListener!
-  serviceAccount: ""
+    resourceSpec:
+      params:
+      - name: revision
+        value: master
+      - name: url
+        value: https://github.com/tektoncd/triggers.git
+      type: git
   timeout: 1h0m0s
-status:
-  completionTime: 2019-09-12T12:46:44Z
-  conditions:
-  - lastTransitionTime: 2019-09-12T12:46:44Z
-    message: All Tasks have completed executing
-    reason: Succeeded
-    status: "True"
-    type: Succeeded
-  ...
+...
 ```
 
-3. The three Pods (one per Task) finish their work and the PipelineRun is marked as successful:
+2. The three Pods (one per Task) finish their work and the PipelineRun is marked as successful:
 
 ```
 tekton:examples user$ kubectl logs simple-pipeline-runn4qps-say-hello-29ztk-pod-118fbd --all-containers
@@ -164,7 +136,7 @@ simple-pipeline-runn4qps   True        Succeeded   5m          4m
 # Cleaning up
 
 ```sh
-kubectl delete all -l generatedBy=triggers-example
+kubectl delete all -l tekton.dev/eventlistener=listener
 ```
 
 # Conclusion

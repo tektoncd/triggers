@@ -23,20 +23,9 @@ spec:
     description: The Content-Type of the event
   resourcetemplates:
   - apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: git-source-$(uid)
-    spec:
-      type: git
-      params:
-      - name: revision
-        value: $(params.gitrevision)
-      - name: url
-        value: $(params.gitrepositoryurl)
-  - apiVersion: tekton.dev/v1alpha1
     kind: PipelineRun
     metadata:
-      generateName: simple-pipeline-run
+      generateName: simple-pipeline-run-
     spec:
       pipelineRef:
         name: simple-pipeline
@@ -47,8 +36,13 @@ spec:
         value: $(params.contenttype)
       resources:
       - name: git-source
-        resourceRef:
-          name: git-source-$(uid)
+        resourceSpec:
+          type: git
+          params:
+          - name: revision
+            value: $(params.gitrevision)
+          - name: url
+            value: $(params.gitrepositoryurl)
 ```
 
 Similar to [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s do not do any actual work, but instead act as the blueprint for what resources should be created.
@@ -80,3 +74,8 @@ $(params.<name>)
 `params` can be referenced in the `resourceTemplates` section of a
 `TriggerTemplate`. The purpose of `params` is to make `TriggerTemplates`
 reusable.
+
+## Best Practices
+As of Tekton Pipelines version [v0.8.0](https://github.com/tektoncd/pipeline/releases/tag/v0.8.0), users can embed
+resource specs. It is a best practice to embed each resource specs in the PipelineRun or TaskRun that uses the resource
+spec. Embedding the resource spec avoids a race condition between creating and using resources.
