@@ -33,11 +33,8 @@ func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header ht
 	if err != nil {
 		return nil, fmt.Errorf("error merging trigger params: %w", err)
 	}
-	event, err := newEvent(body, header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Event: %w", err)
-	}
-	out, err = applyEventValuesToParams(out, event)
+
+	out, err = applyEventValuesToParams(out, body, header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
@@ -82,13 +79,18 @@ func newEvent(body []byte, headers http.Header) (*event, error) {
 
 // applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
 // with values from the event body and headers.
-func applyEventValuesToParams(params []pipelinev1.Param, ec *event) ([]pipelinev1.Param, error) {
+func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header http.Header) ([]pipelinev1.Param, error) {
+	event, err := newEvent(body, header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal event: %w", err)
+	}
+
 	for idx, p := range params {
 		pValue := p.Value.StringVal
 		// Find all expressions wrapped in $() from the value
 		expressions := tektonVar.FindAllString(pValue, -1)
 		for _, expr := range expressions {
-			val, err := ParseJSONPath(ec, expr)
+			val, err := ParseJSONPath(event, expr)
 			if err != nil {
 				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}
