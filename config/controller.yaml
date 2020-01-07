@@ -40,6 +40,7 @@ spec:
           "-logtostderr",
           "-stderrthreshold", "INFO",
           "-el-image", "github.com/tektoncd/triggers/cmd/eventlistenersink",
+          "-el-port", "8080"
         ]
         volumeMounts:
         - name: config-logging

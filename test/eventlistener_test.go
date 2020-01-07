@@ -281,8 +281,8 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error listing EventListener sink pods: %s", err)
 	}
 
-	// Port forward sink pod for http request
-	portString := strconv.Itoa(eventReconciler.Port)
+	// ElPort forward sink pod for http request
+	portString := strconv.Itoa(*eventReconciler.ElPort)
 	podName := sinkPods.Items[0].Name
 	cmd := exec.Command("kubectl", "port-forward", podName, "-n", namespace, fmt.Sprintf("%s:%s", portString, portString))
 	err = cmd.Start()
