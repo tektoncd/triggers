@@ -18,6 +18,8 @@ package template
 
 import (
 	"encoding/json"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,292 +28,168 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
-	"k8s.io/apimachinery/pkg/util/rand"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
-// TODO(#252): Split testcases from NewResourcesTests into TestResolveParams and TestResolveResources
-func Test_NewResources(t *testing.T) {
-	type args struct {
-		body    []byte
-		header  map[string][]string
-		binding ResolvedTrigger
+const (
+	ns = "namespace"
+)
+
+// toString returns a string representation of a json
+func toString(rawMessages []json.RawMessage) []string {
+	stringMessages := make([]string, len(rawMessages))
+	for i := range rawMessages {
+		stringMessages[i] = string(rawMessages[i])
 	}
+	return stringMessages
+}
+
+func TestApplyEventValuesToParams(t *testing.T) {
+	var objects = `{"a":"v","c":{"d":"e"},"empty": "","null": null, "number": 42}`
+	var arrays = `[{"a": "b"}, {"c": "d"}, {"e": "f"}]`
 	tests := []struct {
-		name string
-		args args
-		want []json.RawMessage
+		name   string
+		params []pipelinev1.Param
+		body   []byte
+		header http.Header
+		want   []pipelinev1.Param
 	}{{
-		name: "empty",
-		args: args{
-			body:   json.RawMessage{},
-			header: map[string][]string{},
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace"),
-				TriggerBindings: []*triggersv1.TriggerBinding{bldr.TriggerBinding("tb", "namespace")},
-			},
+		name:   "header with single values",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(header)")},
+		header: map[string][]string{
+			"header-one": {"val1", "val2"},
 		},
-		want: []json.RawMessage{},
+		want: []pipelinev1.Param{bldr.Param("foo", `{"header-one":"val1,val2"}`)},
 	}, {
-		name: "one resource template",
-		args: args{
-			body:   json.RawMessage(`{"foo": "bar"}`),
-			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerTemplateParam("param2", "description", ""),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							bldr.TriggerBindingParam("param2", "$(header.one)"),
-						),
-					),
-				},
-			},
+		name:   "header keys",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(header.header-one)")},
+		header: map[string][]string{
+			"header-one": {"val1"},
 		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-1"}`),
-		},
+		want: []pipelinev1.Param{bldr.Param("foo", "val1")},
 	}, {
-		name: "multiple resource templates",
-		args: args{
-			body:   json.RawMessage(`{"foo": "bar"}`),
-			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerTemplateParam("param2", "description", ""),
-						bldr.TriggerTemplateParam("param3", "description", "default2"),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param3)"}`)),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-							bldr.TriggerBindingParam("param2", "$(header.one)"),
-						),
-					),
-				},
-			},
+		name:   "headers - multiple values joined by comma",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(header.header-one)")},
+		header: map[string][]string{
+			"header-one": {"val1", "val2"},
 		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-1"}`),
-			json.RawMessage(`{"rt2": "default2"}`),
-			json.RawMessage(`{"rt3": "rt3"}`),
-		},
+		want: []pipelinev1.Param{bldr.Param("foo", "val1,val2")},
 	}, {
-		name: "one resource template with one uid",
-		args: args{
-			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-						),
-					),
-				},
-			},
+		name:   "header values",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(header)")},
+		header: map[string][]string{
+			"header-one": {"val1", "val2"},
 		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-cbhtc"}`),
-		},
+		want: []pipelinev1.Param{bldr.Param("foo", `{"header-one":"val1,val2"}`)},
 	}, {
-		name: "one resource template with three uid",
-		args: args{
-			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)-$(uid)", "rt2": "$(uid)"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-						),
-					),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-cbhtc-cbhtc", "rt2": "cbhtc"}`),
-		},
+		name:   "no body",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   []byte{},
+		want:   []pipelinev1.Param{bldr.Param("foo", "null")},
 	}, {
-		name: "multiple resource templates with multiple uid",
-		args: args{
-			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerTemplateParam("param2", "description", "default2"),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(uid)", "$(uid)": "$(uid)"}`)),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.param2)-$(uid)"}`)),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt3": "rt3"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-						),
-					),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-cbhtc", "cbhtc": "cbhtc"}`),
-			json.RawMessage(`{"rt2": "default2-cbhtc"}`),
-			json.RawMessage(`{"rt3": "rt3"}`),
-		},
+		name:   "empty body",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   json.RawMessage(`{}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", "{}")},
 	}, {
-		name: "one resource template multiple bindings",
-		args: args{
-			body:   json.RawMessage(`{"foo": "bar"}`),
-			header: map[string][]string{"one": {"1"}},
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-					bldr.TriggerTemplateSpec(
-						bldr.TriggerTemplateParam("param1", "description", ""),
-						bldr.TriggerTemplateParam("param2", "description", ""),
-						bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.param1)-$(params.param2)"}`)),
-					),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param1", "$(body.foo)"),
-						),
-					),
-					bldr.TriggerBinding("tb2", "namespace",
-						bldr.TriggerBindingSpec(
-							bldr.TriggerBindingParam("param2", "$(header.one)"),
-						),
-					),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "bar-1"}`),
-		},
+		name:   "entire body",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   json.RawMessage(objects),
+		want:   []pipelinev1.Param{bldr.Param("foo", strings.ReplaceAll(objects, " ", ""))},
 	}, {
-		name: "bindings with static values",
-		args: args{
-			body: json.RawMessage(`{"foo": "bar"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "ns", bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("p1", "", ""),
-					bldr.TriggerTemplateParam("p2", "", ""),
-					bldr.TriggerResourceTemplate(json.RawMessage(`{"p1": "$(params.p1)", "p2": "$(params.p2)"}`)),
-				),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("p1", "static_value"),
-						bldr.TriggerBindingParam("p2", "$(body.foo)"),
-					)),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"p1": "static_value", "p2": "bar"}`),
-		},
+		name:   "entire array body",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   json.RawMessage(arrays),
+		want:   []pipelinev1.Param{bldr.Param("foo", strings.ReplaceAll(arrays, " ", ""))},
 	}, {
-		name: "bindings with combination of static values ",
-		args: args{
-			body: json.RawMessage(`{"foo": "fooValue", "bar": "barValue"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "ns", bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("p1", "", ""),
-					bldr.TriggerResourceTemplate(json.RawMessage(`{"p1": "$(params.p1)"`)),
-				),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("p1", "Event values are - foo: $(body.foo); bar: $(body.bar)"),
-					)),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"p1": "Event values are - foo: fooValue; bar: barValue"`),
-		},
+		name:   "array key",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.a[1])")},
+		body:   json.RawMessage(`{"a": [{"k": 1}, {"k": 2}, {"k": 3}]}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", `{"k":2}`)},
 	}, {
-		name: "event value is JSON string",
-		args: args{
-			body: json.RawMessage(`{"a": "b"}`),
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "ns", bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("p1", "", ""),
-					bldr.TriggerResourceTemplate(json.RawMessage(`{"p1": "$(params.p1)"}`)),
-				),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("p1", "$(body)"),
-					)),
-				},
-			},
-		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"p1": "{\"a\":\"b\"}"}`),
-		},
+		name:   "array last key",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.a[-1:])")},
+		body:   json.RawMessage(`{"a": [{"k": 1}, {"k": 2}, {"k": 3}]}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", `{"k":3}`)},
 	}, {
-		name: "header event values",
-		args: args{
-			header: map[string][]string{
-				"a": {"singlevalue"},
-				"b": {"multiple", "values"},
-			},
-			binding: ResolvedTrigger{
-				TriggerTemplate: bldr.TriggerTemplate("tt", "ns", bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("p1", "", ""),
-					bldr.TriggerTemplateParam("p2", "", ""),
-					bldr.TriggerResourceTemplate(json.RawMessage(`{"p1": "$(params.p1)","p2": "$(params.p2)"}`)),
-				),
-				),
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("p1", "$(header.a)"),
-						bldr.TriggerBindingParam("p2", "$(header.b)"),
-					)),
-				},
-			},
+		name:   "body - key with string val",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.a)")},
+		body:   json.RawMessage(objects),
+		want:   []pipelinev1.Param{bldr.Param("foo", "v")},
+	}, {
+		name:   "body - key with object val",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.c)")},
+		body:   json.RawMessage(objects),
+		want:   []pipelinev1.Param{bldr.Param("foo", `{"d":"e"}`)},
+	}, {
+		name:   "body with special chars",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   json.RawMessage(`{"a": "v\r\n烈"}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", `{"a":"v\r\n烈"}`)},
+	}, {
+		name:   "param contains multiple JSONPath expressions",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.a): $(body.b)")},
+		body:   json.RawMessage(`{"a": "val1", "b": "val2"}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", `val1: val2`)},
+	}, {
+		name:   "param contains both static values and JSONPath expressions",
+		params: []pipelinev1.Param{bldr.Param("foo", "body.a is: $(body.a)")},
+		body:   json.RawMessage(`{"a": "val1"}`),
+		want:   []pipelinev1.Param{bldr.Param("foo", `body.a is: val1`)},
+	}, {
+		name: "multiple params",
+		params: []pipelinev1.Param{
+			bldr.Param("foo", "$(body.a)"),
+			bldr.Param("bar", "$(header.header-1)"),
 		},
-		want: []json.RawMessage{
-			json.RawMessage(`{"p1": "singlevalue","p2": "multiple,values"}`),
+		body: json.RawMessage(`{"a": "val1"}`),
+		header: map[string][]string{
+			"header-1": {"val2"},
+		},
+		want: []pipelinev1.Param{
+			bldr.Param("foo", `val1`),
+			bldr.Param("bar", `val2`),
 		},
 	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This seeds Uid() to return 'cbhtc'
-			rand.Seed(0)
-			params, err := ResolveParams(tt.args.binding.TriggerBindings, tt.args.body, tt.args.header, tt.args.binding.TriggerTemplate.Spec.Params)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header)
 			if err != nil {
-				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
+				t.Errorf("unexpected error: %v", err)
 			}
-			got := ResolveResources(tt.args.binding.TriggerTemplate, params)
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				stringDiff := cmp.Diff(convertJSONRawMessagesToString(tt.want), convertJSONRawMessagesToString(got))
-				t.Errorf("ResolveResources(): -want +got: %s", stringDiff)
+			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
+				t.Errorf("-want/+got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestApplyEventValuesToParams_Error(t *testing.T) {
+	tests := []struct {
+		name   string
+		params []pipelinev1.Param
+		body   []byte
+		header http.Header
+	}{{
+		name:   "missing key",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.missing)")},
+		body:   json.RawMessage(`{}`),
+	}, {
+		name:   "non JSON body",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
+		body:   json.RawMessage(`{blahblah}`),
+	}, {
+		name:   "invalid expression(s)",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(body.[0])")},
+		body:   json.RawMessage(`["a", "b"]`),
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header)
+			if err == nil {
+				t.Errorf("did not get expected error - got: %v", got)
 			}
 		})
 	}
@@ -320,11 +198,70 @@ func Test_NewResources(t *testing.T) {
 func TestResolveParams(t *testing.T) {
 	tests := []struct {
 		name     string
+		bindings []*triggersv1.TriggerBinding
 		body     []byte
 		params   []pipelinev1.ParamSpec
-		bindings []*triggersv1.TriggerBinding
 		want     []pipelinev1.Param
 	}{{
+		name: "multiple bindings get merged",
+		// Two bindings each with a single param
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val1"))),
+			bldr.TriggerBinding("b2", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p2", "val2"))),
+		},
+		want: []pipelinev1.Param{
+			bldr.Param("p1", "val1"),
+			bldr.Param("p2", "val2"),
+		},
+	}, {
+		name: "add default values for params with missing values",
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val1"))),
+		},
+		params: []pipelinev1.ParamSpec{{
+			Name: "p2",
+			Type: pipelinev1.ParamTypeString,
+			Default: &pipelinev1.ArrayOrString{
+				Type:      pipelinev1.ParamTypeString,
+				StringVal: "defaultVal",
+			},
+		}},
+		want: []pipelinev1.Param{
+			bldr.Param("p1", "val1"),
+			bldr.Param("p2", "defaultVal"),
+		},
+	}, {
+		name: "default values do not override event values",
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val1"))),
+		},
+		params: []pipelinev1.ParamSpec{{
+			Name: "p1",
+			Type: pipelinev1.ParamTypeString,
+			Default: &pipelinev1.ArrayOrString{
+				Type:      pipelinev1.ParamTypeString,
+				StringVal: "defaultVal",
+			},
+		}},
+		want: []pipelinev1.Param{
+			bldr.Param("p1", "val1"),
+		},
+	}, {
+		name: "combination of static values and JSONPath expressions",
+		body: json.RawMessage(`{"foo": "fooValue", "bar": "barValue"}`),
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "Event values are - foo: $(body.foo); bar: $(body.bar)"),
+			)),
+		},
+		want: []pipelinev1.Param{
+			bldr.Param("p1", "Event values are - foo: fooValue; bar: barValue"),
+		},
+	}, {
 		name: "values with newlines",
 		body: json.RawMessage(`{"foo": "bar\r\nbaz"}`),
 		params: []pipelinev1.ParamSpec{{
@@ -354,6 +291,7 @@ func TestResolveParams(t *testing.T) {
 			},
 		}},
 	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, err := ResolveParams(tt.bindings, tt.body, map[string][]string{}, tt.params)
@@ -367,106 +305,120 @@ func TestResolveParams(t *testing.T) {
 	}
 }
 
-func convertJSONRawMessagesToString(rawMessages []json.RawMessage) []string {
-	stringMessages := make([]string, len(rawMessages))
-	for i := range rawMessages {
-		stringMessages[i] = string(rawMessages[i])
-	}
-	return stringMessages
-}
-
-func Test_NewResources_error(t *testing.T) {
+func TestResolveParams_Error(t *testing.T) {
 	tests := []struct {
 		name     string
 		body     []byte
-		header   map[string][]string
-		elParams []pipelinev1.Param
-		binding  ResolvedTrigger
+		params   []pipelinev1.ParamSpec
+		bindings []*triggersv1.TriggerBinding
 	}{{
-		name: "bodypath not found in body",
-		body: json.RawMessage(`{"foo": "bar"}`),
-		binding: ResolvedTrigger{
-			TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-				bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("param1", "description", ""),
-				),
-			),
-			TriggerBindings: []*triggersv1.TriggerBinding{
-				bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
-					),
-				),
-			},
+		name: "multiple bindings with same name",
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val1"))),
+			bldr.TriggerBinding("b2", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val2"))),
 		},
 	}, {
-		name:   "header not found in event",
-		body:   json.RawMessage(`{"foo": "bar"}`),
-		header: map[string][]string{"One": {"one"}},
-		binding: ResolvedTrigger{
-			TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-				bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("param1", "description", ""),
-				),
-			),
-			TriggerBindings: []*triggersv1.TriggerBinding{
-				bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(header.bogusvalue)"),
-					),
-				),
-			},
+		name: "invalid body",
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "val1"))),
 		},
+		body: json.RawMessage(`{`),
 	}, {
-		name: "merge params error",
-		elParams: []pipelinev1.Param{
-			{
-				Name:  "param1",
-				Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
-			},
+		name: "invalid expression",
+		bindings: []*triggersv1.TriggerBinding{
+			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("p1", "$(header.[)"))),
 		},
-		binding: ResolvedTrigger{
-			TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-				bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("param1", "description", ""),
-				),
-			),
-			TriggerBindings: []*triggersv1.TriggerBinding{
-				bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "$(body.bogusvalue)"),
-					),
-				),
-			},
-		},
-	}, {
-		name: "conflicting bindings",
-		binding: ResolvedTrigger{
-			TriggerTemplate: bldr.TriggerTemplate("tt", "namespace",
-				bldr.TriggerTemplateSpec(
-					bldr.TriggerTemplateParam("param1", "description", ""),
-				),
-			),
-			TriggerBindings: []*triggersv1.TriggerBinding{
-				bldr.TriggerBinding("tb", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "foo"),
-					),
-				),
-				bldr.TriggerBinding("tb2", "namespace",
-					bldr.TriggerBindingSpec(
-						bldr.TriggerBindingParam("param1", "bar"),
-					),
-				),
-			},
-		},
-	},
-	}
+	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveParams(tt.binding.TriggerBindings, tt.body, tt.header, tt.binding.TriggerTemplate.Spec.Params)
+			params, err := ResolveParams(tt.bindings, tt.body, map[string][]string{}, tt.params)
 			if err == nil {
-				t.Errorf("NewResources() did not return error when expected; got: %s", got)
+				t.Errorf("did not get expected error - got: %v", params)
+			}
+		})
+	}
+}
+
+func TestResolveResources(t *testing.T) {
+	tests := []struct {
+		name     string
+		template *triggersv1.TriggerTemplate
+		params   []pipelinev1.Param
+		want     []json.RawMessage
+	}{{
+		name: "replace single values in templates",
+		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("p1", "desc", ""),
+			bldr.TriggerTemplateParam("p2", "desc", ""),
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)-$(params.p2)"}`)),
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.p1)-$(params.p2)"}`)),
+		)),
+		params: []pipelinev1.Param{
+			bldr.Param("p1", "val1"),
+			bldr.Param("p2", "42"),
+		},
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "val1-42"}`),
+			json.RawMessage(`{"rt2": "val1-42"}`),
+		},
+	}, {
+		name: "replace JSON string in templates",
+		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("p1", "desc", ""),
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)"}`)),
+		)),
+		params: []pipelinev1.Param{
+			bldr.Param("p1", `{"a": "b"}`),
+		},
+		want: []json.RawMessage{
+			// json objects get inserted as a valid JSON string
+			json.RawMessage(`{"rt1": "{\"a\": \"b\"}"}`),
+		},
+	}, {
+		name: "replace JSON string with special chars in templates",
+		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("p1", "desc", ""),
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)"}`)),
+		)),
+		params: []pipelinev1.Param{
+			bldr.Param("p1", `{"a": "v\\r\\n烈"}`),
+		},
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "{\"a\": \"v\\r\\n烈\"}"}`),
+		},
+	}, {
+		name: "$(uid) gets replaced with a string",
+		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(uid)"}`)),
+		)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "cbhtc"}`),
+		},
+	}, {
+		name: "uid replacement is consistent across multiple templates",
+		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(uid)"}`)),
+			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(uid)"}`)),
+		)),
+		want: []json.RawMessage{
+			json.RawMessage(`{"rt1": "cbhtc"}`),
+			json.RawMessage(`{"rt2": "cbhtc"}`),
+		},
+	}}
+
+	for _, tt := range tests {
+		// Seeded for UID() to return "cbhtc"
+		utilrand.Seed(0)
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveResources(tt.template, tt.params)
+			// Use toString so that it is easy to compare the json.RawMessage diffs
+			if diff := cmp.Diff(toString(tt.want), toString(got)); diff != "" {
+				t.Errorf("didn't get expected resource template -want + got: %s", diff)
 			}
 		})
 	}

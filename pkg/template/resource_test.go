@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func Test_MergeInDefaultParams(t *testing.T) {
@@ -398,18 +397,18 @@ func Test_ApplyUIDToResourceTemplate(t *testing.T) {
 		{
 			name:       "One uid",
 			rt:         json.RawMessage(`{"rt": "uid is $(uid)"}`),
-			expectedRt: json.RawMessage(`{"rt": "uid is cbhtc"}`),
+			expectedRt: json.RawMessage(`{"rt": "uid is abcde"}`),
 		},
 		{
 			name:       "Three uid",
 			rt:         json.RawMessage(`{"rt1": "uid is $(uid)", "rt2": "nothing", "rt3": "$(uid)-center-$(uid)"}`),
-			expectedRt: json.RawMessage(`{"rt1": "uid is cbhtc", "rt2": "nothing", "rt3": "cbhtc-center-cbhtc"}`),
+			expectedRt: json.RawMessage(`{"rt1": "uid is abcde", "rt2": "nothing", "rt3": "abcde-center-abcde"}`),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This seeds UID() to return 'cbhtc'
-			rand.Seed(0)
+			// This seeds UID() to return 'abcde'
+			UID = func() string { return "abcde" }
 			actualRt := ApplyUIDToResourceTemplate(tt.rt, UID())
 			if diff := cmp.Diff(string(tt.expectedRt), string(actualRt)); diff != "" {
 				t.Errorf("ApplyUIDToResourceTemplate(): -want +got: %s", diff)
