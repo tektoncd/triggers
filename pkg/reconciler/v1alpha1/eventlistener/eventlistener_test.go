@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/rand"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
@@ -122,7 +123,7 @@ func Test_reconcileService(t *testing.T) {
 	eventListener1.Status.Address = &duckv1alpha1.Addressable{}
 	eventListener1.Status.Address.URL = &apis.URL{
 		Scheme: "http",
-		Host:   listenerHostname(generatedResourceName, namespace, Port),
+		Host:   listenerHostname(generatedResourceName, namespace, *ElPort),
 	}
 
 	eventListener2 := eventListener1.DeepCopy()
@@ -134,7 +135,13 @@ func Test_reconcileService(t *testing.T) {
 			Selector: generatedLabels,
 			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
-				servicePort,
+				{
+					Protocol: corev1.ProtocolTCP,
+					Port:     int32(*ElPort),
+					TargetPort: intstr.IntOrString{
+						IntVal: int32(*ElPort),
+					},
+				},
 			},
 		},
 	}
@@ -271,14 +278,14 @@ func Test_reconcileDeployment(t *testing.T) {
 							Image: *elImage,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(Port),
+									ContainerPort: int32(*ElPort),
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
 							Args: []string{
 								"-el-name", eventListenerName,
 								"-el-namespace", namespace,
-								"-port", strconv.Itoa(Port),
+								"-port", strconv.Itoa(*ElPort),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -458,7 +465,7 @@ func TestReconcile(t *testing.T) {
 		),
 		bldr.EventListenerStatus(
 			bldr.EventListenerConfig(generatedResourceName),
-			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, Port)),
+			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, *ElPort)),
 			bldr.EventListenerCondition(
 				v1alpha1.ServiceExists,
 				corev1.ConditionTrue,
@@ -511,13 +518,13 @@ func TestReconcile(t *testing.T) {
 						Name:  "event-listener",
 						Image: *elImage,
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(Port),
+							ContainerPort: int32(*ElPort),
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						Args: []string{
 							"-el-name", eventListenerName,
 							"-el-namespace", namespace,
-							"-port", strconv.Itoa(Port),
+							"-port", strconv.Itoa(*ElPort),
 						},
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "config-logging",
@@ -567,7 +574,13 @@ func TestReconcile(t *testing.T) {
 			Selector: generatedLabels,
 			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
-				servicePort,
+				{
+					Protocol: corev1.ProtocolTCP,
+					Port:     int32(*ElPort),
+					TargetPort: intstr.IntOrString{
+						IntVal: int32(*ElPort),
+					},
+				},
 			},
 		},
 	}
