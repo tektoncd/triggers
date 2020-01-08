@@ -19,6 +19,7 @@ package github
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	gh "github.com/google/go-github/github"
@@ -44,7 +45,7 @@ func NewInterceptor(gh *triggersv1.GitHubInterceptor, k kubernetes.Interface, ns
 	}
 }
 
-func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
+func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
 	// Validate secrets first before anything else, if set
 	if w.GitHub.SecretRef != nil {
 		header := request.Header.Get("X-Hub-Signature")
@@ -52,6 +53,15 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 			return nil, errors.New("no X-Hub-Signature header set")
 		}
 
+		body, err := request.GetBody()
+		if err != nil {
+			return nil, err
+		}
+		defer body.Close()
+		payload, err := ioutil.ReadAll(body)
+		if err != nil {
+			return nil, err
+		}
 		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.GitHub.SecretRef, w.EventListenerNamespace)
 		if err != nil {
 			return nil, err
@@ -76,5 +86,8 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 		}
 	}
 
-	return payload, nil
+	return &http.Response{
+		Header: request.Header,
+		Body:   request.Body,
+	}, nil
 }

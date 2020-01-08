@@ -19,6 +19,7 @@ package sink
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -125,7 +126,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, err := r.executeInterceptors(t, request, event, eventID, log)
+	finalPayload, header, err := r.executeInterceptors(t, request, event, eventID, log)
 	if err != nil {
 		return err
 	}
@@ -138,7 +139,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 		return err
 	}
 
-	params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, request.Header, rt.TriggerTemplate.Spec.Params)
+	params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, header, rt.TriggerTemplate.Spec.Params)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -152,7 +153,12 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	return nil
 }
 
-func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, error) {
+func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, http.Header, error) {
+	if len(t.Interceptors) == 0 {
+		return event, request.Header, nil
+	}
+
+	var resp *http.Response
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
 		switch {
@@ -164,18 +170,24 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *h
 			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
 		case i.CEL != nil:
 			interceptor = cel.NewInterceptor(i.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
+		default:
+			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
 
-		// TODO(#269): Chain interceptors
-		// together using HTTP request/response.
+		// TODO(#325): Chain interceptors together using HTTP request/response.
 		var err error
-		event, err = interceptor.ExecuteTrigger(event, request, t, eventID)
+		resp, err = interceptor.ExecuteTrigger(request)
 		if err != nil {
 			log.Error(err)
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return event, nil
+	payload, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading final response body: %w", err)
+	}
+	defer resp.Body.Close()
+	return payload, resp.Header, nil
 }
 
 func (r Sink) createResources(res []json.RawMessage, triggerName, eventID string) error {

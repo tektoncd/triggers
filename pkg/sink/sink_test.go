@@ -240,6 +240,7 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 	data := map[string]interface{}{
 		"i": atomic.AddInt32(&f.i, 1),
 	}
+	w.Header().Set("Foo", "a")
 	_ = json.NewEncoder(w).Encode(data)
 }
 
@@ -276,7 +277,8 @@ func TestExecuteInterceptor(t *testing.T) {
 		Interceptors: []*triggersv1.EventInterceptor{a, a},
 	}
 
-	resp, err := r.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger)
+	req, _ := http.NewRequest(http.MethodPost, "/", nil)
+	resp, header, err := r.executeInterceptors(trigger, req, nil, "", logger)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}
@@ -288,6 +290,9 @@ func TestExecuteInterceptor(t *testing.T) {
 	want := map[string]int{"i": 2}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("-want +got: %s", diff)
+	}
+	if h := header.Get("Foo"); h != "a" {
+		t.Errorf("-want +got: a %s", h)
 	}
 }
 
@@ -348,7 +353,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 			},
 		},
 	}
-	if resp, err := s.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger); err == nil {
+	if resp, _, err := s.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
