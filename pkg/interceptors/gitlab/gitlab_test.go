@@ -228,11 +228,19 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				GitLab:        tt.GitLab,
 				Logger:        logger,
 			}
-			got, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
+			resp, err := w.ExecuteTrigger(request)
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
+				}
 				return
 			}
+
+			got, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("error reading response: %v", err)
+			}
+			defer resp.Body.Close()
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Interceptor.ExecuteTrigger() = %v, want %v", got, tt.want)
 			}

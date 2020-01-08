@@ -19,6 +19,7 @@ package cel
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 
@@ -56,12 +57,21 @@ func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns s
 }
 
 // ExecuteTrigger is an implementation of the Interceptor interface.
-func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
+func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
 	env, err := makeCelEnv()
 	if err != nil {
 		return nil, fmt.Errorf("error creating cel environment: %w", err)
 	}
 
+	body, err := request.GetBody()
+	if err != nil {
+		return nil, fmt.Errorf("error getting request body: %w", err)
+	}
+	defer body.Close()
+	payload, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading request body: %w", err)
+	}
 	evalContext, err := makeEvalContext(payload, request)
 	if err != nil {
 		return nil, fmt.Errorf("error making the evaluation context: %w", err)
@@ -77,7 +87,10 @@ func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *t
 
 	}
 
-	return payload, nil
+	return &http.Response{
+		Header: request.Header,
+		Body:   request.Body,
+	}, nil
 }
 
 func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, error) {

@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -194,6 +195,9 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			kubeClient := fakekubeclient.Get(ctx)
 			request := &http.Request{
 				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
+				GetBody: func() (io.ReadCloser, error) {
+					return ioutil.NopCloser(bytes.NewReader(tt.args.payload)), nil
+				},
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -218,10 +222,17 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				GitHub:        tt.GitHub,
 				Logger:        logger,
 			}
-			got, err := w.ExecuteTrigger(tt.args.payload, request, nil, "")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
+			resp, err := w.ExecuteTrigger(request)
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
+				}
 				return
+			}
+
+			got, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("error reading response body %v", err)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Interceptor.ExecuteTrigger() = %v, want %v", got, tt.want)

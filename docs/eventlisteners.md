@@ -88,7 +88,8 @@ headers before being sent;
 names must be specified.
 
 When multiple interceptors are specified, the request is sent to each
-interceptor sequentially for processing.
+interceptor sequentially for processing. The response body and headers of the
+last interceptor is used for resource binding/templating.
 
 #### Event Interceptor Services
 
@@ -220,8 +221,9 @@ spec:
 
 ### CEL Interceptors
 
-CEL interceptors parse expressions to filter requests based on JSON bodies and request headers, using the
-[CEL](https://github.com/google/cel-go) expression language.
+CEL interceptors parse expressions to filter requests based on JSON bodies and
+request headers, using the [CEL](https://github.com/google/cel-go) expression
+language.
 
 Supported features include case-insensitive matching on request headers.
 
@@ -244,5 +246,6 @@ spec:
         name: pipeline-template
 ```
 
-The `expression` must return a `true` value, otherwise the request will be filtered
-out.
+
+The `expression` must return a `true` value, otherwise the request will be
+filtered out.
