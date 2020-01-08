@@ -45,7 +45,8 @@ headers are also available.
   </tr>
 </table>
 
-NOTE: The header value is a Go `http.Header`, which is [defined](https://golang.org/pkg/net/http/#Header) as:
+NOTE: The header value is a Go `http.Header`, which is
+[defined](https://golang.org/pkg/net/http/#Header) as:
 
 ```go
 type Header map[string][]string
@@ -54,11 +55,10 @@ type Header map[string][]string
 i.e. the header is a mapping of strings, to arrays of strings, see the `match`
 function on headers below for an extension that makes looking up headers easier.
 
-
 ### List of extension functions
 
-This lists custom functions that can be used from CEL expressions in the
-CEL interceptor.
+This lists custom functions that can be used from CEL expressions in the CEL
+interceptor.
 
 <table style="width=100%" border="1">
   <tr>

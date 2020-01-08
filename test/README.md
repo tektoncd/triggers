@@ -49,17 +49,17 @@ You can also use
 
 ### Flags
 
-- By default the e2e tests run against the current cluster in `~/.kube/config` using
-  the environment specified in
+- By default the e2e tests run against the current cluster in `~/.kube/config`
+  using the environment specified in
   [your environment variables](/DEVELOPMENT.md#environment-setup).
 - Since these tests are fairly slow, running them with logging enabled is
   recommended (`-v`).
-- Using [`--logverbose`](#output-verbose-log) will show the verbose log output from
-  test as well as from k8s libraries.
+- Using [`--logverbose`](#output-verbose-log) will show the verbose log output
+  from test as well as from k8s libraries.
 - Using `-count=1` is
   [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test).
-- The e2e tests take a long time to run, so a value like `-timeout=20m`
-  can be useful depending on what you're running.
+- The e2e tests take a long time to run, so a value like `-timeout=20m` can be
+  useful depending on what you're running.
 
 You can [use test flags](#flags) to control the environment your tests run
 against, i.e. override
@@ -86,6 +86,7 @@ go test -v -tags=e2e -count=1 ./test -run ^TestEventListener
 ### Running YAML tests
 
 To run the YAML e2e tests, run the following command:
+
 ```bash
 ./test/e2e-tests-yaml.sh
 ```
@@ -141,7 +142,8 @@ The `WaitFor*` functions use the Kubernetes
 [`wait` package](https://godoc.org/k8s.io/apimachinery/pkg/util/wait). For
 polling they use
 [`PollImmediate`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#PollImmediate)
-with a [`ConditionFunc`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#ConditionFunc)
+with a
+[`ConditionFunc`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#ConditionFunc)
 callback function, which returns a `bool` to indicate if the polling should stop
 and an `error` to indicate if there was an error.
 
@@ -149,10 +151,11 @@ _See [wait.go](./wait.go) for more information._
 
 #### Generate random names
 
-You can use the [`names`](https://github.com/tektoncd/pipeline/tree/master/pkg/names)
-package from the [`Tekton Pipeline`](https://github.com/tektoncd/pipeline)
-project to append a random string, so that your tests can use unique names each
-time they run.
+You can use the
+[`names`](https://github.com/tektoncd/pipeline/tree/master/pkg/names) package
+from the [`Tekton Pipeline`](https://github.com/tektoncd/pipeline) project to
+append a random string, so that your tests can use unique names each time they
+run.
 
 ```go
 import "github.com/tektoncd/pipeline/pkg/names"
@@ -167,7 +170,7 @@ The presubmit integration tests entrypoint will run:
 - [The e2e tests](#end-to-end-tests)
 
 When run using Prow, integration tests will try to get a new cluster using
-[boskos](https://github.com/kubernetes/test-infra/tree/master/boskos),
-which only
+[boskos](https://github.com/kubernetes/test-infra/tree/master/boskos), which
+only
 [the `tektoncd/plumbing` OWNERS](https://github.com/tektoncd/plumbing/blob/master/OWNERS)
 have access to.
