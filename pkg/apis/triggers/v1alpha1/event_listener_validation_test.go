@@ -70,6 +70,12 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
+	}, {
+		name: "Valid EventListener with CEL overlays",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerCELInterceptor("", bldr.EventListenerCELOverlay("body.value", "'testing'"))))),
 	}}
 
 	for _, test := range tests {
@@ -264,7 +270,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "CEL interceptor with no filter",
+		name: "CEL interceptor with no filter or overlays",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",

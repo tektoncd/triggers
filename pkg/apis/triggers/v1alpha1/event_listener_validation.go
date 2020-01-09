@@ -146,8 +146,8 @@ func (i *EventInterceptor) validate(ctx context.Context) *apis.FieldError {
 	// }
 
 	if i.CEL != nil {
-		if i.CEL.Filter == "" {
-			return apis.ErrMissingField("interceptor.cel.filter")
+		if i.CEL.Filter == "" && len(i.CEL.Overlays) == 0 {
+			return apis.ErrMultipleOneOf("cel.filter", "cel.overlays")
 		}
 	}
 	return nil

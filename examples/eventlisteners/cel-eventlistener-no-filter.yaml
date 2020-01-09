@@ -1,14 +1,13 @@
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: cel-listener-interceptor
+  name: cel-eventlistener-no-filter
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: cel-trig
       interceptors:
         - cel:
-            filter: "headers.match('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"

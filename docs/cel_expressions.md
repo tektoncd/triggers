@@ -81,4 +81,19 @@ interceptor.
      <pre>header.match('x-test', 'test-value')</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+      truncate
+    </th>
+    <td>
+      (string, uint) -> string
+    </td>
+    <td>
+      Truncates a string to no more than the specified length.
+    </td>
+    <td>
+     <pre>truncate(body.commit.sha, 5)</pre>
+    </td>
+  </tr>
+
 </table>

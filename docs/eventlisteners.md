@@ -260,12 +260,38 @@ spec:
     - name: cel-trig
       interceptors:
         - cel:
-            filter: "header.match('X-GitHub-Event', 'push')"
+            filter: "headers.match('X-GitHub-Event', 'pull_request')"
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
       bindings:
       - name: pipeline-binding
       template:
         name: pipeline-template
 ```
 
-The `expression` must return a `true` value, otherwise the request will be
+If no filter is provided, then the overlays will be applied to the body,
+
+With a filter, the `expression` must return a `true` value, otherwise the request will be
 filtered out.
+
+<!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: cel-eventlistener-no-filter
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - cel:
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```
