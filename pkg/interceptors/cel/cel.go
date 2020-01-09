@@ -30,6 +30,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 
@@ -83,10 +84,22 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 	}
 
+	for _, u := range w.CEL.Overlays {
+		val, err := evaluate(u.Expression, env, evalContext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate overlay expression '%s': %w", w.CEL.Filter, err)
+		}
+		payload, err = sjson.SetBytes(payload, u.Key, val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sjson for key '%s' to '%s': %w", u.Key, val, err)
+		}
+	}
+
 	return &http.Response{
 		Header: request.Header,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(payload)),
 	}, nil
+
 }
 
 func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, error) {
@@ -114,6 +127,9 @@ func embeddedFunctions() cel.ProgramOption {
 		&functions.Overload{
 			Operator: "match",
 			Function: matchHeader},
+		&functions.Overload{
+			Operator: "truncate",
+			Binary:   truncateString},
 	)
 
 }
@@ -125,7 +141,11 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewIdent("header", mapStrDyn, nil),
 			decls.NewFunction("match",
 				decls.NewInstanceOverload("match_map_string_string",
-					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool))))
+					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool)),
+			decls.NewFunction("truncate",
+				decls.NewOverload("truncate_string_uint",
+					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
+
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {
@@ -156,4 +176,29 @@ func matchHeader(vals ...ref.Val) ref.Val {
 
 	return types.Bool(h.(http.Header).Get(string(key)) == string(val))
 
+}
+
+func truncateString(lhs, rhs ref.Val) ref.Val {
+	str, ok := lhs.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to truncate", lhs.Type())
+	}
+
+	n, ok := rhs.(types.Int)
+	if !ok {
+		return types.ValOrErr(n, "unexpected type '%v' passed to truncate", rhs.Type())
+	}
+
+	return types.String(str[:max(n, types.Int(len(str)))])
+}
+
+func max(x, y types.Int) types.Int {
+	switch x.Compare(y) {
+	case types.IntNegOne:
+		return x
+	case types.IntOne:
+		return y
+	default:
+		return x
+	}
 }

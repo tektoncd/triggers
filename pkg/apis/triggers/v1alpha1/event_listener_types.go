@@ -110,7 +110,14 @@ type GitLabInterceptor struct {
 
 // CELInterceptor provides a webhook to intercept and pre-process events
 type CELInterceptor struct {
-	Filter string `json:"filter,omitempty"`
+	Filter   string       `json:"filter,omitempty"`
+	Overlays []CELOverlay `json:"overlays,omitempty"`
+}
+
+// CELOverlay provides a way to modify the request body using CEL expressions
+type CELOverlay struct {
+	Key        string `json:"key,omitempty"`
+	Expression string `json:"expression,omitempty"`
 }
 
 // SecretRef contains the information required to reference a single secret string

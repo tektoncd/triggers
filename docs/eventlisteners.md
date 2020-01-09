@@ -7,7 +7,6 @@ resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
 <!-- FILE: examples/role-resources/role.yaml -->
-
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -26,6 +25,7 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
+
 
 Note that currently, JSON is the only accepted MIME type for events.
 
@@ -109,7 +109,6 @@ To be an Event Interceptor, a Kubernetes object should:
   the body, it can simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -140,6 +139,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from
@@ -161,7 +161,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -186,6 +185,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitLab Interceptors
 
 GitLab interceptors contain logic to validate and filter requests that come from
@@ -208,7 +208,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -233,6 +232,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### CEL Interceptors
 
 CEL interceptors parse expressions to filter requests based on JSON bodies and
@@ -245,7 +245,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -257,12 +256,16 @@ spec:
     - name: cel-trig
       interceptors:
         - cel:
-            filter: "header.match('X-GitHub-Event', 'push')"
+            filter: "headers.match('X-GitHub-Event', 'pull_request')"
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
       bindings:
       - name: pipeline-binding
       template:
         name: pipeline-template
 ```
+
 
 The `expression` must return a `true` value, otherwise the request will be
 filtered out.
