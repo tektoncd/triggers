@@ -136,6 +136,7 @@ func Test_reconcileService(t *testing.T) {
 			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				{
+					Name:     eventListenerServicePortName,
 					Protocol: corev1.ProtocolTCP,
 					Port:     int32(*ElPort),
 					TargetPort: intstr.IntOrString{
@@ -575,6 +576,7 @@ func TestReconcile(t *testing.T) {
 			Type:     eventListener1.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				{
+					Name:     eventListenerServicePortName,
 					Protocol: corev1.ProtocolTCP,
 					Port:     int32(*ElPort),
 					TargetPort: intstr.IntOrString{
