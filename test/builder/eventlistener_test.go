@@ -312,7 +312,11 @@ func TestEventListenerBuilder(t *testing.T) {
 					Name: "foo-trig",
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						CEL: &v1alpha1.CELInterceptor{
-							Filter: "body.value == 'test'"},
+							Filter: "body.value == 'test'",
+							Overlays: []v1alpha1.CELOverlay{
+								{Key: "value", Expression: "'testing'"},
+							},
+						},
 					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
 						Name:       "tb1",
@@ -330,7 +334,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tb1", "tt1", "v1alpha1",
 					EventListenerTriggerName("foo-trig"),
-					EventListenerCELInterceptor("body.value == 'test'"),
+					EventListenerCELInterceptor("body.value == 'test'", EventListenerCELOverlay("value", "'testing'")),
 				),
 			),
 		),

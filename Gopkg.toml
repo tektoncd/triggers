@@ -126,3 +126,7 @@ required = [
   name = "knative.dev/pkg"
   unused-packages = false
   non-go = false
+
+[[constraint]]
+  name = "github.com/tidwall/sjson"
+  version = "1.0.4"

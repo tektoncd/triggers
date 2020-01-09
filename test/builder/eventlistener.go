@@ -213,3 +213,14 @@ func EventListenerCELInterceptor(filter string, ops ...EventInterceptorOp) Event
 		t.Interceptors = append(t.Interceptors, i)
 	}
 }
+
+func EventListenerCELOverlay(key, expression string) EventInterceptorOp {
+	return func(i *v1alpha1.EventInterceptor) {
+		if i.CEL != nil {
+			i.CEL.Overlays = append(i.CEL.Overlays, v1alpha1.CELOverlay{
+				Key:        key,
+				Expression: expression,
+			})
+		}
+	}
+}
