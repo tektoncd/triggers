@@ -48,6 +48,8 @@ const (
 	eventListenerControllerName = "EventListener"
 	// eventListenerConfigMapName is for the automatically created ConfigMap
 	eventListenerConfigMapName = "config-logging-triggers"
+	// eventListenerServicePortName defines service port name for EventListener Service
+	eventListenerServicePortName = "http-listener"
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -171,6 +173,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 			Type:     el.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				{
+					Name:     eventListenerServicePortName,
 					Protocol: corev1.ProtocolTCP,
 					Port:     int32(*ElPort),
 					TargetPort: intstr.IntOrString{
