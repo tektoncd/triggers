@@ -24,8 +24,8 @@ of the technology this project is built on.
 
 #### Ramp up on CRDs
 
-This project extends Kubernetes (aka
-`k8s`) with Custom Resource Definitions (CRDSs). To find out more:
+This project extends Kubernetes (aka `k8s`) with Custom Resource Definitions
+(CRDSs). To find out more:
 
 - [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
   These will orient you on what words like "Resource" and "Controller"
@@ -193,8 +193,8 @@ kubectl create clusterrolebinding cluster-admin-binding \
 To install [Tekton Pipelines](https://github.com/tektoncd/pipeline) you can
 either:
 
-* [Install a released version](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-* [Setup Tekton Pipelines for development](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md)
+- [Install a released version](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+- [Setup Tekton Pipelines for development](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md)
   (install and iterate from HEAD)
 
 ## Iterating
