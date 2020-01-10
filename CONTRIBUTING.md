@@ -32,7 +32,8 @@ For more Triggers specific guidelines, see:
 
 - [The Tekton Triggers ZenHub project](#zenhub-project)
 
-See also [the Tekton Pipelines roadmap](http://github.com/tektoncd/pipeline/blob/master/roadmap-2019.md)
+See also
+[the Tekton Pipelines roadmap](http://github.com/tektoncd/pipeline/blob/master/roadmap-2019.md)
 
 ## ZenHub project
 
