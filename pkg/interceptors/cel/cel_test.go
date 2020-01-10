@@ -12,11 +12,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
-
-// Allow configuration via a config map
 
 func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	type args struct {
@@ -126,13 +122,10 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
 			logger, _ := logging.NewLogger("", "")
-			kubeClient := fakekubeclient.Get(ctx)
 			w := &Interceptor{
-				KubeClientSet: kubeClient,
-				CEL:           tt.CEL,
-				Logger:        logger,
+				CEL:    tt.CEL,
+				Logger: logger,
 			}
 			request := &http.Request{
 				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),

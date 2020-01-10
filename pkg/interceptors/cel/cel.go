@@ -31,7 +31,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
-	"k8s.io/client-go/kubernetes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
@@ -40,19 +39,15 @@ import (
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
-	Logger                 *zap.SugaredLogger
-	CEL                    *triggersv1.CELInterceptor
-	EventListenerNamespace string
+	Logger *zap.SugaredLogger
+	CEL    *triggersv1.CELInterceptor
 }
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(cel *triggersv1.CELInterceptor, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:                 l,
-		CEL:                    cel,
-		KubeClientSet:          k,
-		EventListenerNamespace: ns,
+		Logger: l,
+		CEL:    cel,
 	}
 }
 

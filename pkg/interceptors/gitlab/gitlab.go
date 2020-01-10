@@ -46,7 +46,6 @@ func NewInterceptor(gl *triggersv1.GitLabInterceptor, k kubernetes.Interface, ns
 	}
 }
 
-//func (w *Interceptor) ExecuteTrigger(payload []byte, request *http.Request, _ *triggersv1.EventListenerTrigger, _ string) ([]byte, error) {
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
 	// Validate the secret first, if set.
 	if w.GitLab.SecretRef != nil {
