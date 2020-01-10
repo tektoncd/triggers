@@ -153,11 +153,12 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	return nil
 }
 
-func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, http.Header, error) {
+func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, http.Header, error) {
 	if len(t.Interceptors) == 0 {
-		return event, request.Header, nil
+		return event, in.Header, nil
 	}
 
+	request := in
 	var resp *http.Response
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
@@ -174,12 +175,17 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, request *h
 			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
 
-		// TODO(#325): Chain interceptors together using HTTP request/response.
 		var err error
 		resp, err = interceptor.ExecuteTrigger(request)
 		if err != nil {
 			log.Error(err)
 			return nil, nil, err
+		}
+		// Set the next request to be the output of the last response to enable
+		// request chaining.
+		request = &http.Request{
+			Header: resp.Header,
+			Body:   resp.Body,
 		}
 	}
 	payload, err := ioutil.ReadAll(resp.Body)
