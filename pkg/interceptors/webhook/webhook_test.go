@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"testing"
 
@@ -100,6 +101,44 @@ func TestWebHookInterceptor(t *testing.T) {
 			t.Errorf("Header[%s] = %s, want %s", k, s, v)
 		}
 	}
+}
+
+func TestWebHookInterceptor_NotOK(t *testing.T) {
+	payload := new(bytes.Buffer)
+	_ = json.NewEncoder(payload).Encode(map[string]string{
+		"eventType": "push",
+		"foo":       "bar",
+	})
+
+	// Create test server
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}))
+	defer ts.Close()
+	interceptorURL, _ := url.Parse(ts.URL)
+	// Proxy all requests through test server.
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(interceptorURL),
+		},
+	}
+	webhook := &v1alpha1.WebhookInterceptor{
+		ObjectRef: &corev1.ObjectReference{
+			APIVersion: "v1",
+			Kind:       "Service",
+			Name:       "foo",
+		},
+	}
+	i := NewInterceptor(webhook, client, "default", nil)
+
+	incoming, _ := http.NewRequest("POST", "http://doesnotmatter.example.com", payload)
+	resp, err := i.ExecuteTrigger(incoming)
+	if err == nil || resp.StatusCode != http.StatusAccepted {
+		got, _ := httputil.DumpResponse(resp, true)
+		t.Fatalf("ExecuteTrigger: expected (Accepted, err), got: %s", string(got))
+	}
+
 }
 
 func TestGetURI(t *testing.T) {
