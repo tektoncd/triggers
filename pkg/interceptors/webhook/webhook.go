@@ -17,16 +17,15 @@ limitations under the License.
 package webhook
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/pkg/errors"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -73,9 +72,9 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return resp, errors.Errorf("failed to parse response body")
+			return resp, errors.New("failed to parse response body")
 		}
-		return resp, errors.Errorf("request rejected; status: %s; message: %s", resp.Status, respBody)
+		return resp, fmt.Errorf("request rejected; status: %s; message: %s", resp.Status, respBody)
 	}
 	return resp, err
 }
@@ -91,7 +90,7 @@ func getURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
 		}
 		return url.Parse(fmt.Sprintf("http://%s.%s.svc/", objRef.Name, ns))
 	}
-	return nil, xerrors.New("Invalid objRef")
+	return nil, errors.New("Invalid objRef")
 }
 
 func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {

@@ -113,7 +113,6 @@ func TestWebHookInterceptor_NotOK(t *testing.T) {
 	// Create test server
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
-		return
 	}))
 	defer ts.Close()
 	interceptorURL, _ := url.Parse(ts.URL)
