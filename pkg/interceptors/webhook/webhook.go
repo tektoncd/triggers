@@ -18,10 +18,12 @@ package webhook
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/pkg/errors"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"golang.org/x/xerrors"
@@ -64,7 +66,18 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	request.Host = u.Host
 	addInterceptorHeaders(request.Header, w.Webhook.Header)
 
-	return w.HTTPClient.Do(request)
+	resp, err := w.HTTPClient.Do(request)
+	if err != nil {
+		return resp, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return resp, errors.Errorf("failed to parse response body")
+		}
+		return resp, errors.Errorf("request rejected; status: %s; message: %s", resp.Status, respBody)
+	}
+	return resp, err
 }
 
 // getURI retrieves the ObjectReference to URI.

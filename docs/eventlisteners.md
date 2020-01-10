@@ -80,10 +80,12 @@ to a Kubernetes Service. If a Webhook interceptor is specified, the
 `EventListener` sink will forward incoming events to the service referenced by
 the interceptor over HTTP. The service is expected to process the event and
 return a response back. The status code of the response determines if the
-processing is successful and the returned body is used as the new event payload
-by the EventListener and passed on the `TriggerBinding`. An interceptor has an
-optional header field with key-value pairs that will be merged with event
-headers before being sent;
+processing is successful - a 200 response means the interceptor was successful
+and that processing should continue, any other status code will halt trigger
+processing. The returned body is used as the new event payload by the
+EventListener and passed on the `TriggerBinding`. An interceptor has an optional
+header field with key-value pairs that will be merged with event headers before
+being sent;
 [canonical](https://github.com/golang/go/blob/master/src/net/http/header.go#L214)
 names must be specified.
 
