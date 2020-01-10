@@ -89,9 +89,12 @@ being sent;
 [canonical](https://github.com/golang/go/blob/master/src/net/http/header.go#L214)
 names must be specified.
 
-When multiple interceptors are specified, the request is sent to each
-interceptor sequentially for processing. The response body and headers of the
-last interceptor is used for resource binding/templating.
+When multiple interceptors are specified, requests are piped through each
+interceptor sequentially for processing - e.g. the headers/body of the first
+interceptor's response will be sent as the request to the second interceptor. It
+is the responsibility of interceptors to preserve header/body data if desired.
+The response body and headers of the last interceptor is used for resource
+binding/templating.
 
 #### Event Interceptor Services
 
@@ -153,6 +156,9 @@ To use this interceptor as a filter, add the event types you would like to
 accept to the `eventTypes` field. Valid values can be found in GitHub
 [docs](https://developer.github.com/webhooks/#events).
 
+The body/header of the incoming request will be preserved in this interceptor's
+response.
+
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
 ```YAML
 ---
@@ -197,6 +203,9 @@ to the `gitlab` interceptor.
 To use this interceptor as a filter, add the event types you would like to
 accept to the `eventTypes` field.
 
+The body/header of the incoming request will be preserved in this interceptor's
+response.
+
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
 ```YAML
 ---
@@ -230,6 +239,9 @@ request headers, using the [CEL](https://github.com/google/cel-go) expression
 language.
 
 Supported features include case-insensitive matching on request headers.
+
+The body/header of the incoming request will be preserved in this interceptor's
+response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
 ```YAML

@@ -23,9 +23,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -232,16 +232,34 @@ func TestHandleEvent(t *testing.T) {
 }
 
 // sequentialInterceptor is a HTTP server that will return sequential responses.
+// It expects a request of the form `{"i": n}`.
+// The response body will always return with the next value set, whereas the
+// headers will append new values in the sequence.
 type sequentialInterceptor struct {
-	i int32
+	called bool
 }
 
 func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"i": atomic.AddInt32(&f.i, 1),
+	f.called = true
+	var data map[string]int
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+		return
 	}
-	w.Header().Set("Foo", "a")
-	_ = json.NewEncoder(w).Encode(data)
+	defer r.Body.Close()
+	data["i"]++
+
+	// Copy over all old headers, then set new value.
+	key := "Foo"
+	for _, v := range r.Header[key] {
+		w.Header().Add(key, v)
+	}
+	w.Header().Add(key, strconv.Itoa(int(data["i"])))
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+	}
 }
 
 // TestExecuteInterceptor tests that two interceptors can be called
@@ -277,7 +295,10 @@ func TestExecuteInterceptor(t *testing.T) {
 		Interceptors: []*triggersv1.EventInterceptor{a, a},
 	}
 
-	req, _ := http.NewRequest(http.MethodPost, "/", nil)
+	req, err := http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(`{}`))
+	if err != nil {
+		t.Fatalf("http.NewRequest: %v", err)
+	}
 	resp, header, err := r.executeInterceptors(trigger, req, nil, "", logger)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
@@ -289,10 +310,10 @@ func TestExecuteInterceptor(t *testing.T) {
 	}
 	want := map[string]int{"i": 2}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+		t.Errorf("Body: -want +got: %s", diff)
 	}
-	if h := header.Get("Foo"); h != "a" {
-		t.Errorf("-want +got: a %s", h)
+	if diff := cmp.Diff([]string{"1", "2"}, header["Foo"]); diff != "" {
+		t.Errorf("Header: -want +got: %s", diff)
 	}
 }
 
@@ -353,11 +374,15 @@ func TestExecuteInterceptor_error(t *testing.T) {
 			},
 		},
 	}
-	if resp, _, err := s.executeInterceptors(trigger, httptest.NewRequest(http.MethodPost, "/", nil), nil, "", logger); err == nil {
+	req, err := http.NewRequest(http.MethodPost, "/", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest: %v", err)
+	}
+	if resp, _, err := s.executeInterceptors(trigger, req, nil, "", logger); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
-	if si.i != 0 {
-		t.Errorf("expected sequential interceptor to not be called, was called %d times", si.i)
+	if si.called {
+		t.Error("expected sequential interceptor to not be called")
 	}
 }
