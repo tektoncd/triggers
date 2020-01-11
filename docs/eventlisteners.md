@@ -95,12 +95,14 @@ last interceptor is used for resource binding/templating.
 
 #### Event Interceptor Services
 
-To be an Event Interceptor, a Kubernetes object should: * Be fronted by a
-regular Kubernetes v1 Service over port 80 * Accept JSON payloads over HTTP *
-Return a HTTP 200 OK Status if the EventListener should continue processing the
-event * Return a JSON body back. This will be used by the EventListener as the
-event payload for any further processing. If the interceptor does not need to
-modify the body, it can simply return the body that it received.
+To be an Event Interceptor, a Kubernetes object should:
+
+* Be fronted by a regular Kubernetes v1 Service over port 80
+* Accept JSON payloads over HTTP
+* Return a HTTP 200 OK Status if the EventListener should continue processing the event
+* Return a JSON body back. This will be used by the EventListener as the event payload
+for any further processing. If the interceptor does not need to modify the body, it can
+simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
 ```YAML
@@ -239,9 +241,9 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: cel-trig
-      interceptor:
-        cel:
-          filter: "headers.match('X-GitHub-Event', 'push')"
+      interceptors:
+        - cel:
+            filter: "headers.match('X-GitHub-Event', 'push')"
       bindings:
       - name: pipeline-binding
       template:
