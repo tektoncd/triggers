@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	"k8s.io/client-go/third_party/forked/golang/template"
 	"k8s.io/client-go/util/jsonpath"
 )
 
@@ -55,67 +54,51 @@ func ParseJSONPath(input interface{}, expr string) (string, error) {
 }
 
 // PrintResults writes the results into writer
-// This is a slightly modified copy of the original
-// j.PrintResults from k8s.io/client-go/util/jsonpath/jsonpath.go
-// in that it uses calls `textValue()` for instead of `evalToText`
-// This is a workaround for kubernetes/kubernetes#16707
-func printResults(wr io.Writer, results []reflect.Value) error {
-	for i, r := range results {
-		text, err := textValue(r)
-		if err != nil {
-			return err
-		}
-		if i != len(results)-1 {
-			text = append(text, ' ')
-		}
-		if _, err := wr.Write(text); err != nil {
-			return err
-		}
+func printResults(wr io.Writer, values []reflect.Value) error {
+	results, err := getResults(values)
+	if err != nil {
+		return fmt.Errorf("error getting values for jsonpath results: %w", err)
+	}
+
+	if _, err := wr.Write(results); err != nil {
+		return err
 	}
 	return nil
 }
 
-// textValue translates reflect value to corresponding text
-// If the value if an array or map, it returns a JSON representation
-// of the value (as opposed to the internal go representation of the value)
-// Otherwise, the text value is from the `evalToText` function, originally from
-// k8s.io/client-go/util/jsonpath/jsonpath.go
-func textValue(v reflect.Value) ([]byte, error) {
-	t := reflect.TypeOf(v.Interface())
-	// special case for null values in JSON; evalToText() returns <nil> here
-	if t == nil {
-		return []byte("null"), nil
-	}
-
-	switch t.Kind() {
-	// evalToText() returns <map> ....; return JSON string instead.
-	case reflect.String:
-		b, err := json.Marshal(v.Interface())
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal string value %v: %v", v, err)
+func getResults(values []reflect.Value) ([]byte, error) {
+	if len(values) == 1 {
+		v := values[0]
+		t := reflect.TypeOf(v.Interface())
+		switch {
+		case t == nil:
+			return []byte("null"), nil
+		case t.Kind() == reflect.String:
+			b, err := json.Marshal(v.Interface())
+			if err != nil {
+				return nil, fmt.Errorf("unable to marshal string value %v: %v", v, err)
+			}
+			// A valid json string is surrounded by quotation marks; we are using this function to
+			// create a representation of the json value that can be embedded in a CRD definition and
+			// we want to leave it up to the user if they want the surrounding quotation marks or not.
+			return b[1 : len(b)-1], nil
+		default:
+			return json.Marshal(v.Interface())
 		}
-		// A valid json string is surrounded by quotation marks; we are using this function to
-		// create a representation of the json value that can be embedded in a CRD definition and
-		// we want to leave it up to the user if they want the surrounding quotation marks or not.
-		return b[1 : len(b)-1], nil
-	case reflect.Map, reflect.Slice, reflect.Int:
-		return json.Marshal(v.Interface())
-	default:
-		return evalToText(v)
 	}
-}
 
-// evalToText translates reflect value to corresponding text
-// This is a unmodified copy of j.evalToText from k8s.io/client-go/util/jsonpath/jsonpath.go
-func evalToText(v reflect.Value) ([]byte, error) {
-	iface, ok := template.PrintableValue(v)
-	if !ok {
-		// only happens if v is a Chan or a Func
-		return nil, fmt.Errorf("can't print type %s", v.Type())
+	// More than one result - we need to return a JSON array response
+	results := []interface{}{}
+	for _, r := range values {
+		t := reflect.TypeOf(r.Interface())
+		if t == nil {
+			results = append(results, nil)
+		} else {
+			// No special case for string here unlike above since its going to be part of a JSON array
+			results = append(results, r.Interface())
+		}
 	}
-	var buffer bytes.Buffer
-	fmt.Fprint(&buffer, iface)
-	return buffer.Bytes(), nil
+	return json.Marshal(results)
 }
 
 // TektonJSONPathExpression returns a valid JSONPath expression. It accepts

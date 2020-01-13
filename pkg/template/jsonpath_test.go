@@ -16,6 +16,7 @@ var arrays = `[{"a": "b"}, {"c": "d"}, {"e": "f"}]`
 // an array or map value and regular values otherwise
 func TestParseJSONPath(t *testing.T) {
 	var objectBody = fmt.Sprintf(`{"body":%s}`, objects)
+	var arrayBody = fmt.Sprintf(`{"body":%s}`, arrays)
 	tests := []struct {
 		name string
 		expr string
@@ -29,7 +30,7 @@ func TestParseJSONPath(t *testing.T) {
 		want: objects,
 	}, {
 		name: "array of objects",
-		in:   fmt.Sprintf(`{"body":%s}`, arrays),
+		in:   arrayBody,
 		expr: "$(body)",
 		want: arrays,
 	}, {
@@ -62,6 +63,26 @@ func TestParseJSONPath(t *testing.T) {
 		in:   objectBody,
 		expr: "$(body.null)",
 		want: "null",
+	}, {
+		name: "multiple results",
+		in:   arrayBody,
+		expr: "$(body[:2])",
+		want: `[{"a": "b"}, {"c": "d"}]`,
+	}, {
+		name: "multiple results with empty string",
+		in:   `{"body":["", "some", "thing"]}`,
+		expr: "$(body[:2])",
+		want: `["", "some"]`,
+	}, {
+		name: "multiple results newlines/special chars",
+		in:   `{"body":["", "v\r\n烈", "thing"]}`,
+		expr: "$(body[:2])",
+		want: `["", "v\r\n烈"]`,
+	}, {
+		name: "multiple results with null",
+		in:   `{"body":["", null, "thing"]}`,
+		expr: "$(body[:2])",
+		want: `["", null]`,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
