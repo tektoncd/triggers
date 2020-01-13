@@ -54,7 +54,7 @@ $({body) # INVALID - Ending curly brace absent
 
 `$(body)` is replaced by the entire body.
 
-$(body) -> "{"key1": "value1", "key2": {"key3": "value3"}, "key4": ["value4", "value5"]}"
+$(body) -> "{"key1": "value1", "key2": {"key3": "value3"}, "key4": ["value4", "value5", "value6"]}"
 
 $(body.key1) -> "value1"
 
@@ -63,6 +63,8 @@ $(body.key2) -> "{"key3": "value3"}"
 $(body.key2.key3) -> "value3"
 
 $(body.key4[0]) -> "value4"
+
+$(body.key4[0:2]) -> "{"value4", "value5"}"
 
 # $(header) is replaced by all of the headers from the event.
 
