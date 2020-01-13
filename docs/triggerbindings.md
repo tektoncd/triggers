@@ -74,7 +74,7 @@ $(header.One) -> "one"
 
 $(header.Two) -> "one two three"
 
-$(header.Two.1) -> "two"
+$(header.Two[1]) -> "two"
 ```
 
 ## Multiple Bindings
