@@ -7,6 +7,7 @@ resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
 <!-- FILE: examples/role-resources/role.yaml -->
+
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,7 +26,6 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
-
 
 Note that currently, JSON is the only accepted MIME type for events.
 
@@ -53,11 +53,11 @@ make it reachable externally.
 By default, EventListeners will attach the following labels automatically to all
 resources created:
 
-Name                     | Description
------------------------- | -----------
-tekton.dev/eventlistener | Name of the EventListener that generated the resource.
-tekton.dev/trigger       | Name of the trigger that generated the resource.
-tekton.dev/eventid       | UID of the incoming event.
+| Name                     | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| tekton.dev/eventlistener | Name of the EventListener that generated the resource. |
+| tekton.dev/trigger       | Name of the trigger that generated the resource.       |
+| tekton.dev/eventid       | UID of the incoming event.                             |
 
 ## Event Interceptors
 
@@ -66,9 +66,9 @@ modify the behavior or payload of triggers.
 
 Event Interceptors can take several different forms today:
 
-*   Webhook Interceptors
-*   GitHub Interceptors
-*   GitLab Interceptors
+- Webhook Interceptors
+- GitHub Interceptors
+- GitLab Interceptors
 
 ### Webhook Interceptors
 
@@ -95,14 +95,15 @@ last interceptor is used for resource binding/templating.
 
 #### Event Interceptor Services
 
-To be an Event Interceptor, a Kubernetes object should: * Be fronted by a
-regular Kubernetes v1 Service over port 80 * Accept JSON payloads over HTTP *
+To be an Event Interceptor, a Kubernetes object should: _ Be fronted by a
+regular Kubernetes v1 Service over port 80 _ Accept JSON payloads over HTTP _
 Return a HTTP 200 OK Status if the EventListener should continue processing the
-event * Return a JSON body back. This will be used by the EventListener as the
+event _ Return a JSON body back. This will be used by the EventListener as the
 event payload for any further processing. If the interceptor does not need to
 modify the body, it can simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -133,7 +134,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from
@@ -152,6 +152,7 @@ accept to the `eventTypes` field. Valid values can be found in GitHub
 [docs](https://developer.github.com/webhooks/#events).
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -176,7 +177,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitLab Interceptors
 
 GitLab interceptors contain logic to validate and filter requests that come from
@@ -196,6 +196,7 @@ To use this interceptor as a filter, add the event types you would like to
 accept to the `eventTypes` field.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -220,7 +221,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### CEL Interceptors
 
 CEL interceptors parse expressions to filter requests based on JSON bodies and
@@ -230,6 +230,7 @@ language.
 Supported features include case-insensitive matching on request headers.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -247,7 +248,6 @@ spec:
       template:
         name: pipeline-template
 ```
-
 
 The `expression` must return a `true` value, otherwise the request will be
 filtered out.
