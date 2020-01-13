@@ -6,9 +6,9 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: cel-trig
-      interceptor:
-        cel:
-          filter: "headers.match('X-GitHub-Event', 'push')"
+      interceptors:
+        - cel:
+            filter: "headers.match('X-GitHub-Event', 'push')"
       bindings:
       - name: pipeline-binding
       template:
