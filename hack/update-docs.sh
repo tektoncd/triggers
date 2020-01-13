@@ -96,7 +96,7 @@ for file in ${doc_files};do
     if [[ ${DIFF} == "true" ]];then
         # Check if up to date
         set +o errexit
-        diff ${file} ${new_file}
+        diff -B ${file} ${new_file}
         if [[ $? != 0 ]];then
             echo 'Run `./hack/update-docs.sh` to update the docs'
             exit 1
