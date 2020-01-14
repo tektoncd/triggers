@@ -23,4 +23,4 @@ spec:
     - name: ExternalDomain
       value: demo.iancoffey.com
   timeout: 1000s
-  serviceAccount: tekton-triggers-createwebhook
+  serviceAccountName: tekton-triggers-createwebhook
