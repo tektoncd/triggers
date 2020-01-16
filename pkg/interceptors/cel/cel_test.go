@@ -85,6 +85,26 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			want:    []byte(`{"new":"master","ref":"refs/head/master"}`),
 		},
 		{
+			name: "update with base64 decoding",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "value", Expression: "decodeb64(body.value)"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
+			want:    []byte(`{"value":{"test":"decode"}}`),
+		},
+		{
+			name: "update with base64 decoding",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "value", Expression: "decodeb64(body.value)"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
+			want:    []byte(`{"value":{"test":"decode"}}`),
+		},
+		{
 			name: "multiple overlays",
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "body.value == 'test'",
@@ -223,9 +243,10 @@ func TestExpressionEvaluation(t *testing.T) {
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
 	testRef := "refs/heads/master"
 	jsonMap := map[string]interface{}{
-		"value": "testing",
-		"sha":   testSHA,
-		"ref":   testRef,
+		"value":    "testing",
+		"sha":      testSHA,
+		"ref":      testRef,
+		"b64value": "ZXhhbXBsZQ==",
 	}
 	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
@@ -279,6 +300,16 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "canonical header lookup",
 			expr: "header.canonical('x-test-header')",
 			want: types.String("value"),
+		},
+		{
+			name: "decode a base64 value",
+			expr: "decodeb64(body.b64value)",
+			want: types.Bytes("example"),
+		},
+		{
+			name: "decode a base64 value",
+			expr: "decodeb64(body.b64value)",
+			want: types.Bytes("example"),
 		},
 	}
 	for _, tt := range tests {
@@ -352,6 +383,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "invalid function overloading canonical with non-string",
 			expr: "body.canonical(52)",
 			want: "found no matching overload",
+		},
+		{
+			name: "invalid base64 decoding",
+			expr: "decodeb64(\"AA=A\")",
+			want: "failed to decode 'AA=A' in decodeB64.*illegal base64 data",
 		},
 	}
 	for _, tt := range tests {

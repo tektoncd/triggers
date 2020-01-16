@@ -266,7 +266,7 @@ spec:
     - name: cel-trig-with-matches
       interceptors:
         - cel:
-            filter: "headers.matches('X-GitHub-Event', 'pull_request')"
+            filter: "header.match('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"
@@ -283,6 +283,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 If no filter is provided, then the overlays will be applied to the body,
 
