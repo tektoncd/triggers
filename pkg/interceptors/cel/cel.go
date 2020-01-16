@@ -18,6 +18,7 @@ package cel
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -158,6 +159,9 @@ func embeddedFunctions() cel.ProgramOption {
 		&functions.Overload{
 			Operator: "split",
 			Binary:   splitString},
+		&functions.Overload{
+			Operator: "decodeb64",
+			Unary:    decodeB64String},
 	)
 
 }
@@ -177,6 +181,9 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewFunction("canonical",
 				decls.NewInstanceOverload("canonical_map_string",
 					[]*exprpb.Type{mapStrDyn, decls.String}, decls.String)),
+			decls.NewFunction("decodeb64",
+				decls.NewOverload("decodeb64_string",
+					[]*exprpb.Type{decls.String}, decls.String)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
 					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
@@ -253,6 +260,18 @@ func canonicalHeader(lhs, rhs ref.Val) ref.Val {
 	}
 
 	return types.String(h.(http.Header).Get(string(key)))
+}
+
+func decodeB64String(val ref.Val) ref.Val {
+	str, ok := val.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to decodeB64", val.Type())
+	}
+	dec, err := base64.StdEncoding.DecodeString(str.Value().(string))
+	if err != nil {
+		return types.NewErr("failed to decode '%v' in decodeB64: %w", str, err)
+	}
+	return types.Bytes(dec)
 }
 
 func max(x, y types.Int) types.Int {

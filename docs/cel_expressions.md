@@ -112,7 +112,7 @@ interceptor.
     <td>
      <pre>split(body.ref, '/')</pre>
     </td>
-</tr>
+  </tr>
     <th>
       canonical
     </th>
@@ -124,6 +124,20 @@ interceptor.
     </td>
     <td>
      <pre>header.canonical('x-test')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      decodeb64
+    </th>
+    <td>
+      (string) -> string
+    </td>
+    <td>
+      Decodes a base64 encoded string.
+    </td>
+    <td>
+     <pre>decodeb64(body.message.data)</pre>
     </td>
   </tr>
 </table>
