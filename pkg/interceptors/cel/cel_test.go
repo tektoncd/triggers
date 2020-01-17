@@ -15,13 +15,10 @@ import (
 )
 
 func TestInterceptor_ExecuteTrigger(t *testing.T) {
-	type args struct {
-		payload []byte
-	}
 	tests := []struct {
 		name    string
 		CEL     *triggersv1.CELInterceptor
-		args    args
+		payload io.ReadCloser
 		want    []byte
 		wantErr bool
 	}{
@@ -30,9 +27,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "body.value == 'testing'",
 			},
-			args: args{
-				payload: []byte(`{"value":"testing"}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"testing"}`)),
 			want:    []byte(`{"value":"testing"}`),
 			wantErr: false,
 		},
@@ -41,9 +36,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "body.value == 'test'",
 			},
-			args: args{
-				payload: []byte(`{"value":"testing"}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"testing"}`)),
 			wantErr: true,
 		},
 		{
@@ -51,9 +44,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header['X-Test'][0] == 'test-value'",
 			},
-			args: args{
-				payload: []byte(`{}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			want:    []byte(`{}`),
 			wantErr: false,
 		},
@@ -62,9 +53,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header['X-Test'][0] == 'unknown'",
 			},
-			args: args{
-				payload: []byte(`{}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			wantErr: true,
 		},
 		{
@@ -72,9 +61,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header.match('x-test', 'no-match')",
 			},
-			args: args{
-				payload: []byte(`{}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			wantErr: true,
 		},
 		{
@@ -82,9 +69,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header.match('x-test', 'test-value')",
 			},
-			args: args{
-				payload: []byte(`{}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			want:    []byte(`{}`),
 			wantErr: false,
 		},
@@ -93,9 +78,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header.match('x-test', 'test-value') && body.value == 'test'",
 			},
-			args: args{
-				payload: []byte(`{"value":"test"}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test"}`)),
 			want:    []byte(`{"value":"test"}`),
 			wantErr: false,
 		},
@@ -104,9 +87,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header['X-Test",
 			},
-			args: args{
-				payload: []byte(`{"value":"test"}`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test"}`)),
 			wantErr: true,
 		},
 		{
@@ -114,10 +95,14 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "body.value == 'test'",
 			},
-			args: args{
-				payload: []byte(`{]`),
-			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			wantErr: true,
+		}, {
+			name:    "nil body does not panic",
+			CEL:     &triggersv1.CELInterceptor{Filter: "header.match('x-test', 'test-value')"},
+			payload: nil,
+			want:    []byte(`{}`),
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -128,10 +113,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				Logger: logger,
 			}
 			request := &http.Request{
-				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
-				GetBody: func() (io.ReadCloser, error) {
-					return ioutil.NopCloser(bytes.NewReader(tt.args.payload)), nil
-				},
+				Body: tt.payload,
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 					"X-Test":       []string{"test-value"},

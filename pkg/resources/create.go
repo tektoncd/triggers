@@ -88,7 +88,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	if name == "" {
 		name = data.GetGenerateName()
 	}
-	logger.Infof("Generating resource: kind: %+v, name: %s", apiResource, name)
+	logger.Infof("Generating resource: kind: %s, name: %s", apiResource, name)
 
 	gvr := schema.GroupVersionResource{
 		Group:    apiResource.Group,

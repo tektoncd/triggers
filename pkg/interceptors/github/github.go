@@ -17,6 +17,7 @@ limitations under the License.
 package github
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -46,21 +47,22 @@ func NewInterceptor(gh *triggersv1.GitHubInterceptor, k kubernetes.Interface, ns
 }
 
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
+	payload := []byte{}
+	var err error
+
+	if request.Body != nil {
+		defer request.Body.Close()
+		payload, err = ioutil.ReadAll(request.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read request body: %w", err)
+		}
+	}
+
 	// Validate secrets first before anything else, if set
 	if w.GitHub.SecretRef != nil {
 		header := request.Header.Get("X-Hub-Signature")
 		if header == "" {
 			return nil, errors.New("no X-Hub-Signature header set")
-		}
-
-		body, err := request.GetBody()
-		if err != nil {
-			return nil, err
-		}
-		defer body.Close()
-		payload, err := ioutil.ReadAll(body)
-		if err != nil {
-			return nil, err
 		}
 		secretToken, err := interceptors.GetSecretToken(w.KubeClientSet, w.GitHub.SecretRef, w.EventListenerNamespace)
 		if err != nil {
@@ -88,6 +90,6 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 	return &http.Response{
 		Header: request.Header,
-		Body:   request.Body,
+		Body:   ioutil.NopCloser(bytes.NewBuffer(payload)),
 	}, nil
 }

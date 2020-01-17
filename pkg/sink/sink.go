@@ -17,6 +17,7 @@ limitations under the License.
 package sink
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,7 +73,6 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
 	event, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		r.Logger.Errorf("Error reading event body: %s", err)
@@ -158,7 +158,11 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		return event, in.Header, nil
 	}
 
-	request := in
+	// The request body to the first interceptor in the chain should be the received event body.
+	request := &http.Request{
+		Header: in.Header,
+		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
+	}
 	var resp *http.Response
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
@@ -174,7 +178,6 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		default:
 			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
-
 		var err error
 		resp, err = interceptor.ExecuteTrigger(request)
 		if err != nil {
@@ -185,7 +188,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		// request chaining.
 		request = &http.Request{
 			Header: resp.Header,
-			Body:   resp.Body,
+			Body:   ioutil.NopCloser(resp.Body),
 		}
 	}
 	payload, err := ioutil.ReadAll(resp.Body)

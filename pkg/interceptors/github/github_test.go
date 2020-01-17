@@ -18,7 +18,7 @@ import (
 
 func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 	type args struct {
-		payload   []byte
+		payload   io.ReadCloser
 		secret    *corev1.Secret
 		signature string
 		eventType string
@@ -34,7 +34,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			name:   "no secret",
 			GitHub: &triggersv1.GitHubInterceptor{},
 			args: args{
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 				signature: "foo",
 			},
 			want:    []byte("somepayload"),
@@ -58,7 +58,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 						"token": []byte("secrettoken"),
 					},
 				},
-				payload: []byte("somepayload"),
+				payload: ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 			},
 			wantErr: true,
 		},
@@ -82,7 +82,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 						"token": []byte("secret"),
 					},
 				},
-				payload: []byte("somepayload"),
+				payload: ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 			},
 			wantErr: false,
 			want:    []byte("somepayload"),
@@ -93,7 +93,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 			},
 			args: args{
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 				eventType: "YOUR_EVENT",
 			},
 			wantErr: false,
@@ -105,7 +105,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 			},
 			args: args{
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 				eventType: "OTHER_EVENT",
 			},
 			wantErr: true,
@@ -132,7 +132,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 					},
 				},
 				eventType: "MY_EVENT",
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 			},
 			wantErr: false,
 			want:    []byte("somepayload"),
@@ -159,7 +159,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 					},
 				},
 				eventType: "OTHER_EVENT",
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 			},
 			wantErr: true,
 		},
@@ -183,9 +183,18 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 					},
 				},
 				eventType: "MY_EVENT",
-				payload:   []byte("somepayload"),
+				payload:   ioutil.NopCloser(bytes.NewBufferString("somepayload")),
 			},
 			wantErr: true,
+		}, {
+			name:   "nil body does not panic",
+			GitHub: &triggersv1.GitHubInterceptor{},
+			args: args{
+				payload:   nil,
+				signature: "foo",
+			},
+			want:    []byte{},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -194,10 +203,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
 			kubeClient := fakekubeclient.Get(ctx)
 			request := &http.Request{
-				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
-				GetBody: func() (io.ReadCloser, error) {
-					return ioutil.NopCloser(bytes.NewReader(tt.args.payload)), nil
-				},
+				Body: tt.args.payload,
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
