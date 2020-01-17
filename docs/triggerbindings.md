@@ -6,6 +6,7 @@ parameters. The separation of `TriggerBinding`s from `TriggerTemplate`s was
 deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -20,7 +21,6 @@ spec:
   - name: contenttype
     value: $(header.Content-Type)
 ```
-
 
 `TriggerBinding`s are connected to `TriggerTemplate`s within an
 [`EventListener`](eventlisteners.md), which is where the pod is actually
@@ -37,12 +37,14 @@ TriggerBindings can access values from the HTTP JSON body and the headers using
 JSONPath expressions wrapped in `$()`.
 
 These are all valid expressions:
+
 ```shell script
 $(body.key1)
 $(.body.key)
 ```
 
 These are invalid expressions:
+
 ```shell script
 .body.key1 # INVALID - Not wrapped in $()
 $({body) # INVALID - Ending curly brace absent
@@ -50,7 +52,7 @@ $({body) # INVALID - Ending curly brace absent
 
 ### Examples
 
-``` shell script
+```shell script
 
 `$(body)` is replaced by the entire body.
 
@@ -92,10 +94,10 @@ metadata:
   name: event-binding
 spec:
   params:
-  - name: gitrevision
-    value: $(body.head_commit.id)
-  - name: gitrepositoryurl
-    value: $(body.repository.url)
+    - name: gitrevision
+      value: $(body.head_commit.id)
+    - name: gitrepositoryurl
+      value: $(body.repository.url)
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -103,8 +105,8 @@ metadata:
   name: prod-env
 spec:
   params:
-  - name: environment
-    value: prod
+    - name: environment
+      value: prod
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -112,8 +114,8 @@ metadata:
   name: staging-env
 spec:
   params:
-  - name: environment
-    value: staging
+    - name: environment
+      value: staging
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
