@@ -17,6 +17,7 @@ limitations under the License.
 package cel
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -58,15 +59,15 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		return nil, fmt.Errorf("error creating cel environment: %w", err)
 	}
 
-	body, err := request.GetBody()
-	if err != nil {
-		return nil, fmt.Errorf("error getting request body: %w", err)
+	var payload = []byte(`{}`)
+	if request.Body != nil {
+		defer request.Body.Close()
+		payload, err = ioutil.ReadAll(request.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading request body: %w", err)
+		}
 	}
-	defer body.Close()
-	payload, err := ioutil.ReadAll(body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %w", err)
-	}
+
 	evalContext, err := makeEvalContext(payload, request)
 	if err != nil {
 		return nil, fmt.Errorf("error making the evaluation context: %w", err)
@@ -84,7 +85,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 	return &http.Response{
 		Header: request.Header,
-		Body:   request.Body,
+		Body:   ioutil.NopCloser(bytes.NewBuffer(payload)),
 	}, nil
 }
 
