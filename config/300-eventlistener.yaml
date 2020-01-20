@@ -26,7 +26,7 @@ spec:
     shortNames:
     - el
     categories:
-    - all
+    - tekton
     - tekton-triggers
   # Opt into the status subresource so metadata.generation
   # starts to increment
