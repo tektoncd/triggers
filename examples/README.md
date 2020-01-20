@@ -94,7 +94,6 @@ simple-pipeline-runnd654-say-hello-djs4v-pod-64cfef   0/2       Init:0/2   0    
    POST data and the specified Tekton Pipeline:
 
 ```yaml
-
 ---
 spec:
   params:
