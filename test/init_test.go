@@ -167,6 +167,14 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
+	ctbs, err := cs.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("could not get ClusterTriggerBindings: %w", err)
+	}
+	for _, i := range ctbs.Items {
+		printOrAdd("ClusterTriggerBinding", i.Name, i)
+	}
+
 	els, err := cs.TriggersClient.TektonV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get EventListeners: %w", err)

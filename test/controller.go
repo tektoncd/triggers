@@ -21,38 +21,39 @@ import (
 	"testing"
 
 	// Link in the fakes so they get injected into injection.Fake
+	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
+	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
+	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
 	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding/fake"
 	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate/fake"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
-	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
-	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
-
-	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
+	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
+	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	"knative.dev/pkg/controller"
 )
 
 // Resources represents the desired state of the system (i.e. existing resources)
 // to seed controllers with.
 type Resources struct {
-	Namespaces       []*corev1.Namespace
-	EventListeners   []*v1alpha1.EventListener
-	TriggerBindings  []*v1alpha1.TriggerBinding
-	TriggerTemplates []*v1alpha1.TriggerTemplate
-	Deployments      []*appsv1.Deployment
-	Services         []*corev1.Service
-	ConfigMaps       []*corev1.ConfigMap
+	Namespaces             []*corev1.Namespace
+	ClusterTriggerBindings []*v1alpha1.ClusterTriggerBinding
+	EventListeners         []*v1alpha1.EventListener
+	TriggerBindings        []*v1alpha1.TriggerBinding
+	TriggerTemplates       []*v1alpha1.TriggerTemplate
+	Deployments            []*appsv1.Deployment
+	Services               []*corev1.Service
+	ConfigMaps             []*corev1.ConfigMap
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -80,6 +81,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		Resource: fakeresourceclient.Get(ctx),
 	}
 	// Setup fake informer for reconciler tests
+	ctbInformer := fakeclustertriggerbindinginformer.Get(ctx)
 	elInformer := fakeeventlistenerinformer.Get(ctx)
 	ttInformer := faketriggertemplateinformer.Get(ctx)
 	tbInformer := faketriggerbindinginformer.Get(ctx)
@@ -94,6 +96,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		}
 	}
 	// Create test Resources
+	for _, ctb := range r.ClusterTriggerBindings {
+		if err := ctbInformer.Informer().GetIndexer().Add(ctb); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Triggers.TektonV1alpha1().ClusterTriggerBindings().Create(ctb); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, el := range r.EventListeners {
 		if err := elInformer.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatal(err)
@@ -156,6 +166,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 // nolint: golint
 func GetResourcesFromClients(c Clients) (*Resources, error) {
 	testResources := &Resources{}
+	// Add ClusterTriggerBindings
+	ctbList, err := c.Triggers.TektonV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, ctb := range ctbList.Items {
+		testResources.ClusterTriggerBindings = append(testResources.ClusterTriggerBindings, ctb.DeepCopy())
+	}
 	nsList, err := c.Kube.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err

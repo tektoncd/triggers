@@ -46,6 +46,7 @@ spec:
             value: $(params.gitrepositoryurl)
 ```
 
+
 Similar to
 [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s
 do not do any actual work, but instead act as the blueprint for what resources

@@ -1320,6 +1320,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/golang/protobuf/ptypes/struct",
     "github.com/google/cel-go/cel",
     "github.com/google/cel-go/checker/decls",
     "github.com/google/cel-go/common/types",
@@ -1334,6 +1335,7 @@
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2",
     "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1",
+    "github.com/tektoncd/pipeline/pkg/apis/validate",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake",
     "github.com/tektoncd/pipeline/pkg/client/injection/client",

@@ -35,23 +35,36 @@ var uidMatch = []byte(`$(uid)`)
 // ResolvedTrigger contains the dereferenced TriggerBindings and
 // TriggerTemplate after resolving the k8s ObjectRef.
 type ResolvedTrigger struct {
-	TriggerBindings []*triggersv1.TriggerBinding
-	TriggerTemplate *triggersv1.TriggerTemplate
+	TriggerBindings        []*triggersv1.TriggerBinding
+	ClusterTriggerBindings []*triggersv1.ClusterTriggerBinding
+	TriggerTemplate        *triggersv1.TriggerTemplate
 }
 
 type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
 type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
+type getClusterTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.ClusterTriggerBinding, error)
 
 // ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
-func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
+func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getCTB getClusterTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
 	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
+	ctb := make([]*triggersv1.ClusterTriggerBinding, 0, len(trigger.Bindings))
 	for _, b := range trigger.Bindings {
-		tb2, err := getTB(b.Name, metav1.GetOptions{})
-		if err != nil {
-			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
+		if b.Kind == triggersv1.ClusterTriggerBindingKind {
+			ctb2, err := getCTB(b.Name, metav1.GetOptions{})
+			if err != nil {
+				return ResolvedTrigger{}, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
+			}
+			ctb = append(ctb, ctb2)
 		}
-		tb = append(tb, tb2)
+
+		if b.Kind == triggersv1.NamespacedTriggerBindingKind {
+			tb2, err := getTB(b.Name, metav1.GetOptions{})
+			if err != nil {
+				return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
+			}
+			tb = append(tb, tb2)
+		}
 	}
 
 	ttName := trigger.Template.Name
@@ -59,7 +72,7 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	if err != nil {
 		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
 	}
-	return ResolvedTrigger{TriggerBindings: tb, TriggerTemplate: tt}, nil
+	return ResolvedTrigger{TriggerBindings: tb, ClusterTriggerBindings: ctb, TriggerTemplate: tt}, nil
 }
 
 // MergeInDefaultParams returns the params with the addition of all
@@ -116,10 +129,13 @@ func convertParamMapToArray(paramMap map[string]pipelinev1.ArrayOrString) []pipe
 }
 
 // MergeBindingParams merges params across multiple bindings.
-func MergeBindingParams(bindings []*triggersv1.TriggerBinding) ([]pipelinev1.Param, error) {
+func MergeBindingParams(bindings []*triggersv1.TriggerBinding, clusterbindings []*triggersv1.ClusterTriggerBinding) ([]pipelinev1.Param, error) {
 	params := []pipelinev1.Param{}
 	for _, b := range bindings {
 		params = append(params, b.Spec.Params...)
+	}
+	for _, cb := range clusterbindings {
+		params = append(params, cb.Spec.Params...)
 	}
 	seen := make(map[string]bool, len(params))
 	for _, p := range params {

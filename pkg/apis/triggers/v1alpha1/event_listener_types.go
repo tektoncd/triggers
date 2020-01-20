@@ -133,10 +133,11 @@ type SecretRef struct {
 	Namespace  string `json:"namespace,omitempty"`
 }
 
-// EventListenerBinding refers to a particular TriggerBinding resource.
+// EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBindingresource.
 type EventListenerBinding struct {
-	Name       string `json:"name"`
-	APIVersion string `json:"apiversion,omitempty"`
+	Name       string             `json:"name"`
+	Kind       TriggerBindingKind `json:"kind"`
+	APIVersion string             `json:"apiversion,omitempty"`
 }
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.
@@ -184,6 +185,17 @@ const (
 	// DeploymentExists is the ConditionType set on the EventListener, which
 	// specifies Deployment existence.
 	DeploymentExists apis.ConditionType = "Deployment"
+)
+
+// Check that EventListener may be validated and defaulted.
+// TriggerBindingKind defines the type of TriggerBinding used by the EventListener.
+type TriggerBindingKind string
+
+const (
+	// NamespacedTriggerBindingKind indicates that triggerbinding type has a namespace scope.
+	NamespacedTriggerBindingKind TriggerBindingKind = "TriggerBinding"
+	// ClusterTriggerBindingKind indicates that triggerbinding type has a cluster scope.
+	ClusterTriggerBindingKind TriggerBindingKind = "ClusterTriggerBinding"
 )
 
 var eventListenerCondSet = apis.NewLivingConditionSet(ServiceExists, DeploymentExists)

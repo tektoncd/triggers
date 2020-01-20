@@ -24,6 +24,19 @@ import (
 
 // Check that TriggerBinding may be validated and defaulted.
 var _ apis.Validatable = (*TriggerBinding)(nil)
+var _ apis.Defaultable = (*TriggerBinding)(nil)
+
+func (tb *TriggerBinding) TriggerBindingSpec() TriggerBindingSpec {
+	return tb.Spec
+}
+
+func (tb *TriggerBinding) TriggerBindingMetadata() metav1.ObjectMeta {
+	return tb.ObjectMeta
+}
+
+func (tb *TriggerBinding) Copy() TriggerBindingInterface {
+	return tb.DeepCopy()
+}
 
 // TriggerBindingSpec defines the desired state of the TriggerBinding.
 type TriggerBindingSpec struct {

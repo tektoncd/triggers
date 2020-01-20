@@ -24,8 +24,8 @@ import (
 )
 
 // Validate TriggerBinding.
-func (t *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
-	return t.Spec.Validate(ctx)
+func (tb *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
+	return tb.Spec.Validate(ctx)
 }
 
 // Validate TriggerBindingSpec.

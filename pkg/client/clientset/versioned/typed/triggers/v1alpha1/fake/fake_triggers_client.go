@@ -28,6 +28,10 @@ type FakeTektonV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeTektonV1alpha1) ClusterTriggerBindings() v1alpha1.ClusterTriggerBindingInterface {
+	return &FakeClusterTriggerBindings{c}
+}
+
 func (c *FakeTektonV1alpha1) EventListeners(namespace string) v1alpha1.EventListenerInterface {
 	return &FakeEventListeners{c, namespace}
 }
