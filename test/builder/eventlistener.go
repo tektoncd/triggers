@@ -75,9 +75,9 @@ func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 
 // EventListenerTrigger adds an EventListenerTrigger to the EventListenerSpec Triggers.
 // Any number of EventListenerTriggerOp modifiers can be passed to create/modify it.
-func EventListenerTrigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {
+func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.Triggers = append(spec.Triggers, Trigger(tbName, ttName, apiVersion, ops...))
+		spec.Triggers = append(spec.Triggers, Trigger(ttName, apiVersion, ops...))
 	}
 }
 
@@ -127,20 +127,14 @@ func NewAddressable(hostname string) *duckv1alpha1.Addressable {
 }
 
 // Trigger creates an EventListenerTrigger. Any number of EventListenerTriggerOp
-// modifiers can be passed to create/modify it. For an empty TriggerBinding
-// name, the pointer is left nil.
-func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
+// modifiers can be passed to create/modify it. For creating an EventListenerBinding
+// you have to pass a EventListenerTriggerOp
+func Trigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
 	t := v1alpha1.EventListenerTrigger{
 		Template: v1alpha1.EventListenerTemplate{
 			Name:       ttName,
 			APIVersion: apiVersion,
 		},
-	}
-	if len(tbName) != 0 {
-		t.Bindings = []*v1alpha1.EventListenerBinding{{
-			Name:       tbName,
-			APIVersion: apiVersion,
-		}}
 	}
 
 	for _, op := range ops {
@@ -154,6 +148,27 @@ func Trigger(tbName, ttName, apiVersion string, ops ...EventListenerTriggerOp) v
 func EventListenerTriggerName(name string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
 		trigger.Name = name
+	}
+}
+
+// EventListenerTriggerBinding adds a Binding to the Trigger in EventListenerSpec Triggers.
+func EventListenerTriggerBinding(name, kind, apiVersion string) EventListenerTriggerOp {
+	return func(trigger *v1alpha1.EventListenerTrigger) {
+		if len(name) != 0 {
+			binding := &v1alpha1.EventListenerBinding{
+				Name:       name,
+				APIVersion: apiVersion,
+			}
+
+			if kind == "ClusterTriggerBinding" {
+				binding.Kind = v1alpha1.ClusterTriggerBindingKind
+			}
+
+			if kind == "TriggerBinding" || kind == "" {
+				binding.Kind = v1alpha1.NamespacedTriggerBindingKind
+			}
+			trigger.Bindings = append(trigger.Bindings, binding)
+		}
 	}
 }
 

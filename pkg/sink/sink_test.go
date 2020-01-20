@@ -134,7 +134,9 @@ func TestHandleEvent(t *testing.T) {
 			))
 		tbs = append(tbs, tb)
 		// Add TriggerBinding to trigger in EventListener
-		trigger := bldr.EventListenerTrigger(tbName, "my-triggertemplate", "v1alpha1")
+		trigger := bldr.EventListenerTrigger("my-triggertemplate", "v1alpha1",
+			bldr.EventListenerTriggerBinding(tbName, "", "v1alpha1"),
+		)
 		triggers = append(triggers, trigger)
 	}
 	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(triggers...))
@@ -297,7 +299,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 		},
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
-				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb"}},
+				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
 				Template: triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					GitHub: &triggersv1.GitHubInterceptor{
@@ -506,7 +508,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	var triggers []triggersv1.EventListenerTrigger
 	for i := 0; i < numTriggers; i++ {
 		trigger := triggersv1.EventListenerTrigger{
-			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb"}},
+			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
 			Template: triggersv1.EventListenerTemplate{Name: "tt"},
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{

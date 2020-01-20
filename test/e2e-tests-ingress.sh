@@ -188,5 +188,3 @@ matchOrFail "Checking the Ingress Rules Host" ${EXTERNAL_DOMAIN} ${ingress_rules
 matchOrFail "Checking the Ingress TLS Host" ${EXTERNAL_DOMAIN} ${ingress_tls_host}
 matchOrFail "Checking the Ingress TLS Secret" ${CERTIFICATE_SECRET_NAME} ${ingress_tls_secret}
 matchOrFail "Checking the Ingress OwnerReference" ${SERVICE_UID} ${ingress_owner_reference_uid}
-
-

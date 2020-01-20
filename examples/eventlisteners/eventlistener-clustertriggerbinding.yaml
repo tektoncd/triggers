@@ -1,0 +1,16 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: listener-clustertriggerbinding
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: foo-trig
+      bindings:
+        - name: pipeline-clusterbinding
+          kind: ClusterTriggerBinding
+        - name: message-clusterbinding
+          kind: ClusterTriggerBinding
+      template:
+        name: pipeline-template

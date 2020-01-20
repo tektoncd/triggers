@@ -6,7 +6,7 @@ where the service account is connected, which specifies what permissions the
 resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
-<!-- FILE: examples/role-resources/role.yaml -->
+<!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,6 +25,7 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
+
 
 Note that currently, JSON is the only accepted MIME type for events.
 
@@ -144,6 +145,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from
@@ -187,6 +189,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### GitLab Interceptors
 
@@ -232,6 +235,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### CEL Interceptors
 

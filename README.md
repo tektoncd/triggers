@@ -47,6 +47,8 @@ architecture with the following CRDs:
   `TriggerBinding` (and any supplied static parameters) to create the resources
   specified in the corresponding `TriggerTemplate`. It also optionally allows an
   external service to pre-process the event payload via the `interceptor` field.
+- [`ClusterTriggerBinding`](docs/clustertriggerbindings.md) - A cluster-scoped
+  TriggerBinding
 
 Using `tektoncd/triggers` in conjunction with `tektoncd/pipeline` enables you to
 easily create full-fledged CI/CD systems where the execution is defined

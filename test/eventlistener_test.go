@@ -145,14 +145,25 @@ func TestEventListenerCreate(t *testing.T) {
 			bldr.TriggerBindingSpec(
 				bldr.TriggerBindingParam("oneparam", "$(body.action)"),
 				bldr.TriggerBindingParam("twoparamname", "$(body.pull_request.state)"),
-				bldr.TriggerBindingParam("license", "$(body.repository.license)"),
-				bldr.TriggerBindingParam("header", "$(header)"),
 				bldr.TriggerBindingParam("prmessage", "$(body.pull_request.body)"),
 			),
 		),
 	)
 	if err != nil {
 		t.Fatalf("Error creating TriggerBinding: %s", err)
+	}
+
+	// ClusterTriggerBinding
+	ctb, err := c.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Create(
+		bldr.ClusterTriggerBinding("my-clustertriggerbinding",
+			bldr.ClusterTriggerBindingSpec(
+				bldr.TriggerBindingParam("license", "$(body.repository.license)"),
+				bldr.TriggerBindingParam("header", "$(header)"),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("Error creating ClusterTriggerBinding: %s", err)
 	}
 
 	// ServiceAccount + Role + RoleBinding to authorize the creation of our
@@ -165,13 +176,13 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating ServiceAccount: %s", err)
 	}
-	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(
-		&rbacv1.Role{
+	_, err = c.KubeClient.RbacV1().ClusterRoles().Create(
+		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"tekton.dev"},
-					Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
+					Resources: []string{"clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
 					Verbs:     []string{"create", "get"},
 				},
 				{
@@ -185,8 +196,8 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
 	}
-	_, err = c.KubeClient.RbacV1().RoleBindings(namespace).Create(
-		&rbacv1.RoleBinding{
+	_, err = c.KubeClient.RbacV1().ClusterRoleBindings().Create(
+		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-rolebinding"},
 			Subjects: []rbacv1.Subject{{
 				Kind:      "ServiceAccount",
@@ -195,7 +206,7 @@ func TestEventListenerCreate(t *testing.T) {
 			}},
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "Role",
+				Kind:     "ClusterRole",
 				Name:     "my-role",
 			},
 		},
@@ -212,7 +223,10 @@ func TestEventListenerCreate(t *testing.T) {
 			),
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
-				bldr.EventListenerTrigger(tb.Name, tt.Name, ""),
+				bldr.EventListenerTrigger(tt.Name, "",
+					bldr.EventListenerTriggerBinding(tb.Name, "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding(ctb.Name, "ClusterTriggerBinding", "v1alpha1"),
+				),
 			),
 		))
 	if err != nil {

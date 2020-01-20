@@ -9,7 +9,9 @@ messages.
 1. Create the resources for the example
 
 ```sh
-kubectl apply -f role-resources
+kubectl apply -f role-resources/secret.yaml
+kubectl apply -f role-resources/serviceaccount.yaml
+kubectl apply -f role-resources/triggerbinding-roles
 kubectl apply -f triggertemplates/triggertemplate.yaml
 kubectl apply -f triggerbindings/triggerbinding.yaml
 kubectl apply -f triggerbindings/triggerbinding-message.yaml

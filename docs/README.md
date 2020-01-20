@@ -15,6 +15,7 @@ See the following links for more on each of the resources involved:
 - [`TriggerTemplate`](triggertemplates.md)
 - [`TriggerBinding`](triggerbindings.md)
 - [`EventListener`](eventlisteners.md)
+- [`ClusterTriggerBinding`](clustertriggerbindings.md)
 
 ## Getting Started Tasks
 

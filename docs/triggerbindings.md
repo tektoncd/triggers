@@ -21,6 +21,7 @@ spec:
     value: $(header.Content-Type)
 ```
 
+
 `TriggerBinding`s are connected to `TriggerTemplate`s within an
 [`EventListener`](eventlisteners.md), which is where the pod is actually
 instantiated that "listens" for the respective events.

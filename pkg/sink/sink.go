@@ -135,13 +135,14 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	rt, err := template.ResolveTrigger(*t,
 		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
+		r.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Get,
 		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, header, rt.TriggerTemplate.Spec.Params)
+	params, err := template.ResolveParams(rt, finalPayload, header)
 	if err != nil {
 		log.Error(err)
 		return err
