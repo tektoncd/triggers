@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/google/cel-go/common/types"
@@ -69,11 +70,11 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			name: "single overlay with no filter",
 			CEL: &triggersv1.CELInterceptor{
 				Overlays: []triggersv1.CELOverlay{
-					{Key: "new", Expression: "body.value"},
+					{Key: "new", Expression: "split(body.ref, '/')[2]"},
 				},
 			},
-			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test"}`)),
-			want:    []byte(`{"new":"test","value":"test"}`),
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"ref":"refs/head/master"}`)),
+			want:    []byte(`{"new":"master","ref":"refs/head/master"}`),
 		},
 		{
 			name: "multiple overlays",
@@ -212,10 +213,13 @@ func TestInterceptor_ExecuteTrigger_Errors(t *testing.T) {
 
 func TestExpressionEvaluation(t *testing.T) {
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
+	testRef := "refs/heads/master"
 	jsonMap := map[string]interface{}{
 		"value": "testing",
 		"sha":   testSHA,
+		"ref":   testRef,
 	}
+	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
 	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
 	env, err := makeCelEnv()
@@ -240,12 +244,22 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name: "truncate a long string",
 			expr: "truncate(body.sha, 7)",
-			want: types.Bytes("ec26c3e"),
+			want: types.String("ec26c3e"),
 		},
 		{
 			name: "truncate a string to fewer characters than it has",
 			expr: "truncate(body.sha, 45)",
-			want: types.Bytes(testSHA),
+			want: types.String(testSHA),
+		},
+		{
+			name: "split a string on a character",
+			expr: "split(body.ref, '/')",
+			want: types.NewStringList(types.NewRegistry(), refParts),
+		},
+		{
+			name: "extract a branch from a non refs string",
+			expr: "split(body.value, '/')",
+			want: types.NewStringList(types.NewRegistry(), []string{"testing"}),
 		},
 	}
 	for _, tt := range tests {
@@ -304,6 +318,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "invalid function overloading",
 			expr: "body.match('testing', 'test')",
 			want: "failed to convert to http.Header",
+		},
+		{
+			name: "non-string passed to split",
+			expr: "split(body.value, 54)",
+			want: "found no matching overload for 'split'",
 		},
 	}
 	for _, tt := range tests {
