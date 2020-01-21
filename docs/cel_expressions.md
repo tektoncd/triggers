@@ -95,5 +95,18 @@ interceptor.
      <pre>truncate(body.commit.sha, 5)</pre>
     </td>
   </tr>
-
+  <tr>
+    <th>
+      split
+    </th>
+    <td>
+      (string, string) -> string(dyn)
+    </td>
+    <td>
+      Splits a string on the provided separator value.
+    </td>
+    <td>
+     <pre>split(body.ref, '/')</pre>
+    </td>
+  </tr>
 </table>

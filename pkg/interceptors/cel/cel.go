@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strings"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
@@ -151,11 +152,15 @@ func embeddedFunctions() cel.ProgramOption {
 		&functions.Overload{
 			Operator: "truncate",
 			Binary:   truncateString},
+		&functions.Overload{
+			Operator: "split",
+			Binary:   splitString},
 	)
 
 }
 func makeCelEnv() (cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
+	listStr := decls.NewListType(decls.String)
 	return cel.NewEnv(
 		cel.Declarations(
 			decls.NewIdent("body", mapStrDyn, nil),
@@ -163,10 +168,12 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewFunction("match",
 				decls.NewInstanceOverload("match_map_string_string",
 					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool)),
+			decls.NewFunction("split",
+				decls.NewOverload("split_dyn_string_dyn",
+					[]*exprpb.Type{decls.Dyn, decls.String}, listStr)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
 					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
-
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {
@@ -210,7 +217,23 @@ func truncateString(lhs, rhs ref.Val) ref.Val {
 		return types.ValOrErr(n, "unexpected type '%v' passed to truncate", rhs.Type())
 	}
 
-	return types.Bytes([]byte(str[:max(n, types.Int(len(str)))]))
+	return types.String(str[:max(n, types.Int(len(str)))])
+}
+
+func splitString(lhs, rhs ref.Val) ref.Val {
+	str, ok := lhs.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to splitString", lhs.Type())
+	}
+
+	splitStr, ok := rhs.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to splitString", lhs.Type())
+	}
+
+	r := types.NewRegistry()
+	splitVals := strings.Split(string(str), string(splitStr))
+	return types.NewStringList(r, splitVals)
 }
 
 func max(x, y types.Int) types.Int {
