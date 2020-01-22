@@ -88,7 +88,7 @@ func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header htt
 	for idx, p := range params {
 		pValue := p.Value.StringVal
 		// Find all expressions wrapped in $() from the value
-		expressions := tektonVar.FindAllString(pValue, -1)
+		expressions := findTektonExpressions(pValue)
 		for _, expr := range expressions {
 			val, err := ParseJSONPath(event, expr)
 			if err != nil {
@@ -99,4 +99,25 @@ func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header htt
 		params[idx].Value = pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: pValue}
 	}
 	return params, nil
+}
+
+// findTektonExpressions searches for and returns a slice of
+// all substrings that are wrapped in $()
+func findTektonExpressions(in string) []string {
+	results := []string{}
+
+	// No expressions to return
+	if !strings.Contains(in, "$(") {
+		return results
+	}
+	// Splits string on $( to find potential Tekton expressions
+	s := strings.Split(in, "$(")
+	for _, i := range s {
+		// Only a Tekton expression if it also contains a ) following the $(
+		if strings.Contains(i, ")") {
+			// Extract until the last instance of ) and wrap it in $()
+			results = append(results, fmt.Sprintf("$(%s)", i[:strings.LastIndex(i, ")")]))
+		}
+	}
+	return results
 }

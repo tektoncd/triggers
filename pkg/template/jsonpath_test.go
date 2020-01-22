@@ -83,6 +83,11 @@ func TestParseJSONPath(t *testing.T) {
 		in:   `{"body":["", null, "thing"]}`,
 		expr: "$(body[:2])",
 		want: `["", null]`,
+	}, {
+		name: "Array filters",
+		in:   `{"body":{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}}`,
+		expr: "$(body.child[?(@.a == 'd')].w)",
+		want: "3",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
