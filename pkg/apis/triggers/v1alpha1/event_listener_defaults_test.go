@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
@@ -141,8 +142,28 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 			wc: v1alpha1.WithUpgradeViaDefaulting,
-		},
-	}
+		}, {
+			name: "with upgrade context - deprecated params",
+			in: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{
+						DeprecatedParams: []pipelinev1.Param{{
+							Name: "param-name",
+							Value: pipelinev1.ArrayOrString{
+								Type:      "string",
+								StringVal: "static",
+							},
+						},
+						}},
+					}},
+			},
+			want: &v1alpha1.EventListener{
+				Spec: v1alpha1.EventListenerSpec{
+					Triggers: []v1alpha1.EventListenerTrigger{{}},
+				},
+			},
+			wc: v1alpha1.WithUpgradeViaDefaulting,
+		}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.in
