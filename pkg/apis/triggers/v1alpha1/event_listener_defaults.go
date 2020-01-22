@@ -12,6 +12,7 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 			t := &el.Spec.Triggers[i]
 			upgradeBinding(t)
 			upgradeInterceptor(t)
+			removeParams(t)
 		}
 	}
 }
@@ -39,5 +40,11 @@ func upgradeInterceptor(t *EventListenerTrigger) {
 
 		t.Interceptors = []*EventInterceptor{t.DeprecatedInterceptor}
 		t.DeprecatedInterceptor = nil
+	}
+}
+
+func removeParams(t *EventListenerTrigger) {
+	if t.DeprecatedParams != nil {
+		t.DeprecatedParams = nil
 	}
 }
