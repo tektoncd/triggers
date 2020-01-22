@@ -146,3 +146,37 @@ func relaxedJSONPathExpression(pathExpression string) (string, error) {
 func isTektonExpr(expr string) bool {
 	return tektonVar.MatchString(expr)
 }
+
+// findTektonExpressions searches for and returns a slice of
+// all substrings that are wrapped in $()
+func findTektonExpressions(in string) []string {
+	results := []string{}
+
+	// No expressions to return
+	if !strings.Contains(in, "$(") {
+		return results
+	}
+	// Splits string on $( to find potential Tekton expressions
+	maybeExpressions := strings.Split(in, "$(")
+	for _, e := range maybeExpressions[1:] { // Split always returns at least one element
+		// Iterate until we find the first unbalanced )
+		numOpenBrackets := 0
+		for i, ch := range e {
+			switch ch {
+			case '(':
+				numOpenBrackets++
+			case ')':
+				numOpenBrackets--
+				if numOpenBrackets < 0 {
+					results = append(results, fmt.Sprintf("$(%s)", e[:i]))
+				}
+			default:
+				continue
+			}
+			if numOpenBrackets < 0 {
+				break
+			}
+		}
+	}
+	return results
+}

@@ -83,6 +83,11 @@ func TestParseJSONPath(t *testing.T) {
 		in:   `{"body":["", null, "thing"]}`,
 		expr: "$(body[:2])",
 		want: `["", null]`,
+	}, {
+		name: "Array filters",
+		in:   `{"body":{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}}`,
+		expr: "$(body.child[?(@.a == 'd')].w)",
+		want: "3",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,6 +214,63 @@ func TestRelaxedJSONPathExpression_Error(t *testing.T) {
 			got, err := relaxedJSONPathExpression(expr)
 			if err == nil {
 				t.Errorf("TektonJSONPathExpression() did not get expected error = %v,  got = %v", err, got)
+			}
+		})
+	}
+}
+
+func TestFindTektonExpressions(t *testing.T) {
+	tcs := []struct {
+		in   string
+		want []string
+	}{{
+		in:   "$(body.blah)",
+		want: []string{"$(body.blah)"},
+	}, {
+		in:   "$(body.blah)-$(header.*)",
+		want: []string{"$(body.blah)", "$(header.*)"},
+	}, {
+		in:   "start:$(body.blah)//middle//$(header.one)-end",
+		want: []string{"$(body.blah)", "$(header.one)"},
+	}, {
+		in:   "start:$(body.[?(@.a == 'd')])-$(body.another-one)",
+		want: []string{"$(body.[?(@.a == 'd')])", "$(body.another-one)"},
+	}, {
+		in:   "$(this)-$(not-this",
+		want: []string{"$(this)"},
+	}, {
+		in:   "$body.)",
+		want: []string{},
+	}, {
+		in:   "($(body.blah))-and-$(body.foo)",
+		want: []string{"$(body.blah)", "$(body.foo)"},
+	}, {
+		in:   "(staticvalue)$(body.blah)",
+		want: []string{"$(body.blah)"},
+	}, {
+		in:   "asd)$(asd",
+		want: []string{},
+	}, {
+		in:   "onlystatic",
+		want: []string{},
+	}, {
+		in:   "",
+		want: []string{},
+	}, {
+		in:   "$())))",
+		want: []string{"$()"},
+	}, {
+		in:   "$($())",
+		want: []string{"$()"},
+	}, {
+		in:   "$($($(blahblah)))",
+		want: []string{"$(blahblah)"},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.in, func(t *testing.T) {
+			if diff := cmp.Diff(tc.want, findTektonExpressions(tc.in)); diff != "" {
+				t.Fatalf("error -want/+got: %s", diff)
 			}
 		})
 	}

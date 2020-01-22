@@ -150,6 +150,16 @@ func TestApplyEventValuesToParams(t *testing.T) {
 			bldr.Param("foo", `val1`),
 			bldr.Param("bar", `val2`),
 		},
+	}, {
+		name:   "Array filters",
+		body:   json.RawMessage(`{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}`),
+		params: []pipelinev1.Param{bldr.Param("a", "$(body.child[?(@.a == 'd')].w)")},
+		want:   []pipelinev1.Param{bldr.Param("a", "3")},
+	}, {
+		name:   "filters + multiple JSONPath expressions",
+		body:   json.RawMessage(`{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}`),
+		params: []pipelinev1.Param{bldr.Param("a", "$(body.child[?(@.a == 'd')].w) : $(body.child[0].a)")},
+		want:   []pipelinev1.Param{bldr.Param("a", "3 : b")},
 	}}
 
 	for _, tt := range tests {

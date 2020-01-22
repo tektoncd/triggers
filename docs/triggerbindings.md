@@ -50,6 +50,14 @@ These are invalid expressions:
 $({body) # INVALID - Ending curly brace absent
 ```
 
+If the `$()` is embedded inside another `$()` we will use the contents of the innermost
+`$()` as the JSONPath expression
+
+```shell script
+$($(body.b)) -> $(body.b)
+$($($(body.b))) -> $(body.b)
+```
+
 ### Examples
 
 ```shell script
