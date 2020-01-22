@@ -260,6 +260,7 @@ func Test_reconcileDeployment(t *testing.T) {
 	eventListener4.Spec.ServiceAccountName = updatedSa
 
 	var replicas int32 = 1
+	// deployment1 == initial deployment
 	deployment1 := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(eventListener0),
 		Spec: appsv1.DeploymentSpec{
@@ -329,17 +330,23 @@ func Test_reconcileDeployment(t *testing.T) {
 		},
 	}
 
+	// deployment 2 == initial deployment + labels from eventListener
 	deployment2 := deployment1.DeepCopy()
 	deployment2.Labels = mergeLabels(generatedLabels, updateLabel)
 	deployment2.Spec.Selector.MatchLabels = mergeLabels(generatedLabels, updateLabel)
 	deployment2.Spec.Template.Labels = mergeLabels(generatedLabels, updateLabel)
 
+	// deployment 3 == initial deployment + updated replicas
 	deployment3 := deployment1.DeepCopy()
 	var updateReplicas int32 = 5
 	deployment3.Spec.Replicas = &updateReplicas
 
 	deployment4 := deployment1.DeepCopy()
 	deployment4.Spec.Template.Spec.ServiceAccountName = updatedSa
+
+	deploymentMissingVolumes := deployment1.DeepCopy()
+	deploymentMissingVolumes.Spec.Template.Spec.Volumes = nil
+	deploymentMissingVolumes.Spec.Template.Spec.Containers[0].VolumeMounts = nil
 
 	tests := []struct {
 		name           string
@@ -421,6 +428,18 @@ func Test_reconcileDeployment(t *testing.T) {
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{eventListener4},
 				Deployments:    []*appsv1.Deployment{deployment4},
+			},
+		}, {
+			name: "eventlistener-config-volume-mount-update",
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener2},
+				Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{eventListener2},
+				Deployments:    []*appsv1.Deployment{deployment2},
 			},
 		},
 	}

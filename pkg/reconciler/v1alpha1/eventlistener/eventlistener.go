@@ -354,6 +354,14 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 				existingDeployment.Spec.Template.Spec.Containers[0].Command = nil
 				updated = true
 			}
+			if len(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) == 0 {
+				existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = container.VolumeMounts
+				updated = true
+			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, deployment.Spec.Template.Spec.Volumes) {
+				existingDeployment.Spec.Template.Spec.Volumes = deployment.Spec.Template.Spec.Volumes
+				updated = true
+			}
 		}
 		if updated {
 			if _, err := c.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(existingDeployment); err != nil {

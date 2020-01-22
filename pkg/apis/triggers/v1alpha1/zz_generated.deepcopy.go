@@ -267,6 +267,13 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 		*out = new(EventListenerBinding)
 		**out = **in
 	}
+	if in.DeprecatedParams != nil {
+		in, out := &in.DeprecatedParams, &out.DeprecatedParams
+		*out = make([]pipelinev1alpha1.Param, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
