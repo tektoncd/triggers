@@ -88,7 +88,7 @@ func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header htt
 	for idx, p := range params {
 		pValue := p.Value.StringVal
 		// Find all expressions wrapped in $() from the value
-		expressions := tektonVar.FindAllString(pValue, -1)
+		expressions := findTektonExpressions(pValue)
 		for _, expr := range expressions {
 			val, err := ParseJSONPath(event, expr)
 			if err != nil {
