@@ -257,7 +257,7 @@ spec:
     - name: cel-trig
       interceptors:
         - cel:
-            filter: "headers.match('X-GitHub-Event', 'push')"
+            filter: "header.match('X-GitHub-Event', 'push')"
       bindings:
       - name: pipeline-binding
       template:
