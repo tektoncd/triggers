@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"log"
 
 	"github.com/tektoncd/pipeline/pkg/system"
@@ -81,9 +80,7 @@ func main() {
 	}
 
 	// Decorate contexts with the current state of the config.
-	ctxFunc := func(ctx context.Context) context.Context {
-		return ctx
-	}
+	ctxFunc := v1alpha1.WithUpgradeViaDefaulting
 
 	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)
 	if err != nil {
