@@ -65,6 +65,11 @@ func Test_EventListenerValidate(t *testing.T) {
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
 					bldr.EventListenerCELInterceptor("body.value == 'test'")))),
+	}, {
+		name: "Valid EventListener with no trigger name",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1"))),
 	}}
 
 	for _, test := range tests {
@@ -275,6 +280,18 @@ func TestEventListenerValidate_error(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "Triggers name has invalid label characters",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerName("github.com/tektoncd/triggers")))),
+	}, {
+		name: "Triggers name is longer than the allowable label value (63 characters)",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tb", "tt", "v1alpha1",
+					bldr.EventListenerTriggerName("1234567890123456789012345678901234567890123456789012345678901234")))),
 	}}
 
 	for _, test := range tests {

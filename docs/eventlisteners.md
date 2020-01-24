@@ -59,6 +59,10 @@ resources created:
 | tekton.dev/trigger       | Name of the trigger that generated the resource.       |
 | tekton.dev/eventid       | UID of the incoming event.                             |
 
+Since the EventListener name and trigger name are used as label values, they
+must adhere to the [Kubernetes syntax and character set requirements](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
+for label values.
+
 ## Event Interceptors
 
 Triggers within an `EventListener` can optionally specify interceptors, to
