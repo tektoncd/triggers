@@ -7,7 +7,6 @@ resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
 <!-- FILE: examples/role-resources/role.yaml -->
-
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -19,13 +18,14 @@ rules:
   resources: ["eventlisteners", "triggerbindings", "triggertemplates", "tasks", "taskruns"]
   verbs: ["get"]
 - apiGroups: [""]
-  resources: ["configmaps"]
+  resources: ["configmaps", "secrets"] # secrets are only needed for Github/Gitlab interceptors
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
+
 
 Note that currently, JSON is the only accepted MIME type for events.
 
@@ -60,7 +60,8 @@ resources created:
 | tekton.dev/eventid       | UID of the incoming event.                             |
 
 Since the EventListener name and trigger name are used as label values, they
-must adhere to the [Kubernetes syntax and character set requirements](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
+must adhere to the
+[Kubernetes syntax and character set requirements](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 for label values.
 
 ## Event Interceptors
@@ -113,7 +114,6 @@ To be an Event Interceptor, a Kubernetes object should:
   the body, it can simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -144,6 +144,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from
@@ -165,7 +166,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -181,7 +181,6 @@ spec:
             secretRef:
               secretName: foo
               secretKey: bar
-              namespace: baz
             eventTypes:
               - pull_request
       bindings:
@@ -189,6 +188,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### GitLab Interceptors
 
@@ -212,7 +212,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -228,7 +227,6 @@ spec:
             secretRef:
               secretName: foo
               secretKey: bar
-              namespace: baz
             eventTypes:
               - Push Hook
       bindings:
@@ -236,6 +234,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### CEL Interceptors
 
@@ -249,7 +248,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -267,6 +265,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 The `expression` must return a `true` value, otherwise the request will be
 filtered out.

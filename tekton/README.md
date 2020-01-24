@@ -24,7 +24,7 @@ To start from scratch and use these Pipelines and Tasks:
 ## Create an official release
 
 Official releases are performed from
-[the `prow` cluster](https://github.com/tektoncd/plumbing#prow)
+[the `dogfooding` cluster](https://github.com/tektoncd/plumbing)
 [in the `tekton-releases` GCP project](https://github.com/tektoncd/plumbing/blob/master/gcp.md).
 This cluster
 [already has the correct version of Tekton installed](#install-tekton).
@@ -70,8 +70,8 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the
    ```
 
 1. To run against your own infrastructure (if you are running
-   [in the production cluster](https://github.com/tektoncd/plumbing#prow) the
-   default account should already have these creds, this is just a bonus - plus
+   [in the dogfooding cluster](https://github.com/tektoncd/plumbing) the default
+   account should already have these creds, this is just a bonus - plus
    `release-right-meow` might already exist in the cluster!), also setup the
    required credentials for the `release-right-meow` service account, either:
 
@@ -83,13 +83,13 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the
      [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
      if running against your own infrastructure
 
-1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
+1. Connect to the dogfooding cluster:
 
    ```bash
    gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
    ```
 
-1. Run the `release-pipeline` (assuming you are using the production cluster and
+1. Run the `release-pipeline` (assuming you are using the dogfooding cluster and
    [all the Tasks and Pipelines already exist](#setup)):
 
    ```shell
@@ -101,14 +101,14 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the
    export VERSION_TAG=v0.X.Y
 
    tkn pipeline start \
-   \
-   \
-   \
-   \
-   \
+    --param=versionTag=${VERSION_TAG} \
+    --serviceaccount=release-right-meow \
+    --resource=source-repo=tekton-triggers-git \
+    --resource=bucket=tekton-bucket \
+    --resource=builtEventListenerSinkImage=event-listener-sink-image \
     --resource=builtControllerImage=triggers-controller-image \
-   \
-   e
+    --resource=builtWebhookImage=triggers-webhook-image \
+    triggers-release
    ```
 
 _TODO(tektoncd/pipeline#569): Normally we'd use the image `PipelineResources` to
