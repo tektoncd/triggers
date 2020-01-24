@@ -18,6 +18,7 @@ package cel
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -89,7 +90,13 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate overlay expression '%s': %w", w.CEL.Filter, err)
 		}
-		payload, err = sjson.SetBytes(payload, u.Key, val)
+
+		b, ok := val.Value().([]byte)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert overlay result to bytes: %w", err)
+		}
+
+		payload, err = sjson.SetRawBytes(payload, u.Key, b)
 		if err != nil {
 			return nil, fmt.Errorf("failed to sjson for key '%s' to '%s': %w", u.Key, val, err)
 		}
@@ -126,10 +133,16 @@ func embeddedFunctions() cel.ProgramOption {
 	return cel.Functions(
 		&functions.Overload{
 			Operator: "match",
-			Function: matchHeader},
+			Function: matchHeader,
+		},
 		&functions.Overload{
 			Operator: "truncate",
-			Binary:   truncateString},
+			Binary:   truncateString,
+		},
+		&functions.Overload{
+			Operator: "base64",
+			Unary:    base64Decode,
+		},
 	)
 
 }
@@ -144,8 +157,10 @@ func makeCelEnv() (cel.Env, error) {
 					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
-					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
-
+					[]*exprpb.Type{decls.String, decls.Int}, decls.String)),
+			decls.NewFunction("base64",
+				decls.NewOverload("base64_string", []*exprpb.Type{decls.String}, decls.String)),
+		))
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {
@@ -189,7 +204,7 @@ func truncateString(lhs, rhs ref.Val) ref.Val {
 		return types.ValOrErr(n, "unexpected type '%v' passed to truncate", rhs.Type())
 	}
 
-	return types.String(str[:max(n, types.Int(len(str)))])
+	return types.Bytes([]byte(str[:max(n, types.Int(len(str)))]))
 }
 
 func max(x, y types.Int) types.Int {
@@ -201,4 +216,19 @@ func max(x, y types.Int) types.Int {
 	default:
 		return x
 	}
+}
+
+func base64Decode(val ref.Val) ref.Val {
+	in, ok := val.(types.String)
+	if !ok {
+		return types.ValOrErr(val, "unexpected type '%v' passed to base64", val.Type())
+	}
+
+	out, err := base64.StdEncoding.DecodeString(string(in))
+	if err != nil {
+		return types.ValOrErr(val, "unable to decode string: %v", err)
+	}
+	fmt.Println("Decoded body", string(out))
+
+	return types.Bytes(out)
 }
