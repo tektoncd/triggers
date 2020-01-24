@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
@@ -34,42 +35,56 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}
-	for i, t := range s.Triggers {
-		// Validate that only one of binding or bindings is set
-		if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
-			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].binding", i), fmt.Sprintf("spec.triggers[%d].bindings", i))
-		}
-		// Validate that only one of inteceptor or interceptors is set
-		if t.DeprecatedInterceptor != nil && len(t.Interceptors) > 0 {
-			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.triggers[%d].interceptor", i), fmt.Sprintf("spec.triggers[%d].interceptors", i))
-		}
-
-		// Validate optional TriggerBinding
-		for j, b := range t.Bindings {
-			if b.Name == "" {
-				return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].bindings[%d].name", i, j))
-			}
-		}
-		// Validate required TriggerTemplate
-		// Optional explicit match
-		if t.Template.APIVersion != "" {
-			if t.Template.APIVersion != "v1alpha1" {
-				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), fmt.Sprintf("spec.triggers[%d].template.apiVersion", i))
-			}
-		}
-		if t.Template.Name == "" {
-			return apis.ErrMissingField(fmt.Sprintf("spec.triggers[%d].template.name", i))
-		}
-		for j, interceptor := range t.Interceptors {
-			if err := interceptor.validate(ctx, el.Namespace).ViaField(fmt.Sprintf("spec.triggers[%d].interceptors[%d]", i, j)); err != nil {
-				return err
-			}
+	for i, trigger := range s.Triggers {
+		if err := trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (i *EventInterceptor) validate(ctx context.Context, namespace string) *apis.FieldError {
+func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
+	// Validate that only one of binding or bindings is set
+	if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
+		return apis.ErrMultipleOneOf("binding", "bindings")
+	}
+	// Validate that only one of inteceptor or interceptors is set
+	if t.DeprecatedInterceptor != nil && len(t.Interceptors) > 0 {
+		return apis.ErrMultipleOneOf("interceptor", "interceptors")
+	}
+
+	// Validate optional TriggerBinding
+	for i, b := range t.Bindings {
+		if b.Name == "" {
+			return apis.ErrMissingField(fmt.Sprintf("bindings[%d].name", i))
+		}
+	}
+	// Validate required TriggerTemplate
+	// Optional explicit match
+	if t.Template.APIVersion != "" {
+		if t.Template.APIVersion != "v1alpha1" {
+			return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "template.apiVersion")
+		}
+	}
+	if t.Template.Name == "" {
+		return apis.ErrMissingField(fmt.Sprintf("template.name"))
+	}
+	for i, interceptor := range t.Interceptors {
+		if err := interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)); err != nil {
+			return err
+		}
+	}
+
+	// The trigger name is added as a label value for 'tekton.dev/trigger' so it must follow the k8s label guidelines:
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+	if errs := validation.IsValidLabelValue(t.Name); len(errs) > 0 {
+		return apis.ErrInvalidValue(fmt.Sprintf("trigger name '%s' must be a valid label value", t.Name), "name")
+	}
+
+	return nil
+}
+
+func (i *EventInterceptor) validate(ctx context.Context) *apis.FieldError {
 	if i.Webhook == nil && i.GitHub == nil && i.GitLab == nil && i.CEL == nil {
 		return apis.ErrMissingField("interceptor")
 	}
