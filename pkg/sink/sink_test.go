@@ -19,10 +19,12 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +44,7 @@ import (
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -79,6 +82,7 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 func TestHandleEvent(t *testing.T) {
 	namespace := "foo"
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+	numTriggers := 10
 
 	pipelineResource := pipelinev1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
@@ -86,7 +90,7 @@ func TestHandleEvent(t *testing.T) {
 			Kind:       "PipelineResource",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pipelineresource",
+			Name:      "$(params.name)",
 			Namespace: namespace,
 			Labels:    map[string]string{"app": "$(params.appLabel)"},
 		},
@@ -107,6 +111,7 @@ func TestHandleEvent(t *testing.T) {
 
 	tt := bldr.TriggerTemplate("my-triggertemplate", namespace,
 		bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("name", "", ""),
 			bldr.TriggerTemplateParam("url", "", ""),
 			bldr.TriggerTemplateParam("revision", "", ""),
 			bldr.TriggerTemplateParam("appLabel", "", "foo"),
@@ -114,15 +119,25 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("foo", "", ""),
 			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
 		))
-	tb := bldr.TriggerBinding("my-triggerbinding", namespace,
-		bldr.TriggerBindingSpec(
-			bldr.TriggerBindingParam("url", "$(body.repository.url)"),
-			bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
-			bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
-			bldr.TriggerBindingParam("foo", "$(body.foo)"),
-		))
-	el := bldr.EventListener("my-eventlistener", namespace,
-		bldr.EventListenerSpec(bldr.EventListenerTrigger("my-triggerbinding", "my-triggertemplate", "v1alpha1")))
+	var tbs []*triggersv1.TriggerBinding
+	var triggers []bldr.EventListenerSpecOp
+	for i := 0; i < numTriggers; i++ {
+		// Create TriggerBinding
+		tbName := fmt.Sprintf("my-triggerbinding-%d", i)
+		tb := bldr.TriggerBinding(tbName, namespace,
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("name", fmt.Sprintf("my-pipelineresource-%d", i)),
+				bldr.TriggerBindingParam("url", "$(body.repository.url)"),
+				bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
+				bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
+				bldr.TriggerBindingParam("foo", "$(body.foo)"),
+			))
+		tbs = append(tbs, tb)
+		// Add TriggerBinding to trigger in EventListener
+		trigger := bldr.EventListenerTrigger(tbName, "my-triggertemplate", "v1alpha1")
+		triggers = append(triggers, trigger)
+	}
+	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(triggers...))
 
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	test.AddTektonResources(kubeClient)
@@ -131,8 +146,11 @@ func TestHandleEvent(t *testing.T) {
 	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
 		t.Fatalf("Error creating TriggerTemplate: %s", err)
 	}
-	if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
-		t.Fatalf("Error creating TriggerBinding: %s", err)
+	// for _, tb := range []*triggersv1.TriggerBinding{tb, tb2, tb3} {
+	for _, tb := range tbs {
+		if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
+			t.Fatalf("Error creating TriggerBinding %s: %s", tb.GetName(), err)
+		}
 	}
 	el, err = triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el)
 	if err != nil {
@@ -156,7 +174,7 @@ func TestHandleEvent(t *testing.T) {
 	defer ts.Close()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(numTriggers)
 
 	dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		defer wg.Done()
@@ -195,39 +213,58 @@ func TestHandleEvent(t *testing.T) {
 	if waitTimeout(&wg, time.Second) {
 		t.Fatalf("timed out waiting for reactor to fire")
 	}
-	wantResource := pipelinev1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "PipelineResource",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pipelineresource",
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app":         "foo",
-				resourceLabel: "my-eventlistener",
-				triggerLabel:  el.Spec.Triggers[0].Name,
-				eventIDLabel:  eventID,
-			},
-		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{
-				{Name: "url", Value: "testurl"},
-				{Name: "revision", Value: "testrevision"},
-				{Name: "contenttype", Value: "application/json"},
-				{Name: "foo", Value: "bar\t\r\nbaz昨"},
-			},
-		},
-	}
+	// var wantResources []pipelinev1.PipelineResource
 	gvr := schema.GroupVersionResource{
 		Group:    "tekton.dev",
 		Version:  "v1alpha1",
 		Resource: "pipelineresources",
 	}
-	want := []ktesting.Action{ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))}
-	if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
-		t.Error(diff)
+	var wantActions []ktesting.Action
+	for i := 0; i < numTriggers; i++ {
+		wantResource := pipelinev1.PipelineResource{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1alpha1",
+				Kind:       "PipelineResource",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("my-pipelineresource-%d", i),
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app":         "foo",
+					resourceLabel: "my-eventlistener",
+					triggerLabel:  el.Spec.Triggers[0].Name,
+					eventIDLabel:  eventID,
+				},
+			},
+			Spec: pipelinev1.PipelineResourceSpec{
+				Type: pipelinev1.PipelineResourceTypeGit,
+				Params: []pipelinev1.ResourceParam{
+					{Name: "url", Value: "testurl"},
+					{Name: "revision", Value: "testrevision"},
+					{Name: "contenttype", Value: "application/json"},
+					{Name: "foo", Value: "bar\t\r\nbaz昨"},
+				},
+			},
+		}
+		action := ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))
+		wantActions = append(wantActions, action)
+	}
+	// Sort actions (we do not know what order they executed in)
+	gotActions := dynamicClient.Actions()
+	sort.SliceStable(gotActions, func(i int, j int) bool {
+		objectI := gotActions[i].(ktesting.CreateAction).GetObject()
+		objectJ := gotActions[j].(ktesting.CreateAction).GetObject()
+		unstructuredI, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(objectI)
+		unstructuredJ, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(objectJ)
+		nameI := (&unstructured.Unstructured{Object: unstructuredI}).GetName()
+		nameJ := (&unstructured.Unstructured{Object: unstructuredJ}).GetName()
+		if nameI == "" || nameJ == "" {
+			t.Errorf("Error getting resource name from action; names are empty")
+		}
+		return nameI < nameJ
+	})
+	if diff := cmp.Diff(wantActions, gotActions); diff != "" {
+		t.Errorf("Actions mismatch (-want +got): %s", diff)
 	}
 }
 
