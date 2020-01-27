@@ -146,7 +146,6 @@ func TestHandleEvent(t *testing.T) {
 	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
 		t.Fatalf("Error creating TriggerTemplate: %s", err)
 	}
-	// for _, tb := range []*triggersv1.TriggerBinding{tb, tb2, tb3} {
 	for _, tb := range tbs {
 		if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
 			t.Fatalf("Error creating TriggerBinding %s: %s", tb.GetName(), err)
@@ -213,7 +212,6 @@ func TestHandleEvent(t *testing.T) {
 	if waitTimeout(&wg, time.Second) {
 		t.Fatalf("timed out waiting for reactor to fire")
 	}
-	// var wantResources []pipelinev1.PipelineResource
 	gvr := schema.GroupVersionResource{
 		Group:    "tekton.dev",
 		Version:  "v1alpha1",
