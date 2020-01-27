@@ -87,15 +87,14 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 
 	result := make(chan int, 10)
 	// Execute each Trigger
-
 	for _, t := range el.Spec.Triggers {
-		go func(t *triggersv1.EventListenerTrigger) {
-			if err := r.processTrigger(t, request, event, eventID, eventLog); err != nil {
+		go func(t triggersv1.EventListenerTrigger) {
+			if err := r.processTrigger(&t, request, event, eventID, eventLog); err != nil {
 				result <- http.StatusAccepted
 				return
 			}
 			result <- http.StatusCreated
-		}(&t)
+		}(t)
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
