@@ -89,7 +89,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	// Execute each Trigger
 	for _, t := range el.Spec.Triggers {
 		go func(t triggersv1.EventListenerTrigger) {
-			if err := r.processTrigger(&t, request, event, eventID, eventLog); err != nil {
+			localRequest := request.Clone(request.Context())
+			if err := r.processTrigger(&t, localRequest, event, eventID, eventLog); err != nil {
 				result <- http.StatusAccepted
 				return
 			}
