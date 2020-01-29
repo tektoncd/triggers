@@ -333,7 +333,7 @@ func TestEventListenerCreate(t *testing.T) {
 		if err = WaitFor(pipelineResourceExist(t, c, namespace, wantPr.Name)); err != nil {
 			t.Fatalf("Failed to create ResourceTemplate %s: %s", wantPr.Name, err)
 		}
-		gotPr, err := c.PipelineClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
+		gotPr, err := c.ResourceClient.TektonV1alpha1().PipelineResources(namespace).Get(wantPr.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Errorf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
 		}

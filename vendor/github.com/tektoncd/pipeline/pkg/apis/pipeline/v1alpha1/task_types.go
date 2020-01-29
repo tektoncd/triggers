@@ -19,6 +19,13 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+)
+
+const (
+	// TaskRunResultType default task run result value
+	TaskRunResultType ResultType = "TaskRunResult"
 )
 
 func (t *Task) TaskSpec() TaskSpec {
@@ -59,18 +66,27 @@ type TaskSpec struct {
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+
+	// Workspaces are the volumes that this Task requires.
+	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
+
+	// Results are values that this Task can output
+	Results []TaskResult `json:"results,omitempty"`
+}
+
+// TaskResult used to describe the results of a task
+type TaskResult struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// Description is a human-readable description of the result
+	// +optional
+	Description string `json:"description"`
 }
 
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
-type Step struct {
-	corev1.Container
-
-	// Script is the contents of an executable file to execute.
-	//
-	// If Script is not empty, the Step cannot have an Command or Args.
-	Script string `json:"script,omitempty"`
-}
+type Step = v1alpha2.Step
 
 // +genclient
 // +genclient:noStatus

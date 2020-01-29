@@ -23,7 +23,7 @@ package v1alpha1
 import (
 	json "encoding/json"
 
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1alpha2 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -269,7 +269,7 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 	}
 	if in.DeprecatedParams != nil {
 		in, out := &in.DeprecatedParams, &out.DeprecatedParams
-		*out = make([]pipelinev1alpha1.Param, len(*in))
+		*out = make([]v1alpha2.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -421,7 +421,7 @@ func (in *TriggerBindingSpec) DeepCopyInto(out *TriggerBindingSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]pipelinev1alpha1.Param, len(*in))
+		*out = make([]v1alpha2.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -542,7 +542,7 @@ func (in *TriggerTemplateSpec) DeepCopyInto(out *TriggerTemplateSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]pipelinev1alpha1.ParamSpec, len(*in))
+		*out = make([]v1alpha2.ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -593,7 +593,7 @@ func (in *WebhookInterceptor) DeepCopyInto(out *WebhookInterceptor) {
 	}
 	if in.Header != nil {
 		in, out := &in.Header, &out.Header
-		*out = make([]pipelinev1alpha1.Param, len(*in))
+		*out = make([]v1alpha2.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

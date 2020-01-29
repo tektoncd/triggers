@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
@@ -142,11 +142,11 @@ func TestCreateResource(t *testing.T) {
 	tests := []struct {
 		name string
 		json []byte
-		want pipelinev1.PipelineResource
+		want resourcev1.PipelineResource
 	}{{
 		name: "PipelineResource without namespace",
 		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":[{"name":"foo","value":"bar\r\nbaz"}]},"status":{}}`),
-		want: pipelinev1.PipelineResource{
+		want: resourcev1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1alpha1",
 				Kind:       "PipelineResource",
@@ -160,17 +160,18 @@ func TestCreateResource(t *testing.T) {
 					eventIDLabel:        eventID,
 				},
 			},
-			Spec: pipelinev1.PipelineResourceSpec{
-				Params: []pipelinev1.ResourceParam{{
+			Spec: resourcev1.PipelineResourceSpec{
+				Params: []resourcev1.ResourceParam{{
 					Name:  "foo",
 					Value: "bar\r\nbaz",
 				}},
 			},
+			Status: &resourcev1.PipelineResourceStatus{},
 		},
 	}, {
 		name: "PipelineResource with namespace",
 		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","namespace":"foo","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":null},"status":{}}`),
-		want: pipelinev1.PipelineResource{
+		want: resourcev1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1alpha1",
 				Kind:       "PipelineResource",
@@ -185,7 +186,8 @@ func TestCreateResource(t *testing.T) {
 					eventIDLabel:        eventID,
 				},
 			},
-			Spec: pipelinev1.PipelineResourceSpec{},
+			Spec:   resourcev1.PipelineResourceSpec{},
+			Status: &resourcev1.PipelineResourceStatus{},
 		},
 	}}
 	for _, tt := range tests {

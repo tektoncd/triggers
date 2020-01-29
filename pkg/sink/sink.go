@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	resourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -49,6 +50,7 @@ type Sink struct {
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
 	PipelineClient         pipelineclientset.Interface
+	ResourceClient         resourceclientset.Interface
 	HTTPClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string

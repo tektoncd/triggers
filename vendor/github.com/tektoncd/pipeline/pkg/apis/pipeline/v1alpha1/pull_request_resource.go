@@ -18,17 +18,19 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	prSource         = "pr-source"
-	githubTokenField = "githubToken"
+	prSource       = "pr-source"
+	authTokenField = "authToken"
 	// nolint: gosec
-	githubTokenEnv = "GITHUB_TOKEN"
+	authTokenEnv = "AUTH_TOKEN"
 )
 
 // PullRequestResource is an endpoint from which to get data which is required
@@ -37,29 +39,42 @@ type PullRequestResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 
-	// GitHub URL pointing to the pull request.
+	// URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
 	URL string `json:"url"`
+	// SCM provider (github or gitlab today). This will be guessed from URL if not set.
+	Provider string `json:"provider"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
 
-	PRImage string `json:"-"`
+	PRImage               string `json:"-"`
+	InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
 }
 
 // NewPullRequestResource create a new git resource to pass to a Task
 func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestResource, error) {
 	if r.Spec.Type != PipelineResourceTypePullRequest {
-		return nil, fmt.Errorf("PipelineResource: Cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	prResource := PullRequestResource{
-		Name:    r.Name,
-		Type:    r.Spec.Type,
-		Secrets: r.Spec.SecretParams,
-		PRImage: prImage,
+		Name:                  r.Name,
+		Type:                  r.Spec.Type,
+		Secrets:               r.Spec.SecretParams,
+		PRImage:               prImage,
+		InsecureSkipTLSVerify: false,
 	}
 	for _, param := range r.Spec.Params {
-		if strings.EqualFold(param.Name, "URL") {
+		switch {
+		case strings.EqualFold(param.Name, "URL"):
 			prResource.URL = param.Value
+		case strings.EqualFold(param.Name, "Provider"):
+			prResource.Provider = param.Value
+		case strings.EqualFold(param.Name, "insecure-skip-tls-verify"):
+			verify, err := strconv.ParseBool(param.Value)
+			if err != nil {
+				return nil, fmt.Errorf("error occurred converting %q to boolean in Pipeline Resource %s", param.Value, r.Name)
+			}
+			prResource.InsecureSkipTLSVerify = verify
 		}
 	}
 
@@ -84,9 +99,11 @@ func (s *PullRequestResource) GetURL() string {
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
 func (s *PullRequestResource) Replacements() map[string]string {
 	return map[string]string{
-		"name": s.Name,
-		"type": string(s.Type),
-		"url":  s.URL,
+		"name":                     s.Name,
+		"type":                     string(s.Type),
+		"url":                      s.URL,
+		"provider":                 s.Provider,
+		"insecure-skip-tls-verify": strconv.FormatBool(s.InsecureSkipTLSVerify),
 	}
 }
 
@@ -106,12 +123,18 @@ func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath str
 
 func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
+	if s.Provider != "" {
+		args = append(args, []string{"-provider", s.Provider}...)
+	}
+	if s.InsecureSkipTLSVerify {
+		args = append(args, "-insecure-skip-tls-verify=true")
+	}
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
-		if strings.EqualFold(sec.FieldName, githubTokenField) {
+		if strings.EqualFold(sec.FieldName, authTokenField) {
 			ev := corev1.EnvVar{
-				Name: githubTokenEnv,
+				Name: authTokenEnv,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -130,7 +153,7 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
-		WorkingDir: WorkspaceDir,
+		WorkingDir: pipeline.WorkspaceDir,
 		Env:        evs,
 	}}}
 }

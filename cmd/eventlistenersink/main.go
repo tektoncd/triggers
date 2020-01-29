@@ -87,6 +87,7 @@ func main() {
 		DynamicClient:          dynamicCS,
 		TriggersClient:         sinkClients.TriggersClient,
 		PipelineClient:         sinkClients.PipelineClient,
+		ResourceClient:         sinkClients.ResourceClient,
 		HTTPClient:             http.DefaultClient,
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,

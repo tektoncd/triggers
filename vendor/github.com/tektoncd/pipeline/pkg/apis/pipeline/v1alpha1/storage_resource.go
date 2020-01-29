@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"golang.org/x/xerrors"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -29,11 +29,11 @@ type PipelineResourceStorageType string
 
 const (
 	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
-	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+	PipelineResourceTypeGCS PipelineResourceType = resource.PipelineResourceTypeGCS
 
 	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
-	// with additional funcitonality that was added to be compatible with knative build.
-	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
+	// with additional functionality that was added to be compatible with knative build.
+	PipelineResourceTypeBuildGCS PipelineResourceType = resource.PipelineResourceTypeBuildGCS
 )
 
 // PipelineStorageResourceInterface is the interface for subtypes of the storage type.
@@ -48,7 +48,7 @@ type PipelineStorageResourceInterface interface {
 // to add input and output steps and volumes to an executing pod.
 func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 
 	for _, param := range r.Spec.Params {
@@ -59,11 +59,11 @@ func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineSt
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
 				return NewBuildGCSResource(images, r)
 			default:
-				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
+				return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
 		}
 	}
-	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
+	return nil, fmt.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
 func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) []corev1.Volume {

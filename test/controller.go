@@ -22,6 +22,7 @@ import (
 
 	// Link in the fakes so they get injected into injection.Fake
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
+	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
 	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding/fake"
@@ -32,6 +33,7 @@ import (
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	appsv1 "k8s.io/api/apps/v1"
@@ -58,6 +60,7 @@ type Clients struct {
 	Kube     *fakekubeclientset.Clientset
 	Triggers *faketriggersclientset.Clientset
 	Pipeline *fakepipelineclientset.Clientset
+	Resource *fakeresourceclientset.Clientset
 }
 
 // Assets holds references to the controller and clients.
@@ -74,6 +77,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		Kube:     fakekubeclient.Get(ctx),
 		Triggers: faketriggersclient.Get(ctx),
 		Pipeline: fakepipelineclient.Get(ctx),
+		Resource: fakeresourceclient.Get(ctx),
 	}
 	// Setup fake informer for reconciler tests
 	elInformer := fakeeventlistenerinformer.Get(ctx)
