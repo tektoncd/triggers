@@ -458,8 +458,7 @@ func (f *nameInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Write the name to the body
 	body := fmt.Sprintf(`{"name": "%s"}`, name)
-	fmt.Printf("~~~ body: %s\n", body)
-	w.Write([]byte(body))
+	_, _ = w.Write([]byte(body))
 }
 
 func TestHandleEventWithWebhookInterceptors(t *testing.T) {
