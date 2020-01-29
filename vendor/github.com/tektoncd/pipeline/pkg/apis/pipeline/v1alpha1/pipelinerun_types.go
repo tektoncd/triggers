@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,11 +30,10 @@ import (
 )
 
 var (
-	pipelineRunControllerName = "PipelineRun"
-	groupVersionKind          = schema.GroupVersionKind{
+	groupVersionKind = schema.GroupVersionKind{
 		Group:   SchemeGroupVersion.Group,
 		Version: SchemeGroupVersion.Version,
-		Kind:    pipelineRunControllerName,
+		Kind:    pipeline.PipelineRunControllerName,
 	}
 )
 
@@ -61,9 +60,12 @@ type PipelineRunSpec struct {
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
 	// PodTemplate holds pod specific configuration
-	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	// Workspaces holds a set of workspace bindings that must match names
+	// with those declared in the pipeline.
+	// +optional
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
@@ -98,6 +100,14 @@ type PipelineRef struct {
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// PipelineRunStatusFields inlines the status fields.
+	PipelineRunStatusFields `json:",inline"`
+}
+
+// PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
+// This is defined separately and inlined so that other types can readily
+// consume these fields via duck typing.
+type PipelineRunStatusFields struct {
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
@@ -238,7 +248,7 @@ func (pr *PipelineRun) IsCancelled() bool {
 // GetRunKey return the pipelinerun key for timeout handler map
 func (pr *PipelineRun) GetRunKey() string {
 	// The address of the pointer is a threadsafe unique identifier for the pipelinerun
-	return fmt.Sprintf("%s/%p", pipelineRunControllerName, pr)
+	return fmt.Sprintf("%s/%p", pipeline.PipelineRunControllerName, pr)
 }
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout

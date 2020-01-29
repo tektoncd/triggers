@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -50,16 +51,21 @@ type TaskRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
-	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	// +optional
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	// +optional
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
-type TaskRunSpecStatus string
+type TaskRunSpecStatus = v1alpha2.TaskRunSpecStatus
 
 const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
-	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+	TaskRunSpecStatusCancelled = v1alpha2.TaskRunSpecStatusCancelled
 )
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -93,6 +99,14 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// TaskRunStatusFields inlines the status fields.
+	TaskRunStatusFields `json:",inline"`
+}
+
+// TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
+// separately and inlined so that other types can readily consume these fields
+// via duck typing.
+type TaskRunStatusFields struct {
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
 
@@ -243,7 +257,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 		return ""
 	}
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return fmt.Sprintf("%s-pvc", ref.Name)
 		}
 	}
@@ -254,7 +268,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return true
 		}
 	}

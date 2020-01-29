@@ -19,12 +19,25 @@ limitations under the License.
 package fake
 
 import (
+	v1alpha2 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha2"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
 type FakeTektonV1alpha2 struct {
 	*testing.Fake
+}
+
+func (c *FakeTektonV1alpha2) Pipelines(namespace string) v1alpha2.PipelineInterface {
+	return &FakePipelines{c, namespace}
+}
+
+func (c *FakeTektonV1alpha2) Tasks(namespace string) v1alpha2.TaskInterface {
+	return &FakeTasks{c, namespace}
+}
+
+func (c *FakeTektonV1alpha2) TaskRuns(namespace string) v1alpha2.TaskRunInterface {
+	return &FakeTaskRuns{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

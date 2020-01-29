@@ -119,6 +119,14 @@
   version = "v4.5.0"
 
 [[projects]]
+  digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
+  name = "github.com/ghodss/yaml"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:53151cc4366e3945282d4b783fd41f35222cabbc75601e68d8133648c63498d1"
   name = "github.com/gobuffalo/envy"
   packages = ["."]
@@ -491,13 +499,15 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:2fc2ea2ce84cb518690d93e5c75c32fd3353c9510f06f5934a831512dcca6a90"
+  digest = "1:d2802f56d7e9464f18099a61ac30551e355bc8d8f459ce6713c186e237e172a4"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
     "pkg/apis/pipeline",
+    "pkg/apis/pipeline/pod",
     "pkg/apis/pipeline/v1alpha1",
     "pkg/apis/pipeline/v1alpha2",
+    "pkg/apis/resource/v1alpha1",
     "pkg/apis/validate",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
@@ -508,6 +518,14 @@
     "pkg/client/clientset/versioned/typed/pipeline/v1alpha2/fake",
     "pkg/client/injection/client",
     "pkg/client/injection/client/fake",
+    "pkg/client/resource/clientset/versioned",
+    "pkg/client/resource/clientset/versioned/fake",
+    "pkg/client/resource/clientset/versioned/scheme",
+    "pkg/client/resource/clientset/versioned/typed/resource/v1alpha1",
+    "pkg/client/resource/clientset/versioned/typed/resource/v1alpha1/fake",
+    "pkg/client/resource/injection/client",
+    "pkg/client/resource/injection/client/fake",
+    "pkg/contexts",
     "pkg/list",
     "pkg/logging",
     "pkg/names",
@@ -516,8 +534,8 @@
     "pkg/system",
   ]
   pruneopts = "NUT"
-  revision = "fad2bef872c3699448b0dbfb46cea85499855bba"
-  version = "v0.9.1"
+  revision = "9d40d325b27a98ec496e9d0bc4d6f28ed078d0fc"
+  version = "v0.10.1"
 
 [[projects]]
   branch = "master"
@@ -1282,10 +1300,16 @@
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
+    "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2",
+    "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned",
     "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake",
     "github.com/tektoncd/pipeline/pkg/client/injection/client",
     "github.com/tektoncd/pipeline/pkg/client/injection/client/fake",
+    "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned",
+    "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake",
+    "github.com/tektoncd/pipeline/pkg/client/resource/injection/client",
+    "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake",
     "github.com/tektoncd/pipeline/pkg/logging",
     "github.com/tektoncd/pipeline/pkg/names",
     "github.com/tektoncd/pipeline/pkg/system",
@@ -1310,6 +1334,7 @@
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/rand",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
@@ -1324,7 +1349,6 @@
     "k8s.io/client-go/plugin/pkg/client/auth/oidc",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
-    "k8s.io/client-go/third_party/forked/golang/template",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",

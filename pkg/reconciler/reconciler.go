@@ -20,6 +20,7 @@ import (
 	"time"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	resourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	triggersScheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	"go.uber.org/zap"
@@ -39,6 +40,7 @@ import (
 type Options struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet pipelineclientset.Interface
+	ResourceClientSet resourceclientset.Interface
 	TriggersClientSet triggersclientset.Interface
 	CachingClientSet  cachingclientset.Interface
 
@@ -64,6 +66,9 @@ type Base struct {
 
 	// PipelineClientSet allows us to configure pipeline objects
 	PipelineClientSet pipelineclientset.Interface
+
+	// ResourceClientSet allows us to configure pipeline resource objects
+	ResourceClientSet resourceclientset.Interface
 
 	// TriggersClientSet allows us to configure triggers objects
 	TriggersClientSet triggersclientset.Interface
@@ -110,6 +115,7 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 	base := &Base{
 		KubeClientSet:     opt.KubeClientSet,
 		PipelineClientSet: opt.PipelineClientSet,
+		ResourceClientSet: opt.ResourceClientSet,
 		TriggersClientSet: opt.TriggersClientSet,
 		CachingClientSet:  opt.CachingClientSet,
 		ConfigMapWatcher:  opt.ConfigMapWatcher,
