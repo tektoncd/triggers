@@ -162,7 +162,7 @@ spec:
     - name: ServiceUID
       value: ${SERVICE_UID}
   timeout: 1000s
-  serviceAccount: default
+  serviceAccountName: default
 DONE
 wait_until_taskrun_completed ${INGRESS_TASKRUN_NAME}
 
