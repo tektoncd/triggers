@@ -7,7 +7,6 @@ resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
 <!-- FILE: examples/role-resources/role.yaml -->
-
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -71,9 +70,10 @@ modify the behavior or payload of triggers.
 
 Event Interceptors can take several different forms today:
 
-- Webhook Interceptors
-- GitHub Interceptors
-- GitLab Interceptors
+- [Webhook Interceptors](#Webhook-Interceptors)
+- [GitHub Interceptors](#GitHub-Interceptors)
+- [GitLab Interceptors](#GitLab-Interceptors)
+- [CEL Interceptors](#CEL-Interceptors)
 
 ### Webhook Interceptors
 
@@ -114,7 +114,6 @@ To be an Event Interceptor, a Kubernetes object should:
   the body, it can simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -166,7 +165,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -212,7 +210,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -248,7 +245,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -260,7 +256,7 @@ spec:
     - name: cel-trig
       interceptors:
         - cel:
-            filter: "headers.match('X-GitHub-Event', 'pull_request')"
+            filter: "headers.matches('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"

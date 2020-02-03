@@ -5,7 +5,6 @@ A `TriggerTemplate` is a resource that can template resources.
 **anywhere** within the resource template.
 
 <!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerTemplate
