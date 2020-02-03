@@ -6,7 +6,6 @@ parameters. The separation of `TriggerBinding`s from `TriggerTemplate`s was
 deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: TriggerBinding
