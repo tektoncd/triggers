@@ -146,8 +146,8 @@ func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, e
 func embeddedFunctions() cel.ProgramOption {
 	return cel.Functions(
 		&functions.Overload{
-			Operator: "match",
-			Function: matchHeader},
+			Operator: "canonicalMatch",
+			Function: canonicalMatch},
 		&functions.Overload{
 			Operator: "truncate",
 			Binary:   truncateString},
@@ -160,8 +160,8 @@ func makeCelEnv() (cel.Env, error) {
 		cel.Declarations(
 			decls.NewIdent("body", mapStrDyn, nil),
 			decls.NewIdent("header", mapStrDyn, nil),
-			decls.NewFunction("match",
-				decls.NewInstanceOverload("match_map_string_string",
+			decls.NewFunction("canonicalMatch",
+				decls.NewInstanceOverload("canonicalMatch_map_string_string",
 					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
@@ -179,7 +179,7 @@ func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, erro
 
 }
 
-func matchHeader(vals ...ref.Val) ref.Val {
+func canonicalMatch(vals ...ref.Val) ref.Val {
 	h, err := vals[0].ConvertToNative(reflect.TypeOf(http.Header{}))
 	if err != nil {
 		return types.NewErr("failed to convert to http.Header: %w", err)
@@ -187,12 +187,12 @@ func matchHeader(vals ...ref.Val) ref.Val {
 
 	key, ok := vals[1].(types.String)
 	if !ok {
-		return types.ValOrErr(key, "unexpected type '%v' passed to match", vals[1].Type())
+		return types.ValOrErr(key, "unexpected type '%v' passed to canonicalMatch", vals[1].Type())
 	}
 
 	val, ok := vals[2].(types.String)
 	if !ok {
-		return types.ValOrErr(val, "unexpected type '%v' passed to match", vals[2].Type())
+		return types.ValOrErr(val, "unexpected type '%v' passed to canonicalMatch", vals[2].Type())
 	}
 
 	return types.Bool(h.(http.Header).Get(string(key)) == string(val))

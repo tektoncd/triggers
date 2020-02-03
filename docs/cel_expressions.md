@@ -52,8 +52,7 @@ NOTE: The header value is a Go `http.Header`, which is
 type Header map[string][]string
 ```
 
-i.e. the header is a mapping of strings, to arrays of strings, see the `match`
-function on headers below for an extension that makes looking up headers easier.
+i.e. the header is a mapping of strings, to arrays of strings, see the `canonicalMatch` function on header below for an extension that makes looking up headers easier.
 
 ### List of extension functions
 
@@ -69,7 +68,7 @@ interceptor.
   </tr>
   <tr>
     <th>
-      match
+      canonicalMatch
     </th>
     <td>
       header.(string, string) -> bool
@@ -78,7 +77,7 @@ interceptor.
       Uses the canonical header matching from Go's http.Request to match the header against the value.
     </td>
     <td>
-     <pre>header.match('x-test', 'test-value')</pre>
+     <pre>header.canonicalMatch('x-test', 'test-value')</pre>
     </td>
   </tr>
   <tr>

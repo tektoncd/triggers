@@ -41,7 +41,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		{
 			name: "overloaded header check with case insensitive matching",
 			CEL: &triggersv1.CELInterceptor{
-				Filter: "header.match('x-test', 'test-value')",
+				Filter: "header.canonicalMatch('x-test', 'test-value')",
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 			want:    []byte(`{}`),
@@ -49,7 +49,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		{
 			name: "body and header check",
 			CEL: &triggersv1.CELInterceptor{
-				Filter: "header.match('x-test', 'test-value') && body.value == 'test'",
+				Filter: "header.canonicalMatch('x-test', 'test-value') && body.value == 'test'",
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test"}`)),
 			want:    []byte(`{"value":"test"}`),
@@ -89,7 +89,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 		},
 		{
 			name:    "nil body does not panic",
-			CEL:     &triggersv1.CELInterceptor{Filter: "header.match('x-test', 'test-value')"},
+			CEL:     &triggersv1.CELInterceptor{Filter: "header.canonicalMatch('x-test', 'test-value')"},
 			payload: nil,
 			want:    []byte(`{}`),
 		},
@@ -151,10 +151,10 @@ func TestInterceptor_ExecuteTrigger_Errors(t *testing.T) {
 		{
 			name: "overloaded header check with case insensitive failed match",
 			CEL: &triggersv1.CELInterceptor{
-				Filter: "header.match('x-test', 'no-match')",
+				Filter: "header.canonicalMatch('x-test', 'no-match')",
 			},
 			payload: []byte(`{}`),
-			want:    "expression header.match\\('x-test', 'no-match'\\) did not return true",
+			want:    "expression header.canonicalMatch\\('x-test', 'no-match'\\) did not return true",
 		},
 		{
 			name: "unable to parse the expression",
@@ -302,7 +302,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 		},
 		{
 			name: "invalid function overloading",
-			expr: "body.match('testing', 'test')",
+			expr: "body.canonicalMatch('testing', 'test')",
 			want: "failed to convert to http.Header",
 		},
 	}
