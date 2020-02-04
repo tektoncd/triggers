@@ -111,5 +111,18 @@ interceptor.
     <td>
      <pre>split(body.ref, '/')</pre>
     </td>
+</tr>
+    <th>
+      canonical
+    </th>
+    <td>
+      header.(string) -> string
+    </td>
+    <td>
+      Uses the canonical header matching from Go's http.Request to get the provided header name.
+    </td>
+    <td>
+     <pre>header.canonical('x-test')</pre>
+    </td>
   </tr>
 </table>

@@ -56,6 +56,14 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			want:    []byte(`{"value":"test"}`),
 		},
 		{
+			name: "body and header check",
+			CEL: &triggersv1.CELInterceptor{
+				Filter: "header.canonical('x-test') == 'test-value' && body.value == 'test'",
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test"}`)),
+			want:    []byte(`{"value":"test"}`),
+		},
+		{
 			name: "single overlay",
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "body.value == 'test'",
@@ -221,6 +229,7 @@ func TestExpressionEvaluation(t *testing.T) {
 	}
 	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
+	header.Add("X-Test-Header", "value")
 	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
 	env, err := makeCelEnv()
 	if err != nil {
@@ -260,6 +269,16 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "extract a branch from a non refs string",
 			expr: "split(body.value, '/')",
 			want: types.NewStringList(types.NewRegistry(), []string{"testing"}),
+		},
+		{
+			name: "exact header lookup",
+			expr: "header.canonical('X-Test-Header')",
+			want: types.String("value"),
+		},
+		{
+			name: "canonical header lookup",
+			expr: "header.canonical('x-test-header')",
+			want: types.String("value"),
 		},
 	}
 	for _, tt := range tests {
@@ -315,7 +334,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			want: "undeclared reference to 'trunca'",
 		},
 		{
-			name: "invalid function overloading",
+			name: "invalid function overloading with match",
 			expr: "body.match('testing', 'test')",
 			want: "failed to convert to http.Header",
 		},
@@ -323,6 +342,16 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "non-string passed to split",
 			expr: "split(body.value, 54)",
 			want: "found no matching overload for 'split'",
+		},
+		{
+			name: "invalid function overloading with canonical",
+			expr: "body.canonical('testing')",
+			want: "failed to convert to http.Header",
+		},
+		{
+			name: "invalid function overloading canonical with non-string",
+			expr: "body.canonical(52)",
+			want: "found no matching overload",
 		},
 	}
 	for _, tt := range tests {
