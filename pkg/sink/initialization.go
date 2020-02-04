@@ -31,9 +31,9 @@ import (
 
 const (
 	// Flag definitions
-	name      = "el-name"
-	namespace = "el-namespace"
-	port      = "port"
+	name        = "el-name"
+	elNamespace = "el-namespace"
+	port        = "port"
 )
 
 var (
@@ -71,7 +71,7 @@ func GetArgs() (Args, error) {
 		return Args{}, xerrors.Errorf("-%s arg not found", name)
 	}
 	if *namespaceFlag == "" {
-		return Args{}, xerrors.Errorf("-%s arg not found", namespace)
+		return Args{}, xerrors.Errorf("-%s arg not found", elNamespace)
 	}
 	if *portFlag == "" {
 		return Args{}, xerrors.Errorf("-%s arg not found", port)
