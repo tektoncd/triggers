@@ -27,6 +27,8 @@ import (
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
+	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
+	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
@@ -35,10 +37,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	fakedynamic "k8s.io/client-go/dynamic/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
+	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	"knative.dev/pkg/controller"
 )
@@ -54,6 +59,7 @@ type Resources struct {
 	Deployments            []*appsv1.Deployment
 	Services               []*corev1.Service
 	ConfigMaps             []*corev1.ConfigMap
+	Secrets                []*corev1.Secret
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -62,6 +68,7 @@ type Clients struct {
 	Triggers *faketriggersclientset.Clientset
 	Pipeline *fakepipelineclientset.Clientset
 	Resource *fakeresourceclientset.Clientset
+	Dynamic  *dynamicclientset.Clientset
 }
 
 // Assets holds references to the controller and clients.
@@ -74,12 +81,15 @@ type Assets struct {
 // nolint: golint
 func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
+	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	c := Clients{
 		Kube:     fakekubeclient.Get(ctx),
 		Triggers: faketriggersclient.Get(ctx),
 		Pipeline: fakepipelineclient.Get(ctx),
 		Resource: fakeresourceclient.Get(ctx),
+		Dynamic:  dynamicclientset.New(tekton.WithClient(dynamicClient)),
 	}
+
 	// Setup fake informer for reconciler tests
 	ctbInformer := fakeclustertriggerbindinginformer.Get(ctx)
 	elInformer := fakeeventlistenerinformer.Get(ctx)
@@ -88,6 +98,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	deployInformer := fakedeployinformer.Get(ctx)
 	serviceInformer := fakeserviceinformer.Get(ctx)
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
+	secretInformer := fakesecretinformer.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -151,6 +162,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Kube.CoreV1().ConfigMaps(cfg.Namespace).Create(cfg); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, s := range r.Secrets {
+		if err := secretInformer.Informer().GetIndexer().Add(s); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -228,6 +247,14 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		}
 		for _, cfg := range cfgList.Items {
 			testResources.ConfigMaps = append(testResources.ConfigMaps, cfg.DeepCopy())
+		}
+		// Add Secrets
+		secretsList, err := c.Kube.CoreV1().Secrets(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range secretsList.Items {
+			testResources.Secrets = append(testResources.Secrets, s.DeepCopy())
 		}
 
 	}

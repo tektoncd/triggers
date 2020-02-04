@@ -20,23 +20,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/gorilla/mux"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/template"
@@ -46,10 +43,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const (
@@ -57,7 +53,8 @@ const (
 	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
 	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
 
-	eventID = "12345"
+	eventID   = "12345"
+	namespace = "foo"
 )
 
 func init() {
@@ -65,22 +62,75 @@ func init() {
 	template.UID = func() string { return eventID }
 }
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false
-	case <-time.After(timeout):
-		return true
+// Compare two PipelineResources for sorting purposes
+func comparePR(x, y pipelinev1.PipelineResource) bool {
+	return x.GetName() < y.GetName()
+}
+
+// getSinkAssets seeds test resources and returns a testable Sink and a dynamic
+// client. The returned client is used to creating the fake resources and can be
+// used to check if the correct resources were created.
+func getSinkAssets(t *testing.T, resources test.Resources, elName string) (Sink, *fakedynamic.FakeDynamicClient) {
+	t.Helper()
+	ctx, _ := rtesting.SetupFakeContext(t)
+	clients := test.SeedResources(t, ctx, resources)
+	test.AddTektonResources(clients.Kube)
+
+	logger, _ := logging.NewLogger("", "")
+	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
+	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
+
+	r := Sink{
+		EventListenerName:      elName,
+		EventListenerNamespace: namespace,
+		DynamicClient:          dynamicSet,
+		DiscoveryClient:        clients.Kube.Discovery(),
+		KubeClientSet:          clients.Kube,
+		TriggersClient:         clients.Triggers,
+		Logger:                 logger,
+	}
+	return r, dynamicClient
+}
+
+// getCreatedPipelineResources returns the pipeline resources that were created from the given actions
+func getCreatedPipelineResources(t *testing.T, actions []ktesting.Action) []pipelinev1.PipelineResource {
+	t.Helper()
+	prs := []pipelinev1.PipelineResource{}
+	for i := range actions {
+		obj := actions[i].(ktesting.CreateAction).GetObject()
+		// Since we use dynamic client, we cannot directly get the concrete type
+		uns := obj.(*unstructured.Unstructured).Object
+		pr := pipelinev1.PipelineResource{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns, &pr); err != nil {
+			t.Errorf("failed to get created pipeline resource: %v", err)
+		}
+		prs = append(prs, pr)
+	}
+	return prs
+}
+
+// checkSinkResponse checks that the sink response status code is 201
+// and that the body returns the EventListener, namespace, and eventID.
+func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
+	t.Helper()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected response code 201 but got: %v", resp.Status)
+	}
+	var gotBody Response
+	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
+		t.Fatalf("Error reading response body: %s", err)
+	}
+	wantBody := Response{
+		EventListener: elName,
+		Namespace:     namespace,
+		EventID:       eventID,
+	}
+	if diff := cmp.Diff(wantBody, gotBody); diff != "" {
+		t.Errorf("did not get expected response back -want,+got: %s", diff)
 	}
 }
 
 func TestHandleEvent(t *testing.T) {
-	namespace := "foo"
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 	numTriggers := 10
 
@@ -92,15 +142,16 @@ func TestHandleEvent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "$(params.name)",
 			Namespace: namespace,
-			Labels:    map[string]string{"app": "$(params.appLabel)"},
+			Labels: map[string]string{
+				"app":  "$(params.foo)",
+				"type": "$(params.type)",
+			},
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
 			Params: []pipelinev1.ResourceParam{
 				{Name: "url", Value: "$(params.url)"},
 				{Name: "revision", Value: "$(params.revision)"},
-				{Name: "contenttype", Value: "$(params.contenttype)"},
-				{Name: "foo", Value: "$(params.foo)"},
 			},
 		},
 	}
@@ -114,9 +165,8 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("name", "", ""),
 			bldr.TriggerTemplateParam("url", "", ""),
 			bldr.TriggerTemplateParam("revision", "", ""),
-			bldr.TriggerTemplateParam("appLabel", "", "foo"),
-			bldr.TriggerTemplateParam("contenttype", "", ""),
 			bldr.TriggerTemplateParam("foo", "", ""),
+			bldr.TriggerTemplateParam("type", "", ""),
 			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
 		))
 	var tbs []*triggersv1.TriggerBinding
@@ -129,8 +179,8 @@ func TestHandleEvent(t *testing.T) {
 				bldr.TriggerBindingParam("name", fmt.Sprintf("my-pipelineresource-%d", i)),
 				bldr.TriggerBindingParam("url", "$(body.repository.url)"),
 				bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
-				bldr.TriggerBindingParam("contenttype", "$(header.Content-Type)"),
 				bldr.TriggerBindingParam("foo", "$(body.foo)"),
+				bldr.TriggerBindingParam("type", "$(header.Content-Type)"),
 			))
 		tbs = append(tbs, tb)
 		// Add TriggerBinding to trigger in EventListener
@@ -141,85 +191,25 @@ func TestHandleEvent(t *testing.T) {
 	}
 	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(triggers...))
 
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	test.AddTektonResources(kubeClient)
-
-	triggersClient := faketriggersclientset.NewSimpleClientset()
-	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
-		t.Fatalf("Error creating TriggerTemplate: %s", err)
-	}
-	for _, tb := range tbs {
-		if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
-			t.Fatalf("Error creating TriggerBinding %s: %s", tb.GetName(), err)
-		}
-	}
-	el, err = triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el)
-	if err != nil {
-		t.Fatalf("Error creating EventListener: %s", err)
+	resources := test.Resources{
+		TriggerBindings:  tbs,
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
 	}
 
-	logger, _ := logging.NewLogger("", "")
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
 
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-
-	r := Sink{
-		EventListenerName:      el.Name,
-		EventListenerNamespace: namespace,
-		DynamicClient:          dynamicSet,
-		DiscoveryClient:        kubeClient.Discovery(),
-		TriggersClient:         triggersClient,
-		Logger:                 logger,
-	}
-	ts := httptest.NewServer(http.HandlerFunc(r.HandleEvent))
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 	defer ts.Close()
-
-	var wg sync.WaitGroup
-	wg.Add(numTriggers)
-
-	dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		defer wg.Done()
-		return false, nil, nil
-	})
 
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
 	}
 
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("Response code doesn't match: %v", resp.Status)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Error reading response body: %s", err)
-	}
-
-	wantBody := Response{
-		EventListener: el.Name,
-		Namespace:     el.Namespace,
-		EventID:       eventID,
-	}
-
-	got := Response{}
-	if err := json.Unmarshal(body, &got); err != nil {
-		t.Fatalf("Error unmarshalling response body: %s", err)
-	}
-	if diff := cmp.Diff(wantBody, got); diff != "" {
-		t.Errorf("did not get expected response back -want,+got: %s", diff)
-	}
-
-	// We expect that the EventListener will be able to immediately handle the event so we
-	// can use a very short timeout
-	if waitTimeout(&wg, time.Second) {
-		t.Fatalf("timed out waiting for reactor to fire")
-	}
-	gvr := schema.GroupVersionResource{
-		Group:    "tekton.dev",
-		Version:  "v1alpha1",
-		Resource: "pipelineresources",
-	}
-	var wantActions []ktesting.Action
+	checkSinkResponse(t, resp, el.Name)
+	// Check right resources were created.
+	var wantPrs []pipelinev1.PipelineResource
 	for i := 0; i < numTriggers; i++ {
 		wantResource := pipelinev1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
@@ -230,7 +220,8 @@ func TestHandleEvent(t *testing.T) {
 				Name:      fmt.Sprintf("my-pipelineresource-%d", i),
 				Namespace: namespace,
 				Labels: map[string]string{
-					"app":         "foo",
+					"app":         "bar\t\r\nbaz昨",
+					"type":        "application/json",
 					resourceLabel: "my-eventlistener",
 					triggerLabel:  el.Spec.Triggers[0].Name,
 					eventIDLabel:  eventID,
@@ -241,23 +232,19 @@ func TestHandleEvent(t *testing.T) {
 				Params: []pipelinev1.ResourceParam{
 					{Name: "url", Value: "testurl"},
 					{Name: "revision", Value: "testrevision"},
-					{Name: "contenttype", Value: "application/json"},
-					{Name: "foo", Value: "bar\t\r\nbaz昨"},
 				},
 			},
 		}
-		action := ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))
-		wantActions = append(wantActions, action)
+		wantPrs = append(wantPrs, wantResource)
 	}
 	// Sort actions (we do not know what order they executed in)
-	gotActions := sortCreateActions(t, dynamicClient.Actions())
-	if diff := cmp.Diff(wantActions, gotActions); diff != "" {
-		t.Errorf("Actions mismatch (-want +got): %s", diff)
+	gotPrs := getCreatedPipelineResources(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantPrs, gotPrs, cmpopts.SortSlices(comparePR)); diff != "" {
+		t.Errorf("Created resources mismatch (-want + got): %s", diff)
 	}
 }
 
 func TestHandleEventWithInterceptors(t *testing.T) {
-	namespace := "foo"
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 
 	pipelineResource := pipelinev1.PipelineResource{
@@ -314,56 +301,26 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 			}},
 		},
 	}
-
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	test.AddTektonResources(kubeClient)
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "secret",
+			Name:      "secret",
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"secretKey": []byte("secret"),
 		},
 	}
-	if _, err := kubeClient.CoreV1().Secrets(namespace).Create(secret); err != nil {
-		t.Fatalf("error creating secret: %v", secret)
-	}
-	triggersClient := faketriggersclientset.NewSimpleClientset()
-	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
-		t.Fatalf("Error creating TriggerTemplate: %s", err)
-	}
-	if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
-		t.Fatalf("Error creating TriggerBinding: %s", err)
-	}
-	el, err = triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el)
-	if err != nil {
-		t.Fatalf("Error creating EventListener: %s", err)
+
+	resources := test.Resources{
+		TriggerBindings:  []*triggersv1.TriggerBinding{tb},
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
+		Secrets:          []*corev1.Secret{secret},
 	}
 
-	logger, _ := logging.NewLogger("", "")
-
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-
-	r := Sink{
-		EventListenerName:      el.Name,
-		EventListenerNamespace: namespace,
-		DynamicClient:          dynamicSet,
-		DiscoveryClient:        kubeClient.Discovery(),
-		TriggersClient:         triggersClient,
-		KubeClientSet:          kubeClient,
-		Logger:                 logger,
-	}
-	ts := httptest.NewServer(http.HandlerFunc(r.HandleEvent))
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 	defer ts.Close()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		defer wg.Done()
-		return false, nil, nil
-	})
 
 	req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(eventBody))
 	if err != nil {
@@ -373,41 +330,16 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 	req.Header.Add("X-Github-Event", "pull_request")
 	// This was generated by using SHA1 and hmac from go stdlib on secret and payload.
 	// https://play.golang.org/p/8D2E-Yz3zWf for a sample.
+	// TODO(dibyom): Add helper method that does this instead of link above
 	req.Header.Add("X-Hub-Signature", "sha1=c0f3a2bbd1cdb062ba4f54b2a1cad3d171b7a129")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("Error sending Post request: %v", err)
 	}
+	checkSinkResponse(t, resp, el.Name)
 
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("Response code doesn't match: %v", resp.Status)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Error reading response body: %s", err)
-	}
-
-	wantBody := Response{
-		EventListener: el.Name,
-		Namespace:     el.Namespace,
-		EventID:       eventID,
-	}
-
-	got := Response{}
-	if err := json.Unmarshal(body, &got); err != nil {
-		t.Fatalf("Error unmarshalling response body: %s", err)
-	}
-	if diff := cmp.Diff(wantBody, got); diff != "" {
-		t.Errorf("did not get expected response back -want,+got: %s", diff)
-	}
-
-	// We expect that the EventListener will be able to immediately handle the event so we
-	// can use a very short timeout
-	if waitTimeout(&wg, time.Second) {
-		t.Fatalf("timed out waiting for reactor to fire")
-	}
-	wantResource := pipelinev1.PipelineResource{
+	wantResource := []pipelinev1.PipelineResource{{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
@@ -427,15 +359,10 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 				{Name: "url", Value: "testurl"},
 			},
 		},
-	}
-	gvr := schema.GroupVersionResource{
-		Group:    "tekton.dev",
-		Version:  "v1alpha1",
-		Resource: "pipelineresources",
-	}
-	want := []ktesting.Action{ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))}
-	if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
-		t.Error(diff)
+	}}
+	gotPrs := getCreatedPipelineResources(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantResource, gotPrs); diff != "" {
+		t.Errorf("Created resources mismatch (-want + got): %s", diff)
 	}
 }
 
@@ -464,7 +391,6 @@ func (f *nameInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestHandleEventWithWebhookInterceptors(t *testing.T) {
-	namespace := "foo"
 	eventBody := json.RawMessage(`{}`)
 	numTriggers := 10
 
@@ -479,10 +405,6 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 		},
 		Spec: pipelinev1.PipelineResourceSpec{
 			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{{
-				Name:  "url",
-				Value: "testurl",
-			}},
 		},
 	}
 	resourceTemplateBytes, err := json.Marshal(resourceTemplate)
@@ -529,24 +451,11 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 		},
 	}
 
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	test.AddTektonResources(kubeClient)
-
-	triggersClient := faketriggersclientset.NewSimpleClientset()
-	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
-		t.Fatalf("Error creating TriggerTemplate: %s", err)
+	resources := test.Resources{
+		TriggerBindings:  []*triggersv1.TriggerBinding{tb},
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
 	}
-	if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
-		t.Fatalf("Error creating TriggerBinding: %s", err)
-	}
-	if _, err = triggersClient.TektonV1alpha1().EventListeners(namespace).Create(el); err != nil {
-		t.Fatalf("Error creating EventListener: %s", err)
-	}
-
-	logger, _ := logging.NewLogger("", "")
-
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	// Redirect all requests to the fake server.
 	srv := httptest.NewServer(&nameInterceptor{})
@@ -557,64 +466,19 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	r := Sink{
-		HTTPClient:             srv.Client(),
-		EventListenerName:      el.Name,
-		EventListenerNamespace: namespace,
-		DynamicClient:          dynamicSet,
-		DiscoveryClient:        kubeClient.Discovery(),
-		TriggersClient:         triggersClient,
-		KubeClientSet:          kubeClient,
-		Logger:                 logger,
-	}
-	ts := httptest.NewServer(http.HandlerFunc(r.HandleEvent))
-	defer ts.Close()
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
+	sink.HTTPClient = srv.Client()
 
-	var wg sync.WaitGroup
-	wg.Add(numTriggers)
-	dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		defer wg.Done()
-		return false, nil, nil
-	})
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	defer ts.Close()
 
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
 	if err != nil {
 		t.Fatalf("Error creating Post request: %s", err)
 	}
+	checkSinkResponse(t, resp, el.Name)
 
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("Response code doesn't match: %v", resp.Status)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Error reading response body: %s", err)
-	}
-
-	wantBody := Response{
-		EventListener: el.Name,
-		Namespace:     el.Namespace,
-		EventID:       eventID,
-	}
-
-	got := Response{}
-	if err := json.Unmarshal(body, &got); err != nil {
-		t.Fatalf("Error unmarshalling response body: %s", err)
-	}
-	if diff := cmp.Diff(wantBody, got); diff != "" {
-		t.Errorf("did not get expected response back -want,+got: %s", diff)
-	}
-
-	// We expect that the EventListener will be able to immediately handle the event so we
-	// can use a very short timeout
-	if waitTimeout(&wg, time.Second) {
-		t.Fatalf("timed out waiting for reactor to fire")
-	}
-	gvr := schema.GroupVersionResource{
-		Group:    "tekton.dev",
-		Version:  "v1alpha1",
-		Resource: "pipelineresources",
-	}
-	var wantActions []ktesting.Action
+	var wantPRs []pipelinev1.PipelineResource
 	for i := 0; i < numTriggers; i++ {
 		wantResource := resourceTemplate.DeepCopy()
 		wantResource.ObjectMeta.Name = fmt.Sprintf("my-resource-%d", i)
@@ -623,12 +487,10 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 			triggerLabel:  "",
 			eventIDLabel:  eventID,
 		}
-		action := ktesting.NewCreateAction(gvr, "foo", test.ToUnstructured(t, wantResource))
-		wantActions = append(wantActions, action)
+		wantPRs = append(wantPRs, *wantResource)
 	}
-	// Sort actions (we do not know what order they executed in)
-	gotActions := sortCreateActions(t, dynamicClient.Actions())
-	if diff := cmp.Diff(wantActions, gotActions); diff != "" {
+	gotPrs := getCreatedPipelineResources(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantPRs, gotPrs, cmpopts.SortSlices(comparePR)); diff != "" {
 		t.Errorf("Actions mismatch (-want +got): %s", diff)
 	}
 }
@@ -805,23 +667,4 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if si.called {
 		t.Error("expected sequential interceptor to not be called")
 	}
-}
-
-// Sort CreateActions by the name of their resource.
-// The Actions must be CreateActions, and they must have an Object that has a
-// name.
-func sortCreateActions(t *testing.T, actions []ktesting.Action) []ktesting.Action {
-	sort.SliceStable(actions, func(i int, j int) bool {
-		objectI := actions[i].(ktesting.CreateAction).GetObject()
-		objectJ := actions[j].(ktesting.CreateAction).GetObject()
-		unstructuredI, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(objectI)
-		unstructuredJ, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(objectJ)
-		nameI := (&unstructured.Unstructured{Object: unstructuredI}).GetName()
-		nameJ := (&unstructured.Unstructured{Object: unstructuredJ}).GetName()
-		if nameI == "" || nameJ == "" {
-			t.Errorf("Error getting resource name from action; names are empty")
-		}
-		return nameI < nameJ
-	})
-	return actions
 }
