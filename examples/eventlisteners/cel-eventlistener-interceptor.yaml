@@ -5,13 +5,21 @@ metadata:
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
-    - name: cel-trig
+    - name: cel-trig-with-matches
       interceptors:
         - cel:
             filter: "headers.matches('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+    - name: cel-trig-with-canonical
+      interceptors:
+        - cel:
+            filter: "headers.canonical('X-GitHub-Event') == 'push'"
       bindings:
       - name: pipeline-binding
       template:

@@ -150,6 +150,9 @@ func embeddedFunctions() cel.ProgramOption {
 			Operator: "match",
 			Function: matchHeader},
 		&functions.Overload{
+			Operator: "canonical",
+			Binary:   canonicalHeader},
+		&functions.Overload{
 			Operator: "truncate",
 			Binary:   truncateString},
 		&functions.Overload{
@@ -171,6 +174,9 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewFunction("split",
 				decls.NewOverload("split_dyn_string_dyn",
 					[]*exprpb.Type{decls.Dyn, decls.String}, listStr)),
+			decls.NewFunction("canonical",
+				decls.NewInstanceOverload("canonical_map_string",
+					[]*exprpb.Type{mapStrDyn, decls.String}, decls.String)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
 					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
@@ -203,7 +209,6 @@ func matchHeader(vals ...ref.Val) ref.Val {
 	}
 
 	return types.Bool(h.(http.Header).Get(string(key)) == string(val))
-
 }
 
 func truncateString(lhs, rhs ref.Val) ref.Val {
@@ -234,6 +239,20 @@ func splitString(lhs, rhs ref.Val) ref.Val {
 	r := types.NewRegistry()
 	splitVals := strings.Split(string(str), string(splitStr))
 	return types.NewStringList(r, splitVals)
+}
+
+func canonicalHeader(lhs, rhs ref.Val) ref.Val {
+	h, err := lhs.ConvertToNative(reflect.TypeOf(http.Header{}))
+	if err != nil {
+		return types.NewErr("failed to convert to http.Header: %w", err)
+	}
+
+	key, ok := rhs.(types.String)
+	if !ok {
+		return types.ValOrErr(key, "unexpected type '%v' passed to canonical", rhs.Type())
+	}
+
+	return types.String(h.(http.Header).Get(string(key)))
 }
 
 func max(x, y types.Int) types.Int {
