@@ -3,6 +3,9 @@
 The CEL expression is configured to expose parts of the request, and some custom
 functions to make matching easier.
 
+In addition to the custom function extension listed below, you can craft any valid CEL 
+expression as defined by the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
+
 ### List of extensions
 
 The body from the `http.Request` value is decoded to JSON and exposed, and the
