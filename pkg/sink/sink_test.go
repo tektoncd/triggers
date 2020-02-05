@@ -117,7 +117,7 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("appLabel", "", "foo"),
 			bldr.TriggerTemplateParam("contenttype", "", ""),
 			bldr.TriggerTemplateParam("foo", "", ""),
-			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
 		))
 	var tbs []*triggersv1.TriggerBinding
 	var triggers []bldr.EventListenerSpecOp
@@ -285,7 +285,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 	tt := bldr.TriggerTemplate("tt", namespace,
 		bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("url", "", ""),
-			bldr.TriggerResourceTemplate(pipelineResourceBytes),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
 		))
 	tb := bldr.TriggerBinding("tb", namespace,
 		bldr.TriggerBindingSpec(
@@ -493,7 +493,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	tt := bldr.TriggerTemplate("tt", namespace,
 		bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("name", "", ""),
-			bldr.TriggerResourceTemplate(resourceTemplateBytes),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: resourceTemplateBytes}),
 		))
 	tb := bldr.TriggerBinding("tb", namespace,
 		bldr.TriggerBindingSpec(

@@ -81,7 +81,7 @@ func verifyParamDeclarations(params []pipelinev1.ParamSpec, templates []TriggerR
 	}
 	for i, template := range templates {
 		// Get all params in the template $(params.NAME)
-		templateParams := paramsRegexp.FindAllSubmatch(template.RawMessage, -1)
+		templateParams := paramsRegexp.FindAllSubmatch(template.RawExtension.Raw, -1)
 		for _, templateParam := range templateParams {
 			templateParamName := string(templateParam[1])
 			if _, ok := declaredParamNames[templateParamName]; !ok {

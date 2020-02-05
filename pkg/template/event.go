@@ -46,7 +46,7 @@ func ResolveResources(template *triggersv1.TriggerTemplate, params []pipelinev1.
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
 	uid := UID()
 	for i := range template.Spec.ResourceTemplates {
-		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawMessage)
+		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw)
 		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources
