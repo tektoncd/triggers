@@ -1,13 +1,13 @@
 package builder
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestTriggerTemplateBuilder(t *testing.T) {
@@ -102,14 +102,14 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				Spec: v1alpha1.TriggerTemplateSpec{
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
 						{
-							RawMessage: json.RawMessage(`{"rt1": "value"}`),
+							RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)},
 						},
 					},
 				},
 			},
 			builder: TriggerTemplate("name", "namespace",
 				TriggerTemplateSpec(
-					TriggerResourceTemplate(json.RawMessage(`{"rt1": "value"}`)),
+					TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)}),
 				),
 			),
 		},
@@ -123,18 +123,18 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				Spec: v1alpha1.TriggerTemplateSpec{
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
 						{
-							RawMessage: json.RawMessage(`{"rt1": "value"}`),
+							RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)},
 						},
 						{
-							RawMessage: json.RawMessage(`{"rt2": "value"}`),
+							RawExtension: runtime.RawExtension{Raw: []byte(`{"rt2": "value"}`)},
 						},
 					},
 				},
 			},
 			builder: TriggerTemplate("name", "namespace",
 				TriggerTemplateSpec(
-					TriggerResourceTemplate(json.RawMessage(`{"rt1": "value"}`)),
-					TriggerResourceTemplate(json.RawMessage(`{"rt2": "value"}`)),
+					TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)}),
+					TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "value"}`)}),
 				),
 			),
 		},
@@ -173,10 +173,10 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 					},
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{
 						{
-							RawMessage: json.RawMessage(`{"rt1": "value"}`),
+							RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)},
 						},
 						{
-							RawMessage: json.RawMessage(`{"rt2": "value"}`),
+							RawExtension: runtime.RawExtension{Raw: []byte(`{"rt2": "value"}`)},
 						},
 					},
 				},
@@ -189,8 +189,8 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 				TriggerTemplateSpec(
 					TriggerTemplateParam("param1", "description", "value1"),
 					TriggerTemplateParam("param2", "description", "value2"),
-					TriggerResourceTemplate(json.RawMessage(`{"rt1": "value"}`)),
-					TriggerResourceTemplate(json.RawMessage(`{"rt2": "value"}`)),
+					TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)}),
+					TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "value"}`)}),
 				),
 			),
 		},

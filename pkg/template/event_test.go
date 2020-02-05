@@ -28,6 +28,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -397,8 +398,8 @@ func TestResolveResources(t *testing.T) {
 		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("p1", "desc", ""),
 			bldr.TriggerTemplateParam("p2", "desc", ""),
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)-$(params.p2)"}`)),
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(params.p1)-$(params.p2)"}`)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(params.p1)-$(params.p2)"}`)}),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "$(params.p1)-$(params.p2)"}`)}),
 		)),
 		params: []pipelinev1.Param{
 			bldr.Param("p1", "val1"),
@@ -412,7 +413,7 @@ func TestResolveResources(t *testing.T) {
 		name: "replace JSON string in templates",
 		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("p1", "desc", ""),
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)"}`)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(params.p1)"}`)}),
 		)),
 		params: []pipelinev1.Param{
 			bldr.Param("p1", `{"a": "b"}`),
@@ -425,7 +426,7 @@ func TestResolveResources(t *testing.T) {
 		name: "replace JSON string with special chars in templates",
 		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("p1", "desc", ""),
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(params.p1)"}`)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(params.p1)"}`)}),
 		)),
 		params: []pipelinev1.Param{
 			bldr.Param("p1", `{"a": "v\\r\\n烈"}`),
@@ -436,7 +437,7 @@ func TestResolveResources(t *testing.T) {
 	}, {
 		name: "$(uid) gets replaced with a string",
 		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(uid)"}`)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)}),
 		)),
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "cbhtc"}`),
@@ -444,8 +445,8 @@ func TestResolveResources(t *testing.T) {
 	}, {
 		name: "uid replacement is consistent across multiple templates",
 		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt1": "$(uid)"}`)),
-			bldr.TriggerResourceTemplate(json.RawMessage(`{"rt2": "$(uid)"}`)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)}),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "$(uid)"}`)}),
 		)),
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "cbhtc"}`),

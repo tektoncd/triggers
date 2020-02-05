@@ -41,6 +41,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -130,8 +131,8 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.TriggerTemplateParam("license", "", ""),
 				bldr.TriggerTemplateParam("header", "", ""),
 				bldr.TriggerTemplateParam("prmessage", "", ""),
-				bldr.TriggerResourceTemplate(pr1Bytes),
-				bldr.TriggerResourceTemplate(pr2Bytes),
+				bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pr1Bytes}),
+				bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pr2Bytes}),
 			),
 		),
 	)

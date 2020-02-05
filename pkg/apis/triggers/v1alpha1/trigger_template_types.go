@@ -23,6 +23,7 @@ import (
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 )
 
@@ -48,7 +49,7 @@ type TriggerTemplateSpec struct {
 
 // TriggerResourceTemplate describes a resource to create
 type TriggerResourceTemplate struct {
-	json.RawMessage `json:",inline"`
+	runtime.RawExtension `json:",inline"`
 }
 
 // TriggerTemplateStatus describes the desired state of TriggerTemplate
@@ -84,7 +85,7 @@ type TriggerTemplateList struct {
 // Missing fields are represented by empty strings
 func (trt *TriggerResourceTemplate) getAPIVersionAndKind() (string, string) {
 	var tm metav1.TypeMeta
-	if err := json.NewDecoder(bytes.NewReader(trt.RawMessage)).Decode(&tm); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(trt.RawExtension.Raw)).Decode(&tm); err != nil {
 		return "", ""
 	}
 	return tm.APIVersion, tm.Kind
