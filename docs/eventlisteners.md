@@ -70,7 +70,7 @@ Triggers within an `EventListener` can optionally specify interceptors, to
 modify the behavior or payload of triggers.
 
 Event Interceptors can take several different forms today:
- 
+
 - [Webhook Interceptors](#Webhook-Interceptors)
 - [GitHub Interceptors](#GitHub-Interceptors)
 - [GitLab Interceptors](#GitLab-Interceptors)
@@ -241,11 +241,14 @@ spec:
 
 CEL interceptors parse expressions to filter requests based on JSON bodies and
 request headers, using the [CEL](https://github.com/google/cel-go) expression
-language. Please read the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
+language. Please read the
+[cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
 for more details on the expression language syntax.
 
-In addition to the standard [CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md), additional 
-supported features include case-insensitive matching on request headers.
+In addition to the standard
+[CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md),
+additional supported features include case-insensitive matching on request
+headers.
 
 The body/header of the incoming request will be preserved in this interceptor's
 response.
