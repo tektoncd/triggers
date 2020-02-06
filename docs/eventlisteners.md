@@ -1,10 +1,73 @@
 # EventListener
 
-`EventListener`s connect `TriggerBinding`s to `TriggerTemplate`s and provide an
-addressable endpoint, which is where webhooks/events are directed. This is also
-where the service account is connected, which specifies what permissions the
-resources will be created (or at least attempted) with. The service account must
-have the following role bound.
+EventListener is a Kubernetes custom resource that allows users a declarative
+way to process incoming HTTP based events with JSON payloads. EventListeners
+expose an addressable "Sink" to which incoming events are directed. Users can
+declare [TriggerBindings](./triggerbindings.md) to extract fields from events,
+and apply them to [TriggerTemplates](./triggertemplates.md) in order to create
+Tekton resources. In addition, EventListeners allow lightweight event processing
+using [Event Interceptors](#event-Interceptors)
+
+- [Syntax](#syntax)
+  - [Triggers](#triggers)
+    - [EventInterceptors](#event-Interceptors)
+  - [ServiceAccountName](#serviceAccountName)
+- [Logging](#logging)
+- [Labels](#labels)
+- [Examples](#examples)
+
+## Syntax
+
+To define a configuration file for a `EventListener` resource, you can specify
+the following fields:
+
+- Required:
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
+    `tekton.dev/v1alpha1`.
+  - [`kind`][kubernetes-overview] - Specify the `EventListener` resource object.
+  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
+    `EventListener` resource object, for example a `name`.
+  - [`spec`][kubernetes-overview] - Specifies the configuration information for
+    your EventListener resource object. In order for an EventListener to do
+    anything, the spec must include:
+    - [`triggers`](#triggers) - Specifies a list of triggers to run
+    - [`ServiceAccountName`](#serviceAccountName) - Specifies the serviceAccount
+      that the EventListener uses to create resources
+- Optional:
+  - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
+    is exposed as
+
+[kubernetes-overview]:
+  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+
+### Triggers
+
+The `triggers` field is required. Each EventListener can consist of one or more
+`triggers`. A trigger consists of:
+
+- `name` - (Optional) a valid
+  [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
+- [`interceptors`](#event-interceptors) - (Optional) list of interceptors to use
+- `bindings` - A list of names of `TriggerBindings` to use
+- `template` - The name of `TriggerTemplate` to use
+
+```yaml
+triggers:
+  - name: trigger-1
+    interceptors:
+      - github:
+          eventTypes: ["pull_request"]
+    bindings:
+      - name: pipeline-binding
+      - name: message-binding
+    template:
+      name: pipeline-template
+```
+
+### ServiceAccountName
+
+The ServiceAccount that the EventListener sink uses to create the Tekton
+resources. It needs the following roles:
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
 
@@ -27,31 +90,41 @@ rules:
   verbs: ["create"]
 ```
 
-Note that currently, JSON is the only accepted MIME type for events.
+If your EventListener is using
+[`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
+ServiceAccount with a
+[ClusterRole instead](../examples/role-resources/clustertriggerbinding-roles/clusterrole.yaml)
 
-When an `EventListener` is successfully created, a service is created that
-references a listener pod. This listener pod accepts the incoming events and
-does what has been specified in the corresponding
-`TriggerBinding`s/`TriggerTemplate`s. The created service is by default of type
-`ClusterIP`; any other pods running in the same Kubernetes cluster can access
-services' via their cluster DNS. For external services to connect to your
-cluster (e.g. GitHub sending webhooks), check out the guide on
-[exposing eventlisteners](./exposing-eventlisteners.md)
+### ServiceType
 
-When the `EventListener` is created in the different namespace from the trigger
-component, `config-logging-triggers` ConfigMap is created for the logging
-configuration in the namespace when it doesn't exist. The ConfigMap with the
-default configuration can be created by applying
-[config-logging.yaml](../config/config-logging.yaml)
+EventListener sinks are exposed via
+[Kubernetes services](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).By
+default, the service is of type `ClusterIP` which means any pods running in the
+same Kubernetes cluster can access services' via their cluster DNS.
 
-`EventListener` `spec.serviceType` can be set to `ClusterIP (default)` |
-`NodePort` | `LoadBalancer` to configure the underlying `Service` resource to
-make it reachable externally.
+For external services to connect to your cluster (e.g. GitHub sending webhooks),
+check out the guide on [exposing eventlisteners](./exposing-eventlisteners.md)
 
-## Autogenerated labels
+### Logging
+
+EventListener sinks are exposed as Kubernetes services that are backed by a Pod
+running the sink logic. The logging configuration can be controlled via the
+`config-logging-triggers` ConfigMap present in the namespace that the
+EventListener was created in. This ConfigMap is automatically created and
+contains the default values defined in
+[config-logging.yaml](../config/config-logging.yaml).
+
+To access logs for the EventListener sink, you can query for pods with the
+`eventlistener` label set to the name of your EventListener resource:
+
+```shell script
+kubectl get pods --selector eventlistener=my-eventlistener
+```
+
+## Labels
 
 By default, EventListeners will attach the following labels automatically to all
-resources created:
+resources it creates:
 
 | Name                     | Description                                            |
 | ------------------------ | ------------------------------------------------------ |
@@ -88,10 +161,10 @@ the interceptor over HTTP. The service is expected to process the event and
 return a response back. The status code of the response determines if the
 processing is successful - a 200 response means the interceptor was successful
 and that processing should continue, any other status code will halt trigger
-processing. The returned body is used as the new event payload by the
-EventListener and passed on the `TriggerBinding`. An interceptor has an optional
-header field with key-value pairs that will be merged with event headers before
-being sent;
+processing. The returned request (body and headers) is used as the new event
+payload by the EventListener and passed on the `TriggerBinding`. An interceptor
+has an optional header field with key-value pairs that will be merged with event
+headers before being sent;
 [canonical](https://github.com/golang/go/blob/master/src/net/http/header.go#L214)
 names must be specified.
 
@@ -113,9 +186,14 @@ To be an Event Interceptor, a Kubernetes object should:
 - Return a JSON body back. This will be used by the EventListener as the event
   payload for any further processing. If the interceptor does not need to modify
   the body, it can simply return the body that it received.
+- Return any Headers that might be required by other chained interceptors or any
+  bindings.
+
+**Note**: It is the responsibility of interceptors to preserve header/body data
+if desired. The response body and headers of the last interceptor is used for
+resource binding/templating.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -167,7 +245,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -213,7 +290,6 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -247,14 +323,12 @@ for more details on the expression language syntax.
 
 In addition to the standard
 [CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md),
-additional supported features include case-insensitive matching on request
-headers.
+additional supported features described [CEL expressions](./cel_expressions.md)
 
 The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -284,10 +358,9 @@ spec:
         name: pipeline-template
 ```
 
-If no filter is provided, then the overlays will be applied to the body,
-
-With a filter, the `expression` must return a `true` value, otherwise the
-request will be filtered out.
+If no filter is provided, then the overlays will be applied to the body. With a
+filter, the `expression` must return a `true` value, otherwise the request will
+be filtered out.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
 
@@ -310,3 +383,15 @@ spec:
       template:
         name: pipeline-template
 ```
+
+## Examples
+
+For complete examples, see
+[the examples folder](https://github.com/tektoncd/triggers/tree/master/examples).
+
+---
+
+Except as otherwise noted, the content of this page is licensed under the
+[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
+and code samples are licensed under the
+[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
