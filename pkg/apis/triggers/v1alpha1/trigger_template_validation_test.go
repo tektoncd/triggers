@@ -30,10 +30,10 @@ import (
 )
 
 var simpleResourceTemplate = runtime.RawExtension{
-	Raw: []byte(`{ "apiVersion": "tekton.dev/v1alpha1", "kind": "pipelinerun"}`),
+	Raw: []byte(`{"kind":"PipelineRun","apiVersion":"tekton.dev/v1alpha1","metadata":{"creationTimestamp":null},"spec":{},"status":{}}`),
 }
 var paramResourceTemplate = runtime.RawExtension{
-	Raw: []byte(`{"apiVersion": "tekton.dev/v1alpha1", "kind": "pipelinerun", "spec": "$(params.foo)"}`),
+	Raw: []byte(`{"kind":"PipelineRun","apiVersion":"tekton.dev/v1alpha1","metadata":{"creationTimestamp":null},"spec": "$(params.foo)","status":{}}`),
 }
 
 func TestTriggerTemplate_Validate(t *testing.T) {
@@ -79,7 +79,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 			b.TriggerTemplateParam("foo", "desc", "val"),
 			b.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"kind": "pipelinerun", "apiVersion": "foobar"}`)}))),
 		want: &apis.FieldError{
-			Message: "invalid value: resource type not allowed: apiVersion: foobar, kind: pipelinerun",
+			Message: `invalid value: no kind "pipelinerun" is registered for version "foobar"`,
 			Paths:   []string{"spec.resourcetemplates[0]"},
 		},
 	}, {
@@ -88,7 +88,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 			b.TriggerTemplateParam("foo", "desc", "val"),
 			b.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"kind": "tekton.dev/v1alpha1", "apiVersion": "foo"}`)}))),
 		want: &apis.FieldError{
-			Message: "invalid value: resource type not allowed: apiVersion: foo, kind: tekton.dev/v1alpha1",
+			Message: `invalid value: no kind "tekton.dev/v1alpha1" is registered for version "foo"`,
 			Paths:   []string{"spec.resourcetemplates[0]"},
 		},
 	}, {

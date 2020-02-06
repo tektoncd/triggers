@@ -17,29 +17,26 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"bytes"
-	"encoding/json"
-	"strings"
-
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"knative.dev/pkg/apis"
 )
-
-// apiVersion for Tekton core types
-const tektonAPIVersion = GroupName + "/v1alpha1"
-
-// allowedTemplate types are the resource types identified by apiVersion + kind
-// that can be templated using TriggerResourceTemplates
-// TODO: Replace static restrictions here with SubjectAccessReview create checks
-var allowedTemplateTypes = map[string][]string{
-	tektonAPIVersion: {"pipelineresource", "pipelinerun", "taskrun", "pipeline", "clustertask", "task", "condition"},
-}
 
 // Check that TriggerTemplate may be validated and defaulted.
 var _ apis.Validatable = (*TriggerTemplate)(nil)
 var _ apis.Defaultable = (*TriggerTemplate)(nil)
+
+var Decoder runtime.Decoder
+
+func init() {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(pipelinev1.AddToScheme(scheme))
+	codec := serializer.NewCodecFactory(scheme)
+	Decoder = codec.UniversalDecoder(pipelinev1.SchemeGroupVersion)
+}
 
 // TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
@@ -81,27 +78,9 @@ type TriggerTemplateList struct {
 	Items           []TriggerTemplate `json:"items"`
 }
 
-// getAPIVersionAndKind returns the apiVersion and Kind for the resourceTemplate
-// Missing fields are represented by empty strings
-func (trt *TriggerResourceTemplate) getAPIVersionAndKind() (string, string) {
-	var tm metav1.TypeMeta
-	if err := json.NewDecoder(bytes.NewReader(trt.RawExtension.Raw)).Decode(&tm); err != nil {
-		return "", ""
-	}
-	return tm.APIVersion, tm.Kind
-}
-
 // IsAllowedType returns true if the resourceTemplate has an apiVersion
 // and kind field set to one of the allowed ones.
-func (trt *TriggerResourceTemplate) IsAllowedType() bool {
-	apiVersion, kind := trt.getAPIVersionAndKind()
-
-	if kinds, ok := allowedTemplateTypes[apiVersion]; ok {
-		for _, allowedKind := range kinds {
-			if strings.ToLower(kind) == allowedKind {
-				return true
-			}
-		}
-	}
-	return false
+func (trt *TriggerResourceTemplate) IsAllowedType() error {
+	_, err := runtime.Decode(Decoder, trt.RawExtension.Raw)
+	return err
 }
