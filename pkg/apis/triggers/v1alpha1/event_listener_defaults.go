@@ -25,29 +25,15 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 
 	// set defaults
 	for i := range el.Spec.Triggers {
-		t := &el.Spec.Triggers[i]
-		// TODO(#290): Remove this before 0.3 release.
-		defaultDeprecatedBinding(t)
-		defaultBindings(t)
+		defaultBindings(&el.Spec.Triggers[i])
 	}
 
 	if IsUpgradeViaDefaulting(ctx) {
 		// Most likely the EventListener passed here is already running
 		for i := range el.Spec.Triggers {
 			t := &el.Spec.Triggers[i]
-			upgradeBinding(t)
 			upgradeInterceptor(t)
 			removeParams(t)
-		}
-	}
-}
-
-// set default TriggerBinding kind for depcrecatedBinding
-// TODO(#290): Remove this before 0.3 release.
-func defaultDeprecatedBinding(t *EventListenerTrigger) {
-	if t.DeprecatedBinding != nil {
-		if t.DeprecatedBinding.Kind == "" {
-			t.DeprecatedBinding.Kind = NamespacedTriggerBindingKind
 		}
 	}
 }
@@ -59,21 +45,6 @@ func defaultBindings(t *EventListenerTrigger) {
 			if b.Kind == "" {
 				b.Kind = NamespacedTriggerBindingKind
 			}
-		}
-	}
-}
-
-func upgradeBinding(t *EventListenerTrigger) {
-	if t.DeprecatedBinding != nil {
-		if len(t.Bindings) > 0 {
-			// Do nothing since it will be a Validation Error.
-		} else {
-			// Set the binding to bindings
-			t.Bindings = append(t.Bindings, &EventListenerBinding{
-				Name: t.DeprecatedBinding.Name,
-				Kind: t.DeprecatedBinding.Kind,
-			})
-			t.DeprecatedBinding = nil
 		}
 	}
 }
