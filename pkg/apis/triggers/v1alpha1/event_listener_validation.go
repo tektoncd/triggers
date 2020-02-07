@@ -44,11 +44,6 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 }
 
 func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
-	// Validate that only one of interceptor or interceptors is set
-	if t.DeprecatedInterceptor != nil && len(t.Interceptors) > 0 {
-		return apis.ErrMultipleOneOf("interceptor", "interceptors")
-	}
-
 	// Validate optional Bindings
 	for i, b := range t.Bindings {
 		if b.Name == "" {

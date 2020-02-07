@@ -328,11 +328,6 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 		}
 	}
 	out.Template = in.Template
-	if in.DeprecatedInterceptor != nil {
-		in, out := &in.DeprecatedInterceptor, &out.DeprecatedInterceptor
-		*out = new(EventInterceptor)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Interceptors != nil {
 		in, out := &in.Interceptors, &out.Interceptors
 		*out = make([]*EventInterceptor, len(*in))
