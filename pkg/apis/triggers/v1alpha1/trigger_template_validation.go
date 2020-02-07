@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
@@ -33,7 +34,9 @@ var paramsRegexp = regexp.MustCompile(`\$\(params.(?P<var>[_a-zA-Z][_a-zA-Z0-9.-
 
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
-	// TODO: Add metadata validation as in pipeline
+	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
+		return err.ViaField("metadata")
+	}
 	return t.Spec.validate(ctx).ViaField("spec")
 }
 
