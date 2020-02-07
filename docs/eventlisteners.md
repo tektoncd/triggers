@@ -7,6 +7,7 @@ resources will be created (or at least attempted) with. The service account must
 have the following role bound.
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
+
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,7 +26,6 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
-
 
 Note that currently, JSON is the only accepted MIME type for events.
 
@@ -70,7 +70,7 @@ Triggers within an `EventListener` can optionally specify interceptors, to
 modify the behavior or payload of triggers.
 
 Event Interceptors can take several different forms today:
- 
+
 - [Webhook Interceptors](#Webhook-Interceptors)
 - [GitHub Interceptors](#GitHub-Interceptors)
 - [GitLab Interceptors](#GitLab-Interceptors)
@@ -115,6 +115,7 @@ To be an Event Interceptor, a Kubernetes object should:
   the body, it can simply return the body that it received.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -145,7 +146,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitHub Interceptors
 
 GitHub interceptors contain logic to validate and filter webhooks that come from
@@ -167,6 +167,7 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -190,7 +191,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitLab Interceptors
 
 GitLab interceptors contain logic to validate and filter requests that come from
@@ -213,6 +213,7 @@ The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -236,21 +237,24 @@ spec:
         name: pipeline-template
 ```
 
-
 ### CEL Interceptors
 
 CEL interceptors parse expressions to filter requests based on JSON bodies and
 request headers, using the [CEL](https://github.com/google/cel-go) expression
-language. Please read the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
+language. Please read the
+[cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
 for more details on the expression language syntax.
 
-In addition to the standard [CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md), additional 
-supported features include case-insensitive matching on request headers.
+In addition to the standard
+[CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md),
+additional supported features include case-insensitive matching on request
+headers.
 
 The body/header of the incoming request will be preserved in this interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -280,13 +284,13 @@ spec:
         name: pipeline-template
 ```
 
-
 If no filter is provided, then the overlays will be applied to the body,
 
 With a filter, the `expression` must return a `true` value, otherwise the
 request will be filtered out.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -306,4 +310,3 @@ spec:
       template:
         name: pipeline-template
 ```
-
