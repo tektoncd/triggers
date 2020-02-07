@@ -33,6 +33,7 @@ services can be found
 3. Create the Ingress resource. A sample Ingress is below. Check the docs
    [here](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/)
    for a full range of configuration options.
+
 ```yaml
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -44,12 +45,12 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
-  - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: getting-started-listener-b8rqz # REPLACE WITH YOUR SERVICE NAME FROM STEP 2
-          servicePort: 8080
+    - http:
+        paths:
+          - path: /
+            backend:
+              serviceName: getting-started-listener-b8rqz # REPLACE WITH YOUR SERVICE NAME FROM STEP 2
+              servicePort: 8080
 ```
 
 4. Try it out! Get the address of the Ingress by running
