@@ -65,12 +65,8 @@ type EventListenerTrigger struct {
 	Bindings []*EventListenerBinding `json:"bindings"`
 	Template EventListenerTemplate   `json:"template"`
 	// +optional
-	Name string `json:"name,omitempty"`
-	// +optional
-	// DEPRECATED. Use Interceptors instead.
-	// TODO(#290): Remove this before 0.3 release.
-	DeprecatedInterceptor *EventInterceptor   `json:"interceptor,omitempty"`
-	Interceptors          []*EventInterceptor `json:"interceptors,omitempty"`
+	Name         string              `json:"name,omitempty"`
+	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
 
 	// TODO(#): Remove this before 0.3 release
 	// DEPRECATED: Use TriggerBindings with static values instead
