@@ -344,11 +344,6 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 			}
 		}
 	}
-	if in.DeprecatedBinding != nil {
-		in, out := &in.DeprecatedBinding, &out.DeprecatedBinding
-		*out = new(EventListenerBinding)
-		**out = **in
-	}
 	if in.DeprecatedParams != nil {
 		in, out := &in.DeprecatedParams, &out.DeprecatedParams
 		*out = make([]v1alpha2.Param, len(*in))

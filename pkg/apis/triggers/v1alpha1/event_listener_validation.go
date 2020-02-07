@@ -44,25 +44,9 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 }
 
 func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
-	// Validate that only one of binding or bindings is set
-	if t.DeprecatedBinding != nil && len(t.Bindings) > 0 {
-		return apis.ErrMultipleOneOf("binding", "bindings")
-	}
 	// Validate that only one of interceptor or interceptors is set
 	if t.DeprecatedInterceptor != nil && len(t.Interceptors) > 0 {
 		return apis.ErrMultipleOneOf("interceptor", "interceptors")
-	}
-
-	// validate deprecatedBinding
-	// TODO(#290): Remove this before 0.3 release.
-	if t.DeprecatedBinding != nil {
-		if t.DeprecatedBinding.Name == "" {
-			return apis.ErrMissingField(t.DeprecatedBinding.Name)
-		}
-
-		if t.DeprecatedBinding.Kind != NamespacedTriggerBindingKind && t.DeprecatedBinding.Kind != ClusterTriggerBindingKind {
-			return apis.ErrInvalidValue(fmt.Errorf("invalid kind"), string("t.DeprecatedBinding.Kind"))
-		}
 	}
 
 	// Validate optional Bindings
