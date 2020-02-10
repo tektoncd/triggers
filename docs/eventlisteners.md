@@ -296,10 +296,7 @@ accept to the `eventTypes` field.
 The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
-<!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
-
-```YAML
----
+```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
 metadata:
