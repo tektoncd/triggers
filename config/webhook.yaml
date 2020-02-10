@@ -20,6 +20,8 @@ metadata:
   labels:
     app.kubernetes.io/name: tekton-triggers
     app.kubernetes.io/component: webhook-controller
+    # tekton.dev/release value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+    triggers.tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
@@ -31,6 +33,9 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-triggers-webhook
+        triggers.tekton.dev/release: "devel"
+        # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+        version: "devel"
     spec:
       serviceAccountName: tekton-triggers-controller
       containers:
