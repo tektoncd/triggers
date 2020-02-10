@@ -17,6 +17,8 @@ kind: Service
 metadata:
   labels:
     app: tekton-triggers-controller
+    version: "devel"
+    triggers.tekton.dev/release: "devel"
   name: tekton-triggers-controller
   namespace: tekton-pipelines
 spec:

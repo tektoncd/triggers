@@ -68,6 +68,11 @@ spec:
 
       # Change to directory with our .ko.yaml
       cd /workspace/go/src/github.com/tektoncd/triggers
+      # Rewrite "devel" to inputs.params.versionTag
+      sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/controller.yaml
+      sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/controller-service.yaml
+      sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/webhook.yaml
+      sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/webhook-service.yaml
 
       # Publish images and create release.yaml
       ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/triggers/config/ > /workspace/output/bucket/triggers/latest/release.yaml
