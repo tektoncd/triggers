@@ -47,7 +47,7 @@ import (
 
 const (
 	interval = 1 * time.Second
-	timeout  = 10 * time.Second
+	timeout  = 10 * time.Minute
 )
 
 // WaitFor waits for the specified ConditionFunc every internal until the timeout.
