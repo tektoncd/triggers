@@ -97,5 +97,10 @@ func main() {
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
 	http.HandleFunc("/", r.HandleEvent)
+	// For handling Liveness Probe
+	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, "ok")
+	})
 	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", sinkArgs.Port), nil))
 }
