@@ -163,6 +163,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 
 	// The request body to the first interceptor in the chain should be the received event body.
 	request := &http.Request{
+		Method: http.MethodPost,
 		Header: in.Header,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
 	}
@@ -190,6 +191,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		// Set the next request to be the output of the last response to enable
 		// request chaining.
 		request = &http.Request{
+			Method: http.MethodPost,
 			Header: resp.Header,
 			Body:   ioutil.NopCloser(resp.Body),
 		}

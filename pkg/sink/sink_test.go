@@ -643,6 +643,10 @@ type sequentialInterceptor struct {
 
 func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.called = true
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	var data map[string]int
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -697,25 +701,39 @@ func TestExecuteInterceptor(t *testing.T) {
 		Interceptors: []*triggersv1.EventInterceptor{a, a},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "/", nil)
-	if err != nil {
-		t.Fatalf("http.NewRequest: %v", err)
-	}
-	resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), "", logger)
-	if err != nil {
-		t.Fatalf("executeInterceptors: %v", err)
-	}
+	for _, method := range []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodOptions,
+		http.MethodTrace,
+	} {
+		t.Run(method, func(t *testing.T) {
+			req, err := http.NewRequest(method, "/", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest: %v", err)
+			}
+			resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), "", logger)
+			if err != nil {
+				t.Fatalf("executeInterceptors: %v", err)
+			}
 
-	var got map[string]int
-	if err := json.Unmarshal(resp, &got); err != nil {
-		t.Fatalf("json.Unmarshal: %v", err)
-	}
-	want := map[string]int{"i": 2}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Body: -want +got: %s", diff)
-	}
-	if diff := cmp.Diff([]string{"1", "2"}, header["Foo"]); diff != "" {
-		t.Errorf("Header: -want +got: %s", diff)
+			var got map[string]int
+			if err := json.Unmarshal(resp, &got); err != nil {
+				t.Fatalf("json.Unmarshal: %v", err)
+			}
+			want := map[string]int{"i": 2}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("Body: -want +got: %s", diff)
+			}
+			if diff := cmp.Diff([]string{"1", "2"}, header["Foo"]); diff != "" {
+				t.Errorf("Header: -want +got: %s", diff)
+			}
+		})
 	}
 }
 
