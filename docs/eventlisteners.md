@@ -122,7 +122,7 @@ contains the default values defined in
 To access logs for the EventListener sink, you can query for pods with the
 `eventlistener` label set to the name of your EventListener resource:
 
-```shell script
+```shell
 kubectl get pods --selector eventlistener=my-eventlistener
 ```
 
@@ -186,6 +186,7 @@ To be an Event Interceptor, a Kubernetes object should:
 
 - Be fronted by a regular Kubernetes v1 Service over port 80
 - Accept JSON payloads over HTTP
+- Accept HTTP POST requests with JSON payloads.
 - Return a HTTP 200 OK Status if the EventListener should continue processing
   the event
 - Return a JSON body back. This will be used by the EventListener as the event
