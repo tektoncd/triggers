@@ -337,13 +337,6 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 			}
 		}
 	}
-	if in.DeprecatedParams != nil {
-		in, out := &in.DeprecatedParams, &out.DeprecatedParams
-		*out = make([]v1alpha2.Param, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	return
 }
 

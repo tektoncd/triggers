@@ -22,16 +22,10 @@ import (
 
 // SetDefaults sets the defaults on the object.
 func (el *EventListener) SetDefaults(ctx context.Context) {
-
-	// set defaults
-	for i := range el.Spec.Triggers {
-		defaultBindings(&el.Spec.Triggers[i])
-	}
-
 	if IsUpgradeViaDefaulting(ctx) {
-		// Most likely the EventListener passed here is already running
+		// set defaults
 		for i := range el.Spec.Triggers {
-			removeParams(&el.Spec.Triggers[i])
+			defaultBindings(&el.Spec.Triggers[i])
 		}
 	}
 }
@@ -44,11 +38,5 @@ func defaultBindings(t *EventListenerTrigger) {
 				b.Kind = NamespacedTriggerBindingKind
 			}
 		}
-	}
-}
-
-func removeParams(t *EventListenerTrigger) {
-	if t.DeprecatedParams != nil {
-		t.DeprecatedParams = nil
 	}
 }

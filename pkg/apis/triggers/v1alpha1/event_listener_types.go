@@ -67,10 +67,6 @@ type EventListenerTrigger struct {
 	// +optional
 	Name         string              `json:"name,omitempty"`
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
-
-	// TODO(#): Remove this before 0.3 release
-	// DEPRECATED: Use TriggerBindings with static values instead
-	DeprecatedParams []pipelinev1.Param `json:"params,omitempty"`
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events
