@@ -1,10 +1,7 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- bobcatfish
-- dibyom
-- dlorenc
-- iancoffey
-- ncskier
-- vtereso
-- wlynch
+- build-pipeline-approvers
+
+reviewers:
+- build-pipeline-reviewers
