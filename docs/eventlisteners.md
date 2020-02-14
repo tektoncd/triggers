@@ -284,7 +284,6 @@ spec:
         name: pipeline-template
 ```
 
-
 If no filter is provided, then the overlays will be applied to the body,
 
 With a filter, the `expression` must return a `true` value, otherwise the
