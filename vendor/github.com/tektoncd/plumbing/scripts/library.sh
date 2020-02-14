@@ -113,6 +113,7 @@ function wait_until_pods_running() {
   echo -n "Waiting until all pods in namespace $1 are up"
   for i in {1..150}; do  # timeout after 5 minutes
     local pods="$(kubectl get pods --no-headers -n $1 2>/dev/null)"
+    echo "$(kubectl get pods -n $1)"
     # All pods must be running
     local not_running=$(echo "${pods}" | grep -v Running | grep -v Completed | wc -l)
     if [[ -n "${pods}" && ${not_running} -eq 0 ]]; then
