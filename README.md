@@ -1,5 +1,7 @@
 # Tekton Triggers
 
+[![Go Report Card](https://goreportcard.com/badge/tektoncd/triggers)](https://goreportcard.com/report/github.com/tektoncd/triggers)
+
 Triggers is a Kubernetes
 [Custom Resource Defintion](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 (CRD) controller that allows you to extract information from events payloads (a
