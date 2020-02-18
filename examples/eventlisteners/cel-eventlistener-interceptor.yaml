@@ -19,7 +19,7 @@ spec:
     - name: cel-trig-with-canonical
       interceptors:
         - cel:
-            filter: "headers.canonical('X-GitHub-Event') == 'push'"
+            filter: "header.canonical('X-GitHub-Event') == 'push'"
       bindings:
       - name: pipeline-binding
       template:
