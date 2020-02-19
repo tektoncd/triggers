@@ -104,19 +104,6 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
 	}
-
-	t.Logf("Deleting Clusterscoped resource")
-	if err := cs.KubeClient.RbacV1().ClusterRoles().Delete("my-role", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clusterrole my-role: %s", err)
-	}
-
-	if err := cs.KubeClient.RbacV1().ClusterRoleBindings().Delete("my-rolebinding", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clusterrolebinding my-rolebinding: %s", err)
-	}
-
-	if err := cs.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Delete("my-clustertriggerbinding", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clustertriggerbinding my-clustertriggerbinding: %s", err)
-	}
 }
 
 func header(logf logging.FormatLogger, text string) {
