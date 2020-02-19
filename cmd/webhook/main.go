@@ -72,6 +72,7 @@ func main() {
 	resourceHandlers := map[schema.GroupVersionKind]webhook.GenericCRD{
 		v1alpha1.SchemeGroupVersion.WithKind("ClusterTriggerBinding"): &v1alpha1.ClusterTriggerBinding{},
 		v1alpha1.SchemeGroupVersion.WithKind("EventListener"):         &v1alpha1.EventListener{},
+		v1alpha1.SchemeGroupVersion.WithKind("Trigger"):               &v1alpha1.Trigger{},
 		v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):        &v1alpha1.TriggerBinding{},
 		v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"):       &v1alpha1.TriggerTemplate{},
 	}

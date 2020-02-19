@@ -36,6 +36,10 @@ func (c *FakeTektonV1alpha1) EventListeners(namespace string) v1alpha1.EventList
 	return &FakeEventListeners{c, namespace}
 }
 
+func (c *FakeTektonV1alpha1) Triggers(namespace string) v1alpha1.TriggerInterface {
+	return &FakeTriggers{c, namespace}
+}
+
 func (c *FakeTektonV1alpha1) TriggerBindings(namespace string) v1alpha1.TriggerBindingInterface {
 	return &FakeTriggerBindings{c, namespace}
 }

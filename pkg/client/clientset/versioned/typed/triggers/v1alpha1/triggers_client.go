@@ -29,6 +29,7 @@ type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTriggerBindingsGetter
 	EventListenersGetter
+	TriggersGetter
 	TriggerBindingsGetter
 	TriggerTemplatesGetter
 }
@@ -44,6 +45,10 @@ func (c *TektonV1alpha1Client) ClusterTriggerBindings() ClusterTriggerBindingInt
 
 func (c *TektonV1alpha1Client) EventListeners(namespace string) EventListenerInterface {
 	return newEventListeners(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) Triggers(namespace string) TriggerInterface {
+	return newTriggers(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) TriggerBindings(namespace string) TriggerBindingInterface {

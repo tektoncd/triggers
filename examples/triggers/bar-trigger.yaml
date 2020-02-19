@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: bar-trig
+spec:
+  bindings:
+    - name: pipeline-binding
+      kind: TriggerBinding
+    - name: message-binding
+      kind: TriggerBinding
+  template:
+    name: pipeline-template

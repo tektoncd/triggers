@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
+	"strings"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
@@ -88,25 +90,50 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 
 	result := make(chan int, 10)
-	// Execute each Trigger
-	for _, t := range el.Spec.Triggers {
-		go func(t triggersv1.EventListenerTrigger) {
-			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(&t, localRequest, event, eventID, eventLog); err != nil {
-				result <- http.StatusAccepted
-				return
-			}
-			result <- http.StatusCreated
-		}(t)
-	}
+	var code int
+	// Check whether there's a Trigger in URL
+	if strings.Count(path.Clean(request.URL.Path), "/") == 2 {
+		triggerName := path.Base(request.URL.Path)
+		triggerNS := path.Dir(path.Clean(request.URL.Path[1:]))
+		trigger, err := r.TriggersClient.TektonV1alpha1().Triggers(triggerNS).Get(triggerName, metav1.GetOptions{})
+		if err != nil {
+			r.Logger.Errorf("Error getting Trigger %s in Namespace %s: %s", triggerName, triggerNS, err)
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
-	//only when at least one of the execution completed successfully, it returns response code 201(Accepted) otherwise it returns 202 (Created).
-	code := http.StatusAccepted
-	for i := 0; i < len(el.Spec.Triggers); i++ {
-		thiscode := <-result
-		if thiscode < code {
-			code = thiscode
+		// For now we create EventListenerTrigger, later on we will use Trigger directly
+
+		elt := triggersv1.EventListenerTrigger{
+			Bindings:     trigger.Spec.Bindings,
+			Interceptors: trigger.Spec.Interceptors,
+			Template:     trigger.Spec.Template,
+		}
+		if err := r.processTrigger(&elt, request, event, eventID, eventLog); err != nil {
+			code = http.StatusAccepted
+		} else {
+			code = http.StatusCreated
+		}
+	} else {
+		// Execute each Trigger
+		for _, t := range el.Spec.Triggers {
+			go func(t triggersv1.EventListenerTrigger) {
+				localRequest := request.Clone(request.Context())
+				if err := r.processTrigger(&t, localRequest, event, eventID, eventLog); err != nil {
+					result <- http.StatusAccepted
+					return
+				}
+				result <- http.StatusCreated
+			}(t)
+		}
+		//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
+		//only when at least one of the execution completed successfully, it returns response code 201(Accepted) otherwise it returns 202 (Created).
+		code = http.StatusAccepted
+		for i := 0; i < len(el.Spec.Triggers); i++ {
+			thiscode := <-result
+			if thiscode < code {
+				code = thiscode
+			}
 		}
 	}
 

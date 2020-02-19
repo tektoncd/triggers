@@ -11,6 +11,7 @@ rules:
   resources:
   - clustertriggerbindings
   - eventlisteners
+  - triggers
   - triggerbindings
   - triggertemplates
   verbs:
