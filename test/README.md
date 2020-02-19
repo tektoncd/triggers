@@ -117,6 +117,13 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 // +build e2e
 ```
 
+#### Cleaning up cluster-scoped resources
+
+Each integration test runs in its own Namespace; each Namespace is torn down
+after its integration test completes. However, cluster-scoped resources will not
+be deleted when the Namespace is deleted. So, each test must delete all the
+cluster-scoped resources that it creates.
+
 #### Setup tests
 
 The `setup` function in [init_tests.go](./init_test.go) will initialize client
