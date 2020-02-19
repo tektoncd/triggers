@@ -6,6 +6,7 @@ designed to encourage reusability clusterwide. You can reference a
 ClusterTriggerBinding in any EventListener in any namespace.
 
 <!-- FILE: examples/clustertriggerbindings/clustertriggerbinding.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: ClusterTriggerBinding
@@ -21,7 +22,6 @@ spec:
       value: $(header.Content-Type)
 ```
 
-
 You can specify multiple ClusterTriggerBindings in a Trigger. You can use a
 ClusterTriggerBinding in multiple Triggers.
 
@@ -29,6 +29,7 @@ In case of using a ClusterTriggerBinding, the `Binding` kind should be added.
 The default kind is TriggerBinding which represents a namespaced TriggerBinding.
 
 <!-- FILE: examples/eventlisteners/eventlistener-clustertriggerbinding.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -47,4 +48,3 @@ spec:
       template:
         name: pipeline-template
 ```
-
