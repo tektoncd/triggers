@@ -72,6 +72,7 @@ EventListener sink uses to create the Tekton resources. The ServiceAccount needs
 a role with the following rules:
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
+
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -198,6 +199,7 @@ if desired. The response body and headers of the last Interceptor is used for
 resource binding/templating.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -228,7 +230,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitHub Interceptors
 
 GitHub Interceptors contain logic to validate and filter webhooks that come from
@@ -250,6 +251,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -273,7 +275,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitLab Interceptors
 
 GitLab Interceptors contain logic to validate and filter requests that come from
@@ -296,6 +297,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/gitlab-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -319,7 +321,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### CEL Interceptors
 
 CEL Interceptors parse expressions to filter requests based on JSON bodies and
@@ -336,6 +337,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -370,6 +372,7 @@ filter, the `expression` must return a `true` value, otherwise the request will
 be filtered out.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
+
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
