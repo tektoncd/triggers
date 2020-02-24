@@ -26,7 +26,7 @@ CRDs. Naturally, CI/CD events contain information that should:
 - Deterministically trigger pipelines (Events/pipelines that trigger pipelines
   based on certain payload values)
 
-The Tekton API enables functionality to be seperated from configuration (e.g.
+The Tekton API enables functionality to be separated from configuration (e.g.
 [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
 vs
 [PipelineRuns](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md))
