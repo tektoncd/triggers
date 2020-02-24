@@ -86,7 +86,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the
 1. Connect to the dogfooding cluster:
 
    ```bash
-   gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
+   gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
    ```
 
 1. Run the `release-pipeline` (assuming you are using the dogfooding cluster and
