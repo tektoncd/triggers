@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/textproto"
 	"reflect"
 	"regexp"
 	"strings"
@@ -149,12 +150,15 @@ func isTektonExpr(expr string) bool {
 
 // findTektonExpressions searches for and returns a slice of
 // all substrings that are wrapped in $()
-func findTektonExpressions(in string) []string {
+// substring with "header." is converted with CanonicalMIMEHeaderKey in the first array
+// the second array has the original substrings
+func findTektonExpressions(in string) ([]string, []string) {
 	results := []string{}
+	originals := []string{}
 
 	// No expressions to return
 	if !strings.Contains(in, "$(") {
-		return results
+		return results, originals
 	}
 	// Splits string on $( to find potential Tekton expressions
 	maybeExpressions := strings.Split(in, "$(")
@@ -168,7 +172,12 @@ func findTektonExpressions(in string) []string {
 			case ')':
 				numOpenBrackets--
 				if numOpenBrackets < 0 {
-					results = append(results, fmt.Sprintf("$(%s)", e[:i]))
+					raw := e[:i]
+					originals = append(originals, fmt.Sprintf("$(%s)", raw))
+					if strings.Index(raw, "header.") == 0 {
+						raw = "header." + textproto.CanonicalMIMEHeaderKey(raw[len("header."):])
+					}
+					results = append(results, fmt.Sprintf("$(%s)", raw))
 				}
 			default:
 				continue
@@ -178,5 +187,5 @@ func findTektonExpressions(in string) []string {
 			}
 		}
 	}
-	return results
+	return results, originals
 }

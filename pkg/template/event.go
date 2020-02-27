@@ -88,13 +88,13 @@ func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header htt
 	for idx, p := range params {
 		pValue := p.Value.StringVal
 		// Find all expressions wrapped in $() from the value
-		expressions := findTektonExpressions(pValue)
-		for _, expr := range expressions {
+		expressions, originals := findTektonExpressions(pValue)
+		for i, expr := range expressions {
 			val, err := ParseJSONPath(event, expr)
 			if err != nil {
 				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}
-			pValue = strings.ReplaceAll(pValue, expr, val)
+			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
 		params[idx].Value = pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: pValue}
 	}
