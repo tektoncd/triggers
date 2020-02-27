@@ -399,6 +399,24 @@ func Test_ResolveTrigger(t *testing.T) {
 				TriggerTemplate: &tt,
 			},
 		},
+		{
+			name: "missing kind implies namespacedTriggerBinding",
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Name:       "my-triggerbinding",
+					APIVersion: "v1alpha1",
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
+			want: ResolvedTrigger{
+				TriggerBindings:        []*triggersv1.TriggerBinding{tb},
+				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{},
+				TriggerTemplate:        &tt,
+			},
+		},
 	}
 
 	for _, tc := range tests {
