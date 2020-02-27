@@ -58,30 +58,37 @@ func TestApplyEventValuesToParams(t *testing.T) {
 		name:   "header with single values",
 		params: []pipelinev1.Param{bldr.Param("foo", "$(header)")},
 		header: map[string][]string{
-			"header-one": {"val1", "val2"},
+			"Header-One": {"val1", "val2"},
 		},
-		want: []pipelinev1.Param{bldr.Param("foo", `{"header-one":"val1,val2"}`)},
+		want: []pipelinev1.Param{bldr.Param("foo", `{"Header-One":"val1,val2"}`)},
 	}, {
-		name:   "header keys",
+		name:   "header keys miss-match case",
 		params: []pipelinev1.Param{bldr.Param("foo", "$(header.header-one)")},
 		header: map[string][]string{
-			"header-one": {"val1"},
+			"Header-One": {"val1"},
+		},
+		want: []pipelinev1.Param{bldr.Param("foo", "val1")},
+	}, {
+		name:   "header keys match case",
+		params: []pipelinev1.Param{bldr.Param("foo", "$(header.Header-One)")},
+		header: map[string][]string{
+			"Header-One": {"val1"},
 		},
 		want: []pipelinev1.Param{bldr.Param("foo", "val1")},
 	}, {
 		name:   "headers - multiple values joined by comma",
 		params: []pipelinev1.Param{bldr.Param("foo", "$(header.header-one)")},
 		header: map[string][]string{
-			"header-one": {"val1", "val2"},
+			"Header-One": {"val1", "val2"},
 		},
 		want: []pipelinev1.Param{bldr.Param("foo", "val1,val2")},
 	}, {
 		name:   "header values",
 		params: []pipelinev1.Param{bldr.Param("foo", "$(header)")},
 		header: map[string][]string{
-			"header-one": {"val1", "val2"},
+			"Header-One": {"val1", "val2"},
 		},
-		want: []pipelinev1.Param{bldr.Param("foo", `{"header-one":"val1,val2"}`)},
+		want: []pipelinev1.Param{bldr.Param("foo", `{"Header-One":"val1,val2"}`)},
 	}, {
 		name:   "no body",
 		params: []pipelinev1.Param{bldr.Param("foo", "$(body)")},
@@ -145,7 +152,7 @@ func TestApplyEventValuesToParams(t *testing.T) {
 		},
 		body: json.RawMessage(`{"a": "val1"}`),
 		header: map[string][]string{
-			"header-1": {"val2"},
+			"Header-1": {"val2"},
 		},
 		want: []pipelinev1.Param{
 			bldr.Param("foo", `val1`),
