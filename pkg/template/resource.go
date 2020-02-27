@@ -56,9 +56,7 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 				return ResolvedTrigger{}, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
 			}
 			ctb = append(ctb, ctb2)
-		}
-
-		if b.Kind == triggersv1.NamespacedTriggerBindingKind {
+		} else {
 			tb2, err := getTB(b.Name, metav1.GetOptions{})
 			if err != nil {
 				return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
