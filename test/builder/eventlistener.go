@@ -151,6 +151,16 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 	}
 }
 
+// EventListenerTriggerServiceAccount set the specified ServiceAccount of the EventListenerTrigger.
+func EventListenerTriggerServiceAccount(saName, namespace string) EventListenerTriggerOp {
+	return func(trigger *v1alpha1.EventListenerTrigger) {
+		trigger.ServiceAccount = &corev1.ObjectReference{
+			Namespace: saName,
+			Name:      namespace,
+		}
+	}
+}
+
 // EventListenerTriggerBinding adds a Binding to the Trigger in EventListenerSpec Triggers.
 func EventListenerTriggerBinding(name, kind, apiVersion string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {

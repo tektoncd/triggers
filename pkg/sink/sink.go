@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -55,6 +56,7 @@ type Sink struct {
 	EventListenerName      string
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
+	Auth                   AuthOverride
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
@@ -93,6 +95,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		go func(t triggersv1.EventListenerTrigger) {
 			localRequest := request.Clone(request.Context())
 			if err := r.processTrigger(&t, localRequest, event, eventID, eventLog); err != nil {
+				if kerrors.IsUnauthorized(err) {
+					result <- http.StatusUnauthorized
+					return
+				}
+				if kerrors.IsForbidden(err) {
+					result <- http.StatusForbidden
+				}
 				result <- http.StatusAccepted
 				return
 			}
@@ -105,6 +114,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	code := http.StatusAccepted
 	for i := 0; i < len(el.Spec.Triggers); i++ {
 		thiscode := <-result
+		// current take - if someone is doing unauthorized stuff, we abort immediately;
+		// unauthorized should be the final status code vs. the less than comparison
+		// below around accepted vs. created
+		if thiscode == http.StatusUnauthorized || thiscode == http.StatusForbidden {
+			code = thiscode
+			break
+		}
 		if thiscode < code {
 			code = thiscode
 		}
@@ -130,6 +146,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	finalPayload, header, err := r.executeInterceptors(t, request, event, eventID, log)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
@@ -149,7 +166,12 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 	log.Info("params: %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
-	if err := r.createResources(resources, t.Name, eventID); err != nil {
+	token, err := r.retrieveAuthToken(t.ServiceAccount, eventLog)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if err := r.createResources(token, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -188,6 +210,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 			log.Error(err)
 			return nil, nil, err
 		}
+
 		// Set the next request to be the output of the last response to enable
 		// request chaining.
 		request = &http.Request{
@@ -204,9 +227,26 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	return payload, resp.Header, nil
 }
 
-func (r Sink) createResources(res []json.RawMessage, triggerName, eventID string) error {
+func (r Sink) createResources(token string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
+	discoveryClient := r.DiscoveryClient
+	dynamicClient := r.DynamicClient
+	var err error
+	if len(token) > 0 {
+		// So at start up the discovery and dynamic clients are created using the in cluster config
+		// of this pod (i.e. using the credentials of the serviceaccount associated with the EventListener)
+
+		// However, we also have a ServiceAccount/Secret/SecretKey reference with each EventListenerTrigger to allow
+		// for more fine grained authorization control around the resources we create below.
+		discoveryClient, dynamicClient, err = r.Auth.OverrideAuthentication(token, log, r.DiscoveryClient, r.DynamicClient)
+		if err != nil {
+			log.Errorf("problem cloning rest config: %#v", err)
+			return err
+		}
+	}
+
 	for _, rr := range res {
-		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, r.EventListenerNamespace, r.DiscoveryClient, r.DynamicClient); err != nil {
+		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, r.EventListenerNamespace, discoveryClient, dynamicClient); err != nil {
+			log.Errorf("problem creating obj: %#v", err)
 			return err
 		}
 	}

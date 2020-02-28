@@ -92,6 +92,7 @@ func main() {
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,
 		Logger:                 logger,
+		Auth:                   sink.DefaultAuthOverride{},
 	}
 
 	// Listen and serve
