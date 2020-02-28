@@ -45,6 +45,7 @@ import (
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
+	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
 )
 
@@ -60,6 +61,7 @@ type Resources struct {
 	Services               []*corev1.Service
 	ConfigMaps             []*corev1.ConfigMap
 	Secrets                []*corev1.Secret
+	ServiceAccounts        []*corev1.ServiceAccount
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -99,6 +101,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	serviceInformer := fakeserviceinformer.Get(ctx)
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
 	secretInformer := fakesecretinformer.Get(ctx)
+	saInformer := fakeserviceaccountinformer.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -170,6 +173,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, sa := range r.ServiceAccounts {
+		if err := saInformer.Informer().GetIndexer().Add(sa); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(sa); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -25,13 +25,21 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+
+	"go.uber.org/zap"
+	discoveryclient "k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/gorilla/mux"
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -40,9 +48,11 @@ import (
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	ktesting "k8s.io/client-go/testing"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -70,7 +80,7 @@ func comparePR(x, y pipelinev1alpha1.PipelineResource) bool {
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic
 // client. The returned client is used to creating the fake resources and can be
 // used to check if the correct resources were created.
-func getSinkAssets(t *testing.T, resources test.Resources, elName string) (Sink, *fakedynamic.FakeDynamicClient) {
+func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth AuthOverride) (Sink, *fakedynamic.FakeDynamicClient) {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	clients := test.SeedResources(t, ctx, resources)
@@ -88,6 +98,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string) (Sink,
 		KubeClientSet:          clients.Kube,
 		TriggersClient:         clients.Triggers,
 		Logger:                 logger,
+		Auth:                   auth,
 	}
 	return r, dynamicClient
 }
@@ -197,7 +208,7 @@ func TestHandleEvent(t *testing.T) {
 		EventListeners:   []*triggersv1.EventListener{el},
 	}
 
-	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
 
 	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 	defer ts.Close()
@@ -318,7 +329,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 		Secrets:          []*corev1.Secret{secret},
 	}
 
-	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
 	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 	defer ts.Close()
 
@@ -466,7 +477,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	sink, dynamicClient := getSinkAssets(t, resources, el.Name)
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
 	sink.HTTPClient = srv.Client()
 
 	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
@@ -667,4 +678,245 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if si.called {
 		t.Error("expected sequential interceptor to not be called")
 	}
+}
+
+const userWithPermissions = "user-with-permissions"
+const userWithoutPermissions = "user-with-no-permissions"
+
+func TestRetriveveAuthToken(t *testing.T) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: userWithoutPermissions,
+			UID:  types.UID(userWithoutPermissions),
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: userWithoutPermissions,
+				corev1.ServiceAccountUIDKey:  userWithoutPermissions,
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+		Data: map[string][]byte{
+			corev1.ServiceAccountTokenKey: []byte(userWithoutPermissions),
+		},
+	}
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      userWithoutPermissions,
+			Namespace: userWithoutPermissions,
+			UID:       types.UID(userWithoutPermissions),
+		},
+		Secrets: []corev1.ObjectReference{
+			{
+				Name:      userWithoutPermissions,
+				Namespace: userWithoutPermissions,
+			},
+		},
+	}
+
+	kubeClient := fakekubeclientset.NewSimpleClientset()
+	test.AddTektonResources(kubeClient)
+	if err := kubeClient.CoreV1().Secrets(userWithoutPermissions).Delete(userWithoutPermissions, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
+		t.Fatalf("Error deleting secret %v: %s", secret, err.Error())
+	}
+	if _, err := kubeClient.CoreV1().Secrets(userWithoutPermissions).Create(secret); err != nil {
+		t.Fatalf("Error creating secret %v: %s", secret, err.Error())
+	}
+	if err := kubeClient.CoreV1().ServiceAccounts(userWithoutPermissions).Delete(userWithoutPermissions, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
+		t.Fatalf("Error delete sa %v: %s", sa, err.Error())
+	}
+	if _, err := kubeClient.CoreV1().ServiceAccounts(userWithoutPermissions).Create(sa); err != nil {
+		t.Fatalf("Error creating sa %v: %s", sa, err.Error())
+	}
+
+	r := Sink{
+		KubeClientSet: kubeClient,
+	}
+
+	token, err := r.retrieveAuthToken(&corev1.ObjectReference{Name: userWithoutPermissions, Namespace: userWithoutPermissions}, nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if token != userWithoutPermissions {
+		t.Fatalf("got token %s instead of %s", token, userWithoutPermissions)
+	}
+}
+
+type fakeAuth struct {
+}
+
+var triggerAuthWG sync.WaitGroup
+
+func (r fakeAuth) OverrideAuthentication(token string,
+	log *zap.SugaredLogger,
+	defaultDiscoverClient discoveryclient.ServerResourcesInterface,
+	defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
+	dynamicClient dynamic.Interface,
+	err error) {
+
+	if token == userWithoutPermissions {
+		dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
+		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+			defer triggerAuthWG.Done()
+			return true, nil, kerrors.NewUnauthorized(token + " unauthorized")
+		})
+		dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
+		return defaultDiscoverClient, dynamicSet, nil
+	}
+
+	return defaultDiscoverClient, defaultDynamicClient, nil
+}
+
+func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
+	for _, testCase := range []struct {
+		userVal    string
+		statusCode int
+	}{
+		{
+			userVal:    userWithoutPermissions,
+			statusCode: http.StatusUnauthorized,
+		},
+		{
+			userVal:    userWithPermissions,
+			statusCode: http.StatusCreated,
+		},
+	} {
+		eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+
+		pipelineResource := pipelinev1alpha1.PipelineResource{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1alpha1",
+				Kind:       "PipelineResource",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-pipelineresource",
+				Namespace: namespace,
+			},
+			Spec: pipelinev1alpha1.PipelineResourceSpec{
+				Type: pipelinev1.PipelineResourceTypeGit,
+				Params: []pipelinev1.ResourceParam{{
+					Name:  "url",
+					Value: "$(params.url)",
+				}},
+			},
+		}
+		pipelineResourceBytes, err := json.Marshal(pipelineResource)
+		if err != nil {
+			t.Fatalf("Error unmarshalling pipelineResource: %s", err)
+		}
+
+		tt := bldr.TriggerTemplate("tt", namespace,
+			bldr.TriggerTemplateSpec(
+				bldr.TriggerTemplateParam("url", "", ""),
+				bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
+			))
+		tb := bldr.TriggerBinding("tb", namespace,
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("url", "$(body.repository.url)"),
+			))
+
+		authSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      testCase.userVal,
+				Namespace: testCase.userVal,
+				UID:       types.UID(testCase.userVal),
+				Annotations: map[string]string{
+					corev1.ServiceAccountNameKey: testCase.userVal,
+					corev1.ServiceAccountUIDKey:  testCase.userVal,
+				},
+			},
+			Type: corev1.SecretTypeServiceAccountToken,
+			Data: map[string][]byte{
+				corev1.ServiceAccountTokenKey: []byte(testCase.userVal),
+			},
+		}
+		authSA := &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      testCase.userVal,
+				Namespace: testCase.userVal,
+				UID:       types.UID(testCase.userVal),
+			},
+			Secrets: []corev1.ObjectReference{
+				{
+					Name:      testCase.userVal,
+					Namespace: testCase.userVal,
+				},
+			},
+		}
+
+		el := &triggersv1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "el",
+				Namespace: namespace,
+			},
+			Spec: triggersv1.EventListenerSpec{
+				Triggers: []triggersv1.EventListenerTrigger{{
+					ServiceAccount: &corev1.ObjectReference{
+						Namespace: testCase.userVal,
+						Name:      testCase.userVal,
+					},
+					Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+					Template: triggersv1.EventListenerTemplate{Name: "tt"},
+					Interceptors: []*triggersv1.EventInterceptor{{
+						GitHub: &triggersv1.GitHubInterceptor{
+							SecretRef: &triggersv1.SecretRef{
+								SecretKey:  "secretKey",
+								SecretName: "secret",
+								Namespace:  namespace,
+							},
+							EventTypes: []string{"pull_request"},
+						},
+					}},
+				}},
+			},
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "secret",
+				Namespace: namespace,
+			},
+			Data: map[string][]byte{
+				"secretKey": []byte("secret"),
+			},
+		}
+
+		resources := test.Resources{
+			TriggerBindings:  []*triggersv1.TriggerBinding{tb},
+			TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+			EventListeners:   []*triggersv1.EventListener{el},
+			Secrets:          []*corev1.Secret{secret, authSecret},
+			ServiceAccounts:  []*corev1.ServiceAccount{authSA},
+		}
+		sink, dynamicClient := getSinkAssets(t, resources, el.Name, fakeAuth{})
+		ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+		defer ts.Close()
+
+		triggerAuthWG.Add(1)
+
+		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+			defer triggerAuthWG.Done()
+			return false, nil, nil
+		})
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(eventBody))
+		if err != nil {
+			t.Fatalf("Error creating Post request: %s", err)
+		}
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("X-Github-Event", "pull_request")
+		// This was generated by using SHA1 and hmac from go stdlib on secret and payload.
+		// https://play.golang.org/p/8D2E-Yz3zWf for a sample.
+		req.Header.Add("X-Hub-Signature", "sha1=c0f3a2bbd1cdb062ba4f54b2a1cad3d171b7a129")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Error sending Post request: %v", err)
+		}
+
+		if resp.StatusCode != testCase.statusCode {
+			t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire statuts %v",
+				testCase.statusCode,
+				resp.StatusCode,
+				resp.Status)
+		}
+	}
+
 }

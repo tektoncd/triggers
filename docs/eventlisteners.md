@@ -15,12 +15,73 @@ Tekton resources. In addition, EventListeners allow lightweight event processing
 using [Event Interceptors](#Interceptors).
 
 - [Syntax](#syntax)
+  - [ServiceAccountName](#serviceAccountName)
   - [Triggers](#triggers)
     - [Interceptors](#Interceptors)
-  - [ServiceAccountName](#serviceAccountName)
 - [Logging](#logging)
 - [Labels](#labels)
 - [Examples](#examples)
+
+## Multi-Tenant Concerns
+
+The EventListener is effectively an additional form of client into Tekton, versus what 
+example usage via `kubectl` or `tkn` which you have seen elsewhere.  In particular, the HTTP based
+events bypass the normal Kubernetes authentication path you get via `kubeconfig` files 
+and the `kubectl config` family of commands.
+
+As such, there are set of items to consider when deciding how to 
+
+- best expose (each) EventListener in your cluster to the outside world.
+- best control how (each) EventListener and the underlying API Objects described below access, create,
+and update Tekton related API Objects in your cluster.
+
+Minimally, each EventListener has its [ServiceAccountName](#serviceAccountName) as noted below and all
+events coming over the "Sink" result in any Tekton resource interactions being done with the permissions 
+assigned to that ServiceAccount.
+
+However, if you need differing levels of permissions over a set of Tekton resources across the various
+[Triggers](#triggers) and [Interceptors](#Interceptors), where not all Triggers or Interceptors can 
+manipulate certain Tekton Resources in the same way, a simple, single EventListener will not suffice.
+
+Your options at that point are as follows:
+
+### Multiple EventListers (One EventListener Per Namespace)
+
+You can create multiple EventListener objects, where your set of Triggers and Interceptors are spread out across the 
+EventListeners.
+
+If you create each of those EventListeners in their own namespace, it becomes easy to assign 
+varying permissions to the ServiceAccount of each one to serve your needs.  And often times namespace
+creation is coupled with a default set of ServiceAccounts and Secrets that are also defined.
+So conceivably some administration steps are taken care of.  You just update the permissions
+of the automatically created ServiceAccounts.
+
+Possible drawbacks:
+- Namespaces with associated Secrets and ServiceAccounts in an aggregate sense prove to be the most expensive
+items in Kubernetes underlying `etcd` store.  In larger clusters `etcd` storage capacity can become a concern.
+- Multiple EventListeners means multiple HTTP ports that must be exposed to the external entities accessing 
+the "Sink".  If you happen to have a HTTP Firewall between your Cluster and external entities, that means more
+administrative cost, opening ports in the firewall for each Service, unless you can employ Kubernetes `Ingress` to
+serve as a routing abstraction layer for your set of EventListeners. 
+
+### Multiple EventListeners (Multiple EventListeners per Namespace)
+
+Multiple EventListeners per namespace will most likely mean more ServiceAccount/Secret/RBAC manipulation for
+the administrator, as some of the built in generation of those artifacts as part of namespace creation are not
+applicable.
+
+However you will save some on the `etcd` storage costs by reducing the number of namespaces.
+
+Multiple EventListeners and potential Firewall concerns still apply (again unless you employ `Ingress`).
+
+### ServiceAccount per EventListenerTrigger
+
+Being able to set a ServiceAccount on an EventListenerTrigger allows for finer grained permissions as well.
+
+You still have to create the additional ServiceAccounts.
+
+But staying within 1 namespace and minimizing the number of EventListeners with their associated "Sinks" minimizes 
+concerns around `etcd` storage and port considerations with Firewalls if `Ingress` is not utilized.
 
 ## Syntax
 
@@ -47,6 +108,39 @@ the following fields:
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
+### ServiceAccountName
+
+The `serviceAccountName` field is required. The ServiceAccount that the
+EventListener sink uses to create the Tekton resources. The ServiceAccount needs
+a role with the following rules:
+
+<!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
+
+```YAML
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-example-minimal
+rules:
+# Permissions for every EventListener deployment to function
+- apiGroups: ["triggers.tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
+  verbs: ["get"]
+- apiGroups: [""]
+  # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
+  resources: ["configmaps", "secrets", "serviceaccounts"]
+  verbs: ["get", "list", "watch"]
+# Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns", "pipelineresources", "taskruns"]
+  verbs: ["create"]
+```
+
+If your EventListener is using
+[`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
+ServiceAccount with a
+[ClusterRole instead](../examples/role-resources/clustertriggerbinding-roles/clusterrole.yaml).
+
 ### Triggers
 
 The `triggers` field is required. Each EventListener can consist of one or more
@@ -71,37 +165,27 @@ triggers:
       name: pipeline-template
 ```
 
-### ServiceAccountName
+Also, to support multi-tenant styled scenarios, where an administrator may not want all triggers to have
+the same permissions as the `EventListener`, a service account can optionally be set at the trigger level
+and used if present in place of the `EventListener` service account when creating resources:
 
-The `serviceAccountName` field is required. The ServiceAccount that the
-EventListener sink uses to create the Tekton resources. The ServiceAccount needs
-a role with the following rules:
+```yaml
+triggers:
+  - name: trigger-1
+    serviceAccount: 
+      name: trigger-1-sa
+      namespace: event-listener-namespace
+    interceptors:
+      - github:
+          eventTypes: ["pull_request"]
+    bindings:
+      - name: pipeline-binding
+      - name: message-binding
+    template:
+      name: pipeline-template
+``` 
 
-<!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
-
-```YAML
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: tekton-triggers-example-minimal
-rules:
-# Permissions for every EventListener deployment to function
-- apiGroups: ["triggers.tekton.dev"]
-  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
-  verbs: ["get"]
-- apiGroups: [""]
-  resources: ["configmaps", "secrets"]  # secrets are only needed for Github/Gitlab interceptors
-  verbs: ["get", "list", "watch"]
-# Permissions to create resources in associated TriggerTemplates
-- apiGroups: ["tekton.dev"]
-  resources: ["pipelineruns", "pipelineresources", "taskruns"]
-  verbs: ["create"]
-```
-
-If your EventListener is using
-[`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
-ServiceAccount with a
-[ClusterRole instead](../examples/role-resources/clustertriggerbinding-roles/clusterrole.yaml).
+The default ClusterRole for the EventLister allows for reading ServiceAccounts from any namespace.
 
 ### ServiceType
 
@@ -414,7 +498,6 @@ processed, and the `overlays` applied.
 
 Optionally, no `filter` expression can be provided, and the `overlays` will be
 applied to the incoming body.
-
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
 
 ```YAML
@@ -541,6 +624,7 @@ spec:
   - name: branch
     value: $(body.pull_request.head.short_sha)
 ```
+
 
 ## Examples
 

@@ -12,7 +12,6 @@ parameters. The separation of `TriggerBinding`s from `TriggerTemplate`s was
 deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -27,6 +26,7 @@ spec:
   - name: contenttype
     value: $(header.Content-Type)
 ```
+
 
 `TriggerBinding`s are connected to `TriggerTemplate`s within an
 [`EventListener`](eventlisteners.md), which is where the pod is actually

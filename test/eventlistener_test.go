@@ -42,6 +42,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -66,8 +67,8 @@ func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
 	t.Parallel()
 
-	defer cleanup(t, c, namespace)
-	knativetest.CleanupOnInterrupt(func() { cleanup(t, c, namespace) }, t.Logf)
+	defer cleanup(t, c, namespace, "my-eventlistener")
+	knativetest.CleanupOnInterrupt(func() { cleanup(t, c, namespace, "my-eventlistener") }, t.Logf)
 
 	t.Log("Start EventListener e2e test")
 
@@ -190,7 +191,7 @@ func TestEventListenerCreate(t *testing.T) {
 				Verbs:     []string{"create"},
 			}, {
 				APIGroups: []string{""},
-				Resources: []string{"configmaps"},
+				Resources: []string{"configmaps", "serviceaccounts", "secrets"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			},
@@ -367,24 +368,62 @@ func TestEventListenerCreate(t *testing.T) {
 		}
 	}
 
-	// Delete EventListener
-	err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Delete(el.Name, &metav1.DeleteOptions{})
+	// Now let's override auth at the trigger level and make sure we get a permission problem
+
+	// create SA/secret with insufficient permissions to set at trigger level
+	userWithoutPermissions := "user-with-no-permissions"
+	triggerSA := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      userWithoutPermissions,
+			Namespace: namespace,
+			UID:       types.UID(userWithoutPermissions),
+		},
+	}
+
+	_, err = c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(triggerSA)
 	if err != nil {
-		t.Fatalf("Failed to delete EventListener: %s", err)
+		t.Fatalf("Error creating trigger SA: %s", err.Error())
 	}
-	t.Log("Deleted EventListener")
 
-	// Verify the EventListener's Deployment is deleted
-	if err = WaitFor(deploymentNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, el.Name))); err != nil {
-		t.Fatalf("Failed to delete EventListener Deployment: %s", err)
+	if err := WaitFor(func() (bool, error) {
+		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(el.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, nil
+		}
+		for i, trigger := range el.Spec.Triggers {
+			trigger.ServiceAccount = &corev1.ObjectReference{
+				Namespace: namespace,
+				Name:      userWithoutPermissions,
+			}
+			el.Spec.Triggers[i] = trigger
+		}
+		_, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(el)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}); err != nil {
+		t.Fatalf("Failed to update EventListener for trigger auth test: %s", err)
 	}
-	t.Log("EventListener's Deployment was deleted")
 
-	// Verify the EventListener's Service is deleted
-	if err = WaitFor(serviceNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, el.Name))); err != nil {
-		t.Fatalf("Failed to delete EventListener Service: %s", err)
+	// Verify the EventListener is ready with the new update
+	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
+		t.Fatalf("EventListener not ready after trigger auth update: %s", err)
 	}
-	t.Log("EventListener's Service was deleted")
+	// Send POST request to EventListener sink
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	if err != nil {
+		t.Fatalf("Error creating POST request for trigger auth: %s", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Error sending POST request for trigger auth: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
+		t.Errorf("sink did not return 401/403 response. Got status code: %d", resp.StatusCode)
+	}
 }
 
 // The structure of this field corresponds to values for the `license` key in
@@ -424,9 +463,28 @@ func compareParamsWithLicenseJSON(x, y v1alpha1.ResourceParam) bool {
 	return false
 }
 
-func cleanup(t *testing.T, c *clients, n string) {
+func cleanup(t *testing.T, c *clients, namespace, elName string) {
 	t.Helper()
-	tearDown(t, c, n)
+	tearDown(t, c, namespace)
+	// Delete EventListener
+	err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Delete(elName, &metav1.DeleteOptions{})
+	if err != nil {
+		t.Fatalf("Failed to delete EventListener: %s", err)
+	}
+	t.Log("Deleted EventListener")
+
+	// Verify the EventListener's Deployment is deleted
+	if err = WaitFor(deploymentNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, elName))); err != nil {
+		t.Fatalf("Failed to delete EventListener Deployment: %s", err)
+	}
+	t.Log("EventListener's Deployment was deleted")
+
+	// Verify the EventListener's Service is deleted
+	if err = WaitFor(serviceNotExist(t, c, namespace, fmt.Sprintf("%s-%s", eventReconciler.GeneratedResourcePrefix, elName))); err != nil {
+		t.Fatalf("Failed to delete EventListener Service: %s", err)
+	}
+	t.Log("EventListener's Service was deleted")
+
 	// Cleanup cluster-scoped resources
 	t.Logf("Deleting cluster-scoped resources")
 	if err := c.KubeClient.RbacV1().ClusterRoles().Delete("my-role", &metav1.DeleteOptions{}); err != nil {
