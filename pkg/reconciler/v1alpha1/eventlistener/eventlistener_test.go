@@ -302,6 +302,17 @@ func Test_reconcileDeployment(t *testing.T) {
 								PeriodSeconds:    int32(*PeriodSeconds),
 								FailureThreshold: int32(*FailureThreshold),
 							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/live",
+										Scheme: corev1.URISchemeHTTP,
+										Port:   intstr.FromInt((*ElPort)),
+									},
+								},
+								PeriodSeconds:    int32(*PeriodSeconds),
+								FailureThreshold: int32(*FailureThreshold),
+							},
 							Args: []string{
 								"-el-name", eventListenerName,
 								"-el-namespace", namespace,
@@ -561,6 +572,17 @@ func TestReconcile(t *testing.T) {
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						LivenessProbe: &corev1.Probe{
+							Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path:   "/live",
+									Scheme: corev1.URISchemeHTTP,
+									Port:   intstr.FromInt((*ElPort)),
+								},
+							},
+							PeriodSeconds:    int32(*PeriodSeconds),
+							FailureThreshold: int32(*FailureThreshold),
+						},
+						ReadinessProbe: &corev1.Probe{
 							Handler: corev1.Handler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
