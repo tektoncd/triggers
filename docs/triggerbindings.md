@@ -34,7 +34,8 @@ Each parameter has a `name` and a `value`.
 ## Event Variable Interpolation
 
 TriggerBindings can access values from the HTTP JSON body and the headers using
-JSONPath expressions wrapped in `$()`.  The key in the header is case-insensitive.  
+JSONPath expressions wrapped in `$()`. The key in the header is
+case-insensitive.
 
 These are all valid expressions:
 
