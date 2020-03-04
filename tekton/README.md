@@ -49,11 +49,15 @@ To make a new release:
 
 ### Create draft release
 
-The Task `create-draft-triggers-release` calculates the list of PRs merged between the previous release and a specified revision. It also builds a list of authors and uses PRs and authors to build a draft new release in GitHub.
+The Task `create-draft-triggers-release` calculates the list of PRs merged
+between the previous release and a specified revision. It also builds a list of
+authors and uses PRs and authors to build a draft new release in GitHub.
 
-Running this Task multiple times will create multiple drafts; old drafts have to be pruned manually when needed.
+Running this Task multiple times will create multiple drafts; old drafts have to
+be pruned manually when needed.
 
-Once the draft release is created, the release manager needs to edit the draft, arrange PRs in the right category, and highlight important changes.
+Once the draft release is created, the release manager needs to edit the draft,
+arrange PRs in the right category, and highlight important changes.
 
 Parameters:
 
@@ -65,7 +69,9 @@ Resources:
 
 - `source`, a git resource that points to the release git revision
 
-This Task expects a secret named `github-token` with a key called `GITHUB_TOKEN` to exist. The value should be a GitHub token with enough privileges to list PRs and create a draft release.
+This Task expects a secret named `github-token` with a key called `GITHUB_TOKEN`
+to exist. The value should be a GitHub token with enough privileges to list PRs
+and create a draft release.
 
 ```bash
 export PREV_VERSION_TAG=v0.X.Y
@@ -81,8 +87,8 @@ tkn task start \
 
 ### Run the Pipeline
 
-To use [`tkn`](https://github.com/tektoncd/cli) to run the
-`triggers-release` PipelineRun and create a release:
+To use [`tkn`](https://github.com/tektoncd/cli) to run the `triggers-release`
+PipelineRun and create a release:
 
 1. Pick the revision you want to release and update the
    [`resources.yaml`](./resources.yaml) file to add a `PipelineResoruce` for it,
