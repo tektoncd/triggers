@@ -21,7 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha2 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -95,7 +95,7 @@ func (in *ClusterTriggerBinding) DeepCopyObject() runtime.Object {
 func (in *ClusterTriggerBindingList) DeepCopyInto(out *ClusterTriggerBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ClusterTriggerBinding, len(*in))
@@ -224,7 +224,7 @@ func (in *EventListenerConfig) DeepCopy() *EventListenerConfig {
 func (in *EventListenerList) DeepCopyInto(out *EventListenerList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]EventListener, len(*in))
@@ -450,7 +450,7 @@ func (in *TriggerBinding) DeepCopyObject() runtime.Object {
 func (in *TriggerBindingList) DeepCopyInto(out *TriggerBindingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerBinding, len(*in))
@@ -484,7 +484,7 @@ func (in *TriggerBindingSpec) DeepCopyInto(out *TriggerBindingSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -567,7 +567,7 @@ func (in *TriggerTemplate) DeepCopyObject() runtime.Object {
 func (in *TriggerTemplateList) DeepCopyInto(out *TriggerTemplateList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TriggerTemplate, len(*in))
@@ -601,7 +601,7 @@ func (in *TriggerTemplateSpec) DeepCopyInto(out *TriggerTemplateSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.ParamSpec, len(*in))
+		*out = make([]v1beta1.ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -652,7 +652,7 @@ func (in *WebhookInterceptor) DeepCopyInto(out *WebhookInterceptor) {
 	}
 	if in.Header != nil {
 		in, out := &in.Header, &out.Header
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

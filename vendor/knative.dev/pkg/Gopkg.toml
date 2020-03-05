@@ -8,32 +8,40 @@ required = [
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
-  "google.golang.org/api/container/v1",
+  "google.golang.org/api/container/v1beta1",
   "github.com/evanphx/json-patch",
   "knative.dev/test-infra/scripts",
   "knative.dev/test-infra/tools/dep-collector",
-  "github.com/pkg/errors",
+  "github.com/gogo/protobuf/proto",
 ]
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.16.4"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.16.4"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.16.4"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.16.4"
 
 [[constraint]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.16.4"
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+  version = "v1.3.1"
+
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  version = "v2.2.4"
 
 [[override]]
   name = "github.com/json-iterator/go"
@@ -56,7 +64,8 @@ required = [
 
 [[constraint]]
   name = "contrib.go.opencensus.io/exporter/stackdriver"
-  version = "v0.12.2"
+  # With the fix of https://github.com/census-ecosystem/opencensus-go-exporter-stackdriver/issues/237
+  revision = "59d068f8d8ff5b653916aa30cdc4e13c7f15d56e"
 
 [[constraint]]
   name = "github.com/google/mako"

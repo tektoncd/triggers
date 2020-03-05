@@ -124,10 +124,6 @@ func initializeLogsAndMetrics(t *testing.T) {
 			t.Fatalf("Failed to set 'alsologtostderr' flag to 'true': %s", err)
 		}
 		logging.InitializeLogger(knativetest.Flags.LogVerbose)
-
-		if knativetest.Flags.EmitMetrics {
-			logging.InitializeMetricExporter(t.Name())
-		}
 	})
 }
 

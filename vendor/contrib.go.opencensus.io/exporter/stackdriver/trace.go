@@ -76,6 +76,9 @@ func newTraceExporterWithClient(o Options, c *tracingclient.Client) *traceExport
 	} else {
 		b.BundleCountThreshold = 50
 	}
+	if o.NumberOfWorkers > 0 {
+		b.HandlerLimit = o.NumberOfWorkers
+	}
 	// The measured "bytes" are not really bytes, see exportReceiver.
 	b.BundleByteThreshold = b.BundleCountThreshold * 200
 	b.BundleByteLimit = b.BundleCountThreshold * 1000
@@ -121,7 +124,7 @@ func (e *traceExporter) uploadSpans(spans []*tracepb.Span) {
 		Spans: spans,
 	}
 	// Create a never-sampled span to prevent traces associated with exporter.
-	ctx, cancel := e.o.newContextWithTimeout()
+	ctx, cancel := newContextWithTimeout(e.o.Context, e.o.Timeout)
 	defer cancel()
 	ctx, span := trace.StartSpan(
 		ctx,

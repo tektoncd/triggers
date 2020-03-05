@@ -3,19 +3,14 @@ aliases:
   - evankanderson
   - mattmoor
   - vaikas-google
+  - vaikas
 
   productivity-approvers:
-  - adrcunha
   - chaodaiG
-  - srinivashegde86
+  - chizhg
   productivity-reviewers:
-  - adrcunha
   - chaodaiG
   - coryrc
-  - dushyanthsc
-  - ericKlawitter
-  - Fredy-Z
-  - nbarthwal
-  - srinivashegde86
+  - chizhg
   - steuhs
   - yt3liu

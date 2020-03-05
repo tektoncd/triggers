@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ limitations under the License.
 package image
 
 import (
-	"context"
+	context "context"
 
 	v1alpha1 "knative.dev/caching/pkg/client/informers/externalversions/caching/v1alpha1"
-	factory "knative.dev/caching/pkg/client/injection/informers/caching/factory"
+	factory "knative.dev/caching/pkg/client/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -45,8 +45,8 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 func Get(ctx context.Context) v1alpha1.ImageInformer {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		logging.FromContext(ctx).Fatalf(
-			"Unable to fetch %T from context.", (v1alpha1.ImageInformer)(nil))
+		logging.FromContext(ctx).Panic(
+			"Unable to fetch knative.dev/caching/pkg/client/informers/externalversions/caching/v1alpha1.ImageInformer from context.")
 	}
 	return untyped.(v1alpha1.ImageInformer)
 }

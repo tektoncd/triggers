@@ -19,6 +19,10 @@ metadata:
 spec:
   group: tekton.dev
   scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
   names:
     kind: TriggerTemplate
     plural: triggertemplates

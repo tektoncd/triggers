@@ -49,9 +49,6 @@ spec:
           "-period-seconds", "10",
           "-failure-threshold", "1"
         ]
-        volumeMounts:
-        - name: config-logging
-          mountPath: /etc/config-logging
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -63,7 +60,3 @@ spec:
           value: config-observability-triggers
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
-      volumes:
-        - name: config-logging
-          configMap:
-            name: config-logging-triggers
