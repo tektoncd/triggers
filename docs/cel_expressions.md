@@ -7,7 +7,67 @@ In addition to the custom function extension listed below, you can craft any
 valid CEL expression as defined by the
 [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
 
-### List of extensions
+
+## Notes on numbers in CEL expressions
+
+One thing to be aware of is how numeric values are treated in CEL expressions, JSON numbers are decoded to [CEL double](https://github.com/google/cel-spec/blob/master/doc/langdef.md#values) values.
+
+For example:
+
+```json
+{
+  "count": 2,
+  "measure": 1.7
+}
+```
+
+In the JSON above, both numbers are parsed as floating point values.
+
+This means that if you want to do integer arithmetic, you'll need to [use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
+
+From the CEL specification:
+
+> Note that currently there are no automatic arithmetic conversions for the numeric types (int, uint, and double).
+
+You can either explicitly convert the number, or add another double value e.g.
+
+```yaml
+interceptors:
+  - cel:
+      overlays:
+      - key: count_plus_1
+        expression: "body.count + 1.0"
+      - key: count_plus_2
+        expression: "int(body.count) + 2"
+      - key: measure_times_3
+        expression: "body.measure * 3.0"
+```
+
+These will be serialised back to JSON appropriately:
+
+```json
+{
+  "count_plus_1": 2,
+  "count_plus_2": 3,
+  "measure_times_3": 5.1
+}
+```
+
+### Error messages in conversions
+
+The following example will generate an error with the JSON example.
+
+```yaml
+interceptors:
+  - cel:
+      overlays:
+      - key: bad_measure_times_3
+        expression: "body.measure * 3"
+```
+
+**bad_measure_times_3** will fail with `failed to evaluate overlay expression 'body.measure * 3': no such overload` because there's no automatic conversion.
+
+## List of extensions
 
 The body from the `http.Request` value is decoded to JSON and exposed, and the
 headers are also available.
@@ -59,7 +119,7 @@ type Header map[string][]string
 i.e. the header is a mapping of strings, to arrays of strings, see the `match`
 function on headers below for an extension that makes looking up headers easier.
 
-### List of extension functions
+## List of extension functions
 
 This lists custom functions that can be used from CEL expressions in the CEL
 interceptor.

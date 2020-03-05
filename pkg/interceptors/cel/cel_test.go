@@ -122,6 +122,19 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			payload: nil,
 			want:    []byte(`{}`),
 		},
+		{
+			name: "incrementing an integer value",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "val1", Expression: "body.count + 1.0"},
+					{Key: "val2", Expression: "int(body.count) + 3"},
+					{Key: "val3", Expression: "body.count + 3.5"},
+					{Key: "val4", Expression: "body.measure * 3.0"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"count":1,"measure":1.7}`)),
+			want:    []byte(`{"val4":5.1,"val3":4.5,"val2":4,"val1":2,"count":1,"measure":1.7}`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -243,9 +256,12 @@ func TestExpressionEvaluation(t *testing.T) {
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
 	testRef := "refs/heads/master"
 	jsonMap := map[string]interface{}{
-		"value":    "testing",
-		"sha":      testSHA,
-		"ref":      testRef,
+		"value": "testing",
+		"sha":   testSHA,
+		"ref":   testRef,
+		"pull_request": map[string]interface{}{
+			"commits": 2,
+		},
 		"b64value": "ZXhhbXBsZQ==",
 	}
 	refParts := strings.Split(testRef, "/")
@@ -307,9 +323,9 @@ func TestExpressionEvaluation(t *testing.T) {
 			want: types.Bytes("example"),
 		},
 		{
-			name: "decode a base64 value",
-			expr: "decodeb64(body.b64value)",
-			want: types.Bytes("example"),
+			name: "increment an integer",
+			expr: "body.pull_request.commits + 1",
+			want: types.Int(3),
 		},
 	}
 	for _, tt := range tests {
@@ -337,9 +353,12 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 	jsonMap := map[string]interface{}{
 		"value": "testing",
 		"sha":   testSHA,
+		"pull_request": map[string]interface{}{
+			"commits": []string{},
+		},
 	}
 	header := http.Header{}
-	evalEnv := map[string]interface{}{"body": jsonMap, "headers": header}
+	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
 	env, err := makeCelEnv()
 	if err != nil {
 		t.Fatal(err)
