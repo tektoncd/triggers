@@ -103,6 +103,12 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 			if err == nil {
 				b, err = json.Marshal(raw.(*structpb.Value).GetStringValue())
 			}
+		case types.Double, types.Int:
+			raw, err = val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+			if err == nil {
+				b, err = json.Marshal(raw.(*structpb.Value).GetNumberValue())
+			}
+
 		default:
 			raw, err = val.ConvertToNative(reflect.TypeOf([]byte{}))
 			b = raw.([]byte)
