@@ -41,7 +41,7 @@ tekton-triggers-webhook-5985cfcfc5-cq5hp       1/1       Running   0          6m
 ```
 
 3. Apply an example pipeline and tasks that will be run (in this case named
-   `simple-pipeline`):
+   `example-pipeline`):
 
 ```bash
 kubectl apply -f example-pipeline.yaml
