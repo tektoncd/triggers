@@ -22,7 +22,7 @@ required = [
 
 [[constraint]]
   name = "github.com/tektoncd/pipeline"
-  version = "v0.10.1"
+  version = "v0.11.0-rc1"
 
 [[override]]
   name = "k8s.io/klog"
@@ -38,42 +38,31 @@ required = [
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.13.12"
+  version = "v0.16.5"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.13.12"
+  version = "v0.16.5"
 
 [[override]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.13.12"
+  version = "v0.16.5"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.12"
+  version = "v0.16.5"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.13.12"
-
-[[override]]
-  name = "k8s.io/kubernetes"
-  version = "1.13.12"
-
-[[constraint]]
-  name = "knative.dev/caching"
-  # HEAD as of 2019-07-23
-  revision = "2032732871ff807958e045858b462d372eec9587"
-
-[[constraint]]
-  name = "github.com/knative/test-infra"
-  # HEAD as of 2019-06-25
-  revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+  version = "v0.16.5"
 
 [[override]]
   name = "knative.dev/pkg"
-  # HEAD as of 2019-09-09 💖
-  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
+  branch = "release-0.12"
+
+[[override]]
+  name = "knative.dev/caching"
+  revision = "13d271455c742f0918c598733ca7405b406bf458"
 
 [[override]]
   name = "go.uber.org/zap"
@@ -85,7 +74,8 @@ required = [
 
 [[override]]
   name = "contrib.go.opencensus.io/exporter/stackdriver"
-  version = "0.12.2"
+  #version = "0.12.8"
+  revision = "a428e35cb99f2a327af67f8b42e438250776a461"
 
 [[override]]
   name = "contrib.go.opencensus.io/exporter/prometheus"
@@ -102,6 +92,10 @@ required = [
 [[override]]
   name="github.com/golang/protobuf"
   version = "1.3.2"
+
+[[constraint]]
+  name = "github.com/tidwall/sjson"
+  version = "1.0.4"
 
 [prune]
   go-tests = true
@@ -122,11 +116,7 @@ required = [
   name = "github.com/tektoncd/plumbing"
   non-go = false
 
- [[prune.project]]
+[[prune.project]]
   name = "knative.dev/pkg"
   unused-packages = false
   non-go = false
-
-[[constraint]]
-  name = "github.com/tidwall/sjson"
-  version = "1.0.4"

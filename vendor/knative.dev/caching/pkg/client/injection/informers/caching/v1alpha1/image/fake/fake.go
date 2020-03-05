@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
-	fake "knative.dev/caching/pkg/client/injection/informers/caching/factory/fake"
 	image "knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image"
+	fake "knative.dev/caching/pkg/client/injection/informers/factory/fake"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

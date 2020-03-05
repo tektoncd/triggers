@@ -36,20 +36,31 @@ spec:
         triggers.tekton.dev/release: "devel"
         # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
         version: "devel"
+        role: webhook
+        app.kubernetes.io/name: tekton-triggers
+        app.kubernetes.io/component: webhook-controller
     spec:
       serviceAccountName: tekton-triggers-controller
       containers:
       - name: webhook
+        # This is the Go import path for the binary that is containerized
+        # and substituted here.
         image: github.com/tektoncd/triggers/cmd/webhook
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        volumeMounts:
-        - name: config-logging
-          mountPath: /etc/config-logging
-      volumes:
-        - name: config-logging
-          configMap:
-            name: config-logging-triggers
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging-triggers
+        - name: WEBHOOK_SERVICE_NAME
+          value: tekton-triggers-webhook
+        - name: METRICS_DOMAIN
+          value: tekton.dev/triggers
+        ports:
+        - name: metrics
+          containerPort: 9090
+        - name: profiling
+          containerPort: 8008
+        - name: https-webhook
+          containerPort: 8443
