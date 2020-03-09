@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes"
 
@@ -98,6 +99,9 @@ func (b Bytes) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 func (b Bytes) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case StringType:
+		if !utf8.Valid(b) {
+			return NewErr("invalid UTF-8 in bytes, cannot convert to string")
+		}
 		return String(b)
 	case BytesType:
 		return b

@@ -62,7 +62,7 @@ func (t *TypeValue) ConvertToNative(typeDesc reflect.Type) (interface{}, error) 
 func (t *TypeValue) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case TypeType:
-		return t
+		return TypeType
 	case StringType:
 		return String(t.TypeName())
 	}

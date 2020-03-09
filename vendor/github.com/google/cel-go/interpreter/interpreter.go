@@ -74,31 +74,36 @@ func Optimize() InterpretableDecorator {
 }
 
 type exprInterpreter struct {
-	dispatcher Dispatcher
-	packager   packages.Packager
-	provider   ref.TypeProvider
-	adapter    ref.TypeAdapter
+	dispatcher  Dispatcher
+	packager    packages.Packager
+	provider    ref.TypeProvider
+	adapter     ref.TypeAdapter
+	attrFactory AttributeFactory
 }
 
 // NewInterpreter builds an Interpreter from a Dispatcher and TypeProvider which will be used
 // throughout the Eval of all Interpretable instances gerenated from it.
 func NewInterpreter(dispatcher Dispatcher, packager packages.Packager,
 	provider ref.TypeProvider,
-	adapter ref.TypeAdapter) Interpreter {
+	adapter ref.TypeAdapter,
+	attrFactory AttributeFactory) Interpreter {
 	return &exprInterpreter{
-		dispatcher: dispatcher,
-		packager:   packager,
-		provider:   provider,
-		adapter:    adapter}
+		dispatcher:  dispatcher,
+		packager:    packager,
+		provider:    provider,
+		adapter:     adapter,
+		attrFactory: attrFactory}
 }
 
 // NewStandardInterpreter builds a Dispatcher and TypeProvider with support for all of the CEL
 // builtins defined in the language definition.
-func NewStandardInterpreter(packager packages.Packager, provider ref.TypeProvider,
-	adapter ref.TypeAdapter) Interpreter {
+func NewStandardInterpreter(packager packages.Packager,
+	provider ref.TypeProvider,
+	adapter ref.TypeAdapter,
+	resolver AttributeFactory) Interpreter {
 	dispatcher := NewDispatcher()
 	dispatcher.Add(functions.StandardOverloads()...)
-	return NewInterpreter(dispatcher, packager, provider, adapter)
+	return NewInterpreter(dispatcher, packager, provider, adapter, resolver)
 }
 
 // NewIntepretable implements the Interpreter interface method.
@@ -109,6 +114,7 @@ func (i *exprInterpreter) NewInterpretable(
 		i.dispatcher,
 		i.provider,
 		i.adapter,
+		i.attrFactory,
 		i.packager,
 		checked,
 		decorators...)
@@ -123,6 +129,7 @@ func (i *exprInterpreter) NewUncheckedInterpretable(
 		i.dispatcher,
 		i.provider,
 		i.adapter,
+		i.attrFactory,
 		i.packager,
 		decorators...)
 	return p.Plan(expr)

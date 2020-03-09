@@ -18,7 +18,6 @@ package parser
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -124,11 +123,17 @@ func (p *parser) Visit(tree antlr.ParseTree) interface{} {
 		return p.VisitCreateStruct(tree.(*gen.CreateStructContext))
 	}
 
-	text := "<<nil>>"
-	if tree != nil {
-		text = tree.GetText()
+	// Report at least one error if the parser reaches an unknown parse element.
+	// Typically, this happens if the parser has already encountered a syntax error elsewhere.
+	if len(p.errors.GetErrors()) == 0 {
+		txt := "<<nil>>"
+		if tree != nil {
+			txt = fmt.Sprintf("<<%T>>", tree)
+		}
+		return p.reportError(common.NoLocation, "unknown parse element encountered: %s", txt)
 	}
-	panic(fmt.Sprintf("unknown parsetree type: '%+v': %+v [%s]", reflect.TypeOf(tree), tree, text))
+	return p.helper.newExpr(common.NoLocation)
+
 }
 
 // Visit a parse tree produced by CELParser#start.
@@ -155,8 +160,12 @@ func (p *parser) VisitConditionalOr(ctx *gen.ConditionalOrContext) interface{} {
 		return result
 	}
 	b := newBalancer(p.helper, operators.LogicalOr, result)
+	rest := ctx.GetE1()
 	for i, op := range ctx.GetOps() {
-		next := p.Visit(ctx.GetE1()[i]).(*exprpb.Expr)
+		if i >= len(rest) {
+			return p.reportError(ctx, "unexpected character, wanted '||'")
+		}
+		next := p.Visit(rest[i]).(*exprpb.Expr)
 		opID := p.helper.id(op)
 		b.addTerm(opID, next)
 	}
@@ -170,8 +179,12 @@ func (p *parser) VisitConditionalAnd(ctx *gen.ConditionalAndContext) interface{}
 		return result
 	}
 	b := newBalancer(p.helper, operators.LogicalAnd, result)
+	rest := ctx.GetE1()
 	for i, op := range ctx.GetOps() {
-		next := p.Visit(ctx.GetE1()[i]).(*exprpb.Expr)
+		if i >= len(rest) {
+			return p.reportError(ctx, "unexpected character, wanted '&&'")
+		}
+		next := p.Visit(rest[i]).(*exprpb.Expr)
 		opID := p.helper.id(op)
 		b.addTerm(opID, next)
 	}
@@ -307,13 +320,20 @@ func (p *parser) VisitCreateMessage(ctx *gen.CreateMessageContext) interface{} {
 // Visit a parse tree of field initializers.
 func (p *parser) VisitIFieldInitializerList(ctx gen.IFieldInitializerListContext) interface{} {
 	if ctx == nil || ctx.GetFields() == nil {
+		// This is the result of a syntax error handled elswhere, return empty.
 		return []*exprpb.Expr_CreateStruct_Entry{}
 	}
 
 	result := make([]*exprpb.Expr_CreateStruct_Entry, len(ctx.GetFields()))
+	cols := ctx.GetCols()
+	vals := ctx.GetValues()
 	for i, f := range ctx.GetFields() {
-		initID := p.helper.id(ctx.GetCols()[i])
-		value := p.Visit(ctx.GetValues()[i]).(*exprpb.Expr)
+		if i >= len(cols) || i >= len(vals) {
+			// This is the result of a syntax error detected elsewhere.
+			return []*exprpb.Expr_CreateStruct_Entry{}
+		}
+		initID := p.helper.id(cols[i])
+		value := p.Visit(vals[i]).(*exprpb.Expr)
 		field := p.helper.newObjectField(initID, f.GetText(), value)
 		result[i] = field
 	}
@@ -389,31 +409,24 @@ func (p *parser) VisitConstantLiteral(ctx *gen.ConstantLiteralContext) interface
 	return p.reportError(ctx, "invalid literal")
 }
 
-// Visit a parse tree produced by CELParser#exprList.
-func (p *parser) VisitExprList(ctx *gen.ExprListContext) interface{} {
-	if ctx == nil || ctx.GetE() == nil {
-		return []*exprpb.Expr{}
-	}
-
-	result := make([]*exprpb.Expr, len(ctx.GetE()))
-	for i, e := range ctx.GetE() {
-		exp := p.Visit(e).(*exprpb.Expr)
-		result[i] = exp
-	}
-	return result
-}
-
 // Visit a parse tree produced by CELParser#mapInitializerList.
 func (p *parser) VisitMapInitializerList(ctx *gen.MapInitializerListContext) interface{} {
 	if ctx == nil || ctx.GetKeys() == nil {
+		// This is the result of a syntax error handled elswhere, return empty.
 		return []*exprpb.Expr_CreateStruct_Entry{}
 	}
 
 	result := make([]*exprpb.Expr_CreateStruct_Entry, len(ctx.GetCols()))
+	keys := ctx.GetKeys()
+	vals := ctx.GetValues()
 	for i, col := range ctx.GetCols() {
 		colID := p.helper.id(col)
-		key := p.Visit(ctx.GetKeys()[i]).(*exprpb.Expr)
-		value := p.Visit(ctx.GetValues()[i]).(*exprpb.Expr)
+		if i >= len(keys) || i >= len(vals) {
+			// This is the result of a syntax error detected elsewhere.
+			return []*exprpb.Expr_CreateStruct_Entry{}
+		}
+		key := p.Visit(keys[i]).(*exprpb.Expr)
+		value := p.Visit(vals[i]).(*exprpb.Expr)
 		entry := p.helper.newMapEntry(colID, key, value)
 		result[i] = entry
 	}
@@ -554,7 +567,7 @@ func (p *parser) reportError(ctx interface{}, format string, args ...interface{}
 // ANTLR Parse listener implementations
 func (p *parser) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line, column int, msg string, e antlr.RecognitionException) {
 	// TODO: Snippet
-	l := common.NewLocation(line, column)
+	l := p.helper.source.NewLocation(line, column)
 	p.errors.syntaxError(l, msg)
 }
 

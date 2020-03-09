@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cel-go/common/packages"
+	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
 	"github.com/google/cel-go/interpreter/functions"
@@ -29,19 +30,7 @@ import (
 )
 
 // EnvOption is a functional interface for configuring the environment.
-type EnvOption func(e *env) (*env, error)
-
-// ClearBuiltIns option removes all standard types, operators, and macros from the environment.
-//
-// Note: This option must be specified before Declarations and/or Macros if used together.
-func ClearBuiltIns() EnvOption {
-	return func(e *env) (*env, error) {
-		e.declarations = []*exprpb.Decl{}
-		e.macros = parser.NoMacros
-		e.enableBuiltins = false
-		return e, nil
-	}
-}
+type EnvOption func(e *Env) (*Env, error)
 
 // ClearMacros options clears all parser macros.
 //
@@ -51,7 +40,7 @@ func ClearBuiltIns() EnvOption {
 // Note: This option is a no-op when used with ClearBuiltIns, and must be used before Macros
 // if used together.
 func ClearMacros() EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.macros = parser.NoMacros
 		return e, nil
 	}
@@ -61,7 +50,7 @@ func ClearMacros() EnvOption {
 //
 // Note: This option must be specified before the Types and TypeDescs options when used together.
 func CustomTypeAdapter(adapter ref.TypeAdapter) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.adapter = adapter
 		return e, nil
 	}
@@ -71,7 +60,7 @@ func CustomTypeAdapter(adapter ref.TypeAdapter) EnvOption {
 //
 // Note: This option must be specified before the Types and TypeDescs options when used together.
 func CustomTypeProvider(provider ref.TypeProvider) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.provider = provider
 		return e, nil
 	}
@@ -83,7 +72,7 @@ func CustomTypeProvider(provider ref.TypeProvider) EnvOption {
 func Declarations(decls ...*exprpb.Decl) EnvOption {
 	// TODO: provide an alternative means of specifying declarations that doesn't refer
 	// to the underlying proto implementations.
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.declarations = append(e.declarations, decls...)
 		return e, nil
 	}
@@ -96,7 +85,7 @@ func Declarations(decls ...*exprpb.Decl) EnvOption {
 // expression, as well as via conversion of well-known dynamic types, or with unchecked
 // expressions.
 func HomogeneousAggregateLiterals() EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.enableDynamicAggregateLiterals = false
 		return e, nil
 	}
@@ -106,7 +95,7 @@ func HomogeneousAggregateLiterals() EnvOption {
 //
 // Note: This option must be specified after ClearBuiltIns and/or ClearMacros if used together.
 func Macros(macros ...parser.Macro) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.macros = append(e.macros, macros...)
 		return e, nil
 	}
@@ -118,7 +107,7 @@ func Macros(macros ...parser.Macro) EnvOption {
 // specifying a container of `google.type` would make it possible to write expressions such as
 // `Expr{expression: 'a < b'}` instead of having to write `google.type.Expr{...}`.
 func Container(pkg string) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		e.pkg = packages.NewPackage(pkg)
 		return e, nil
 	}
@@ -135,20 +124,26 @@ func Container(pkg string) EnvOption {
 //
 // Note: This option must be specified after the CustomTypeProvider option when used together.
 func Types(addTypes ...interface{}) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		reg, isReg := e.provider.(ref.TypeRegistry)
 		if !isReg {
 			return nil, fmt.Errorf("custom types not supported by provider: %T", e.provider)
 		}
 		for _, t := range addTypes {
-			switch t.(type) {
+			switch v := t.(type) {
 			case proto.Message:
-				err := reg.RegisterMessage(t.(proto.Message))
+				fds, err := pb.CollectFileDescriptorSet(v)
 				if err != nil {
 					return nil, err
 				}
+				for _, fd := range fds.GetFile() {
+					err = reg.RegisterDescriptor(fd)
+					if err != nil {
+						return nil, err
+					}
+				}
 			case ref.Type:
-				err := reg.RegisterType(t.(ref.Type))
+				err := reg.RegisterType(v)
 				if err != nil {
 					return nil, err
 				}
@@ -165,7 +160,7 @@ func Types(addTypes ...interface{}) EnvOption {
 // via descriptor will not be able to instantiate messages, and so are
 // only useful for Check() operations.
 func TypeDescs(descs ...interface{}) EnvOption {
-	return func(e *env) (*env, error) {
+	return func(e *Env) (*Env, error) {
 		reg, isReg := e.provider.(ref.TypeRegistry)
 		if !isReg {
 			return nil, fmt.Errorf("custom types not supported by provider: %T", e.provider)
@@ -212,7 +207,7 @@ func Functions(funcs ...*functions.Overload) ProgramOption {
 func Globals(vars interface{}) ProgramOption {
 	return func(p *prog) (*prog, error) {
 		defaultVars, err :=
-			interpreter.NewAdaptingActivation(p.adapter, vars)
+			interpreter.NewActivation(vars)
 		if err != nil {
 			return nil, err
 		}
@@ -236,6 +231,14 @@ const (
 	// creation time. This flag is useful when the expression will be evaluated repeatedly against
 	// a series of different inputs.
 	OptOptimize EvalOption = 1 << iota
+
+	// OptPartialEval enables the evaluation of a partial state where the input data that may be
+	// known to be missing, either as top-level variables, or somewhere within a variable's object
+	// member graph.
+	//
+	// By itself, OptPartialEval does not change evaluation behavior unless the input to the
+	// Program Eval is an PartialVars.
+	OptPartialEval EvalOption = 1 << iota
 )
 
 // EvalOptions sets one or more evaluation options which may affect the evaluation or Result.

@@ -185,10 +185,10 @@ func (p *parserHelper) id(ctx interface{}) int64 {
 	switch ctx.(type) {
 	case antlr.ParserRuleContext:
 		token := (ctx.(antlr.ParserRuleContext)).GetStart()
-		location = common.NewLocation(token.GetLine(), token.GetColumn())
+		location = p.source.NewLocation(token.GetLine(), token.GetColumn())
 	case antlr.Token:
 		token := ctx.(antlr.Token)
-		location = common.NewLocation(token.GetLine(), token.GetColumn())
+		location = p.source.NewLocation(token.GetLine(), token.GetColumn())
 	case common.Location:
 		location = ctx.(common.Location)
 	default:

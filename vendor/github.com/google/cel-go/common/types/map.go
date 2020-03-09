@@ -15,8 +15,10 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -111,49 +113,97 @@ func (m *baseMap) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 				StructValue: jsonMap}}, nil
 	}
 
-	// Non-map conversion.
-	if typeDesc.Kind() != reflect.Map {
-		return nil, fmt.Errorf("type conversion error from map to '%v'", typeDesc)
+	// Unwrap pointers, but track their use.
+	isPtr := false
+	if typeDesc.Kind() == reflect.Ptr {
+		tk := typeDesc
+		typeDesc = typeDesc.Elem()
+		if typeDesc.Kind() == reflect.Ptr {
+			return nil, fmt.Errorf("unsupported type conversion to '%v'", tk)
+		}
+		isPtr = true
 	}
 
-	// If the map is already assignable to the desired type return it.
+	// If the map is already assignable to the desired type return it, e.g. interfaces and
+	// maps with the same key value types.
 	if reflect.TypeOf(m).AssignableTo(typeDesc) {
 		return m, nil
 	}
 
-	// Map conversion.
+	// Establish some basic facts about the map key and value types.
 	thisType := m.refValue.Type()
 	thisKey := thisType.Key()
 	thisKeyKind := thisKey.Kind()
 	thisElem := thisType.Elem()
 	thisElemKind := thisElem.Kind()
 
-	otherKey := typeDesc.Key()
-	otherKeyKind := otherKey.Kind()
-	otherElem := typeDesc.Elem()
-	otherElemKind := otherElem.Kind()
-
-	if otherKeyKind == thisKeyKind && otherElemKind == thisElemKind {
-		return m.value, nil
-	}
-	elemCount := m.Size().(Int)
-	nativeMap := reflect.MakeMapWithSize(typeDesc, int(elemCount))
-	it := m.Iterator()
-	for it.HasNext() == True {
-		key := it.Next()
-		refKeyValue, err := key.ConvertToNative(otherKey)
-		if err != nil {
-			return nil, err
+	switch typeDesc.Kind() {
+	// Map conversion.
+	case reflect.Map:
+		otherKey := typeDesc.Key()
+		otherKeyKind := otherKey.Kind()
+		otherElem := typeDesc.Elem()
+		otherElemKind := otherElem.Kind()
+		if otherKeyKind == thisKeyKind && otherElemKind == thisElemKind {
+			return m.value, nil
 		}
-		refElemValue, err := m.Get(key).ConvertToNative(otherElem)
-		if err != nil {
-			return nil, err
+		elemCount := m.Size().(Int)
+		nativeMap := reflect.MakeMapWithSize(typeDesc, int(elemCount))
+		it := m.Iterator()
+		for it.HasNext() == True {
+			key := it.Next()
+			refKeyValue, err := key.ConvertToNative(otherKey)
+			if err != nil {
+				return nil, err
+			}
+			refElemValue, err := m.Get(key).ConvertToNative(otherElem)
+			if err != nil {
+				return nil, err
+			}
+			nativeMap.SetMapIndex(
+				reflect.ValueOf(refKeyValue),
+				reflect.ValueOf(refElemValue))
 		}
-		nativeMap.SetMapIndex(
-			reflect.ValueOf(refKeyValue),
-			reflect.ValueOf(refElemValue))
+		return nativeMap.Interface(), nil
+	case reflect.Struct:
+		if thisKeyKind != reflect.String && thisKeyKind != reflect.Interface {
+			break
+		}
+		nativeStructPtr := reflect.New(typeDesc)
+		nativeStruct := nativeStructPtr.Elem()
+		it := m.Iterator()
+		for it.HasNext() == True {
+			key := it.Next()
+			// Ensure the field name being referenced is exported.
+			// Only exported (public) field names can be set by reflection, where the name
+			// must be at least one character in length and start with an upper-case letter.
+			fieldName := string(key.ConvertToType(StringType).(String))
+			switch len(fieldName) {
+			case 0:
+				return nil, errors.New("type conversion error, unsupported empty field")
+			case 1:
+				fieldName = strings.ToUpper(fieldName)
+			default:
+				fieldName = strings.ToUpper(fieldName[0:1]) + fieldName[1:]
+			}
+			fieldRef := nativeStruct.FieldByName(fieldName)
+			if !fieldRef.IsValid() {
+				return nil, fmt.Errorf(
+					"type conversion error, no such field '%s' in type '%v'",
+					fieldName, typeDesc)
+			}
+			fieldValue, err := m.Get(key).ConvertToNative(fieldRef.Type())
+			if err != nil {
+				return nil, err
+			}
+			fieldRef.Set(reflect.ValueOf(fieldValue))
+		}
+		if isPtr {
+			return nativeStructPtr.Interface(), nil
+		}
+		return nativeStruct.Interface(), nil
 	}
-	return nativeMap.Interface(), nil
+	return nil, fmt.Errorf("type conversion error from map to '%v'", typeDesc)
 }
 
 // ConvertToNative implements the ref.Val interface method.

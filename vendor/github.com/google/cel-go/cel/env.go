@@ -16,7 +16,7 @@ package cel
 
 import (
 	"errors"
-	"fmt"
+	"sync"
 
 	"github.com/google/cel-go/checker"
 	"github.com/google/cel-go/checker/decls"
@@ -24,7 +24,7 @@ import (
 	"github.com/google/cel-go/common/packages"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
+	"github.com/google/cel-go/interpreter"
 	"github.com/google/cel-go/parser"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
@@ -35,103 +35,348 @@ type Source interface {
 	common.Source
 }
 
-// Ast interface representing the checked or unchecked expression, its source, and related metadata
-// such as source position information.
-type Ast interface {
-	// Expr returns the proto serializable instance of the parsed/checked expression.
-	Expr() *exprpb.Expr
-
-	// IsChecked returns whether the Ast value has been successfully type-checked.
-	IsChecked() bool
-
-	// ResultType returns the output type of the expression if the Ast has been type-checked,
-	// else returns decls.Dyn as the parse step cannot infer the type.
-	ResultType() *exprpb.Type
-
-	// Source returns a view of the input used to create the Ast. This source may be complete or
-	// constructed from the SourceInfo.
-	Source() Source
-
-	// SourceInfo returns character offset and newling position information about expression
-	// elements.
-	SourceInfo() *exprpb.SourceInfo
+// Ast representing the checked or unchecked expression, its source, and related metadata such as
+// source position information.
+type Ast struct {
+	expr    *exprpb.Expr
+	info    *exprpb.SourceInfo
+	source  Source
+	refMap  map[int64]*exprpb.Reference
+	typeMap map[int64]*exprpb.Type
 }
 
-// Env defines functions for parsing and type-checking expressions against a set of user-defined
-// constants, variables, and functions. The Env interface also defines a method for generating
-// evaluable programs from parsed and checked Asts.
-type Env interface {
-	// Extend the current environment with additional options to produce a new Env.
-	Extend(opts ...EnvOption) (Env, error)
-
-	// Check performs type-checking on the input Ast and yields a checked Ast and/or set of Issues.
-	//
-	// Checking has failed if the returned Issues value and its Issues.Err() value is non-nil.
-	// Issues should be inspected if they are non-nil, but may not represent a fatal error.
-	//
-	// It is possible to have both non-nil Ast and Issues values returned from this call: however,
-	// the mere presence of an Ast does not imply that it is valid for use.
-	Check(ast Ast) (Ast, Issues)
-
-	// Parse parses the input expression value `txt` to a Ast and/or a set of Issues.
-	//
-	// Parsing has failed if the returned Issues value and its Issues.Err() value is non-nil.
-	// Issues should be inspected if they are non-nil, but may not represent a fatal error.
-	//
-	// It is possible to have both non-nil Ast and Issues values returned from this call; however,
-	// the mere presence of an Ast does not imply that it is valid for use.
-	Parse(txt string) (Ast, Issues)
-
-	// Program generates an evaluable instance of the Ast within the environment (Env).
-	Program(ast Ast, opts ...ProgramOption) (Program, error)
-
-	// TypeAdapter returns the `ref.TypeAdapter` configured for the environment.
-	TypeAdapter() ref.TypeAdapter
-
-	// TypeProvider returns the `ref.TypeProvider` configured for the environment.
-	TypeProvider() ref.TypeProvider
+// Expr returns the proto serializable instance of the parsed/checked expression.
+func (ast *Ast) Expr() *exprpb.Expr {
+	return ast.expr
 }
 
-// Issues defines methods for inspecting the error details of parse and check calls.
+// IsChecked returns whether the Ast value has been successfully type-checked.
+func (ast *Ast) IsChecked() bool {
+	return ast.refMap != nil && ast.typeMap != nil
+}
+
+// SourceInfo returns character offset and newling position information about expression elements.
+func (ast *Ast) SourceInfo() *exprpb.SourceInfo {
+	return ast.info
+}
+
+// ResultType returns the output type of the expression if the Ast has been type-checked, else
+// returns decls.Dyn as the parse step cannot infer the type.
+func (ast *Ast) ResultType() *exprpb.Type {
+	if !ast.IsChecked() {
+		return decls.Dyn
+	}
+	return ast.typeMap[ast.expr.Id]
+}
+
+// Source returns a view of the input used to create the Ast. This source may be complete or
+// constructed from the SourceInfo.
+func (ast *Ast) Source() Source {
+	return ast.source
+}
+
+// Env encapsulates the context necessary to perform parsing, type checking, or generation of
+// evaluable programs for different expressions.
+type Env struct {
+	declarations []*exprpb.Decl
+	macros       []parser.Macro
+	pkg          packages.Packager
+	adapter      ref.TypeAdapter
+	provider     ref.TypeProvider
+	// program options tied to the environment.
+	progOpts []ProgramOption
+	// environment options, true by default.
+	enableDynamicAggregateLiterals bool
+
+	// Internal checker representation
+	chk    *checker.Env
+	chkErr error
+	once   sync.Once
+}
+
+// NewEnv creates a program environment configured with the standard library of CEL functions and
+// macros. The Env value returned can parse and check any CEL program which builds upon the core
+// features documented in the CEL specification.
 //
-// Note: in the future, non-fatal warnings and notices may be inspectable via the Issues interface.
-type Issues interface {
-	fmt.Stringer
-
-	// Err returns an error value if the issues list contains one or more errors.
-	Err() error
-
-	// Errors returns the collection of errors encountered in more granular detail.
-	Errors() []common.Error
+// See the EnvOption helper functions for the options that can be used to configure the
+// environment.
+func NewEnv(opts ...EnvOption) (*Env, error) {
+	stdOpts := append([]EnvOption{StdLib()}, opts...)
+	return NewCustomEnv(stdOpts...)
 }
 
-// NewEnv creates an Env instance suitable for parsing and checking expressions against a set of
-// user-defined constants, variables, and functions. Macros and the standard built-ins are enabled
-// by default.
+// NewCustomEnv creates a custom program environment which is not automatically configured with the
+// standard library of functions and macros documented in the CEL spec.
 //
-// See the EnvOptions for the options that can be used to configure the environment.
-func NewEnv(opts ...EnvOption) (Env, error) {
+// The purpose for using a custom environment might be for subsetting the standard library produced
+// by the cel.StdLib() function. Subsetting CEL is a core aspect of its design that allows users to
+// limit the compute and memory impact of a CEL program by controlling the functions and macros
+// that may appear in a given expression.
+//
+// See the EnvOption helper functions for the options that can be used to configure the
+// environment.
+func NewCustomEnv(opts ...EnvOption) (*Env, error) {
 	registry := types.NewRegistry()
-	return (&env{
-		declarations:                   checker.StandardDeclarations(),
-		macros:                         parser.AllMacros,
+	return (&Env{
+		declarations:                   []*exprpb.Decl{},
+		macros:                         []parser.Macro{},
 		pkg:                            packages.DefaultPackage,
-		provider:                       registry,
 		adapter:                        registry,
-		enableBuiltins:                 true,
+		provider:                       registry,
 		enableDynamicAggregateLiterals: true,
-	}).configure(opts...)
+		progOpts:                       []ProgramOption{},
+	}).configure(opts)
+}
+
+// Check performs type-checking on the input Ast and yields a checked Ast and/or set of Issues.
+//
+// Checking has failed if the returned Issues value and its Issues.Err() value are non-nil.
+// Issues should be inspected if they are non-nil, but may not represent a fatal error.
+//
+// It is possible to have both non-nil Ast and Issues values returned from this call: however,
+// the mere presence of an Ast does not imply that it is valid for use.
+func (e *Env) Check(ast *Ast) (*Ast, *Issues) {
+	// Note, errors aren't currently possible on the Ast to ParsedExpr conversion.
+	pe, _ := AstToParsedExpr(ast)
+
+	// Construct the internal checker env, erroring if there is an issue adding the declarations.
+	e.once.Do(func() {
+		ce := checker.NewEnv(e.pkg, e.provider)
+		ce.EnableDynamicAggregateLiterals(e.enableDynamicAggregateLiterals)
+		err := ce.Add(e.declarations...)
+		if err != nil {
+			e.chkErr = err
+		} else {
+			e.chk = ce
+		}
+	})
+	// The once call will ensure that this value is set or nil for all invocations.
+	if e.chkErr != nil {
+		errs := common.NewErrors(ast.Source())
+		errs.ReportError(common.NoLocation, e.chkErr.Error())
+		return nil, &Issues{errs: errs}
+	}
+
+	res, errs := checker.Check(pe, ast.Source(), e.chk)
+	if len(errs.GetErrors()) > 0 {
+		return nil, &Issues{errs: errs}
+	}
+	// Manually create the Ast to ensure that the Ast source information (which may be more
+	// detailed than the information provided by Check), is returned to the caller.
+	return &Ast{
+		source:  ast.Source(),
+		expr:    res.GetExpr(),
+		info:    res.GetSourceInfo(),
+		refMap:  res.GetReferenceMap(),
+		typeMap: res.GetTypeMap()}, nil
+}
+
+// Compile combines the Parse and Check phases CEL program compilation to produce an Ast and
+// associated issues.
+//
+// If an error is encountered during parsing the Compile step will not continue with the Check
+// phase. If non-error issues are encountered during Parse, they may be combined with any issues
+// discovered during Check.
+//
+// Note, for parse-only uses of CEL use Parse.
+func (e *Env) Compile(txt string) (*Ast, *Issues) {
+	return e.CompileSource(common.NewTextSource(txt))
+}
+
+// CompileSource combines the Parse and Check phases CEL program compilation to produce an Ast and
+// associated issues.
+//
+// If an error is encountered during parsing the CompileSource step will not continue with the
+// Check phase. If non-error issues are encountered during Parse, they may be combined with any
+// issues discovered during Check.
+//
+// Note, for parse-only uses of CEL use Parse.
+func (e *Env) CompileSource(src common.Source) (*Ast, *Issues) {
+	ast, iss := e.ParseSource(src)
+	if iss.Err() != nil {
+		return nil, iss
+	}
+	checked, iss2 := e.Check(ast)
+	iss = iss.Append(iss2)
+	if iss.Err() != nil {
+		return nil, iss
+	}
+	return checked, iss
 }
 
 // Extend the current environment with additional options to produce a new Env.
-func (e *env) Extend(opts ...EnvOption) (Env, error) {
-	ext := &env{}
-	*ext = *e
-	return ext.configure(opts...)
+//
+// Note, the extended Env value should not share memory with the original. It is possible, however,
+// that a CustomTypeAdapter or CustomTypeProvider options could provide values which are mutable.
+// To ensure separation of state between extended environments either make sure the TypeAdapter and
+// TypeProvider are immutable, or that their underlying implementations are based on the
+// ref.TypeRegistry which provides a Copy method which will be invoked by this method.
+func (e *Env) Extend(opts ...EnvOption) (*Env, error) {
+	if e.chkErr != nil {
+		return nil, e.chkErr
+	}
+	// Copy slices.
+	decsCopy := make([]*exprpb.Decl, len(e.declarations))
+	macsCopy := make([]parser.Macro, len(e.macros))
+	progOptsCopy := make([]ProgramOption, len(e.progOpts))
+	copy(decsCopy, e.declarations)
+	copy(macsCopy, e.macros)
+	copy(progOptsCopy, e.progOpts)
+
+	// Copy the adapter / provider if they appear to be mutable.
+	adapter := e.adapter
+	provider := e.provider
+	adapterReg, isAdapterReg := e.adapter.(ref.TypeRegistry)
+	providerReg, isProviderReg := e.provider.(ref.TypeRegistry)
+	// In most cases the provider and adapter will be a ref.TypeRegistry;
+	// however, in the rare cases where they are not, they are assumed to
+	// be immutable. Since it is possible to set the TypeProvider separately
+	// from the TypeAdapter, the possible configurations which could use a
+	// TypeRegistry as the base implementation are captured below.
+	if isAdapterReg && isProviderReg {
+		reg := providerReg.Copy()
+		provider = reg
+		// If the adapter and provider are the same object, set the adapter
+		// to the same ref.TypeRegistry as the provider.
+		if adapterReg == providerReg {
+			adapter = reg
+		} else {
+			// Otherwise, make a copy of the adapter.
+			adapter = adapterReg.Copy()
+		}
+	} else if isProviderReg {
+		provider = providerReg.Copy()
+	} else if isAdapterReg {
+		adapter = adapterReg.Copy()
+	}
+
+	ext := &Env{
+		declarations:                   decsCopy,
+		macros:                         macsCopy,
+		progOpts:                       progOptsCopy,
+		adapter:                        adapter,
+		enableDynamicAggregateLiterals: e.enableDynamicAggregateLiterals,
+		pkg:                            e.pkg,
+		provider:                       provider,
+	}
+	return ext.configure(opts)
+}
+
+// Parse parses the input expression value `txt` to a Ast and/or a set of Issues.
+//
+// This form of Parse creates a common.Source value for the input `txt` and forwards to the
+// ParseSource method.
+func (e *Env) Parse(txt string) (*Ast, *Issues) {
+	src := common.NewTextSource(txt)
+	return e.ParseSource(src)
+}
+
+// ParseSource parses the input source to an Ast and/or set of Issues.
+//
+// Parsing has failed if the returned Issues value and its Issues.Err() value is non-nil.
+// Issues should be inspected if they are non-nil, but may not represent a fatal error.
+//
+// It is possible to have both non-nil Ast and Issues values returned from this call; however,
+// the mere presence of an Ast does not imply that it is valid for use.
+func (e *Env) ParseSource(src common.Source) (*Ast, *Issues) {
+	res, errs := parser.ParseWithMacros(src, e.macros)
+	if len(errs.GetErrors()) > 0 {
+		return nil, &Issues{errs: errs}
+	}
+	// Manually create the Ast to ensure that the text source information is propagated on
+	// subsequent calls to Check.
+	return &Ast{
+		source: Source(src),
+		expr:   res.GetExpr(),
+		info:   res.GetSourceInfo()}, nil
+}
+
+// Program generates an evaluable instance of the Ast within the environment (Env).
+func (e *Env) Program(ast *Ast, opts ...ProgramOption) (Program, error) {
+	optSet := e.progOpts
+	if len(opts) != 0 {
+		mergedOpts := []ProgramOption{}
+		mergedOpts = append(mergedOpts, e.progOpts...)
+		mergedOpts = append(mergedOpts, opts...)
+		optSet = mergedOpts
+	}
+	return newProgram(e, ast, optSet)
+}
+
+// TypeAdapter returns the `ref.TypeAdapter` configured for the environment.
+func (e *Env) TypeAdapter() ref.TypeAdapter {
+	return e.adapter
+}
+
+// TypeProvider returns the `ref.TypeProvider` configured for the environment.
+func (e *Env) TypeProvider() ref.TypeProvider {
+	return e.provider
+}
+
+// UnknownVars returns an interpreter.PartialActivation which marks all variables
+// declared in the Env as unknown AttributePattern values.
+//
+// Note, the UnknownVars will behave the same as an interpreter.EmptyActivation
+// unless the PartialAttributes option is provided as a ProgramOption.
+func (e *Env) UnknownVars() interpreter.PartialActivation {
+	var unknownPatterns []*interpreter.AttributePattern
+	for _, d := range e.declarations {
+		switch d.GetDeclKind().(type) {
+		case *exprpb.Decl_Ident:
+			unknownPatterns = append(unknownPatterns,
+				interpreter.NewAttributePattern(d.GetName()))
+		}
+	}
+	part, _ := PartialVars(
+		interpreter.EmptyActivation(),
+		unknownPatterns...)
+	return part
+}
+
+// ResidualAst takes an Ast and its EvalDetails to produce a new Ast which only contains the
+// attribute references which are unknown.
+//
+// Residual expressions are beneficial in a few scenarios:
+//
+// - Optimizing constant expression evaluations away.
+// - Indexing and pruning expressions based on known input arguments.
+// - Surfacing additional requirements that are needed in order to complete an evaluation.
+// - Sharing the evaluation of an expression across multiple machines/nodes.
+//
+// For example, if an expression targets a 'resource' and 'request' attribute and the possible
+// values for the resource are known, a PartialActivation could mark the 'request' as an unknown
+// interpreter.AttributePattern and the resulting ResidualAst would be reduced to only the parts
+// of the expression that reference the 'request'.
+//
+// Note, the expression ids within the residual AST generated through this method have no
+// correlation to the expression ids of the original AST.
+//
+// See the PartialVars helper for how to construct a PartialActivation.
+//
+// TODO: Consider adding an option to generate a Program.Residual to avoid round-tripping to an
+// Ast format and then Program again.
+func (e *Env) ResidualAst(a *Ast, details *EvalDetails) (*Ast, error) {
+	pruned := interpreter.PruneAst(a.Expr(), details.State())
+	expr, err := AstToString(ParsedExprToAst(&exprpb.ParsedExpr{Expr: pruned}))
+	if err != nil {
+		return nil, err
+	}
+	parsed, iss := e.Parse(expr)
+	if iss != nil && iss.Err() != nil {
+		return nil, iss.Err()
+	}
+	if !a.IsChecked() {
+		return parsed, nil
+	}
+	checked, iss := e.Check(parsed)
+	if iss != nil && iss.Err() != nil {
+		return nil, iss.Err()
+	}
+	return checked, nil
 }
 
 // configure applies a series of EnvOptions to the current environment.
-func (e *env) configure(opts ...EnvOption) (Env, error) {
+func (e *Env) configure(opts []EnvOption) (*Env, error) {
 	// Customized the environment using the provided EnvOption values. If an error is
 	// generated at any step this, will be returned as a nil Env with a non-nil error.
 	var err error
@@ -141,143 +386,56 @@ func (e *env) configure(opts ...EnvOption) (Env, error) {
 			return nil, err
 		}
 	}
-	// Construct the internal checker env, erroring if there is an issue adding the declarations.
-	ce := checker.NewEnv(e.pkg, e.provider)
-	ce.EnableDynamicAggregateLiterals(e.enableDynamicAggregateLiterals)
-	err = ce.Add(e.declarations...)
-	if err != nil {
-		return nil, err
-	}
-	e.chk = ce
 	return e, nil
 }
 
-// astValue is the internal implementation of the ast interface.
-type astValue struct {
-	expr    *exprpb.Expr
-	info    *exprpb.SourceInfo
-	source  Source
-	refMap  map[int64]*exprpb.Reference
-	typeMap map[int64]*exprpb.Type
-}
-
-// Expr implements the Ast interface method.
-func (ast *astValue) Expr() *exprpb.Expr {
-	return ast.expr
-}
-
-// IsChecked implements the Ast interface method.
-func (ast *astValue) IsChecked() bool {
-	return ast.refMap != nil && ast.typeMap != nil
-}
-
-// SourceInfo implements the Ast interface method.
-func (ast *astValue) SourceInfo() *exprpb.SourceInfo {
-	return ast.info
-}
-
-// ResultType implements the Ast interface method.
-func (ast *astValue) ResultType() *exprpb.Type {
-	if !ast.IsChecked() {
-		return decls.Dyn
-	}
-	return ast.typeMap[ast.expr.Id]
-}
-
-// Source implements the Ast interface method.
-func (ast *astValue) Source() Source {
-	return ast.source
-}
-
-// env is the internal implementation of the Env interface.
-type env struct {
-	declarations []*exprpb.Decl
-	macros       []parser.Macro
-	pkg          packages.Packager
-	provider     ref.TypeProvider
-	adapter      ref.TypeAdapter
-	chk          *checker.Env
-	// environment options, true by default.
-	enableBuiltins                 bool
-	enableDynamicAggregateLiterals bool
-}
-
-// Check implements the Env interface method.
-func (e *env) Check(ast Ast) (Ast, Issues) {
-	pe, err := AstToParsedExpr(ast)
-	if err != nil {
-		errs := common.NewErrors(ast.Source())
-		errs.ReportError(common.NoLocation, err.Error())
-		return nil, &issues{errs: errs}
-	}
-	res, errs := checker.Check(pe, ast.Source(), e.chk)
-	if len(errs.GetErrors()) > 0 {
-		return nil, &issues{errs: errs}
-	}
-	// Manually create the Ast to ensure that the Ast source information (which may be more
-	// detailed than the information provided by Check), is returned to the caller.
-	return &astValue{
-		source:  ast.Source(),
-		expr:    res.GetExpr(),
-		info:    res.GetSourceInfo(),
-		refMap:  res.GetReferenceMap(),
-		typeMap: res.GetTypeMap()}, nil
-}
-
-// Parse implements the Env interface method.
-func (e *env) Parse(txt string) (Ast, Issues) {
-	src := common.NewTextSource(txt)
-	res, errs := parser.ParseWithMacros(src, e.macros)
-	if len(errs.GetErrors()) > 0 {
-		return nil, &issues{errs: errs}
-	}
-	// Manually create the Ast to ensure that the text source information is propagated on
-	// subsequent calls to Check.
-	return &astValue{
-		source: Source(src),
-		expr:   res.GetExpr(),
-		info:   res.GetSourceInfo()}, nil
-}
-
-// Program implements the Env interface method.
-func (e *env) Program(ast Ast, opts ...ProgramOption) (Program, error) {
-	if e.enableBuiltins {
-		opts = append(
-			[]ProgramOption{Functions(functions.StandardOverloads()...)},
-			opts...)
-	}
-	return newProgram(e, ast, opts...)
-}
-
-// TypeAdapter implements the Env interface method.
-func (e *env) TypeAdapter() ref.TypeAdapter {
-	return e.adapter
-}
-
-// TypeProvider implements the Env interface method.
-func (e *env) TypeProvider() ref.TypeProvider {
-	return e.provider
-}
-
-// issues is the internal implementation of the Issues interface.
-type issues struct {
+// Issues defines methods for inspecting the error details of parse and check calls.
+//
+// Note: in the future, non-fatal warnings and notices may be inspectable via the Issues struct.
+type Issues struct {
 	errs *common.Errors
 }
 
-// Err implements the Issues interface method.
-func (i *issues) Err() error {
+// NewIssues returns an Issues struct from a common.Errors object.
+func NewIssues(errs *common.Errors) *Issues {
+	return &Issues{
+		errs: errs,
+	}
+}
+
+// Err returns an error value if the issues list contains one or more errors.
+func (i *Issues) Err() error {
+	if i == nil {
+		return nil
+	}
 	if len(i.errs.GetErrors()) > 0 {
 		return errors.New(i.errs.ToDisplayString())
 	}
 	return nil
 }
 
-// Errors implements the Issues interface method.
-func (i *issues) Errors() []common.Error {
+// Errors returns the collection of errors encountered in more granular detail.
+func (i *Issues) Errors() []common.Error {
+	if i == nil {
+		return []common.Error{}
+	}
 	return i.errs.GetErrors()
 }
 
+// Append collects the issues from another Issues struct into a new Issues object.
+func (i *Issues) Append(other *Issues) *Issues {
+	if i == nil {
+		return other
+	}
+	return &Issues{
+		errs: i.errs.Append(other.errs.GetErrors()),
+	}
+}
+
 // String converts the issues to a suitable display string.
-func (i *issues) String() string {
+func (i *Issues) String() string {
+	if i == nil {
+		return ""
+	}
 	return i.errs.ToDisplayString()
 }

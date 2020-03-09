@@ -181,6 +181,10 @@ func NewPrimitiveType(primitive exprpb.Type_PrimitiveType) *exprpb.Type {
 
 // NewTypeType creates a new type designating a type.
 func NewTypeType(nested *exprpb.Type) *exprpb.Type {
+	if nested == nil {
+		// must set the nested field for a valid oneof option
+		nested = &exprpb.Type{}
+	}
 	return &exprpb.Type{
 		TypeKind: &exprpb.Type_Type{
 			Type: nested}}

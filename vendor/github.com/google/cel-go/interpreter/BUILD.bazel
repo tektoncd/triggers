@@ -9,6 +9,8 @@ go_library(
     name = "go_default_library",
     srcs = [
         "activation.go",
+        "attributes.go",
+        "attribute_patterns.go",
         "decorators.go",
         "dispatcher.go",
         "evalstate.go",
@@ -40,6 +42,8 @@ go_test(
     name = "go_default_test",
     srcs = [
         "activation_test.go",
+        "attributes_test.go",
+        "attribute_patterns_test.go",
         "interpreter_test.go",
         "prune_test.go",
     ],
@@ -59,6 +63,7 @@ go_test(
         "//test/proto2pb:go_default_library",
         "//test/proto3pb:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library",
         "@io_bazel_rules_go//proto/wkt:duration_go_proto",
         "@io_bazel_rules_go//proto/wkt:struct_go_proto",
         "@io_bazel_rules_go//proto/wkt:timestamp_go_proto",

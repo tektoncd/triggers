@@ -31,51 +31,65 @@ type evalObserver func(int64, ref.Val)
 // decObserveEval records evaluation state into an EvalState object.
 func decObserveEval(observer evalObserver) InterpretableDecorator {
 	return func(i Interpretable) (Interpretable, error) {
-		return &evalWatch{
-			inst:     i,
-			observer: observer,
-		}, nil
+		switch inst := i.(type) {
+		case *evalWatch, *evalWatchAttr, *evalWatchConst:
+			// these instruction are already watching, return straight-away.
+			return i, nil
+		case instAttr:
+			return &evalWatchAttr{
+				instAttr: inst,
+				observer: observer,
+			}, nil
+		case instConst:
+			return &evalWatchConst{
+				instConst: inst,
+				observer:  observer,
+			}, nil
+		default:
+			return &evalWatch{
+				inst:     i,
+				observer: observer,
+			}, nil
+		}
 	}
 }
 
 // decDisableShortcircuits ensures that all branches of an expression will be evaluated, no short-circuiting.
 func decDisableShortcircuits() InterpretableDecorator {
 	return func(i Interpretable) (Interpretable, error) {
-		switch i.(type) {
+		switch expr := i.(type) {
 		case *evalOr:
-			or := i.(*evalOr)
 			return &evalExhaustiveOr{
-				id:  or.id,
-				lhs: or.lhs,
-				rhs: or.rhs,
+				id:  expr.id,
+				lhs: expr.lhs,
+				rhs: expr.rhs,
 			}, nil
 		case *evalAnd:
-			and := i.(*evalAnd)
 			return &evalExhaustiveAnd{
-				id:  and.id,
-				lhs: and.lhs,
-				rhs: and.rhs,
-			}, nil
-		case *evalConditional:
-			cond := i.(*evalConditional)
-			return &evalExhaustiveConditional{
-				id:     cond.id,
-				expr:   cond.expr,
-				truthy: cond.truthy,
-				falsy:  cond.falsy,
+				id:  expr.id,
+				lhs: expr.lhs,
+				rhs: expr.rhs,
 			}, nil
 		case *evalFold:
-			fold := i.(*evalFold)
 			return &evalExhaustiveFold{
-				id:        fold.id,
-				accu:      fold.accu,
-				accuVar:   fold.accuVar,
-				iterRange: fold.iterRange,
-				iterVar:   fold.iterVar,
-				cond:      fold.cond,
-				step:      fold.step,
-				result:    fold.result,
+				id:        expr.id,
+				accu:      expr.accu,
+				accuVar:   expr.accuVar,
+				iterRange: expr.iterRange,
+				iterVar:   expr.iterVar,
+				cond:      expr.cond,
+				step:      expr.step,
+				result:    expr.result,
 			}, nil
+		case instAttr:
+			cond, isCond := expr.Attr().(*conditionalAttribute)
+			if isCond {
+				return &evalExhaustiveConditional{
+					id:      cond.id,
+					attr:    cond,
+					adapter: expr.Adapter(),
+				}, nil
+			}
 		}
 		return i, nil
 	}

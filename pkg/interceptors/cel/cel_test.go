@@ -101,27 +101,28 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			name: "single overlay with no filter",
 			CEL: &triggersv1.CELInterceptor{
 				Overlays: []triggersv1.CELOverlay{
-					{Key: "new", Expression: "split(body.ref, '/')[2]"},
+					{Key: "new", Expression: "body.ref.split('/')[2]"},
 				},
 			},
-			payload: ioutil.NopCloser(bytes.NewBufferString(`{"ref":"refs/head/master"}`)),
-			want:    []byte(`{"new":"master","ref":"refs/head/master"}`),
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"ref":"refs/head/master","name":"testing"}`)),
+			want:    []byte(`{"new":"master","ref":"refs/head/master","name":"testing"}`),
+		},
+		{
+			name: "overlay with string library functions",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "new", Expression: "body.ref.split('/')[2]"},
+					{Key: "replaced", Expression: "body.name.replace('ing','ed',0)"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"ref":"refs/head/master","name":"testing"}`)),
+			want:    []byte(`{"replaced":"testing","new":"master","ref":"refs/head/master","name":"testing"}`),
 		},
 		{
 			name: "update with base64 decoding",
 			CEL: &triggersv1.CELInterceptor{
 				Overlays: []triggersv1.CELOverlay{
-					{Key: "value", Expression: "decodeb64(body.value)"},
-				},
-			},
-			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
-			want:    []byte(`{"value":{"test":"decode"}}`),
-		},
-		{
-			name: "update with base64 decoding",
-			CEL: &triggersv1.CELInterceptor{
-				Overlays: []triggersv1.CELOverlay{
-					{Key: "value", Expression: "decodeb64(body.value)"},
+					{Key: "value", Expression: "body.value.decodeb64()"},
 				},
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
@@ -311,10 +312,6 @@ func TestExpressionEvaluation(t *testing.T) {
 	header := http.Header{}
 	header.Add("X-Test-Header", "value")
 	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
-	env, err := makeCelEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []struct {
 		name   string
 		expr   string
@@ -333,27 +330,32 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		{
 			name: "truncate a long string",
-			expr: "truncate(body.sha, 7)",
+			expr: "body.sha.truncate(7)",
 			want: types.String("ec26c3e"),
 		},
 		{
+			name: "truncate a string to its own length",
+			expr: "body.value.truncate(7)",
+			want: types.String("testing"),
+		},
+		{
 			name: "truncate a string to fewer characters than it has",
-			expr: "truncate(body.sha, 45)",
+			expr: "body.sha.truncate(45)",
 			want: types.String(testSHA),
 		},
 		{
 			name: "split a string on a character",
-			expr: "split(body.ref, '/')",
+			expr: "body.ref.split('/')",
 			want: types.NewStringList(types.NewRegistry(), refParts),
 		},
 		{
 			name: "extract a branch from a non refs string",
-			expr: "split(body.value, '/')",
+			expr: "body.value.split('/')",
 			want: types.NewStringList(types.NewRegistry(), []string{"testing"}),
 		},
 		{
 			name: "combine split and truncate",
-			expr: "truncate(split(body.value, '/')[0], 2)",
+			expr: "body.value.split('/')[0].truncate(2)",
 			want: types.String("te"),
 		},
 		{
@@ -368,7 +370,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		{
 			name: "decode a base64 value",
-			expr: "decodeb64(body.b64value)",
+			expr: "body.b64value.decodeb64()",
 			want: types.Bytes("example"),
 		},
 		{
@@ -396,7 +398,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		{
 			name: "parse JSON body in a string",
-			expr: "parseJSON(body.json_body).testing == 'value'",
+			expr: "body.json_body.parseJSON().testing == 'value'",
 			want: types.Bool(true),
 		},
 	}
@@ -409,7 +411,12 @@ func TestExpressionEvaluation(t *testing.T) {
 					rt.Error(err)
 				}
 			}
-			got, err := evaluate(tt.expr, env, evalEnv, testNS, kubeClient)
+			env, err := makeCelEnv(testNS, kubeClient)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := evaluate(tt.expr, env, evalEnv)
 			if err != nil {
 				rt.Errorf("evaluate() got an error %s", err)
 				return
@@ -438,10 +445,6 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 	}
 	header := http.Header{}
 	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
-	env, err := makeCelEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []struct {
 		name     string
 		expr     string
@@ -469,23 +472,13 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			want: "failed to convert to http.Header",
 		},
 		{
-			name: "non-string passed to split",
-			expr: "split(body.value, 54)",
-			want: "found no matching overload for 'split'",
-		},
-		{
 			name: "invalid function overloading with canonical",
 			expr: "body.canonical('testing')",
 			want: "failed to convert to http.Header",
 		},
 		{
-			name: "invalid function overloading canonical with non-string",
-			expr: "body.canonical(52)",
-			want: "found no matching overload",
-		},
-		{
 			name: "invalid base64 decoding",
-			expr: "decodeb64(\"AA=A\")",
+			expr: "\"AA=A\".decodeb64()",
 			want: "failed to decode 'AA=A' in decodeB64.*illegal base64 data",
 		},
 		{
@@ -501,8 +494,18 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 		},
 		{
 			name: "invalid parseJSON body",
-			expr: "parseJSON(body.value).test == 'test'",
+			expr: "body.value.parseJSON().test == 'test'",
 			want: "invalid character 'e' in literal",
+		},
+		{
+			name: "base64 decoding non-string",
+			expr: "body.pull_request.decodeb64()",
+			want: "unexpected type 'map' passed to decodeB64",
+		},
+		{
+			name: "parseJSON decoding non-string",
+			expr: "body.pull_request.parseJSON().test == 'test'",
+			want: "unexpected type 'map' passed to parseJSON",
 		},
 	}
 	for _, tt := range tests {
@@ -517,7 +520,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				}
 				ns = tt.secretNS
 			}
-			_, err := evaluate(tt.expr, env, evalEnv, ns, kubeClient)
+			env, err := makeCelEnv(ns, kubeClient)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = evaluate(tt.expr, env, evalEnv)
 			if !matchError(t, tt.want, err) {
 				rt.Errorf("evaluate() got %s, wanted %s", err, tt.want)
 			}

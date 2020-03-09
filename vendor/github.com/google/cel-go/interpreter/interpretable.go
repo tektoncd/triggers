@@ -34,75 +34,11 @@ type Interpretable interface {
 
 // Core Interpretable implementations used during the program planning phase.
 
-type evalIdent struct {
-	id        int64
-	name      string
-	provider  ref.TypeProvider
-	resolveID func(Activation) (ref.Val, bool)
-}
-
-// ID implements the Interpretable interface method.
-func (id *evalIdent) ID() int64 {
-	return id.id
-}
-
-// Eval implements the Interpretable interface method.
-func (id *evalIdent) Eval(ctx Activation) ref.Val {
-	idName := id.name
-	if id.resolveID != nil {
-		// When the resolveID function is non-nil, the name could be relative
-		// to the container.
-		if val, found := id.resolveID(ctx); found {
-			return val
-		}
-	} else {
-		// Resolve the simple name directly as a type or ident.
-		val, found := ctx.ResolveName(idName)
-		if found {
-			return val
-		}
-		typeVal, found := id.provider.FindIdent(idName)
-		if found {
-			return typeVal
-		}
-	}
-	return types.Unknown{id.id}
-
-}
-
-type evalSelect struct {
+type evalTestOnly struct {
 	id        int64
 	op        Interpretable
 	field     types.String
-	resolveID func(Activation) (ref.Val, bool)
-}
-
-// ID implements the Interpretable interface method.
-func (sel *evalSelect) ID() int64 {
-	return sel.id
-}
-
-// Eval implements the Interpretable interface method.
-func (sel *evalSelect) Eval(ctx Activation) ref.Val {
-	// If the select is actually a qualified identifier return.
-	if sel.resolveID != nil {
-		if resolve, found := sel.resolveID(ctx); found {
-			return resolve
-		}
-	}
-	// Otherwise, evaluate the operand and select the field.
-	obj := sel.op.Eval(ctx)
-	indexer, ok := obj.(traits.Indexer)
-	if !ok {
-		return types.ValOrErr(obj, "invalid type for field selection.")
-	}
-	return indexer.Get(sel.field)
-}
-
-type evalTestOnly struct {
-	id    int64
-	op    Interpretable
-	field types.String
+	fieldType *ref.FieldType
 }
 
 // ID implements the Interpretable interface method.
@@ -112,6 +48,25 @@ func (test *evalTestOnly) ID() int64 {
 
 // Eval implements the Interpretable interface method.
 func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
+	// Handle field selection on a proto in the most efficient way possible.
+	if test.fieldType != nil {
+		opAttr, ok := test.op.(instAttr)
+		if ok {
+			opVal, err := opAttr.Attr().Resolve(ctx)
+			if err != nil {
+				return types.NewErr(err.Error())
+			}
+			refVal, ok := opVal.(ref.Val)
+			if ok {
+				opVal = refVal.Value()
+			}
+			if test.fieldType.IsSet(opVal) {
+				return types.True
+			}
+			return types.False
+		}
+	}
+
 	obj := test.op.Eval(ctx)
 	tester, ok := obj.(traits.FieldTester)
 	if ok {
@@ -137,6 +92,10 @@ func (cons *evalConst) ID() int64 {
 
 // Eval implements the Interpretable interface method.
 func (cons *evalConst) Eval(ctx Activation) ref.Val {
+	return cons.val
+}
+
+func (cons *evalConst) Value() ref.Val {
 	return cons.val
 }
 
@@ -228,31 +187,6 @@ func (and *evalAnd) Eval(ctx Activation) ref.Val {
 	return types.ValOrErr(rVal, "no such overload")
 }
 
-type evalConditional struct {
-	id     int64
-	expr   Interpretable
-	truthy Interpretable
-	falsy  Interpretable
-}
-
-// ID implements the Interpretable interface method.
-func (cond *evalConditional) ID() int64 {
-	return cond.id
-}
-
-// Eval implements the Interpretable interface method.
-func (cond *evalConditional) Eval(ctx Activation) ref.Val {
-	condVal := cond.expr.Eval(ctx)
-	condBool, ok := condVal.(types.Bool)
-	if !ok {
-		return types.ValOrErr(condVal, "no such overload")
-	}
-	if condBool {
-		return cond.truthy.Eval(ctx)
-	}
-	return cond.falsy.Eval(ctx)
-}
-
 type evalEq struct {
 	id  int64
 	lhs Interpretable
@@ -289,10 +223,7 @@ func (ne *evalNe) Eval(ctx Activation) ref.Val {
 	eqVal := lVal.Equal(rVal)
 	eqBool, ok := eqVal.(types.Bool)
 	if !ok {
-		if types.IsUnknown(eqVal) {
-			return eqVal
-		}
-		return types.NewErr("no such overload: _!=_")
+		return types.ValOrErr(eqVal, "no such overload: _!=_")
 	}
 	return !eqBool
 }
@@ -605,6 +536,35 @@ func (e *evalWatch) Eval(ctx Activation) ref.Val {
 	return val
 }
 
+// evalWatchAttr describes a watcher of an instAttr Interpretable.
+//
+// Since the watcher may be selected against at a later stage in program planning, the watcher
+// must implement the instAttr interface by proxy.
+type evalWatchAttr struct {
+	instAttr
+	observer evalObserver
+}
+
+// Eval implements the Interpretable interface method.
+func (e *evalWatchAttr) Eval(vars Activation) ref.Val {
+	val := e.instAttr.Eval(vars)
+	e.observer(e.instAttr.ID(), val)
+	return val
+}
+
+// evalWatchConst describes a watcher of an instConst Interpretable.
+type evalWatchConst struct {
+	instConst
+	observer evalObserver
+}
+
+// Eval implements the Interpretable interface method.
+func (e *evalWatchConst) Eval(vars Activation) ref.Val {
+	val := e.instConst.Value()
+	e.observer(e.instConst.ID(), val)
+	return val
+}
+
 // evalExhaustiveOr is just like evalOr, but does not short-circuit argument evaluation.
 type evalExhaustiveOr struct {
 	id  int64
@@ -690,10 +650,9 @@ func (and *evalExhaustiveAnd) Eval(ctx Activation) ref.Val {
 // evalExhaustiveConditional is like evalConditional, but does not short-circuit argument
 // evaluation.
 type evalExhaustiveConditional struct {
-	id     int64
-	expr   Interpretable
-	truthy Interpretable
-	falsy  Interpretable
+	id      int64
+	adapter ref.TypeAdapter
+	attr    *conditionalAttribute
 }
 
 // ID implements the Interpretable interface method.
@@ -703,17 +662,23 @@ func (cond *evalExhaustiveConditional) ID() int64 {
 
 // Eval implements the Interpretable interface method.
 func (cond *evalExhaustiveConditional) Eval(ctx Activation) ref.Val {
-	cVal := cond.expr.Eval(ctx)
-	tVal := cond.truthy.Eval(ctx)
-	fVal := cond.falsy.Eval(ctx)
+	cVal := cond.attr.expr.Eval(ctx)
+	tVal, err := cond.attr.truthy.Resolve(ctx)
+	if err != nil {
+		return types.NewErr(err.Error())
+	}
+	fVal, err := cond.attr.falsy.Resolve(ctx)
+	if err != nil {
+		return types.NewErr(err.Error())
+	}
 	cBool, ok := cVal.(types.Bool)
 	if !ok {
 		return types.ValOrErr(cVal, "no such overload")
 	}
 	if cBool {
-		return tVal
+		return cond.adapter.NativeToValue(tVal)
 	}
-	return fVal
+	return cond.adapter.NativeToValue(fVal)
 }
 
 // evalExhaustiveFold is like evalFold, but does not short-circuit argument evaluation.
@@ -763,4 +728,61 @@ func (fold *evalExhaustiveFold) Eval(ctx Activation) ref.Val {
 	varActivationPool.Put(iterCtx)
 	varActivationPool.Put(accuCtx)
 	return res
+}
+
+// instConst interface for tracking whether the Interpretable is a constant value.
+type instConst interface {
+	Interpretable
+
+	// Value returns the constant value of the instruction.
+	Value() ref.Val
+}
+
+// instAttr interface for tracking whether the Interpretable is an attribute.
+type instAttr interface {
+	Interpretable
+
+	// Attr returns the Attribute value.
+	Attr() Attribute
+
+	// Adapter returns the type adapter to be used for adapting resolved Attribute values.
+	Adapter() ref.TypeAdapter
+
+	// AddQualifier proxies the Attribute.AddQualifier method.
+	AddQualifier(Qualifier) (instAttr, error)
+}
+
+type evalAttr struct {
+	adapter ref.TypeAdapter
+	attr    Attribute
+}
+
+// ID of the attribute instruction.
+func (a *evalAttr) ID() int64 {
+	return a.attr.ID()
+}
+
+// Attr implements the instAttr interface method.
+func (a *evalAttr) Attr() Attribute {
+	return a.attr
+}
+
+// Adapter implements the instAttr interface method.
+func (a *evalAttr) Adapter() ref.TypeAdapter {
+	return a.adapter
+}
+
+// Eval implements the Interpretable interface method.
+func (a *evalAttr) Eval(ctx Activation) ref.Val {
+	v, err := a.attr.Resolve(ctx)
+	if err != nil {
+		return types.NewErr(err.Error())
+	}
+	return a.adapter.NativeToValue(v)
+}
+
+// AddQualifier implements the instAttr interface method.
+func (a *evalAttr) AddQualifier(qual Qualifier) (instAttr, error) {
+	_, err := a.attr.AddQualifier(qual)
+	return a, err
 }

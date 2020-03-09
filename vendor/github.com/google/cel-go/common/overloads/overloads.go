@@ -128,7 +128,7 @@ const (
 const (
 	ContainsString   = "contains_string"
 	EndsWithString   = "ends_with_string"
-	MatchString      = "matches_string"
+	MatchesString    = "matches_string"
 	StartsWithString = "starts_with_string"
 )
 

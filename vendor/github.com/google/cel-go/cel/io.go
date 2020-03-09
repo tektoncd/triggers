@@ -24,8 +24,8 @@ import (
 )
 
 // CheckedExprToAst converts a checked expression proto message to an Ast.
-func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) Ast {
-	return &astValue{
+func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) *Ast {
+	return &Ast{
 		expr:    checkedExpr.GetExpr(),
 		info:    checkedExpr.GetSourceInfo(),
 		source:  common.NewInfoSource(checkedExpr.GetSourceInfo()),
@@ -37,29 +37,33 @@ func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) Ast {
 // AstToCheckedExpr converts an Ast to an protobuf CheckedExpr value.
 //
 // If the Ast.IsChecked() returns false, this conversion method will return an error.
-func AstToCheckedExpr(a Ast) (*exprpb.CheckedExpr, error) {
+func AstToCheckedExpr(a *Ast) (*exprpb.CheckedExpr, error) {
 	if !a.IsChecked() {
 		return nil, fmt.Errorf("cannot convert unchecked ast")
 	}
 	return &exprpb.CheckedExpr{
 		Expr:         a.Expr(),
 		SourceInfo:   a.SourceInfo(),
-		ReferenceMap: a.(*astValue).refMap,
-		TypeMap:      a.(*astValue).typeMap,
+		ReferenceMap: a.refMap,
+		TypeMap:      a.typeMap,
 	}, nil
 }
 
 // ParsedExprToAst converts a parsed expression proto message to an Ast.
-func ParsedExprToAst(parsedExpr *exprpb.ParsedExpr) Ast {
-	return &astValue{
+func ParsedExprToAst(parsedExpr *exprpb.ParsedExpr) *Ast {
+	si := parsedExpr.GetSourceInfo()
+	if si == nil {
+		si = &exprpb.SourceInfo{}
+	}
+	return &Ast{
 		expr:   parsedExpr.GetExpr(),
-		info:   parsedExpr.GetSourceInfo(),
-		source: common.NewInfoSource(parsedExpr.GetSourceInfo()),
+		info:   si,
+		source: common.NewInfoSource(si),
 	}
 }
 
 // AstToParsedExpr converts an Ast to an protobuf ParsedExpr value.
-func AstToParsedExpr(a Ast) (*exprpb.ParsedExpr, error) {
+func AstToParsedExpr(a *Ast) (*exprpb.ParsedExpr, error) {
 	return &exprpb.ParsedExpr{
 		Expr:       a.Expr(),
 		SourceInfo: a.SourceInfo(),
@@ -69,8 +73,8 @@ func AstToParsedExpr(a Ast) (*exprpb.ParsedExpr, error) {
 // AstToString converts an Ast back to a string if possible.
 //
 // Note, the conversion may not be an exact replica of the original expression, but will produce
-// a string that is semantically equivalent.
-func AstToString(a Ast) (string, error) {
+// a string that is semantically equivalent and whose textual representation is stable.
+func AstToString(a *Ast) (string, error) {
 	expr := a.Expr()
 	info := a.SourceInfo()
 	return parser.Unparse(expr, info)

@@ -13,6 +13,21 @@ In addition to the custom function extension listed below, you can craft any
 valid CEL expression as defined by the
 [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
 
+## String functions
+
+The [upstream CEL implementation](https://github.com/google/cel-go/) provides
+extensions to the CEL specification for manipulating strings.
+
+For example:
+
+```javascript
+'refs/heads/master'.split('/') // result = list ['refs', 'heads', 'master']
+'my place'.replace('my ',' ') // result = string 'place'
+'this that another'.replace('th ',' ', 2) // result = 'is at another'
+```
+
+The `replace` overload allows an optional limit on replacements.
+
 ## Notes on numbers in CEL expressions
 
 One thing to be aware of is how numeric values are treated in CEL expressions,
@@ -29,7 +44,7 @@ For example:
 }
 ```
 
-In the JSON above, both numbers are parsed as floating point values.
+In the JSON above, both numbers are parsed as CEL double (Go float64) values.
 
 This means that if you want to do integer arithmetic, you'll need to
 [use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
@@ -78,6 +93,11 @@ interceptors:
 **bad_measure_times_3** will fail with
 `failed to evaluate overlay expression 'body.measure * 3': no such overload`
 because there's no automatic conversion.
+
+## cel-go extensions
+
+All the functionality from the cel-go project's [String extension](https://github.com/google/cel-go/tree/master/ext) is available in
+your CEL expressions.
 
 ## List of extensions
 
@@ -157,33 +177,6 @@ interceptor.
      <pre>header.match('x-test', 'test-value')</pre>
     </td>
   </tr>
-  <tr>
-    <th>
-      truncate
-    </th>
-    <td>
-      truncate(string, uint) -> string
-    </td>
-    <td>
-      Truncates a string to no more than the specified length.
-    </td>
-    <td>
-     <pre>truncate(body.commit.sha, 5)</pre>
-    </td>
-  </tr>
-  <tr>
-    <th>
-      split
-    </th>
-    <td>
-      split(string, string) -> string(dyn)
-    </td>
-    <td>
-      Splits a string on the provided separator value.
-    </td>
-    <td>
-     <pre>split(body.ref, '/')</pre>
-    </td>
   </tr>
     <th>
       canonical
@@ -200,16 +193,44 @@ interceptor.
   </tr>
   <tr>
     <th>
+      truncate
+    </th>
+    <td>
+      <string>.truncate(uint) -> string
+    </td>
+    <td>
+      Truncates a string to no more than the specified length.
+    </td>
+    <td>
+     <pre>body.commit.sha.truncate(5)</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      split
+    </th>
+    <td>
+      <string>.split(string) -> string(dyn)
+    </td>
+    <td>
+      Splits a string on the provided separator value.
+    </td>
+    <td>
+     <pre>body.ref.split('/')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
       decodeb64
     </th>
     <td>
-      (string) -> string
+      <string>.decodeb64() -> string
     </td>
     <td>
       Decodes a base64 encoded string.
     </td>
     <td>
-     <pre>decodeb64(body.message.data)</pre>
+     <pre>body.message.data.decodeb64()</pre>
     </td>
   </tr>
   <tr>
@@ -217,7 +238,7 @@ interceptor.
      compareSecret
     </th>
     <td>
-      string.compareSecret(string, string, string) -> bool
+      <string>.compareSecret(string, string, string) -> bool
     </td>
     <td>
       Constant-time comparison of strings against secrets, this will fetch the secret using the combination of namespace/name and compare the token key to the string using a cryptographic constant-time comparison..<p>
@@ -232,7 +253,7 @@ interceptor.
      compareSecret
     </th>
     <td>
-      string.compareSecret(string, string) -> bool
+      <string>.compareSecret(string, string) -> bool
     </td>
     <td>
      This is almost identical to the version above, but only requires two arguments, the namespace is assumed to be the namespace for the event-listener.
@@ -243,10 +264,10 @@ interceptor.
   </tr>
   <tr>
     <th>
-     parseJSON
+     parseJSON()
     </th>
     <td>
-      parseJSON(string) -> map
+     <string>.parseJSON() -> map
     </td>
     <td>
      This parses a string that contains a JSON body into a map which which can be subsequently used in other expressions.

@@ -37,6 +37,17 @@ func NewErr(format string, args ...interface{}) ref.Val {
 	return &Err{fmt.Errorf(format, args...)}
 }
 
+// NoSuchOverloadErr returns a new types.Err instance with a no such overload message.
+func NoSuchOverloadErr() ref.Val {
+	return NewErr("no such overload")
+}
+
+// MaybeNoSuchOverloadErr returns the error or unknown if the input ref.Val is one of these types,
+// else a new no such overload error.
+func MaybeNoSuchOverloadErr(val ref.Val) ref.Val {
+	return ValOrErr(val, "no such overload")
+}
+
 // ValOrErr either returns the existing error or create a new one.
 // TODO: Audit the use of this function and standardize the error messages and codes.
 func ValOrErr(val ref.Val, format string, args ...interface{}) ref.Val {

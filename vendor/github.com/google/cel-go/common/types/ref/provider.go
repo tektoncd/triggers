@@ -78,14 +78,26 @@ type TypeRegistry interface {
 	// If a type is provided more than once with an alternative definition, the
 	// call will result in an error.
 	RegisterType(types ...Type) error
+
+	// Copy the TypeRegistry and return a new registry whose mutable state is isolated.
+	Copy() TypeRegistry
 }
 
 // FieldType represents a field's type value and whether that field supports
 // presence detection.
 type FieldType struct {
-	// SupportsPresence indicates if the field having been set can be detected.
-	SupportsPresence bool
-
 	// Type of the field.
 	Type *exprpb.Type
+
+	// IsSet indicates whether the field is set on an input object.
+	IsSet FieldTester
+
+	// GetFrom retrieves the field value on the input object, if set.
+	GetFrom FieldGetter
 }
+
+// FieldTester is used to test field presence on an input object.
+type FieldTester func(target interface{}) bool
+
+// FieldGetter is used to get the field value from an input object, if set.
+type FieldGetter func(target interface{}) (interface{}, error)

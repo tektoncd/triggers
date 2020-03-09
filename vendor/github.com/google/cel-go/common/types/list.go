@@ -416,6 +416,13 @@ func (l *stringList) ConvertToNative(typeDesc reflect.Type) (interface{}, error)
 		if typeDesc.Elem().Kind() == reflect.String {
 			return l.elems, nil
 		}
+		if typeDesc.Elem().Kind() == reflect.Interface {
+			iface := make([]interface{}, len(l.elems), len(l.elems))
+			for i, str := range l.elems {
+				iface[i] = str
+			}
+			return iface, nil
+		}
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:

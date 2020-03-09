@@ -29,11 +29,10 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
+	celext "github.com/google/cel-go/ext"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
-	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"k8s.io/client-go/kubernetes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -59,11 +58,9 @@ func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns s
 	}
 }
 
-var mapStrDyn = decls.NewMapType(decls.String, decls.Dyn)
-
 // ExecuteTrigger is an implementation of the Interceptor interface.
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	env, err := makeCelEnv()
+	env, err := makeCelEnv(w.EventListenerNamespace, w.KubeClientSet)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cel environment: %w", err)
 	}
@@ -83,7 +80,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	}
 
 	if w.CEL.Filter != "" {
-		out, err := evaluate(w.CEL.Filter, env, evalContext, w.EventListenerNamespace, w.KubeClientSet)
+		out, err := evaluate(w.CEL.Filter, env, evalContext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate expression '%s': %w", w.CEL.Filter, err)
 		}
@@ -94,7 +91,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	}
 
 	for _, u := range w.CEL.Overlays {
-		val, err := evaluate(u.Expression, env, evalContext, w.EventListenerNamespace, w.KubeClientSet)
+		val, err := evaluate(u.Expression, env, evalContext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate overlay expression '%s': %w", u.Expression, err)
 		}
@@ -136,7 +133,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 }
 
-func evaluate(expr string, env cel.Env, data map[string]interface{}, ns string, k kubernetes.Interface) (ref.Val, error) {
+func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, error) {
 	parsed, issues := env.Parse(expr)
 	if issues != nil && issues.Err() != nil {
 		return nil, issues.Err()
@@ -147,7 +144,7 @@ func evaluate(expr string, env cel.Env, data map[string]interface{}, ns string, 
 		return nil, issues.Err()
 	}
 
-	prg, err := env.Program(checked, embeddedFunctions(ns, k))
+	prg, err := env.Program(checked)
 	if err != nil {
 		return nil, err
 	}
@@ -156,62 +153,14 @@ func evaluate(expr string, env cel.Env, data map[string]interface{}, ns string, 
 	return out, err
 }
 
-func embeddedFunctions(ns string, k kubernetes.Interface) cel.ProgramOption {
-	return cel.Functions(
-		&functions.Overload{
-			Operator: "match",
-			Function: matchHeader},
-		&functions.Overload{
-			Operator: "canonical",
-			Binary:   canonicalHeader},
-		&functions.Overload{
-			Operator: "truncate",
-			Binary:   truncateString},
-		&functions.Overload{
-			Operator: "split",
-			Binary:   splitString},
-		&functions.Overload{
-			Operator: "decodeb64",
-			Unary:    decodeB64String},
-		&functions.Overload{
-			Operator: "parseJSON",
-			Unary:    parseJSONString},
-		&functions.Overload{
-			Operator: "compareSecret",
-			Function: makeCompareSecret(ns, k)},
-	)
-
-}
-func makeCelEnv() (cel.Env, error) {
-	listStr := decls.NewListType(decls.String)
+func makeCelEnv(ns string, k kubernetes.Interface) (*cel.Env, error) {
+	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
+		Triggers(ns, k),
+		celext.Strings(),
 		cel.Declarations(
 			decls.NewIdent("body", mapStrDyn, nil),
-			decls.NewIdent("header", mapStrDyn, nil),
-			decls.NewFunction("match",
-				decls.NewInstanceOverload("match_map_string_string",
-					[]*exprpb.Type{mapStrDyn, decls.String, decls.String}, decls.Bool)),
-			decls.NewFunction("split",
-				decls.NewOverload("split_dyn_string_dyn",
-					[]*exprpb.Type{decls.Dyn, decls.String}, listStr)),
-			decls.NewFunction("canonical",
-				decls.NewInstanceOverload("canonical_map_string",
-					[]*exprpb.Type{mapStrDyn, decls.String}, decls.String)),
-			decls.NewFunction("compareSecret",
-				decls.NewInstanceOverload("compareSecret_string_string_string",
-					[]*exprpb.Type{decls.String, decls.String, decls.String, decls.String}, decls.String)),
-			decls.NewFunction("compareSecret",
-				decls.NewInstanceOverload("compareSecret_string_string",
-					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.String)),
-			decls.NewFunction("decodeb64",
-				decls.NewOverload("decodeb64_string",
-					[]*exprpb.Type{decls.String}, decls.String)),
-			decls.NewFunction("parseJSON",
-				decls.NewOverload("parseJSON_string",
-					[]*exprpb.Type{decls.String}, mapStrDyn)),
-			decls.NewFunction("truncate",
-				decls.NewOverload("truncate_string_uint",
-					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
+			decls.NewIdent("header", mapStrDyn, nil)))
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {

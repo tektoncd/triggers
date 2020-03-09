@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 
@@ -78,10 +79,8 @@ func (i Uint) Compare(other ref.Val) ref.Val {
 // ConvertToNative implements ref.Val.ConvertToNative.
 func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
-	case reflect.Uint32:
-		return uint32(i), nil
-	case reflect.Uint64:
-		return uint64(i), nil
+	case reflect.Uint, reflect.Uint32, reflect.Uint64:
+		return reflect.ValueOf(i).Convert(typeDesc).Interface(), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
@@ -112,11 +111,15 @@ func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Uint32:
-			p := uint32(i)
-			return &p, nil
+			v := uint32(i)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		case reflect.Uint64:
-			p := uint64(i)
-			return &p, nil
+			v := uint64(i)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		}
 	case reflect.Interface:
 		if reflect.TypeOf(i).Implements(typeDesc) {
@@ -130,6 +133,9 @@ func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 func (i Uint) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case IntType:
+		if i > math.MaxInt64 {
+			return NewErr("range error converting %d to int", i)
+		}
 		return Int(i)
 	case UintType:
 		return i
