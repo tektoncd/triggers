@@ -73,11 +73,13 @@ func (n Null) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 
 // ConvertToType implements ref.Val.ConvertToType.
 func (n Null) ConvertToType(typeVal ref.Type) ref.Val {
-	if typeVal == StringType {
+	switch typeVal {
+	case StringType:
 		return String("null")
-	}
-	if typeVal == NullType {
+	case NullType:
 		return n
+	case TypeType:
+		return NullType
 	}
 	return NewErr("type conversion error from '%s' to '%s'", NullType, typeVal)
 }

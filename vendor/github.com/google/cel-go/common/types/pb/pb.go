@@ -50,22 +50,43 @@ func NewDb() *Db {
 	pbdb := &Db{
 		revFileDescriptorMap: make(map[string]*FileDescription),
 	}
+	// The FileDescription objects in the default db contain lazily initialized TypeDescription
+	// values which may point to the state contained in the DefaultDb irrespective of this shallow
+	// copy; however, the type graph for a field is idempotently computed, and is guaranteed to
+	// only be initialized once thanks to atomic values within the TypeDescription objects, so it
+	// is safe to share these values across instances.
 	for k, v := range DefaultDb.revFileDescriptorMap {
 		pbdb.revFileDescriptorMap[k] = v
 	}
 	return pbdb
 }
 
+// Copy creates a copy of the current database with its own internal descriptor mapping.
+func (pbdb *Db) Copy() *Db {
+	copy := NewDb()
+	for k, v := range pbdb.revFileDescriptorMap {
+		copy.revFileDescriptorMap[k] = v
+	}
+	return copy
+}
+
 // RegisterDescriptor produces a `FileDescription` from a `FileDescriptorProto` and registers the
 // message and enum types into the `pb.Db`.
 func (pbdb *Db) RegisterDescriptor(fileDesc *descpb.FileDescriptorProto) (*FileDescription, error) {
-	fd, err := pbdb.describeFileInternal(fileDesc)
-	if err != nil {
-		return nil, err
+	fd, found := pbdb.revFileDescriptorMap[fileDesc.GetName()]
+	if found {
+		return fd, nil
 	}
-	pkg := fd.Package()
-	fd.indexTypes(pkg, fileDesc.MessageType)
-	fd.indexEnums(pkg, fileDesc.EnumType)
+	fd = NewFileDescription(fileDesc, pbdb)
+	for _, enumValName := range fd.GetEnumNames() {
+		pbdb.revFileDescriptorMap[enumValName] = fd
+	}
+	for _, msgTypeName := range fd.GetTypeNames() {
+		pbdb.revFileDescriptorMap[msgTypeName] = fd
+	}
+	pbdb.revFileDescriptorMap[fileDesc.GetName()] = fd
+
+	// Return the specific file descriptor registered.
 	return fd, nil
 }
 
@@ -91,7 +112,7 @@ func (pbdb *Db) DescribeFile(message proto.Message) (*FileDescription, error) {
 
 // DescribeEnum takes a qualified enum name and returns an `EnumDescription` if it exists in the
 // `pb.Db`.
-func (pbdb *Db) DescribeEnum(enumName string) (*EnumDescription, error) {
+func (pbdb *Db) DescribeEnum(enumName string) (*EnumValueDescription, error) {
 	enumName = sanitizeProtoName(enumName)
 	if fd, found := pbdb.revFileDescriptorMap[enumName]; found {
 		return fd.GetEnumDescription(enumName)
@@ -108,16 +129,46 @@ func (pbdb *Db) DescribeType(typeName string) (*TypeDescription, error) {
 	return nil, fmt.Errorf("unrecognized type '%s'", typeName)
 }
 
-func (pbdb *Db) describeFileInternal(fileDesc *descpb.FileDescriptorProto) (*FileDescription, error) {
-	fd := &FileDescription{
-		pbdb:  pbdb,
-		desc:  fileDesc,
-		types: make(map[string]*TypeDescription),
-		enums: make(map[string]*EnumDescription)}
-	return fd, nil
+// CollectFileDescriptorSet builds a file descriptor set associated with the file where the input
+// message is declared.
+func CollectFileDescriptorSet(message proto.Message) (*descpb.FileDescriptorSet, error) {
+	fdMap := map[string]*descpb.FileDescriptorProto{}
+	fd, _ := descriptor.ForMessage(message.(descriptor.Message))
+	fdMap[fd.GetName()] = fd
+	// Initialize list of dependencies
+	fileDeps := fd.GetDependency()
+	deps := make([]string, len(fileDeps))
+	copy(deps, fileDeps)
+	// Expand list for new dependencies
+	for i := 0; i < len(deps); i++ {
+		dep := deps[i]
+		if _, found := fdMap[dep]; found {
+			continue
+		}
+		depDesc, err := readFileDescriptor(dep)
+		if err != nil {
+			return nil, err
+		}
+		fdMap[dep] = depDesc
+		deps = append(deps, depDesc.GetDependency()...)
+	}
+
+	fds := make([]*descpb.FileDescriptorProto, len(fdMap), len(fdMap))
+	i := 0
+	for _, fd = range fdMap {
+		fds[i] = fd
+		i++
+	}
+	return &descpb.FileDescriptorSet{
+		File: fds,
+	}, nil
 }
 
-func fileDescriptor(protoFileName string) (*descpb.FileDescriptorProto, error) {
+// readFileDescriptor will read the gzipped file descriptor for a given proto file and return the
+// hydrated FileDescriptorProto.
+//
+// If the file name is not found or there is an error during deserialization an error is returned.
+func readFileDescriptor(protoFileName string) (*descpb.FileDescriptorProto, error) {
 	gzipped := proto.FileDescriptor(protoFileName)
 	r, err := gzip.NewReader(bytes.NewReader(gzipped))
 	if err != nil {

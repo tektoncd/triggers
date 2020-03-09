@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 
 	"github.com/google/cel-go/common/types/ref"
@@ -76,9 +77,11 @@ func (d Double) Compare(other ref.Val) ref.Val {
 func (d Double) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
 	case reflect.Float32:
-		return float32(d), nil
+		v := float32(d)
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
 	case reflect.Float64:
-		return float64(d), nil
+		v := float64(d)
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
@@ -101,11 +104,15 @@ func (d Double) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Float32:
-			p := float32(d)
-			return &p, nil
+			v := float32(d)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		case reflect.Float64:
-			p := float64(d)
-			return &p, nil
+			v := float64(d)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		}
 	case reflect.Interface:
 		if reflect.TypeOf(d).Implements(typeDesc) {
@@ -119,9 +126,17 @@ func (d Double) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 func (d Double) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case IntType:
-		return Int(float64(d))
+		i := math.Round(float64(d))
+		if i > math.MaxInt64 || i < math.MinInt64 {
+			return NewErr("range error converting %g to int", float64(d))
+		}
+		return Int(float64(i))
 	case UintType:
-		return Uint(float64(d))
+		i := math.Round(float64(d))
+		if i > math.MaxUint64 || i < 0 {
+			return NewErr("range error converting %g to int", float64(d))
+		}
+		return Uint(float64(i))
 	case DoubleType:
 		return d
 	case StringType:

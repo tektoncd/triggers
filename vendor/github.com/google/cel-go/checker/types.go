@@ -169,7 +169,7 @@ func isEqualOrLessSpecific(t1 *exprpb.Type, t2 *exprpb.Type) bool {
 		m1 := t1.GetMapType()
 		m2 := t2.GetMapType()
 		return isEqualOrLessSpecific(m1.KeyType, m2.KeyType) &&
-			isEqualOrLessSpecific(m1.KeyType, m2.KeyType)
+			isEqualOrLessSpecific(m1.ValueType, m2.ValueType)
 	case kindType:
 		return true
 	default:
@@ -195,7 +195,7 @@ func internalIsAssignable(m *mapping, t1 *exprpb.Type, t2 *exprpb.Type) bool {
 			}
 			return false
 		}
-		if notReferencedIn(t2, t1) {
+		if notReferencedIn(m, t2, t1) {
 			m.add(t2, t1)
 			return true
 		}
@@ -212,7 +212,7 @@ func internalIsAssignable(m *mapping, t1 *exprpb.Type, t2 *exprpb.Type) bool {
 			}
 			return false
 		}
-		if notReferencedIn(t1, t2) {
+		if notReferencedIn(m, t1, t2) {
 			m.add(t1, t2)
 			return true
 		}
@@ -284,9 +284,9 @@ func internalIsAssignableAbstractType(m *mapping,
 func internalIsAssignableFunction(m *mapping,
 	f1 *exprpb.Type_FunctionType,
 	f2 *exprpb.Type_FunctionType) bool {
-	if internalIsAssignableList(m,
-		append(f1.GetArgTypes(), f1.GetResultType()),
-		append(f2.GetArgTypes(), f2.GetResultType())) {
+	f1ArgTypes := flattenFunctionTypes(f1)
+	f2ArgTypes := flattenFunctionTypes(f2)
+	if internalIsAssignableList(m, f1ArgTypes, f2ArgTypes) {
 		return true
 	}
 	return false
@@ -403,35 +403,41 @@ func mostGeneral(t1 *exprpb.Type, t2 *exprpb.Type) *exprpb.Type {
 // notReferencedIn checks whether the type doesn't appear directly or transitively within the other
 // type. This is a standard requirement for type unification, commonly referred to as the "occurs
 // check".
-func notReferencedIn(t *exprpb.Type, withinType *exprpb.Type) bool {
+func notReferencedIn(m *mapping, t *exprpb.Type, withinType *exprpb.Type) bool {
 	if proto.Equal(t, withinType) {
 		return false
 	}
 	withinKind := kindOf(withinType)
 	switch withinKind {
+	case kindTypeParam:
+		wtSub, found := m.find(withinType)
+		if !found {
+			return true
+		}
+		return notReferencedIn(m, t, wtSub)
 	case kindAbstract:
 		for _, pt := range withinType.GetAbstractType().GetParameterTypes() {
-			if !notReferencedIn(t, pt) {
+			if !notReferencedIn(m, t, pt) {
 				return false
 			}
 		}
 		return true
 	case kindFunction:
 		fn := withinType.GetFunction()
-		types := append(fn.ArgTypes, fn.ResultType)
+		types := flattenFunctionTypes(fn)
 		for _, a := range types {
-			if !notReferencedIn(t, a) {
+			if !notReferencedIn(m, t, a) {
 				return false
 			}
 		}
 		return true
 	case kindList:
-		return notReferencedIn(t, withinType.GetListType().ElemType)
+		return notReferencedIn(m, t, withinType.GetListType().ElemType)
 	case kindMap:
-		m := withinType.GetMapType()
-		return notReferencedIn(t, m.KeyType) && notReferencedIn(t, m.ValueType)
+		mt := withinType.GetMapType()
+		return notReferencedIn(m, t, mt.KeyType) && notReferencedIn(m, t, mt.ValueType)
 	case kindWrapper:
-		return notReferencedIn(t, decls.NewPrimitiveType(withinType.GetWrapper()))
+		return notReferencedIn(m, t, decls.NewPrimitiveType(withinType.GetWrapper()))
 	default:
 		return true
 	}
@@ -482,4 +488,19 @@ func substitute(m *mapping, t *exprpb.Type, typeParamToDyn bool) *exprpb.Type {
 
 func typeKey(t *exprpb.Type) string {
 	return FormatCheckedType(t)
+}
+
+// flattenFunctionTypes takes a function with arg types T1, T2, ..., TN and result type TR
+// and returns a slice containing {T1, T2, ..., TN, TR}.
+func flattenFunctionTypes(f *exprpb.Type_FunctionType) []*exprpb.Type {
+	argTypes := f.GetArgTypes()
+	if len(argTypes) == 0 {
+		return []*exprpb.Type{f.GetResultType()}
+	}
+	flattend := make([]*exprpb.Type, len(argTypes)+1, len(argTypes)+1)
+	for i, at := range argTypes {
+		flattend[i] = at
+	}
+	flattend[len(argTypes)] = f.GetResultType()
+	return flattend
 }

@@ -84,14 +84,12 @@ func (i Int) Compare(other ref.Val) ref.Val {
 // ConvertToNative implements ref.Val.ConvertToNative.
 func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
-	case reflect.Int32:
+	case reflect.Int, reflect.Int32, reflect.Int64:
 		// Enums are also mapped as int32 derivations.
 		// Note, the code doesn't convert to the enum value directly since this is not known, but
 		// the net effect with respect to proto-assignment is handled correctly by the reflection
 		// Convert method.
 		return reflect.ValueOf(i).Convert(typeDesc).Interface(), nil
-	case reflect.Int64:
-		return int64(i), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
@@ -133,11 +131,15 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Int32:
-			p := int32(i)
-			return &p, nil
+			v := int32(i)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		case reflect.Int64:
-			p := int64(i)
-			return &p, nil
+			v := int64(i)
+			p := reflect.New(typeDesc.Elem())
+			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
+			return p.Interface(), nil
 		}
 	case reflect.Interface:
 		if reflect.TypeOf(i).Implements(typeDesc) {
@@ -153,6 +155,9 @@ func (i Int) ConvertToType(typeVal ref.Type) ref.Val {
 	case IntType:
 		return i
 	case UintType:
+		if i < 0 {
+			return NewErr("range error converting %d to uint", i)
+		}
 		return Uint(i)
 	case DoubleType:
 		return Double(i)

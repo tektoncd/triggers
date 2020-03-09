@@ -24,19 +24,21 @@ import (
 var (
 	// CheckedPrimitives map from proto field descriptor type to expr.Type.
 	CheckedPrimitives = map[descpb.FieldDescriptorProto_Type]*exprpb.Type{
-		descpb.FieldDescriptorProto_TYPE_BOOL:    checkedBool,
-		descpb.FieldDescriptorProto_TYPE_BYTES:   checkedBytes,
-		descpb.FieldDescriptorProto_TYPE_DOUBLE:  checkedDouble,
-		descpb.FieldDescriptorProto_TYPE_FLOAT:   checkedDouble,
-		descpb.FieldDescriptorProto_TYPE_INT32:   checkedInt,
-		descpb.FieldDescriptorProto_TYPE_INT64:   checkedInt,
-		descpb.FieldDescriptorProto_TYPE_SINT32:  checkedInt,
-		descpb.FieldDescriptorProto_TYPE_SINT64:  checkedInt,
-		descpb.FieldDescriptorProto_TYPE_UINT32:  checkedUint,
-		descpb.FieldDescriptorProto_TYPE_UINT64:  checkedUint,
-		descpb.FieldDescriptorProto_TYPE_FIXED32: checkedUint,
-		descpb.FieldDescriptorProto_TYPE_FIXED64: checkedUint,
-		descpb.FieldDescriptorProto_TYPE_STRING:  checkedString}
+		descpb.FieldDescriptorProto_TYPE_BOOL:     checkedBool,
+		descpb.FieldDescriptorProto_TYPE_BYTES:    checkedBytes,
+		descpb.FieldDescriptorProto_TYPE_DOUBLE:   checkedDouble,
+		descpb.FieldDescriptorProto_TYPE_FLOAT:    checkedDouble,
+		descpb.FieldDescriptorProto_TYPE_INT32:    checkedInt,
+		descpb.FieldDescriptorProto_TYPE_INT64:    checkedInt,
+		descpb.FieldDescriptorProto_TYPE_SINT32:   checkedInt,
+		descpb.FieldDescriptorProto_TYPE_SINT64:   checkedInt,
+		descpb.FieldDescriptorProto_TYPE_UINT32:   checkedUint,
+		descpb.FieldDescriptorProto_TYPE_UINT64:   checkedUint,
+		descpb.FieldDescriptorProto_TYPE_FIXED32:  checkedUint,
+		descpb.FieldDescriptorProto_TYPE_FIXED64:  checkedUint,
+		descpb.FieldDescriptorProto_TYPE_SFIXED32: checkedInt,
+		descpb.FieldDescriptorProto_TYPE_SFIXED64: checkedInt,
+		descpb.FieldDescriptorProto_TYPE_STRING:   checkedString}
 
 	// CheckedWellKnowns map from qualified proto type name to expr.Type for
 	// well-known proto types.

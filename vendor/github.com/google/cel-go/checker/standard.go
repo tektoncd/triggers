@@ -362,7 +362,7 @@ func StandardDeclarations() []*exprpb.Decl {
 			decls.NewInstanceOverload(overloads.EndsWithString,
 				[]*exprpb.Type{decls.String, decls.String}, decls.Bool)),
 		decls.NewFunction(overloads.Matches,
-			decls.NewInstanceOverload(overloads.MatchString,
+			decls.NewInstanceOverload(overloads.MatchesString,
 				[]*exprpb.Type{decls.String, decls.String}, decls.Bool)),
 		decls.NewFunction(overloads.StartsWith,
 			decls.NewInstanceOverload(overloads.StartsWithString,

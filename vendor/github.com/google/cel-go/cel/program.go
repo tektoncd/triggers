@@ -40,14 +40,7 @@ type Program interface {
 	// An unsuccessful evaluation is typically the result of a series of incompatible `EnvOption`
 	// or `ProgramOption` values used in the creation of the evaluation environment or executable
 	// program.
-	Eval(vars interface{}) (ref.Val, EvalDetails, error)
-}
-
-// EvalDetails holds additional information observed during the Eval() call.
-type EvalDetails interface {
-	// State of the evaluation, non-nil if the OptTrackState or OptExhaustiveEval is specified
-	// within EvalOptions.
-	State() interpreter.EvalState
+	Eval(vars interface{}) (ref.Val, *EvalDetails, error)
 }
 
 // NoVars returns an empty Activation.
@@ -55,24 +48,56 @@ func NoVars() interpreter.Activation {
 	return interpreter.EmptyActivation()
 }
 
-// evalDetails is the internal implementation of the EvalDetails interface.
-type evalDetails struct {
+// PartialVars returns a PartialActivation which contains variables and a set of AttributePattern
+// values that indicate variables or parts of variables whose value are not yet known.
+//
+// The `vars` value may either be an interpreter.Activation or any valid input to the
+// interpreter.NewActivation call.
+func PartialVars(vars interface{},
+	unknowns ...*interpreter.AttributePattern) (interpreter.PartialActivation, error) {
+	return interpreter.NewPartialActivation(vars, unknowns...)
+}
+
+// AttributePattern returns an AttributePattern that matches a top-level variable. The pattern is
+// mutable, and its methods support the specification of one or more qualifier patterns.
+//
+// For example, the AttributePattern(`a`).QualString(`b`) represents a variable access `a` with a
+// string field or index qualification `b`. This pattern will match Attributes `a`, and `a.b`,
+// but not `a.c`.
+//
+// When using a CEL expression within a container, e.g. a package or namespace, the variable name
+// in the pattern must match the qualified name produced during the variable namespace resolution.
+// For example, when variable `a` is declared within an expression whose container is `ns.app`, the
+// fully qualified variable name may be `ns.app.a`, `ns.a`, or `a` per the CEL namespace resolution
+// rules. Pick the fully qualified variable name that makes sense within the container as the
+// AttributePattern `varName` argument.
+//
+// See the interpreter.AttributePattern and interpreter.AttributeQualifierPattern for more info
+// about how to create and manipulate AttributePattern values.
+func AttributePattern(varName string) *interpreter.AttributePattern {
+	return interpreter.NewAttributePattern(varName)
+}
+
+// EvalDetails holds additional information observed during the Eval() call.
+type EvalDetails struct {
 	state interpreter.EvalState
 }
 
-// State implements the Result interface method.
-func (ed *evalDetails) State() interpreter.EvalState {
+// State of the evaluation, non-nil if the OptTrackState or OptExhaustiveEval is specified
+// within EvalOptions.
+func (ed *EvalDetails) State() interpreter.EvalState {
 	return ed.state
 }
 
 // prog is the internal implementation of the Program interface.
 type prog struct {
-	*env
+	*Env
 	evalOpts      EvalOption
 	defaultVars   interpreter.Activation
 	dispatcher    interpreter.Dispatcher
 	interpreter   interpreter.Interpreter
 	interpretable interpreter.Interpretable
+	attrFactory   interpreter.AttributeFactory
 }
 
 // progFactory is a helper alias for marking a program creation factory function.
@@ -87,14 +112,13 @@ type progGen struct {
 // ProgramOption values.
 //
 // If the program cannot be configured the prog will be nil, with a non-nil error response.
-func newProgram(e *env, ast Ast, opts ...ProgramOption) (Program, error) {
+func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 	// Build the dispatcher, interpreter, and default program value.
 	disp := interpreter.NewDispatcher()
-	interp := interpreter.NewInterpreter(disp, e.pkg, e.provider, e.adapter)
-	p := &prog{
-		env:         e,
-		dispatcher:  disp,
-		interpreter: interp}
+
+	// Ensure the default attribute factory is set after the adapter and provider are
+	// configured.
+	p := &prog{Env: e, dispatcher: disp}
 
 	// Configure the program via the ProgramOption values.
 	var err error
@@ -107,6 +131,16 @@ func newProgram(e *env, ast Ast, opts ...ProgramOption) (Program, error) {
 			return nil, err
 		}
 	}
+
+	// Set the attribute factory after the options have been set.
+	if p.evalOpts&OptPartialEval == OptPartialEval {
+		p.attrFactory = interpreter.NewPartialAttributeFactory(e.pkg, e.adapter, e.provider)
+	} else {
+		p.attrFactory = interpreter.NewAttributeFactory(e.pkg, e.adapter, e.provider)
+	}
+
+	interp := interpreter.NewInterpreter(disp, e.pkg, e.provider, e.adapter, p.attrFactory)
+	p.interpreter = interp
 
 	// Translate the EvalOption flags into InterpretableDecorator instances.
 	decorators := []interpreter.InterpretableDecorator{}
@@ -123,7 +157,7 @@ func newProgram(e *env, ast Ast, opts ...ProgramOption) (Program, error) {
 			clone := &prog{
 				evalOpts:    p.evalOpts,
 				defaultVars: p.defaultVars,
-				env:         e,
+				Env:         e,
 				dispatcher:  disp,
 				interpreter: interp}
 			return initInterpretable(clone, ast, decs)
@@ -138,7 +172,7 @@ func newProgram(e *env, ast Ast, opts ...ProgramOption) (Program, error) {
 			clone := &prog{
 				evalOpts:    p.evalOpts,
 				defaultVars: p.defaultVars,
-				env:         e,
+				Env:         e,
 				dispatcher:  disp,
 				interpreter: interp}
 			return initInterpretable(clone, ast, decs)
@@ -163,7 +197,7 @@ func initProgGen(factory progFactory) (Program, error) {
 // has been run through the type-checker.
 func initInterpretable(
 	p *prog,
-	ast Ast,
+	ast *Ast,
 	decorators []interpreter.InterpretableDecorator) (Program, error) {
 	var err error
 	// Unchecked programs do not contain type and reference information and may be
@@ -192,7 +226,7 @@ func initInterpretable(
 }
 
 // Eval implements the Program interface method.
-func (p *prog) Eval(input interface{}) (v ref.Val, det EvalDetails, err error) {
+func (p *prog) Eval(input interface{}) (v ref.Val, det *EvalDetails, err error) {
 	// Configure error recovery for unexpected panics during evaluation. Note, the use of named
 	// return values makes it possible to modify the error response during the recovery
 	// function.
@@ -202,7 +236,7 @@ func (p *prog) Eval(input interface{}) (v ref.Val, det EvalDetails, err error) {
 		}
 	}()
 	// Build a hierarchical activation if there are default vars set.
-	vars, err := interpreter.NewAdaptingActivation(p.adapter, input)
+	vars, err := interpreter.NewActivation(input)
 	if err != nil {
 		return
 	}
@@ -220,12 +254,12 @@ func (p *prog) Eval(input interface{}) (v ref.Val, det EvalDetails, err error) {
 }
 
 // Eval implements the Program interface method.
-func (gen *progGen) Eval(input interface{}) (ref.Val, EvalDetails, error) {
+func (gen *progGen) Eval(input interface{}) (ref.Val, *EvalDetails, error) {
 	// The factory based Eval() differs from the standard evaluation model in that it generates a
 	// new EvalState instance for each call to ensure that unique evaluations yield unique stateful
 	// results.
 	state := interpreter.NewEvalState()
-	det := &evalDetails{state: state}
+	det := &EvalDetails{state: state}
 
 	// Generate a new instance of the interpretable using the factory configured during the call to
 	// newProgram(). It is incredibly unlikely that the factory call will generate an error given

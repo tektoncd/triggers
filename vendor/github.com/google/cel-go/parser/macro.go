@@ -312,11 +312,10 @@ func makeQuantifier(kind quantifierKind, eh ExprHelper, target *exprpb.Expr, arg
 		step = eh.GlobalCall(operators.LogicalOr, accuIdent(), args[1])
 		result = accuIdent()
 	case quantifierExistsOne:
-		// TODO: make consistent with the CEL semantics.
 		zeroExpr := eh.LiteralInt(0)
 		oneExpr := eh.LiteralInt(1)
 		init = zeroExpr
-		condition = eh.GlobalCall(operators.LessEquals, accuIdent(), oneExpr)
+		condition = eh.LiteralBool(true)
 		step = eh.GlobalCall(operators.Conditional, args[1],
 			eh.GlobalCall(operators.Add, accuIdent(), oneExpr), accuIdent())
 		result = eh.GlobalCall(operators.Equals, accuIdent(), oneExpr)

@@ -47,17 +47,14 @@ type Source interface {
 	// false if the conversion was not feasible.
 	OffsetLocation(offset int32) (Location, bool)
 
+	// NewLocation takes an input line and column and produces a Location.
+	// The default behavior is to treat the line and column as absolute,
+	// but concrete derivations may use this method to convert a relative
+	// line and column position into an absolute location.
+	NewLocation(line, col int) Location
+
 	// Snippet returns a line of content and whether the line was found.
 	Snippet(line int) (string, bool)
-
-	// IDOffset returns the raw character offset of an expression within
-	// the source, or false if the expression cannot be found.
-	IDOffset(exprID int64) (int32, bool)
-
-	// IDLocation returns a Location for the given expression id,
-	// or false if one cannot be found.  It behaves as the obvious
-	// composition of IdOffset() and OffsetLocation().
-	IDLocation(exprID int64) (Location, bool)
 }
 
 // The sourceImpl type implementation of the Source interface.
@@ -105,18 +102,22 @@ func NewInfoSource(info *exprpb.SourceInfo) Source {
 	}
 }
 
+// Content implements the Source interface method.
 func (s *sourceImpl) Content() string {
 	return string(s.contents)
 }
 
+// Description implements the Source interface method.
 func (s *sourceImpl) Description() string {
 	return s.description
 }
 
+// LineOffsets implements the Source interface method.
 func (s *sourceImpl) LineOffsets() []int32 {
 	return s.lineOffsets
 }
 
+// LocationOffset implements the Source interface method.
 func (s *sourceImpl) LocationOffset(location Location) (int32, bool) {
 	if lineOffset, found := s.findLineOffset(location.Line()); found {
 		return lineOffset + int32(location.Column()), true
@@ -124,11 +125,18 @@ func (s *sourceImpl) LocationOffset(location Location) (int32, bool) {
 	return -1, false
 }
 
+// NewLocation implements the Source interface method.
+func (s *sourceImpl) NewLocation(line, col int) Location {
+	return NewLocation(line, col)
+}
+
+// OffsetLocation implements the Source interface method.
 func (s *sourceImpl) OffsetLocation(offset int32) (Location, bool) {
 	line, lineOffset := s.findLine(offset)
 	return NewLocation(int(line), int(offset-lineOffset)), true
 }
 
+// Snippet implements the Source interface method.
 func (s *sourceImpl) Snippet(line int) (string, bool) {
 	charStart, found := s.findLineOffset(line)
 	if !found || len(s.contents) == 0 {
@@ -141,28 +149,13 @@ func (s *sourceImpl) Snippet(line int) (string, bool) {
 	return string(s.contents[charStart:]), true
 }
 
-func (s *sourceImpl) IDOffset(exprID int64) (int32, bool) {
-	if offset, found := s.idOffsets[exprID]; found {
-		return offset, true
-	}
-	return -1, false
-}
-
-func (s *sourceImpl) IDLocation(exprID int64) (Location, bool) {
-	if offset, found := s.IDOffset(exprID); found {
-		if location, found := s.OffsetLocation(offset); found {
-			return location, true
-		}
-	}
-	return NewLocation(1, 0), false
-}
-
 // findLineOffset returns the offset where the (1-indexed) line begins,
 // or false if line doesn't exist.
 func (s *sourceImpl) findLineOffset(line int) (int32, bool) {
 	if line == 1 {
 		return 0, true
-	} else if line > 1 && line <= int(len(s.lineOffsets)) {
+	}
+	if line > 1 && line <= int(len(s.lineOffsets)) {
 		offset := s.lineOffsets[line-2]
 		return offset, true
 	}
@@ -186,4 +179,25 @@ func (s *sourceImpl) findLine(characterOffset int32) (int32, int32) {
 		return line, 0
 	}
 	return line, s.lineOffsets[line-2]
+}
+
+// idOffset returns the raw character offset of an expression within the
+// source, or false if the expression cannot be found.
+func (s *sourceImpl) idOffset(exprID int64) (int32, bool) {
+	if offset, found := s.idOffsets[exprID]; found {
+		return offset, true
+	}
+	return -1, false
+}
+
+// idLocation returns a Location for the given expression id, or false if one
+// cannot be found. It behaves as the composition of idOffset() and
+// offsetLocation().
+func (s *sourceImpl) idLocation(exprID int64) (Location, bool) {
+	if offset, found := s.idOffset(exprID); found {
+		if location, found := s.OffsetLocation(offset); found {
+			return location, true
+		}
+	}
+	return NewLocation(1, 0), false
 }

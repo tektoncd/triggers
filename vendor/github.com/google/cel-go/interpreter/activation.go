@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 )
 
@@ -29,7 +28,7 @@ import (
 type Activation interface {
 	// ResolveName returns a value from the activation by qualified name, or false if the name
 	// could not be found.
-	ResolveName(name string) (ref.Val, bool)
+	ResolveName(name string) (interface{}, bool)
 
 	// Parent returns the parent of the current activation, may be nil.
 	// If non-nil, the parent will be searched during resolve calls.
@@ -48,25 +47,15 @@ func EmptyActivation() Activation {
 //
 // The input `bindings` may either be of type `Activation` or `map[string]interface{}`.
 //
-// When the bindings are a `map` form whose values are not of `ref.Val` type, the values will be
-// converted to CEL values (if possible) using the `types.DefaultTypeAdapter`.
+// Lazy bindings may be supplied within the map-based input in either of the following forms:
+// - func() interface{}
+// - func() ref.Val
+//
+// The output of the lazy binding will overwrite the variable reference in the internal map.
+//
+// Values which are not represented as ref.Val types on input may be adapted to a ref.Val using
+// the ref.TypeAdapter configured in the environment.
 func NewActivation(bindings interface{}) (Activation, error) {
-	return NewAdaptingActivation(types.DefaultTypeAdapter, bindings)
-}
-
-// NewAdaptingActivation returns an actvation which is capable of adapting `bindings` from native
-// Go values to equivalent CEL `ref.Val` objects.
-//
-// The input `bindings` may either be of type `Activation` or `map[string]interface{}`.
-//
-// When the bindings are a `map` the values may be one of the following types:
-//   - `ref.Val`: a CEL value instance.
-//   - `func() ref.Val`: a CEL value supplier.
-//   - other: a native value which must be converted to a CEL `ref.Val` by the `adapter`.
-func NewAdaptingActivation(adapter ref.TypeAdapter, bindings interface{}) (Activation, error) {
-	if adapter == nil {
-		return nil, errors.New("adapter must be non-nil")
-	}
 	if bindings == nil {
 		return nil, errors.New("bindings must be non-nil")
 	}
@@ -80,7 +69,7 @@ func NewAdaptingActivation(adapter ref.TypeAdapter, bindings interface{}) (Activ
 			"activation input must be an activation or map[string]interface: got %T",
 			bindings)
 	}
-	return &mapActivation{adapter: adapter, bindings: m}, nil
+	return &mapActivation{bindings: m}, nil
 }
 
 // mapActivation which implements Activation and maps of named values.
@@ -98,21 +87,22 @@ func (a *mapActivation) Parent() Activation {
 }
 
 // ResolveName implements the Activation interface method.
-func (a *mapActivation) ResolveName(name string) (ref.Val, bool) {
-	if object, found := a.bindings[name]; found {
-		switch object.(type) {
-		// Resolve a lazily bound value.
-		case func() ref.Val:
-			val := object.(func() ref.Val)()
-			val = a.adapter.NativeToValue(val)
-			a.bindings[name] = val
-			return val, true
-		// Otherwise, return the bound value.
-		default:
-			return a.adapter.NativeToValue(object), true
-		}
+func (a *mapActivation) ResolveName(name string) (interface{}, bool) {
+	obj, found := a.bindings[name]
+	if !found {
+		return nil, false
 	}
-	return nil, false
+	fn, isLazy := obj.(func() ref.Val)
+	if isLazy {
+		obj = fn()
+		a.bindings[name] = obj
+	}
+	fnRaw, isLazy := obj.(func() interface{})
+	if isLazy {
+		obj = fnRaw()
+		a.bindings[name] = obj
+	}
+	return obj, found
 }
 
 // hierarchicalActivation which implements Activation and contains a parent and
@@ -128,7 +118,7 @@ func (a *hierarchicalActivation) Parent() Activation {
 }
 
 // ResolveName implements the Activation interface method.
-func (a *hierarchicalActivation) ResolveName(name string) (ref.Val, bool) {
+func (a *hierarchicalActivation) ResolveName(name string) (interface{}, bool) {
 	if object, found := a.child.ResolveName(name); found {
 		return object, found
 	}
@@ -139,6 +129,40 @@ func (a *hierarchicalActivation) ResolveName(name string) (ref.Val, bool) {
 // resolution in the child first and parent(s) second.
 func NewHierarchicalActivation(parent Activation, child Activation) Activation {
 	return &hierarchicalActivation{parent, child}
+}
+
+// NewPartialActivation returns an Activation which contains a list of AttributePattern values
+// representing field and index operations that should result in a 'types.Unknown' result.
+//
+// The `bindings` value may be any value type supported by the interpreter.NewActivation call,
+// but is typically either an existing Activation or map[string]interface{}.
+func NewPartialActivation(bindings interface{},
+	unknowns ...*AttributePattern) (PartialActivation, error) {
+	a, err := NewActivation(bindings)
+	if err != nil {
+		return nil, err
+	}
+	return &partActivation{Activation: a, unknowns: unknowns}, nil
+}
+
+// PartialActivation extends the Activation interface with a set of UnknownAttributePatterns.
+type PartialActivation interface {
+	Activation
+
+	// UnknownAttributePaths returns a set of AttributePattern values which match Attribute
+	// expressions for data accesses whose values are not yet known.
+	UnknownAttributePatterns() []*AttributePattern
+}
+
+// partActivation is the default implementations of the PartialActivation interface.
+type partActivation struct {
+	Activation
+	unknowns []*AttributePattern
+}
+
+// UnknownAttributePatterns implements the PartialActivation interface method.
+func (a *partActivation) UnknownAttributePatterns() []*AttributePattern {
+	return a.unknowns
 }
 
 // newVarActivation returns a new varActivation instance.
@@ -165,7 +189,7 @@ func (v *varActivation) Parent() Activation {
 }
 
 // ResolveName implements the Activation interface method.
-func (v *varActivation) ResolveName(name string) (ref.Val, bool) {
+func (v *varActivation) ResolveName(name string) (interface{}, bool) {
 	if name == v.name {
 		return v.val, true
 	}

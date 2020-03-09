@@ -439,7 +439,7 @@ spec:
             filter: "header.match('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
-              expression: "truncate(body.pull_request.head.sha, 7)"
+              expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - name: pipeline-binding
       template:
@@ -477,7 +477,7 @@ spec:
             filter: "header.match('X-GitHub-Event', 'pull_request')"
             overlays:
             - key: extensions.truncated_sha
-              expression: "truncate(body.pull_request.head.sha, 7)"
+              expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - name: pipeline-binding
       template:
@@ -512,7 +512,7 @@ spec:
         - cel:
             overlays:
             - key: extensions.truncated_sha
-              expression: "truncate(body.pull_request.head.sha, 7)"
+              expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - name: pipeline-binding
       template:
@@ -539,9 +539,9 @@ spec:
         - cel:
             overlays:
             - key: extensions.truncated_sha
-              expression: "truncate(body.pull_request.head.sha, 7)"
+              expression: "body.pull_request.head.sha.truncate(7)"
             - key: extensions.branch_name
-              expression: "split(body.ref, '/')[2]"
+              expression: "body.ref.split('/')[2]"
       bindings:
       - name: pipeline-binding
       template:

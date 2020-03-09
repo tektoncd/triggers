@@ -18,19 +18,28 @@ import (
 	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 )
 
-// EnumDescription maps a qualified enum name to its numeric value.
-type EnumDescription struct {
-	enumName string
-	file     *FileDescription
-	desc     *descpb.EnumValueDescriptorProto
+// NewEnumValueDescription produces an enum value description with the fully qualified enum value
+// name and the enum value descriptor.
+func NewEnumValueDescription(name string,
+	desc *descpb.EnumValueDescriptorProto) *EnumValueDescription {
+	return &EnumValueDescription{
+		enumValueName: name,
+		desc:          desc,
+	}
 }
 
-// Name of the enum.
-func (ed *EnumDescription) Name() string {
-	return ed.enumName
+// EnumValueDescription maps a fully-qualified enum value name to its numeric value.
+type EnumValueDescription struct {
+	enumValueName string
+	desc          *descpb.EnumValueDescriptorProto
 }
 
-// Value (numeric) of the enum.
-func (ed *EnumDescription) Value() int32 {
+// Name returns the fully-qualified identifier name for the enum value.
+func (ed *EnumValueDescription) Name() string {
+	return ed.enumValueName
+}
+
+// Value returns the (numeric) value of the enum.
+func (ed *EnumValueDescription) Value() int32 {
 	return ed.desc.GetNumber()
 }

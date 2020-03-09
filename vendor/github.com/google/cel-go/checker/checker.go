@@ -193,15 +193,14 @@ func (c *checker) checkSelect(e *exprpb.Expr) {
 			messageType.GetMessageType(),
 			sel.Field); found {
 			resultType = fieldType.Type
-			// In proto3, primitive field types can't support presence testing, so the has()
-			// style operation would be invalid in this instance.
-			if sel.TestOnly && !fieldType.SupportsPresence {
-				c.errors.fieldDoesNotSupportPresenceCheck(c.location(e), sel.Field)
-			}
 		}
 	case kindTypeParam:
-		// Type params are expected to be the same type as the target.
-		resultType = targetType
+		// Set the operand type to DYN to prevent assignment to a potentionally incorrect type
+		// at a later point in type-checking. The isAssignable call will update the type
+		// substitutions for the type param under the covers.
+		c.isAssignable(decls.Dyn, targetType)
+		// Also, set the result type to DYN.
+		resultType = decls.Dyn
 	default:
 		// Dynamic / error values are treated as DYN type. Errors are handled this way as well
 		// in order to allow forward progress on the check.
@@ -292,7 +291,6 @@ func (c *checker) resolveOverload(
 			for _, typePar := range overload.TypeParams {
 				substitutions.add(decls.NewTypeParamType(typePar), c.newTypeVar())
 			}
-
 			overloadType = substitute(substitutions, overloadType, false)
 		}
 
@@ -304,16 +302,15 @@ func (c *checker) resolveOverload(
 				checkedRef.OverloadId = append(checkedRef.OverloadId, overload.OverloadId)
 			}
 
+			// First matching overload, determines result type.
+			fnResultType := substitute(c.mappings,
+				overloadType.GetFunction().ResultType,
+				false)
 			if resultType == nil {
-				// First matching overload, determines result type.
-				resultType = substitute(c.mappings,
-					overloadType.GetFunction().ResultType,
-					false)
-			} else {
-				// More than one matching overload, narrow result type to DYN.
+				resultType = fnResultType
+			} else if !isDyn(resultType) && !proto.Equal(fnResultType, resultType) {
 				resultType = decls.Dyn
 			}
-
 		}
 	}
 
@@ -434,10 +431,16 @@ func (c *checker) checkComprehension(e *exprpb.Expr) {
 	case kindMap:
 		// Ranges over the keys.
 		varType = rangeType.GetMapType().KeyType
-	case kindDyn, kindError:
+	case kindDyn, kindError, kindTypeParam:
+		// Set the range type to DYN to prevent assignment to a potentionally incorrect type
+		// at a later point in type-checking. The isAssignable call will update the type
+		// substitutions for the type param under the covers.
+		c.isAssignable(decls.Dyn, rangeType)
+		// Set the range iteration variable to type DYN as well.
 		varType = decls.Dyn
 	default:
 		c.errors.notAComprehensionRange(c.location(comp.IterRange), rangeType)
+		varType = decls.Error
 	}
 
 	// Create a scope for the comprehension since it has a local accumulation variable.
