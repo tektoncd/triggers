@@ -7,10 +7,12 @@ In addition to the custom function extension listed below, you can craft any
 valid CEL expression as defined by the
 [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
 
-
 ## Notes on numbers in CEL expressions
 
-One thing to be aware of is how numeric values are treated in CEL expressions, JSON numbers are decoded to [CEL double](https://github.com/google/cel-spec/blob/master/doc/langdef.md#values) values.
+One thing to be aware of is how numeric values are treated in CEL expressions,
+JSON numbers are decoded to
+[CEL double](https://github.com/google/cel-spec/blob/master/doc/langdef.md#values)
+values.
 
 For example:
 
@@ -23,11 +25,13 @@ For example:
 
 In the JSON above, both numbers are parsed as floating point values.
 
-This means that if you want to do integer arithmetic, you'll need to [use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
+This means that if you want to do integer arithmetic, you'll need to
+[use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
 
 From the CEL specification:
 
-> Note that currently there are no automatic arithmetic conversions for the numeric types (int, uint, and double).
+> Note that currently there are no automatic arithmetic conversions for the
+> numeric types (int, uint, and double).
 
 You can either explicitly convert the number, or add another double value e.g.
 
@@ -35,12 +39,12 @@ You can either explicitly convert the number, or add another double value e.g.
 interceptors:
   - cel:
       overlays:
-      - key: count_plus_1
-        expression: "body.count + 1.0"
-      - key: count_plus_2
-        expression: "int(body.count) + 2"
-      - key: measure_times_3
-        expression: "body.measure * 3.0"
+        - key: count_plus_1
+          expression: "body.count + 1.0"
+        - key: count_plus_2
+          expression: "int(body.count) + 2"
+        - key: measure_times_3
+          expression: "body.measure * 3.0"
 ```
 
 These will be serialised back to JSON appropriately:
@@ -61,11 +65,13 @@ The following example will generate an error with the JSON example.
 interceptors:
   - cel:
       overlays:
-      - key: bad_measure_times_3
-        expression: "body.measure * 3"
+        - key: bad_measure_times_3
+          expression: "body.measure * 3"
 ```
 
-**bad_measure_times_3** will fail with `failed to evaluate overlay expression 'body.measure * 3': no such overload` because there's no automatic conversion.
+**bad_measure_times_3** will fail with
+`failed to evaluate overlay expression 'body.measure * 3': no such overload`
+because there's no automatic conversion.
 
 ## List of extensions
 
