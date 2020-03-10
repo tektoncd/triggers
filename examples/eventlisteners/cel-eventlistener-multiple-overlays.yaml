@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: example-with-multiple-overlays
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - cel:
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
+            - key: extensions.branch_name
+              expression: "truncate(body.ref.split, '/')[2]"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template

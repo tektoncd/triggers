@@ -72,7 +72,6 @@ EventListener sink uses to create the Tekton resources. The ServiceAccount needs
 a role with the following rules:
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
-
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -91,6 +90,7 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
+
 
 If your EventListener is using
 [`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
@@ -200,7 +200,6 @@ if desired. The response body and headers of the last Interceptor is used for
 resource binding/templating.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -231,6 +230,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitHub Interceptors
 
 GitHub Interceptors contain logic to validate and filter webhooks that come from
@@ -252,7 +252,6 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -275,6 +274,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### GitLab Interceptors
 
@@ -321,21 +321,19 @@ spec:
 
 ### CEL Interceptors
 
-CEL Interceptors parse expressions to filter requests based on JSON bodies and
-request headers, using the [CEL](https://github.com/google/cel-go) expression
-language. Please read the
-[cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
-for more details on the expression language syntax.
+CEL Interceptors can be used to filter or modify incoming events, using the
+[CEL](https://github.com/google/cel-go)  expression language.
 
-In addition to the standard
-[CEL expression language syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md),
-Triggers supports these additional [CEL expressions](./cel_expressions.md).
+Please read the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md) for
+more details on the expression language syntax.
 
-The body/header of the incoming request will be preserved in this Interceptor's
-response.
+The `cel-trig-with-matches` trigger below filters events that don't have an
+`'X-GitHub-Event'` header matching `'pull_request'`.
+
+It also modifies the incoming request, adding an extra key to the JSON body,
+with a truncated string coming from the hook body.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -365,12 +363,50 @@ spec:
         name: pipeline-template
 ```
 
-If no filter is provided, then the overlays will be applied to the body. With a
-filter, the `expression` must return a `true` value, otherwise the request will
-be filtered out.
+In addition to the standard expressions provided by CEL, Triggers supports some
+useful functions for dealing with event data [CEL expressions](./cel_expressions.md).
+
+The body/header of the incoming request will be preserved in this Interceptor's
+response.
+
+<!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: cel-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig-with-matches
+      interceptors:
+        - cel:
+            filter: "header.match('X-GitHub-Event', 'pull_request')"
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+    - name: cel-trig-with-canonical
+      interceptors:
+        - cel:
+            filter: "header.canonical('X-GitHub-Event') == 'push'"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```
+
+
+The `filter` expression must return a `true` value if this trigger is to
+be processed, and the `overlays` applied.
+
+Optionally, no `filter` expression can be provided, and the `overlays` will be
+applied to the incoming body.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
-
 ```YAML
 apiVersion: tekton.dev/v1alpha1
 kind: EventListener
@@ -389,6 +425,106 @@ spec:
       - name: pipeline-binding
       template:
         name: pipeline-template
+```
+
+
+#### Overlays
+
+The CEL interceptor supports "overlays", these are CEL expressions that are
+applied to the body before it's returned to the event-listener.
+
+<!-- FILE: examples/eventlisteners/cel-eventlistener-multiple-overlays.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: example-with-multiple-overlays
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - cel:
+            overlays:
+            - key: extensions.truncated_sha
+              expression: "truncate(body.pull_request.head.sha, 7)"
+            - key: extensions.branch_name
+              expression: "truncate(body.ref.split, '/')[2]"
+      bindings:
+      - name: pipeline-binding
+      template:
+        name: pipeline-template
+```
+
+In this example, the bindings will see two additional fields:
+
+Assuming that the input body looked something like this:
+```json
+{
+  "ref": "refs/heads/master",
+  "pull_request": {
+    "head": {
+      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
+    }
+  }
+}
+```
+
+The output body would look like this:
+
+```json
+{
+  "ref": "refs/heads/master",
+  "pull_request": {
+    "head": {
+      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
+    },
+  },
+  "extensions": {
+    "truncated_sha": "6113728",
+    "branch_name": "master"
+  }
+}
+```
+The `key` element of the overlay can create new elements in a body, or,
+overlay existing elements.
+
+For example, this expression:
+
+```YAML
+- key: body.pull_request.head.short_sha
+  expression: "truncate(body.pull_request.head.sha, 7)"
+```
+Would see the `short_sha` being inserted into the existing body:
+
+```json
+{
+  "ref": "refs/heads/master",
+  "pull_request": {
+    "head": {
+      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
+      "short_sha": "6113728"
+    },
+  }
+}
+```
+It's even possible to replace existing fields, by providing a key that matches
+the path to an existing value.
+
+Anything that is applied as an overlay can be extracted using a binding e.g.
+
+<!-- FILE: examples/triggerbindings/cel-example-trigger-binding.yaml -->
+```YAML
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: pipeline-binding-with-cel-extensions
+spec:
+  params:
+  - name: gitrevision
+    value: $(body.extensions.branch_name)
+  - name: branch
+    value: $(body.pull_request.head.short_sha)
 ```
 
 ## Examples
