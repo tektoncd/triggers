@@ -58,9 +58,7 @@ architecture with the following CRDs:
 
 Using `tektoncd/triggers` in conjunction with `tektoncd/pipeline` enables you to
 easily create full-fledged CI/CD systems where the execution is defined
-**entirely** through Kubernetes resources. This repo draws inspiration from
-`Tekton`, but can used stand alone since `TriggerTemplates` can create any
-Kubernetes resource.
+**entirely** through Kubernetes resources.
 
 You can learn more by checking out the [docs](docs/README.md)
 

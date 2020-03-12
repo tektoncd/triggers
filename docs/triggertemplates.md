@@ -72,8 +72,8 @@ templates:
 To enable support for arbitrary resource types, the resource templates are
 internally resolved as byte blobs. As a result, validation on these resources is
 only done at event processing time (rather than during `TriggerTemplate`
-creation). As on now, only Tekton resources can be defined within a
-`TriggerTemplate`.
+creation). :rotating_light: As of now, only Tekton resources can be defined within a
+`TriggerTemplate` :rotating_light:
 
 ## Parameters
 
