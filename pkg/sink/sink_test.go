@@ -31,7 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/gorilla/mux"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -63,7 +63,7 @@ func init() {
 }
 
 // Compare two PipelineResources for sorting purposes
-func comparePR(x, y pipelinev1.PipelineResource) bool {
+func comparePR(x, y pipelinev1alpha1.PipelineResource) bool {
 	return x.GetName() < y.GetName()
 }
 
@@ -93,14 +93,14 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string) (Sink,
 }
 
 // getCreatedPipelineResources returns the pipeline resources that were created from the given actions
-func getCreatedPipelineResources(t *testing.T, actions []ktesting.Action) []pipelinev1.PipelineResource {
+func getCreatedPipelineResources(t *testing.T, actions []ktesting.Action) []pipelinev1alpha1.PipelineResource {
 	t.Helper()
-	prs := []pipelinev1.PipelineResource{}
+	prs := []pipelinev1alpha1.PipelineResource{}
 	for i := range actions {
 		obj := actions[i].(ktesting.CreateAction).GetObject()
 		// Since we use dynamic client, we cannot directly get the concrete type
 		uns := obj.(*unstructured.Unstructured).Object
-		pr := pipelinev1.PipelineResource{}
+		pr := pipelinev1alpha1.PipelineResource{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns, &pr); err != nil {
 			t.Errorf("failed to get created pipeline resource: %v", err)
 		}
@@ -134,7 +134,7 @@ func TestHandleEvent(t *testing.T) {
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 	numTriggers := 10
 
-	pipelineResource := pipelinev1.PipelineResource{
+	pipelineResource := pipelinev1alpha1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
@@ -147,9 +147,9 @@ func TestHandleEvent(t *testing.T) {
 				"type": "$(params.type)",
 			},
 		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
 				{Name: "url", Value: "$(params.url)"},
 				{Name: "revision", Value: "$(params.revision)"},
 			},
@@ -209,9 +209,9 @@ func TestHandleEvent(t *testing.T) {
 
 	checkSinkResponse(t, resp, el.Name)
 	// Check right resources were created.
-	var wantPrs []pipelinev1.PipelineResource
+	var wantPrs []pipelinev1alpha1.PipelineResource
 	for i := 0; i < numTriggers; i++ {
-		wantResource := pipelinev1.PipelineResource{
+		wantResource := pipelinev1alpha1.PipelineResource{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1alpha1",
 				Kind:       "PipelineResource",
@@ -227,9 +227,9 @@ func TestHandleEvent(t *testing.T) {
 					eventIDLabel:  eventID,
 				},
 			},
-			Spec: pipelinev1.PipelineResourceSpec{
-				Type: pipelinev1.PipelineResourceTypeGit,
-				Params: []pipelinev1.ResourceParam{
+			Spec: pipelinev1alpha1.PipelineResourceSpec{
+				Type: pipelinev1alpha1.PipelineResourceTypeGit,
+				Params: []pipelinev1alpha1.ResourceParam{
 					{Name: "url", Value: "testurl"},
 					{Name: "revision", Value: "testrevision"},
 				},
@@ -247,7 +247,7 @@ func TestHandleEvent(t *testing.T) {
 func TestHandleEventWithInterceptors(t *testing.T) {
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 
-	pipelineResource := pipelinev1.PipelineResource{
+	pipelineResource := pipelinev1alpha1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
@@ -256,9 +256,9 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 			Name:      "my-pipelineresource",
 			Namespace: namespace,
 		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{{
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{{
 				Name:  "url",
 				Value: "$(params.url)",
 			}},
@@ -339,7 +339,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 	}
 	checkSinkResponse(t, resp, el.Name)
 
-	wantResource := []pipelinev1.PipelineResource{{
+	wantResource := []pipelinev1alpha1.PipelineResource{{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
@@ -353,9 +353,9 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 				eventIDLabel:  eventID,
 			},
 		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
-			Params: []pipelinev1.ResourceParam{
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
 				{Name: "url", Value: "testurl"},
 			},
 		},
@@ -394,7 +394,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	eventBody := json.RawMessage(`{}`)
 	numTriggers := 10
 
-	resourceTemplate := pipelinev1.PipelineResource{
+	resourceTemplate := pipelinev1alpha1.PipelineResource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "PipelineResource",
@@ -403,8 +403,8 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 			Name:      "$(params.name)",
 			Namespace: namespace,
 		},
-		Spec: pipelinev1.PipelineResourceSpec{
-			Type: pipelinev1.PipelineResourceTypeGit,
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
 		},
 	}
 	resourceTemplateBytes, err := json.Marshal(resourceTemplate)
@@ -435,7 +435,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: interceptorObjectRef,
-					Header:    []pipelinev1.Param{bldr.Param("Name", fmt.Sprintf("my-resource-%d", i))},
+					Header:    []pipelinev1alpha1.Param{bldr.Param("Name", fmt.Sprintf("my-resource-%d", i))},
 				},
 			}},
 		}
@@ -478,7 +478,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	}
 	checkSinkResponse(t, resp, el.Name)
 
-	var wantPRs []pipelinev1.PipelineResource
+	var wantPRs []pipelinev1alpha1.PipelineResource
 	for i := 0; i < numTriggers; i++ {
 		wantResource := resourceTemplate.DeepCopy()
 		wantResource.ObjectMeta.Name = fmt.Sprintf("my-resource-%d", i)

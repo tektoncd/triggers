@@ -1,12 +1,12 @@
 package builder
 
-import "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+import "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
-func Param(name, value string) v1alpha1.Param {
-	return v1alpha1.Param{
+func Param(name, value string) v1beta1.Param {
+	return v1beta1.Param{
 		Name: name,
-		Value: v1alpha1.ArrayOrString{
-			Type:      v1alpha1.ParamTypeString,
+		Value: v1beta1.ArrayOrString{
+			Type:      v1beta1.ParamTypeString,
 			StringVal: value,
 		},
 	}

@@ -17,7 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -33,15 +34,19 @@ var Decoder runtime.Decoder
 
 func init() {
 	scheme := runtime.NewScheme()
-	utilruntime.Must(pipelinev1.AddToScheme(scheme))
+	utilruntime.Must(pipelinev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(pipelinev1beta1.AddToScheme(scheme))
 	codec := serializer.NewCodecFactory(scheme)
-	Decoder = codec.UniversalDecoder(pipelinev1.SchemeGroupVersion)
+	Decoder = codec.UniversalDecoder(
+		pipelinev1alpha1.SchemeGroupVersion,
+		pipelinev1beta1.SchemeGroupVersion,
+	)
 }
 
 // TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
-	Params            []pipelinev1.ParamSpec    `json:"params,omitempty"`
-	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
+	Params            []pipelinev1beta1.ParamSpec `json:"params,omitempty"`
+	ResourceTemplates []TriggerResourceTemplate   `json:"resourcetemplates,omitempty"`
 }
 
 // TriggerResourceTemplate describes a resource to create

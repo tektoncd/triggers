@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 func TestParam(t *testing.T) {
 	got := Param("foo", "bar")
 
-	want := v1alpha1.Param{
+	want := v1beta1.Param{
 		Name: "foo",
-		Value: v1alpha1.ArrayOrString{
-			Type:      v1alpha1.ParamTypeString,
+		Value: v1beta1.ArrayOrString{
+			Type:      v1beta1.ParamTypeString,
 			StringVal: "bar",
 		},
 	}

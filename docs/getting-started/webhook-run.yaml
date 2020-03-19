@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: create-webhook-run
@@ -6,7 +6,6 @@ metadata:
 spec:
   taskRef:
     name: create-webhook
-  inputs:
     params:
     - name: GitHubOrg
       value: "iancoffey"

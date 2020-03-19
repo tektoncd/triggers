@@ -32,6 +32,9 @@ import (
 var simpleResourceTemplate = runtime.RawExtension{
 	Raw: []byte(`{"kind":"PipelineRun","apiVersion":"tekton.dev/v1alpha1","metadata":{"creationTimestamp":null},"spec":{},"status":{}}`),
 }
+var v1beta1ResourceTemplate = runtime.RawExtension{
+	Raw: []byte(`{"kind":"PipelineRun","apiVersion":"tekton.dev/v1beta1","metadata":{"creationTimestamp":null},"spec":{},"status":{}}`),
+}
 var paramResourceTemplate = runtime.RawExtension{
 	Raw: []byte(`{"kind":"PipelineRun","apiVersion":"tekton.dev/v1alpha1","metadata":{"creationTimestamp":null},"spec": "$(params.foo)","status":{}}`),
 }
@@ -69,6 +72,12 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
 				b.TriggerTemplateParam("foo", "desc", "val"),
 				b.TriggerResourceTemplate(simpleResourceTemplate))),
+			want: nil,
+		}, {
+			name: "valid v1beta1 template",
+			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
+				b.TriggerTemplateParam("foo", "desc", "val"),
+				b.TriggerResourceTemplate(v1beta1ResourceTemplate))),
 			want: nil,
 		}, {
 			name: "missing resource template",
