@@ -15,7 +15,7 @@ spec:
   - name: contenttype
     description: The Content-Type of the event
   resourcetemplates:
-  - apiVersion: tekton.dev/v1alpha1
+  - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:
       generateName: simple-pipeline-run-

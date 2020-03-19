@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -32,78 +32,78 @@ import (
 
 func Test_MergeInDefaultParams(t *testing.T) {
 	var (
-		oneParam = pipelinev1.Param{
+		oneParam = pipelinev1beta1.Param{
 			Name:  "oneid",
-			Value: pipelinev1.ArrayOrString{StringVal: "onevalue"},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "onevalue"},
 		}
-		oneParamSpec = pipelinev1.ParamSpec{
+		oneParamSpec = pipelinev1beta1.ParamSpec{
 			Name:    "oneid",
-			Default: &pipelinev1.ArrayOrString{StringVal: "onedefault"},
+			Default: &pipelinev1beta1.ArrayOrString{StringVal: "onedefault"},
 		}
-		wantDefaultOneParam = pipelinev1.Param{
+		wantDefaultOneParam = pipelinev1beta1.Param{
 			Name:  "oneid",
-			Value: pipelinev1.ArrayOrString{StringVal: "onedefault"},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "onedefault"},
 		}
-		twoParamSpec = pipelinev1.ParamSpec{
+		twoParamSpec = pipelinev1beta1.ParamSpec{
 			Name:    "twoid",
-			Default: &pipelinev1.ArrayOrString{StringVal: "twodefault"},
+			Default: &pipelinev1beta1.ArrayOrString{StringVal: "twodefault"},
 		}
-		wantDefaultTwoParam = pipelinev1.Param{
+		wantDefaultTwoParam = pipelinev1beta1.Param{
 			Name:  "twoid",
-			Value: pipelinev1.ArrayOrString{StringVal: "twodefault"},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "twodefault"},
 		}
-		threeParamSpec = pipelinev1.ParamSpec{
+		threeParamSpec = pipelinev1beta1.ParamSpec{
 			Name:    "threeid",
-			Default: &pipelinev1.ArrayOrString{StringVal: "threedefault"},
+			Default: &pipelinev1beta1.ArrayOrString{StringVal: "threedefault"},
 		}
-		wantDefaultThreeParam = pipelinev1.Param{
+		wantDefaultThreeParam = pipelinev1beta1.Param{
 			Name:  "threeid",
-			Value: pipelinev1.ArrayOrString{StringVal: "threedefault"},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "threedefault"},
 		}
-		noDefaultParamSpec = pipelinev1.ParamSpec{
+		noDefaultParamSpec = pipelinev1beta1.ParamSpec{
 			Name: "nodefault",
 		}
 	)
 	type args struct {
-		params     []pipelinev1.Param
-		paramSpecs []pipelinev1.ParamSpec
+		params     []pipelinev1beta1.Param
+		paramSpecs []pipelinev1beta1.ParamSpec
 	}
 	tests := []struct {
 		name string
 		args args
-		want []pipelinev1.Param
+		want []pipelinev1beta1.Param
 	}{
 		{
 			name: "add one default param",
 			args: args{
-				params:     []pipelinev1.Param{},
-				paramSpecs: []pipelinev1.ParamSpec{oneParamSpec},
+				params:     []pipelinev1beta1.Param{},
+				paramSpecs: []pipelinev1beta1.ParamSpec{oneParamSpec},
 			},
-			want: []pipelinev1.Param{wantDefaultOneParam},
+			want: []pipelinev1beta1.Param{wantDefaultOneParam},
 		},
 		{
 			name: "add multiple default params",
 			args: args{
-				params:     []pipelinev1.Param{},
-				paramSpecs: []pipelinev1.ParamSpec{oneParamSpec, twoParamSpec, threeParamSpec},
+				params:     []pipelinev1beta1.Param{},
+				paramSpecs: []pipelinev1beta1.ParamSpec{oneParamSpec, twoParamSpec, threeParamSpec},
 			},
-			want: []pipelinev1.Param{wantDefaultOneParam, wantDefaultTwoParam, wantDefaultThreeParam},
+			want: []pipelinev1beta1.Param{wantDefaultOneParam, wantDefaultTwoParam, wantDefaultThreeParam},
 		},
 		{
 			name: "do not override existing value",
 			args: args{
-				params:     []pipelinev1.Param{oneParam},
-				paramSpecs: []pipelinev1.ParamSpec{oneParamSpec},
+				params:     []pipelinev1beta1.Param{oneParam},
+				paramSpecs: []pipelinev1beta1.ParamSpec{oneParamSpec},
 			},
-			want: []pipelinev1.Param{oneParam},
+			want: []pipelinev1beta1.Param{oneParam},
 		},
 		{
 			name: "add no default params",
 			args: args{
-				params:     []pipelinev1.Param{},
-				paramSpecs: []pipelinev1.ParamSpec{noDefaultParamSpec},
+				params:     []pipelinev1beta1.Param{},
+				paramSpecs: []pipelinev1beta1.ParamSpec{noDefaultParamSpec},
 			},
-			want: []pipelinev1.Param{},
+			want: []pipelinev1beta1.Param{},
 		},
 	}
 	for _, tt := range tests {
@@ -118,9 +118,9 @@ func Test_MergeInDefaultParams(t *testing.T) {
 
 func Test_applyParamToResourceTemplate(t *testing.T) {
 	var (
-		oneParam = pipelinev1.Param{
+		oneParam = pipelinev1beta1.Param{
 			Name:  "oneid",
-			Value: pipelinev1.ArrayOrString{StringVal: "onevalue"},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "onevalue"},
 		}
 		rtNoParamVars             = json.RawMessage(`{"foo": "bar"}`)
 		wantRtNoParamVars         = json.RawMessage(`{"foo": "bar"}`)
@@ -132,7 +132,7 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 		wantRtMultipleParamVars   = json.RawMessage(`{"onevalue": "bar-onevalue-onevalueonevalueonevalue-onevalue-bar"}`)
 	)
 	type args struct {
-		param pipelinev1.Param
+		param pipelinev1beta1.Param
 		rt    json.RawMessage
 	}
 	tests := []struct {
@@ -174,9 +174,9 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 		}, {
 			name: "espcae quotes in param val",
 			args: args{
-				param: pipelinev1.Param{
+				param: pipelinev1beta1.Param{
 					Name: "p1",
-					Value: pipelinev1.ArrayOrString{
+					Value: pipelinev1beta1.ArrayOrString{
 						StringVal: `{"a":"b"}`,
 					},
 				},
@@ -198,7 +198,7 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 	rt := json.RawMessage(`{"oneparam": "$(params.oneid)", "twoparam": "$(params.twoid)", "threeparam": "$(params.threeid)"`)
 	type args struct {
-		params []pipelinev1.Param
+		params []pipelinev1beta1.Param
 		rt     json.RawMessage
 	}
 	tests := []struct {
@@ -209,7 +209,7 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 		{
 			name: "no params",
 			args: args{
-				params: []pipelinev1.Param{},
+				params: []pipelinev1beta1.Param{},
 				rt:     rt,
 			},
 			want: rt,
@@ -217,8 +217,8 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 		{
 			name: "one param",
 			args: args{
-				params: []pipelinev1.Param{
-					{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
+				params: []pipelinev1beta1.Param{
+					{Name: "oneid", Value: pipelinev1beta1.ArrayOrString{StringVal: "onevalue"}},
 				},
 				rt: rt,
 			},
@@ -227,10 +227,10 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 		{
 			name: "multiple params",
 			args: args{
-				params: []pipelinev1.Param{
-					{Name: "oneid", Value: pipelinev1.ArrayOrString{StringVal: "onevalue"}},
-					{Name: "twoid", Value: pipelinev1.ArrayOrString{StringVal: "twovalue"}},
-					{Name: "threeid", Value: pipelinev1.ArrayOrString{StringVal: "threevalue"}},
+				params: []pipelinev1beta1.Param{
+					{Name: "oneid", Value: pipelinev1beta1.ArrayOrString{StringVal: "onevalue"}},
+					{Name: "twoid", Value: pipelinev1beta1.ArrayOrString{StringVal: "twovalue"}},
+					{Name: "threeid", Value: pipelinev1beta1.ArrayOrString{StringVal: "threevalue"}},
 				},
 				rt: rt,
 			},
@@ -255,10 +255,10 @@ var (
 		"tb-params": {
 			ObjectMeta: metav1.ObjectMeta{Name: "tb-params"},
 			Spec: triggersv1.TriggerBindingSpec{
-				Params: []pipelinev1.Param{{
+				Params: []pipelinev1beta1.Param{{
 					Name: "foo",
-					Value: pipelinev1.ArrayOrString{
-						Type:      pipelinev1.ParamTypeString,
+					Value: pipelinev1beta1.ArrayOrString{
+						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "bar",
 					},
 				}},
@@ -276,10 +276,10 @@ var (
 		"ctb-params": {
 			ObjectMeta: metav1.ObjectMeta{Name: "ctb-params"},
 			Spec: triggersv1.TriggerBindingSpec{
-				Params: []pipelinev1.Param{{
+				Params: []pipelinev1beta1.Param{{
 					Name: "foo-ctb",
-					Value: pipelinev1.ArrayOrString{
-						Type:      pipelinev1.ParamTypeString,
+					Value: pipelinev1beta1.ArrayOrString{
+						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "bar-ctb",
 					},
 				}},
@@ -525,7 +525,7 @@ func TestMergeBindingParams(t *testing.T) {
 		name            string
 		bindings        []*triggersv1.TriggerBinding
 		clusterBindings []*triggersv1.ClusterTriggerBinding
-		want            []pipelinev1.Param
+		want            []pipelinev1beta1.Param
 		wantErr         bool
 	}{{
 		name:            "empty bindings",
@@ -534,7 +534,7 @@ func TestMergeBindingParams(t *testing.T) {
 			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec()),
 			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec()),
 		},
-		want: []pipelinev1.Param{},
+		want: []pipelinev1beta1.Param{},
 	}, {
 		name:            "single binding with multiple params",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
@@ -544,12 +544,12 @@ func TestMergeBindingParams(t *testing.T) {
 				bldr.TriggerBindingParam("param2", "value2"),
 			)),
 		},
-		want: []pipelinev1.Param{{
+		want: []pipelinev1beta1.Param{{
 			Name:  "param1",
-			Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value1", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param2",
-			Value: pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
 		}},
 	}, {
 		name: "single cluster type binding with multiple params",
@@ -560,12 +560,12 @@ func TestMergeBindingParams(t *testing.T) {
 			)),
 		},
 		bindings: []*triggersv1.TriggerBinding{},
-		want: []pipelinev1.Param{{
+		want: []pipelinev1beta1.Param{{
 			Name:  "param1",
-			Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value1", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param2",
-			Value: pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
 		}},
 	}, {
 		name: "multiple bindings each with multiple params",
@@ -585,24 +585,24 @@ func TestMergeBindingParams(t *testing.T) {
 				bldr.TriggerBindingParam("param4", "value4"),
 			)),
 		},
-		want: []pipelinev1.Param{{
+		want: []pipelinev1beta1.Param{{
 			Name:  "param1",
-			Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value1", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param2",
-			Value: pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param3",
-			Value: pipelinev1.ArrayOrString{StringVal: "value3", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value3", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param4",
-			Value: pipelinev1.ArrayOrString{StringVal: "value4", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value4", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param5",
-			Value: pipelinev1.ArrayOrString{StringVal: "value1", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value1", Type: pipelinev1beta1.ParamTypeString},
 		}, {
 			Name:  "param6",
-			Value: pipelinev1.ArrayOrString{StringVal: "value2", Type: pipelinev1.ParamTypeString},
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
 		}},
 	}, {
 		name:            "multiple bindings with duplicate params",

@@ -17,7 +17,7 @@ limitations under the License.
 package test
 
 import (
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // CompareParams can be used with comparison options such as `cmpopts.SortSlices`
