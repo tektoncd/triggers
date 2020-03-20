@@ -148,7 +148,7 @@ interceptor.
       match
     </th>
     <td>
-      header.(string, string) -> bool
+      header.match(string, string) -> bool
     </td>
     <td>
       Uses the canonical header matching from Go's http.Request to match the header against the value.
@@ -162,7 +162,7 @@ interceptor.
       truncate
     </th>
     <td>
-      (string, uint) -> string
+      truncate(string, uint) -> string
     </td>
     <td>
       Truncates a string to no more than the specified length.
@@ -176,7 +176,7 @@ interceptor.
       split
     </th>
     <td>
-      (string, string) -> string(dyn)
+      split(string, string) -> string(dyn)
     </td>
     <td>
       Splits a string on the provided separator value.
@@ -189,7 +189,7 @@ interceptor.
       canonical
     </th>
     <td>
-      header.(string) -> string
+      header.canonical(string) -> string
     </td>
     <td>
       Uses the canonical header matching from Go's http.Request to get the provided header name.
@@ -212,4 +212,34 @@ interceptor.
      <pre>decodeb64(body.message.data)</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+     compareSecret
+    </th>
+    <td>
+      string.compareSecret(string, string, string) -> bool
+    </td>
+    <td>
+      Constant-time comparison of strings against secrets, this will fetch the secret using the combination of namespace/name and compare the token key to the string using a cryptographic constant-time comparison..<p>
+      The event-listener service account must have access to the secret.
+    </td>
+    <td>
+     <pre>header.canonical('X-Secret-Token').compareSecret('', 'secret-name', 'namespace')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+     compareSecret
+    </th>
+    <td>
+      string.compareSecret(string, string) -> bool
+    </td>
+    <td>
+     This is almost identical to the version above, but only requires two arguments, the namespace is assumed to be the namespace for the event-listener.
+    </td>
+    <td>
+     <pre>header.canonical('X-Secret-Token').compareSecret('key', 'secret-name')</pre>
+    </td>
+  </tr>
+
 </table>
