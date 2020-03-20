@@ -18,13 +18,11 @@ package cel
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"strings"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
@@ -36,23 +34,28 @@ import (
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	"k8s.io/client-go/kubernetes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
-// Interceptor implements a CEL based interceptor, that uses CEL expressions
+// Interceptor implements a CEL based interceptor that uses CEL expressions
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	Logger *zap.SugaredLogger
-	CEL    *triggersv1.CELInterceptor
+	KubeClientSet          kubernetes.Interface
+	Logger                 *zap.SugaredLogger
+	CEL                    *triggersv1.CELInterceptor
+	EventListenerNamespace string
 }
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(cel *triggersv1.CELInterceptor, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger: l,
-		CEL:    cel,
+		Logger:                 l,
+		CEL:                    cel,
+		KubeClientSet:          k,
+		EventListenerNamespace: ns,
 	}
 }
 
@@ -78,7 +81,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	}
 
 	if w.CEL.Filter != "" {
-		out, err := evaluate(w.CEL.Filter, env, evalContext)
+		out, err := evaluate(w.CEL.Filter, env, evalContext, w.EventListenerNamespace, w.KubeClientSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate expression '%s': %w", w.CEL.Filter, err)
 		}
@@ -89,7 +92,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	}
 
 	for _, u := range w.CEL.Overlays {
-		val, err := evaluate(u.Expression, env, evalContext)
+		val, err := evaluate(u.Expression, env, evalContext, w.EventListenerNamespace, w.KubeClientSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate overlay expression '%s': %w", u.Expression, err)
 		}
@@ -131,7 +134,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 }
 
-func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, error) {
+func evaluate(expr string, env cel.Env, data map[string]interface{}, ns string, k kubernetes.Interface) (ref.Val, error) {
 	parsed, issues := env.Parse(expr)
 	if issues != nil && issues.Err() != nil {
 		return nil, issues.Err()
@@ -142,7 +145,7 @@ func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, e
 		return nil, issues.Err()
 	}
 
-	prg, err := env.Program(checked, embeddedFunctions())
+	prg, err := env.Program(checked, embeddedFunctions(ns, k))
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +154,7 @@ func evaluate(expr string, env cel.Env, data map[string]interface{}) (ref.Val, e
 	return out, err
 }
 
-func embeddedFunctions() cel.ProgramOption {
+func embeddedFunctions(ns string, k kubernetes.Interface) cel.ProgramOption {
 	return cel.Functions(
 		&functions.Overload{
 			Operator: "match",
@@ -168,6 +171,9 @@ func embeddedFunctions() cel.ProgramOption {
 		&functions.Overload{
 			Operator: "decodeb64",
 			Unary:    decodeB64String},
+		&functions.Overload{
+			Operator: "compareSecret",
+			Function: makeCompareSecret(ns, k)},
 	)
 
 }
@@ -187,6 +193,12 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewFunction("canonical",
 				decls.NewInstanceOverload("canonical_map_string",
 					[]*exprpb.Type{mapStrDyn, decls.String}, decls.String)),
+			decls.NewFunction("compareSecret",
+				decls.NewInstanceOverload("compareSecret_string_string_string",
+					[]*exprpb.Type{decls.String, decls.String, decls.String, decls.String}, decls.String)),
+			decls.NewFunction("compareSecret",
+				decls.NewInstanceOverload("compareSecret_string_string",
+					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.String)),
 			decls.NewFunction("decodeb64",
 				decls.NewOverload("decodeb64_string",
 					[]*exprpb.Type{decls.String}, decls.String)),
@@ -202,91 +214,4 @@ func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, erro
 		return nil, err
 	}
 	return map[string]interface{}{"body": jsonMap, "header": r.Header}, nil
-
-}
-
-func matchHeader(vals ...ref.Val) ref.Val {
-	h, err := vals[0].ConvertToNative(reflect.TypeOf(http.Header{}))
-	if err != nil {
-		return types.NewErr("failed to convert to http.Header: %w", err)
-	}
-
-	key, ok := vals[1].(types.String)
-	if !ok {
-		return types.ValOrErr(key, "unexpected type '%v' passed to match", vals[1].Type())
-	}
-
-	val, ok := vals[2].(types.String)
-	if !ok {
-		return types.ValOrErr(val, "unexpected type '%v' passed to match", vals[2].Type())
-	}
-
-	return types.Bool(h.(http.Header).Get(string(key)) == string(val))
-}
-
-func truncateString(lhs, rhs ref.Val) ref.Val {
-	str, ok := lhs.(types.String)
-	if !ok {
-		return types.ValOrErr(str, "unexpected type '%v' passed to truncate", lhs.Type())
-	}
-
-	n, ok := rhs.(types.Int)
-	if !ok {
-		return types.ValOrErr(n, "unexpected type '%v' passed to truncate", rhs.Type())
-	}
-
-	return types.String(str[:max(n, types.Int(len(str)))])
-}
-
-func splitString(lhs, rhs ref.Val) ref.Val {
-	str, ok := lhs.(types.String)
-	if !ok {
-		return types.ValOrErr(str, "unexpected type '%v' passed to splitString", lhs.Type())
-	}
-
-	splitStr, ok := rhs.(types.String)
-	if !ok {
-		return types.ValOrErr(str, "unexpected type '%v' passed to splitString", lhs.Type())
-	}
-
-	r := types.NewRegistry()
-	splitVals := strings.Split(string(str), string(splitStr))
-	return types.NewStringList(r, splitVals)
-}
-
-func canonicalHeader(lhs, rhs ref.Val) ref.Val {
-	h, err := lhs.ConvertToNative(reflect.TypeOf(http.Header{}))
-	if err != nil {
-		return types.NewErr("failed to convert to http.Header: %w", err)
-	}
-
-	key, ok := rhs.(types.String)
-	if !ok {
-		return types.ValOrErr(key, "unexpected type '%v' passed to canonical", rhs.Type())
-	}
-
-	return types.String(h.(http.Header).Get(string(key)))
-}
-
-func decodeB64String(val ref.Val) ref.Val {
-	str, ok := val.(types.String)
-	if !ok {
-		return types.ValOrErr(str, "unexpected type '%v' passed to decodeB64", val.Type())
-	}
-	dec, err := base64.StdEncoding.DecodeString(str.Value().(string))
-	if err != nil {
-		return types.NewErr("failed to decode '%v' in decodeB64: %w", str, err)
-	}
-	return types.Bytes(dec)
-}
-
-func max(x, y types.Int) types.Int {
-	switch x.Compare(y) {
-	case types.IntNegOne:
-		return x
-	case types.IntOne:
-		return y
-	default:
-		return x
-	}
 }

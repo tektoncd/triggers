@@ -178,7 +178,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.GitLab != nil:
 			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
 		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(i.CEL, log)
+			interceptor = cel.NewInterceptor(i.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
 		default:
 			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
