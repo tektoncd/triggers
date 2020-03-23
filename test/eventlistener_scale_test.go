@@ -49,7 +49,7 @@ func TestEventListenerScale(t *testing.T) {
 		trigger.Name = fmt.Sprintf("%d", i)
 		el.Spec.Triggers = append(el.Spec.Triggers, trigger)
 	}
-	el, err = c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(el)
+	el, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(el)
 	if err != nil {
 		t.Fatalf("Error creating EventListener: %s", err)
 	}

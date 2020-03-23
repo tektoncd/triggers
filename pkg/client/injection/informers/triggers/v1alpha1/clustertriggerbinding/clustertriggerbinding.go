@@ -37,7 +37,7 @@ type Key struct{}
 
 func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	f := factory.Get(ctx)
-	inf := f.Tekton().V1alpha1().ClusterTriggerBindings()
+	inf := f.Triggers().V1alpha1().ClusterTriggerBindings()
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 

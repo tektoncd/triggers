@@ -111,7 +111,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ctbInformer.Informer().GetIndexer().Add(ctb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TektonV1alpha1().ClusterTriggerBindings().Create(ctb); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().Create(ctb); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -119,7 +119,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := elInformer.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TektonV1alpha1().EventListeners(el.Namespace).Create(el); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().EventListeners(el.Namespace).Create(el); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,7 +127,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := tbInformer.Informer().GetIndexer().Add(tb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TektonV1alpha1().TriggerBindings(tb.Namespace).Create(tb); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().TriggerBindings(tb.Namespace).Create(tb); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -135,7 +135,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ttInformer.Informer().GetIndexer().Add(tt); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TektonV1alpha1().TriggerTemplates(tt.Namespace).Create(tt); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(tt.Namespace).Create(tt); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -186,7 +186,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 func GetResourcesFromClients(c Clients) (*Resources, error) {
 	testResources := &Resources{}
 	// Add ClusterTriggerBindings
-	ctbList, err := c.Triggers.TektonV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	ctbList, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		// Add Namespace
 		testResources.Namespaces = append(testResources.Namespaces, ns.DeepCopy())
 		// Add EventListeners
-		elList, err := c.Triggers.TektonV1alpha1().EventListeners(ns.Name).List(metav1.ListOptions{})
+		elList, err := c.Triggers.TriggersV1alpha1().EventListeners(ns.Name).List(metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +209,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.EventListeners = append(testResources.EventListeners, el.DeepCopy())
 		}
 		// Add TriggerBindings
-		tbList, err := c.Triggers.TektonV1alpha1().TriggerBindings(ns.Name).List(metav1.ListOptions{})
+		tbList, err := c.Triggers.TriggersV1alpha1().TriggerBindings(ns.Name).List(metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +217,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.TriggerBindings = append(testResources.TriggerBindings, tb.DeepCopy())
 		}
 		// Add TriggerTemplates
-		ttList, err := c.Triggers.TektonV1alpha1().TriggerTemplates(ns.Name).List(metav1.ListOptions{})
+		ttList, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(ns.Name).List(metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}

@@ -13,7 +13,7 @@ A `TriggerTemplate` is a resource that can template resources.
 <!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template

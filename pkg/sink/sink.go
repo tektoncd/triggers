@@ -69,7 +69,7 @@ type Response struct {
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
-	el, err := r.TriggersClient.TektonV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
+	el, err := r.TriggersClient.TriggersV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
 		r.Logger.Fatalf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
@@ -134,9 +134,9 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 
 	rt, err := template.ResolveTrigger(*t,
-		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
-		r.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Get,
-		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
+		r.TriggersClient.TriggersV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
+		r.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Get,
+		r.TriggersClient.TriggersV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
 		log.Error(err)
 		return err

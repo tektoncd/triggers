@@ -1384,7 +1384,6 @@
     "github.com/google/go-github/github",
     "github.com/gorilla/mux",
     "github.com/knative/test-infra/tools/dep-collector",
-    "github.com/tektoncd/pipeline/pkg/apis/config",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1",
