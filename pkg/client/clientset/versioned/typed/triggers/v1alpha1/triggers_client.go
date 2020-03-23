@@ -24,7 +24,7 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type TektonV1alpha1Interface interface {
+type TriggersV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTriggerBindingsGetter
 	EventListenersGetter
@@ -32,29 +32,29 @@ type TektonV1alpha1Interface interface {
 	TriggerTemplatesGetter
 }
 
-// TektonV1alpha1Client is used to interact with features provided by the tekton.dev group.
-type TektonV1alpha1Client struct {
+// TriggersV1alpha1Client is used to interact with features provided by the triggers.tekton.dev group.
+type TriggersV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *TektonV1alpha1Client) ClusterTriggerBindings() ClusterTriggerBindingInterface {
+func (c *TriggersV1alpha1Client) ClusterTriggerBindings() ClusterTriggerBindingInterface {
 	return newClusterTriggerBindings(c)
 }
 
-func (c *TektonV1alpha1Client) EventListeners(namespace string) EventListenerInterface {
+func (c *TriggersV1alpha1Client) EventListeners(namespace string) EventListenerInterface {
 	return newEventListeners(c, namespace)
 }
 
-func (c *TektonV1alpha1Client) TriggerBindings(namespace string) TriggerBindingInterface {
+func (c *TriggersV1alpha1Client) TriggerBindings(namespace string) TriggerBindingInterface {
 	return newTriggerBindings(c, namespace)
 }
 
-func (c *TektonV1alpha1Client) TriggerTemplates(namespace string) TriggerTemplateInterface {
+func (c *TriggersV1alpha1Client) TriggerTemplates(namespace string) TriggerTemplateInterface {
 	return newTriggerTemplates(c, namespace)
 }
 
-// NewForConfig creates a new TektonV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*TektonV1alpha1Client, error) {
+// NewForConfig creates a new TriggersV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*TriggersV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -63,12 +63,12 @@ func NewForConfig(c *rest.Config) (*TektonV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &TektonV1alpha1Client{client}, nil
+	return &TriggersV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new TektonV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new TriggersV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *TektonV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *TriggersV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -76,9 +76,9 @@ func NewForConfigOrDie(c *rest.Config) *TektonV1alpha1Client {
 	return client
 }
 
-// New creates a new TektonV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *TektonV1alpha1Client {
-	return &TektonV1alpha1Client{c}
+// New creates a new TriggersV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *TriggersV1alpha1Client {
+	return &TriggersV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -96,7 +96,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *TektonV1alpha1Client) RESTClient() rest.Interface {
+func (c *TriggersV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

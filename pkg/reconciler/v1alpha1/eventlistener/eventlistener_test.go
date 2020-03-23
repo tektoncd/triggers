@@ -869,7 +869,7 @@ func Test_generateObjectMeta(t *testing.T) {
 			Namespace: "",
 			Name:      "",
 			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1alpha1",
+				APIVersion:         "triggers.tekton.dev/v1alpha1",
 				Kind:               "EventListener",
 				Name:               eventListenerName,
 				UID:                "",
@@ -889,7 +889,7 @@ func Test_generateObjectMeta(t *testing.T) {
 			Namespace: "",
 			Name:      "generatedName",
 			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1alpha1",
+				APIVersion:         "triggers.tekton.dev/v1alpha1",
 				Kind:               "EventListener",
 				Name:               eventListenerName,
 				UID:                "",
@@ -909,7 +909,7 @@ func Test_generateObjectMeta(t *testing.T) {
 			Namespace: "",
 			Name:      "",
 			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1alpha1",
+				APIVersion:         "triggers.tekton.dev/v1alpha1",
 				Kind:               "EventListener",
 				Name:               eventListenerName,
 				UID:                "",

@@ -29,7 +29,7 @@ the following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`.
+    `triggers.tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specifies the `EventListener` resource
     object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
@@ -86,11 +86,11 @@ metadata:
   name: tekton-triggers-example-minimal
 rules:
 # Permissions for every EventListener deployment to function
-- apiGroups: ["tekton.dev"]
+- apiGroups: ["triggers.tekton.dev"]
   resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
   verbs: ["get"]
 - apiGroups: [""]
-  resources: ["configmaps", "secrets"] # secrets are only needed for Github/Gitlab interceptors
+  resources: ["configmaps", "secrets"]  # secrets are only needed for Github/Gitlab interceptors
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
@@ -139,9 +139,9 @@ resources it creates:
 
 | Name                     | Description                                            |
 | ------------------------ | ------------------------------------------------------ |
-| tekton.dev/eventlistener | Name of the EventListener that generated the resource. |
-| tekton.dev/trigger       | Name of the Trigger that generated the resource.       |
-| tekton.dev/eventid       | UID of the incoming event.                             |
+| triggers.tekton.dev/eventlistener | Name of the EventListener that generated the resource. |
+| triggers.tekton.dev/trigger       | Name of the Trigger that generated the resource.       |
+| triggers.tekton.dev/eventid       | UID of the incoming event.                             |
 
 Since the EventListener name and Trigger name are used as label values, they
 must adhere to the
@@ -209,7 +209,7 @@ resource binding/templating.
 
 ```YAML
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: listener-interceptor
@@ -261,7 +261,7 @@ response.
 
 ```YAML
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: github-listener-interceptor
@@ -304,7 +304,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: gitlab-listener-interceptor
@@ -343,7 +343,7 @@ with a truncated string coming from the hook body.
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: cel-listener-interceptor
@@ -381,7 +381,7 @@ response.
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: cel-listener-interceptor
@@ -418,7 +418,7 @@ applied to the incoming body.
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: cel-eventlistener-no-filter
@@ -445,7 +445,7 @@ applied to the body before it's returned to the event-listener.
 <!-- FILE: examples/eventlisteners/cel-eventlistener-multiple-overlays.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: example-with-multiple-overlays
@@ -530,7 +530,7 @@ Anything that is applied as an overlay can be extracted using a binding e.g.
 <!-- FILE: examples/triggerbindings/cel-example-trigger-binding.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: pipeline-binding-with-cel-extensions

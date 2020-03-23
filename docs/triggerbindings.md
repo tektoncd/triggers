@@ -14,7 +14,7 @@ deliberate to encourage reuse between them.
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: pipeline-binding
@@ -105,7 +105,7 @@ that extracts event information, and another binding that provides deploy
 environment information:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: event-binding
@@ -116,7 +116,7 @@ spec:
     - name: gitrepositoryurl
       value: $(body.repository.url)
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: prod-env
@@ -125,7 +125,7 @@ spec:
     - name: environment
       value: prod
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: staging-env
@@ -134,7 +134,7 @@ spec:
     - name: environment
       value: staging
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: listener

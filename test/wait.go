@@ -60,7 +60,7 @@ func WaitFor(waitFunc wait.ConditionFunc) error {
 // is within this set
 func eventListenerReady(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
 	return func() (bool, error) {
-		el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Get(name, metav1.GetOptions{})
+		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			t.Log("EventListener not found")
 			return false, nil

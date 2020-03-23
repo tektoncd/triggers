@@ -55,7 +55,7 @@ type clusterTriggerBindings struct {
 }
 
 // newClusterTriggerBindings returns a ClusterTriggerBindings
-func newClusterTriggerBindings(c *TektonV1alpha1Client) *clusterTriggerBindings {
+func newClusterTriggerBindings(c *TriggersV1alpha1Client) *clusterTriggerBindings {
 	return &clusterTriggerBindings{
 		client: c.RESTClient(),
 	}

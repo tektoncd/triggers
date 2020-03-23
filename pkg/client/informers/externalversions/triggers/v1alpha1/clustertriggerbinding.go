@@ -60,13 +60,13 @@ func NewFilteredClusterTriggerBindingInformer(client versioned.Interface, resync
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().ClusterTriggerBindings().List(options)
+				return client.TriggersV1alpha1().ClusterTriggerBindings().List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().ClusterTriggerBindings().Watch(options)
+				return client.TriggersV1alpha1().ClusterTriggerBindings().Watch(options)
 			},
 		},
 		&triggersv1alpha1.ClusterTriggerBinding{},

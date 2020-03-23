@@ -14,7 +14,7 @@ ClusterTriggerBinding in any EventListener in any namespace.
 <!-- FILE: examples/clustertriggerbindings/clustertriggerbinding.yaml -->
 
 ```YAML
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterTriggerBinding
 metadata:
   name: pipeline-clusterbinding
@@ -38,7 +38,7 @@ The default kind is TriggerBinding which represents a namespaced TriggerBinding.
 
 ```YAML
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: listener-clustertriggerbinding

@@ -30,12 +30,12 @@ import (
 
 // FakeClusterTriggerBindings implements ClusterTriggerBindingInterface
 type FakeClusterTriggerBindings struct {
-	Fake *FakeTektonV1alpha1
+	Fake *FakeTriggersV1alpha1
 }
 
-var clustertriggerbindingsResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "clustertriggerbindings"}
+var clustertriggerbindingsResource = schema.GroupVersionResource{Group: "triggers.tekton.dev", Version: "v1alpha1", Resource: "clustertriggerbindings"}
 
-var clustertriggerbindingsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "ClusterTriggerBinding"}
+var clustertriggerbindingsKind = schema.GroupVersionKind{Group: "triggers.tekton.dev", Version: "v1alpha1", Kind: "ClusterTriggerBinding"}
 
 // Get takes name of the clusterTriggerBinding, and returns the corresponding clusterTriggerBinding object, and an error if there is any.
 func (c *FakeClusterTriggerBindings) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterTriggerBinding, err error) {

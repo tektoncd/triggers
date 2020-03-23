@@ -232,7 +232,7 @@ func Test_AddLabels(t *testing.T) {
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
 						"labels": map[string]interface{}{
-							"tekton.dev/foo": "bar",
+							"triggers.tekton.dev/foo": "bar",
 						},
 					},
 				},
@@ -244,7 +244,7 @@ func Test_AddLabels(t *testing.T) {
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
 						"labels": map[string]interface{}{
-							"tekton.dev/foo": "bar",
+							"triggers.tekton.dev/foo": "bar",
 						},
 					},
 				}},
@@ -253,7 +253,7 @@ func Test_AddLabels(t *testing.T) {
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
 						"labels": map[string]interface{}{
-							"tekton.dev/foo": "foo",
+							"triggers.tekton.dev/foo": "foo",
 						},
 					},
 				},
@@ -266,11 +266,11 @@ func Test_AddLabels(t *testing.T) {
 					"metadata": map[string]interface{}{
 						"labels": map[string]interface{}{
 							// should be overwritten
-							"tekton.dev/foo":   "bar",
-							"tekton.dev/hello": "world",
+							"triggers.tekton.dev/foo":   "bar",
+							"triggers.tekton.dev/hello": "world",
 							// should be preserved
-							"tekton.dev/z":    "0",
-							"best-palindrome": "tacocat",
+							"triggers.tekton.dev/z": "0",
+							"best-palindrome":       "tacocat",
 						},
 					},
 				}},
@@ -284,12 +284,12 @@ func Test_AddLabels(t *testing.T) {
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
 						"labels": map[string]interface{}{
-							"tekton.dev/foo":   "foo",
-							"tekton.dev/hello": "there",
-							"tekton.dev/z":     "0",
-							"best-palindrome":  "tacocat",
-							"tekton.dev/a":     "a",
-							"tekton.dev/b":     "b",
+							"triggers.tekton.dev/foo":   "foo",
+							"triggers.tekton.dev/hello": "there",
+							"triggers.tekton.dev/z":     "0",
+							"best-palindrome":           "tacocat",
+							"triggers.tekton.dev/a":     "a",
+							"triggers.tekton.dev/b":     "b",
 						},
 					},
 				},

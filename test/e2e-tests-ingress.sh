@@ -118,7 +118,7 @@ EVENTLISTENER_NAME="ingress-test-eventlistener"
 
 # Create EventListener
 cat << DONE | kubectl apply -f -
-apiVersion: tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: ${EVENTLISTENER_NAME}

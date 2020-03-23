@@ -166,7 +166,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	ctbs, err := cs.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	ctbs, err := cs.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get ClusterTriggerBindings: %w", err)
 	}
@@ -174,7 +174,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("ClusterTriggerBinding", i.Name, i)
 	}
 
-	els, err := cs.TriggersClient.TektonV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
+	els, err := cs.TriggersClient.TriggersV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get EventListeners: %w", err)
 	}
@@ -182,7 +182,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("EventListener", i.Name, i)
 	}
 
-	tbs, err := cs.TriggersClient.TektonV1alpha1().TriggerBindings(ns).List(metav1.ListOptions{})
+	tbs, err := cs.TriggersClient.TriggersV1alpha1().TriggerBindings(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerBindings: %w", err)
 	}
@@ -190,7 +190,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("TriggerBindings", i.Name, i)
 	}
 	// TODO: Update TriggerTemplates Marshalling so it isn't a byte array in debug log
-	tts, err := cs.TriggersClient.TektonV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
+	tts, err := cs.TriggersClient.TriggersV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerTemplates: %w", err)
 	}

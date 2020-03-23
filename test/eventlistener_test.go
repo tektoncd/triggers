@@ -57,7 +57,7 @@ func loadExamplePREventBytes() ([]byte, error) {
 	path := filepath.Join("testdata", examplePRJsonFilename)
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't load testdata example PullRequest event data: %v", err)
+		return nil, fmt.Errorf("couldn't load testdata example PullRequest event data: %v", err)
 	}
 	return bytes, nil
 }
@@ -122,7 +122,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// TriggerTemplate
-	tt, err := c.TriggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(
+	tt, err := c.TriggersClient.TriggersV1alpha1().TriggerTemplates(namespace).Create(
 		bldr.TriggerTemplate("my-triggertemplate", "",
 			bldr.TriggerTemplateSpec(
 				bldr.TriggerTemplateParam("oneparam", "", ""),
@@ -141,7 +141,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// TriggerBinding
-	tb, err := c.TriggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(
+	tb, err := c.TriggersClient.TriggersV1alpha1().TriggerBindings(namespace).Create(
 		bldr.TriggerBinding("my-triggerbinding", "",
 			bldr.TriggerBindingSpec(
 				bldr.TriggerBindingParam("oneparam", "$(body.action)"),
@@ -155,7 +155,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// ClusterTriggerBinding
-	ctb, err := c.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Create(
+	ctb, err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Create(
 		bldr.ClusterTriggerBinding("my-clustertriggerbinding",
 			bldr.ClusterTriggerBindingSpec(
 				bldr.TriggerBindingParam("license", "$(body.repository.license)"),
@@ -180,17 +180,19 @@ func TestEventListenerCreate(t *testing.T) {
 	_, err = c.KubeClient.RbacV1().ClusterRoles().Create(
 		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"tekton.dev"},
-					Resources: []string{"clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates", "pipelineresources"},
-					Verbs:     []string{"create", "get"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"configmaps"},
-					Verbs:     []string{"get", "list", "watch"},
-				},
+			Rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{triggersv1.GroupName},
+				Resources: []string{"clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates"},
+				Verbs:     []string{"get"},
+			}, {
+				APIGroups: []string{"tekton.dev"},
+				Resources: []string{"pipelineresources"},
+				Verbs:     []string{"create"},
+			}, {
+				APIGroups: []string{""},
+				Resources: []string{"configmaps"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
 			},
 		},
 	)
@@ -217,7 +219,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// EventListener
-	el, err := c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Create(
+	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(
 		bldr.EventListener("my-eventlistener", namespace,
 			bldr.EventListenerMeta(
 				bldr.Label("triggers", "eventlistener"),
@@ -323,7 +325,7 @@ func TestEventListenerCreate(t *testing.T) {
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("Error sending POST request: %s", err)
+		t.Fatalf("Error sending POST request: %v", err)
 	}
 
 	if resp.StatusCode > http.StatusAccepted {
@@ -366,7 +368,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// Delete EventListener
-	err = c.TriggersClient.TektonV1alpha1().EventListeners(namespace).Delete(el.Name, &metav1.DeleteOptions{})
+	err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Delete(el.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("Failed to delete EventListener: %s", err)
 	}
@@ -392,7 +394,7 @@ func TestEventListenerCreate(t *testing.T) {
 	if err := c.KubeClient.RbacV1().ClusterRoleBindings().Delete("my-rolebinding", &metav1.DeleteOptions{}); err != nil {
 		t.Errorf("Failed to delete clusterrolebinding my-rolebinding: %s", err)
 	}
-	if err := c.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Delete("my-clustertriggerbinding", &metav1.DeleteOptions{}); err != nil {
+	if err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Delete("my-clustertriggerbinding", &metav1.DeleteOptions{}); err != nil {
 		t.Errorf("Failed to delete clustertriggerbinding my-clustertriggerbinding: %s", err)
 	}
 }

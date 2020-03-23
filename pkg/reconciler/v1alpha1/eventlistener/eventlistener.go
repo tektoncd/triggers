@@ -133,7 +133,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) (returnError err
 	// updates
 	reconcileErr := c.reconcile(ctx, el)
 	if !equality.Semantic.DeepEqual(original.Status, el.Status) {
-		_, err = c.TriggersClientSet.TektonV1alpha1().EventListeners(namespace).UpdateStatus(el)
+		_, err = c.TriggersClientSet.TriggersV1alpha1().EventListeners(namespace).UpdateStatus(el)
 		if err != nil {
 			c.Logger.Warn("Failed to update EventListener status", err.Error())
 			return err
