@@ -16,6 +16,11 @@ The contents of this repo originated from implementing
 (visible to members of
 [the Tekton mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list)).
 
+* [Background](#background)
+* [Want to start using Triggers?](#want-to-start-using-tekton-triggers)
+* [Want to contribute?](#want-to-contribute)
+* [Project roadmap](roadmap.md)
+
 ## Background
 
 [Tekton](https://github.com/tektoncd/pipeline) is a **Kubernetes-native**,
