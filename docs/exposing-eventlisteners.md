@@ -13,7 +13,7 @@ services can talk to it:
 ## Using an Ingress
 
 You can use an Ingress resource to expose the EventListener. The
-[`create-ingress`](https://github.com/tektoncd/triggers/blob/master/docs/create-ingress.yaml) Tekton task can help setup an ingress
+[`create-ingress`](./create-ingress.yaml) Tekton task can help setup an ingress
 resource using self-signed certs.
 
 **Note**: If you are using a cloud hosted Kubernetes solution such as GKE, the
