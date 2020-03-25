@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "CEL Expression Extensions"
+weight: 8
+---
+-->
 # CEL expression extensions
 
 The CEL expression is configured to expose parts of the request, and some custom

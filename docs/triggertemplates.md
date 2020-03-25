@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Trigger Templates"
+weight: 3
+---
+-->
 # TriggerTemplates
 
 A `TriggerTemplate` is a resource that can template resources.
