@@ -62,7 +62,7 @@ func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 	if t.Template.Name == "" {
-		return apis.ErrMissingField(fmt.Sprintf("template.name"))
+		return apis.ErrMissingField("template.name")
 	}
 	for i, interceptor := range t.Interceptors {
 		if err := interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)); err != nil {

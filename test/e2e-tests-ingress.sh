@@ -140,27 +140,26 @@ EXTERNAL_DOMAIN="${SERVICE_NAME}.192.168.0.1.nip.io"
 
 # Create Ingress using Ingress Task
 cat << DONE | kubectl apply -f -
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: ${INGRESS_TASKRUN_NAME}
 spec:
   taskRef:
     name: create-ingress
-  inputs:
-    params:
-    - name: CertificateKeyPassphrase
-      value: ${CERTIFICATE_KEY_PASSPHRASE}
-    - name: CertificateSecretName
-      value: ${CERTIFICATE_SECRET_NAME}
-    - name: ExternalDomain
-      value: ${EXTERNAL_DOMAIN}
-    - name: Service
-      value: ${SERVICE_NAME}
-    - name: ServicePort
-      value: "8080"
-    - name: ServiceUID
-      value: ${SERVICE_UID}
+  params:
+  - name: CertificateKeyPassphrase
+    value: ${CERTIFICATE_KEY_PASSPHRASE}
+  - name: CertificateSecretName
+    value: ${CERTIFICATE_SECRET_NAME}
+  - name: ExternalDomain
+    value: ${EXTERNAL_DOMAIN}
+  - name: Service
+    value: ${SERVICE_NAME}
+  - name: ServicePort
+    value: "8080"
+  - name: ServiceUID
+    value: ${SERVICE_UID}
   timeout: 1000s
   serviceAccountName: default
 DONE
