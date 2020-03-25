@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Trigger Bindings"
+weight: 4
+---
+-->
 # TriggerBindings
 
 As per the name, `TriggerBinding`s bind against events/triggers.

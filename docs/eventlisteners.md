@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Event Listeners"
+weight: 5
+---
+-->
 # EventListener
 
 EventListener is a Kubernetes custom resource that allows users a declarative
@@ -117,7 +123,7 @@ running the sink logic. The logging configuration can be controlled via the
 `config-logging-triggers` ConfigMap present in the namespace that the
 EventListener was created in. This ConfigMap is automatically created and
 contains the default values defined in
-[config-logging.yaml](../config/config-logging.yaml).
+[config-logging.yaml](https://github.com/tektoncd/triggers/blob/master/config/config-logging.yaml).
 
 To access logs for the EventListener sink, you can query for pods with the
 `eventlistener` label set to the name of your EventListener resource:

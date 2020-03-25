@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Cluster Trigger Binding"
+weight: 7
+---
+-->
 # ClusterTriggerBindings
 
 `ClusterTriggerBindings` is similar to TriggerBinding which is used to extract
