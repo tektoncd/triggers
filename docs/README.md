@@ -28,5 +28,5 @@ See the following links for more on each of the resources involved:
 
 ## Getting Started Tasks
 
-- [Create an Ingress on the EventListener Service](https://github.com/tektoncd/triggers/blob/master/docs/create-ingress.yaml)
-- [Create a GitHub webhook](https://github.com/tektoncd/triggers/blob/master/docs/create-webhook.yaml)
+- [Create an Ingress on the EventListener Service](create-ingress.yaml)
+- [Create a GitHub webhook](create-webhook.yaml)
