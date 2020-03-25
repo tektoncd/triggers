@@ -6,18 +6,18 @@ metadata:
 spec:
   taskRef:
     name: create-ingress
-    params:
-    - name: CreateCertificate
-      value: "true"
-    - name: CertificateKeyPassphrase
-      value: asecretphrase
-    - name: CertificateSecretName
-      value: ingresssecret
-    - name: ExternalDomain
-      value: getting-started.iancoffey.com
-    - name: Service
-      value: getting-started
-    - name: ServicePort
-      value: "8080"
+  params:
+  - name: CreateCertificate
+    value: "true"
+  - name: CertificateKeyPassphrase
+    value: asecretphrase
+  - name: CertificateSecretName
+    value: ingresssecret
+  - name: ExternalDomain
+    value: getting-started.iancoffey.com
+  - name: Service
+    value: getting-started
+  - name: ServicePort
+    value: "8080"
   timeout: 1000s
   serviceAccountName: tekton-triggers-createwebhook

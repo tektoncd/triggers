@@ -6,20 +6,20 @@ metadata:
 spec:
   taskRef:
     name: create-webhook
-    params:
-    - name: GitHubOrg
-      value: "iancoffey"
-    - name: GitHubUser
-      value: "iancoffey"
-    - name: GitHubRepo
-      value: "ulmaceae"
-    - name: GitHubSecretName
-      value: webhook-secret
-    - name: GitHubAccessTokenKey
-      value: token
-    - name: GitHubSecretStringKey
-      value: secret
-    - name: ExternalDomain
-      value: demo.iancoffey.com
+  params:
+  - name: GitHubOrg
+    value: "iancoffey"
+  - name: GitHubUser
+    value: "iancoffey"
+  - name: GitHubRepo
+    value: "ulmaceae"
+  - name: GitHubSecretName
+    value: webhook-secret
+  - name: GitHubAccessTokenKey
+    value: token
+  - name: GitHubSecretStringKey
+    value: secret
+  - name: ExternalDomain
+    value: demo.iancoffey.com
   timeout: 1000s
   serviceAccountName: tekton-triggers-createwebhook
