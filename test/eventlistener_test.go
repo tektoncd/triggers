@@ -66,8 +66,8 @@ func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
 	t.Parallel()
 
-	defer tearDown(t, c, namespace)
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer cleanup(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { cleanup(t, c, namespace) }, t.Logf)
 
 	t.Log("Start EventListener e2e test")
 
@@ -385,18 +385,6 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Failed to delete EventListener Service: %s", err)
 	}
 	t.Log("EventListener's Service was deleted")
-
-	// Cleanup cluster-scoped resources
-	t.Logf("Deleting cluster-scoped resources")
-	if err := c.KubeClient.RbacV1().ClusterRoles().Delete("my-role", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clusterrole my-role: %s", err)
-	}
-	if err := c.KubeClient.RbacV1().ClusterRoleBindings().Delete("my-rolebinding", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clusterrolebinding my-rolebinding: %s", err)
-	}
-	if err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Delete("my-clustertriggerbinding", &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete clustertriggerbinding my-clustertriggerbinding: %s", err)
-	}
 }
 
 // The structure of this field corresponds to values for the `license` key in
@@ -434,4 +422,20 @@ func compareParamsWithLicenseJSON(x, y v1alpha1.ResourceParam) bool {
 		return true
 	}
 	return false
+}
+
+func cleanup(t *testing.T, c *clients, n string) {
+	t.Helper()
+	tearDown(t, c, n)
+	// Cleanup cluster-scoped resources
+	t.Logf("Deleting cluster-scoped resources")
+	if err := c.KubeClient.RbacV1().ClusterRoles().Delete("my-role", &metav1.DeleteOptions{}); err != nil {
+		t.Errorf("Failed to delete clusterrole my-role: %s", err)
+	}
+	if err := c.KubeClient.RbacV1().ClusterRoleBindings().Delete("my-rolebinding", &metav1.DeleteOptions{}); err != nil {
+		t.Errorf("Failed to delete clusterrolebinding my-rolebinding: %s", err)
+	}
+	if err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Delete("my-clustertriggerbinding", &metav1.DeleteOptions{}); err != nil {
+		t.Errorf("Failed to delete clustertriggerbinding my-clustertriggerbinding: %s", err)
+	}
 }
