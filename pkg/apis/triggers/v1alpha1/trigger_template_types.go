@@ -70,7 +70,7 @@ type TriggerTemplate struct {
 	// +optional
 	Spec TriggerTemplateSpec `json:"spec"`
 	// +optional
-	Status TriggerTemplateStatus `json:"status"`
+	Status TriggerTemplateStatus `json:"status,omitempty"`
 }
 
 // TriggerTemplateList contains a list of TriggerTemplate

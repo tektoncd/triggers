@@ -47,7 +47,7 @@ type EventListener struct {
 	// +optional
 	Spec EventListenerSpec `json:"spec"`
 	// +optional
-	Status EventListenerStatus `json:"status"`
+	Status EventListenerStatus `json:"status,omitempty"`
 }
 
 // EventListenerSpec defines the desired state of the EventListener, represented

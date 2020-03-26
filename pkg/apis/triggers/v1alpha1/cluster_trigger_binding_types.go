@@ -43,7 +43,7 @@ type ClusterTriggerBinding struct {
 	Spec TriggerBindingSpec `json:"spec,omitempty"`
 
 	// +optional
-	Status TriggerBindingStatus `json:"status"`
+	Status TriggerBindingStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
