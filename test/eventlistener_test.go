@@ -38,6 +38,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/sink"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -46,10 +47,9 @@ import (
 )
 
 const (
-	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
-	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
-
+	resourceLabel         = triggersv1.GroupName + triggersv1.EventListenerLabelKey
+	triggerLabel          = triggersv1.GroupName + triggersv1.TriggerLabelKey
+	eventIDLabel          = triggersv1.GroupName + triggersv1.EventIDLabelKey
 	examplePRJsonFilename = "pr.json"
 )
 
@@ -236,11 +236,21 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Failed to create EventListener: %s", err)
 	}
 
-	// Verify the EventListener to be ready
-	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
+	// Get the ready EventListener
+	if err := WaitFor(eventListenerReady(t, c, namespace, el)); err != nil {
 		t.Fatalf("EventListener not ready: %s", err)
 	}
 	t.Log("EventListener is ready")
+
+	// Update the EventListener labels to ensure correct propogation
+	updateLabels := func(labels map[string]string) map[string]string {
+		labels["updated"] = "true"
+		return labels
+	}
+	el.Labels = updateLabels(el.Labels)
+	if el, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(el); err != nil {
+		t.Fatalf("Failed to update EventListener: %s", err)
+	}
 
 	// Load the example pull request event data
 	eventBodyJSON, err := loadExamplePREventBytes()
@@ -291,10 +301,11 @@ func TestEventListenerCreate(t *testing.T) {
 		},
 	}
 
-	labelSelector := fields.SelectorFromSet(eventReconciler.GenerateResourceLabels(el.Name)).String()
+	podLabels := updateLabels(eventReconciler.GenerateResourceLabels(el.Name))
+	labelSelector := fields.SelectorFromSet(podLabels).String()
 	// Grab EventListener sink pods
-	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
-	if err != nil {
+	var sinkPods v1.PodList
+	if err := WaitFor(podsExist(t, c, namespace, labelSelector, &sinkPods)); err != nil {
 		t.Fatalf("Error listing EventListener sink pods: %s", err)
 	}
 

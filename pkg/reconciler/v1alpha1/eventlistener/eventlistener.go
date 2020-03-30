@@ -300,7 +300,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: GenerateResourceLabels(el.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -332,10 +332,6 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
 		if existingDeployment.Spec.Replicas == nil || *existingDeployment.Spec.Replicas == 0 {
 			existingDeployment.Spec.Replicas = &replicas
-			updated = true
-		}
-		if existingDeployment.Spec.Selector != deployment.Spec.Selector {
-			existingDeployment.Spec.Selector = deployment.Spec.Selector
 			updated = true
 		}
 		if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, deployment.Spec.Template.Labels) {

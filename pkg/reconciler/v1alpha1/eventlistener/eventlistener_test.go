@@ -344,7 +344,6 @@ func Test_reconcileDeployment(t *testing.T) {
 	// deployment 2 == initial deployment + labels from eventListener
 	deployment2 := deployment1.DeepCopy()
 	deployment2.Labels = mergeLabels(generatedLabels, updateLabel)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(generatedLabels, updateLabel)
 	deployment2.Spec.Template.Labels = mergeLabels(generatedLabels, updateLabel)
 
 	// deployment 3 == initial deployment + updated replicas
@@ -604,7 +603,6 @@ func TestReconcile(t *testing.T) {
 
 	deployment2 := deployment1.DeepCopy()
 	deployment2.Labels = mergeLabels(updateLabel, generatedLabels)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(updateLabel, generatedLabels)
 	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
 
 	deployment3 := deployment2.DeepCopy()

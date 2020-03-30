@@ -55,7 +55,7 @@ func TestEventListenerScale(t *testing.T) {
 	}
 
 	// Verify that the EventListener was created properly
-	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
+	if err := WaitFor(eventListenerReady(t, c, namespace, el)); err != nil {
 		t.Fatalf("EventListener is not ready: %s", err)
 	}
 	t.Log("EventListener is ready")

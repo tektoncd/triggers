@@ -37,6 +37,7 @@ import (
 
 	"testing"
 
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -57,10 +58,10 @@ func WaitFor(waitFunc wait.ConditionFunc) error {
 
 // eventListenerReady returns a function that checks if all conditions on the
 // specified EventListener are true and that the deployment available condition
-// is within this set
-func eventListenerReady(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+// is within this set and updates eventListener, if ready.
+func eventListenerReady(t *testing.T, c *clients, namespace string, eventListener *triggersv1.EventListener) wait.ConditionFunc {
 	return func() (bool, error) {
-		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(name, metav1.GetOptions{})
+		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(eventListener.Name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			t.Log("EventListener not found")
 			return false, nil
@@ -78,6 +79,7 @@ func eventListenerReady(t *testing.T, c *clients, namespace, name string) wait.C
 				return false, nil
 			}
 		}
+		*eventListener = *el
 		return true, nil
 	}
 }
@@ -112,5 +114,22 @@ func pipelineResourceExist(t *testing.T, c *clients, namespace, name string) wai
 			return false, nil
 		}
 		return true, err
+	}
+}
+
+// podsExists returns a function that checks if the specified pods exist and sets the list to sinkPods, if any.
+func podsExist(t *testing.T, c *clients, namespace, labelSelector string, sinkPods *corev1.PodList) wait.ConditionFunc {
+	return func() (bool, error) {
+		pods, err := c.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
+		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
+			return false, nil
+		}
+		t.Logf("Pod List length %d:\n", len(pods.Items))
+		for i, pod := range pods.Items {
+			t.Logf("[%d]Name: %s\n", i, pod.Name)
+			t.Logf("[%d]Pod Labels: %s\n", i, pod.Labels)
+		}
+		*sinkPods = *pods
+		return true, nil
 	}
 }
