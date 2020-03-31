@@ -1,0 +1,47 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: use-entire-request-body
+spec:
+  params:
+  - name: body
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    metadata:
+      generateName: use-entire-request-body-
+    spec:
+      taskSpec:
+        params:
+        - name: body
+        steps:
+          - name: echo-body
+            image: ubuntu
+            script: |
+              #! /bin/bash
+              apt-get update && apt-get install -y -q --no-install-recommends jq
+              echo '$(inputs.params.body)' | jq '.'
+      params:
+      - name: body
+        value: $(params.body)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: use-entire-request-body
+spec:
+  params:
+  - name: body
+    value: $(body)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: use-entire-request-body
+spec:
+  triggers:
+    - name: use-entire-request-body
+      bindings:
+        - name: use-entire-request-body
+      template:
+        name: use-entire-request-body
