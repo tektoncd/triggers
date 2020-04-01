@@ -494,7 +494,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:800d8211bf7d441803e4eea534b586b9d135fe138055059e664889fbfb5ab121"
+  digest = "1:24e75f278f8566e2c87433fbb7d2cdfdf71fdd9fddb8b8398ce3324ed0321710"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "pkg/apis/config",
@@ -529,8 +529,8 @@
     "pkg/system",
   ]
   pruneopts = "NUT"
-  revision = "60d76bd5526e815cdbf5639ff3fa5b9eb09ce321"
-  version = "v0.11.0-rc1"
+  revision = "6303ce9f8db0366e4da1c94c311974d83bab715a"
+  version = "v0.11.0"
 
 [[projects]]
   branch = "master"
@@ -1320,6 +1320,8 @@
     "client/injection/kube/informers/core/v1/secret/fake",
     "client/injection/kube/informers/core/v1/service",
     "client/injection/kube/informers/core/v1/service/fake",
+    "client/injection/kube/informers/core/v1/serviceaccount",
+    "client/injection/kube/informers/core/v1/serviceaccount/fake",
     "client/injection/kube/informers/factory",
     "client/injection/kube/informers/factory/fake",
     "codegen/cmd/injection-gen",
@@ -1460,6 +1462,7 @@
     "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/service",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake",
+    "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake",
     "knative.dev/pkg/codegen/cmd/injection-gen",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
