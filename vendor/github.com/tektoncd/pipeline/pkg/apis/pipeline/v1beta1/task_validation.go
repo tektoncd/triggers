@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -40,9 +39,6 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
-	if equality.Semantic.DeepEqual(ts, &TaskSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
-	}
 
 	if len(ts.Steps) == 0 {
 		return apis.ErrMissingField("steps")
@@ -266,6 +262,9 @@ func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *
 		if err := validateTaskNoArrayReferenced("workingDir", step.WorkingDir, prefix, vars); err != nil {
 			return err
 		}
+		if err := validateTaskNoArrayReferenced("script", step.Script, prefix, vars); err != nil {
+			return err
+		}
 		for i, cmd := range step.Command {
 			if err := validateTaskArraysIsolated(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
 				return err
@@ -305,6 +304,9 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 			return err
 		}
 		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
+			return err
+		}
+		if err := validateTaskVariable("script", step.Script, prefix, vars); err != nil {
 			return err
 		}
 		for i, cmd := range step.Command {

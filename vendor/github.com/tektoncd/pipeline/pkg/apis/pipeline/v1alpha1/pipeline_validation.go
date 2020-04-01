@@ -43,6 +43,13 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func validateDeclaredResources(ps *PipelineSpec) error {
+	encountered := map[string]struct{}{}
+	for _, r := range ps.Resources {
+		if _, ok := encountered[r.Name]; ok {
+			return fmt.Errorf("resource with name %q appears more than once", r.Name)
+		}
+		encountered[r.Name] = struct{}{}
+	}
 	required := []string{}
 	for _, t := range ps.Tasks {
 		if t.Resources != nil {
@@ -147,7 +154,7 @@ func validateParamResults(tasks []PipelineTask) error {
 // of Tasks expressed in the Pipeline makes sense.
 func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
+		return apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces")
 	}
 
 	// Names cannot be duplicated

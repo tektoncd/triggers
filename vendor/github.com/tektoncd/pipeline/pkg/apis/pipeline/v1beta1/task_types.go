@@ -67,6 +67,11 @@ type TaskSpec struct {
 	// +optional
 	Params []ParamSpec `json:"params,omitempty"`
 
+	// Description is a user-facing description of the task that may be
+	// used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
+
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
 	Steps []Step `json:"steps,omitempty"`
@@ -84,7 +89,7 @@ type TaskSpec struct {
 	Sidecars []Sidecar `json:"sidecars,omitempty"`
 
 	// Workspaces are the volumes that this Task requires.
-	Workspaces []WorkspaceDeclaration
+	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
 
 	// Results are values that this Task can output
 	Results []TaskResult `json:"results,omitempty"`
