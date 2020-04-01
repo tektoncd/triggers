@@ -912,7 +912,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 		}
 
 		if resp.StatusCode != testCase.statusCode {
-			t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire statuts %v",
+			t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire statutes %v",
 				testCase.statusCode,
 				resp.StatusCode,
 				resp.Status)
