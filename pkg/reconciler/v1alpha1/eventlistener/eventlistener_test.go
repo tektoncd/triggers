@@ -148,7 +148,7 @@ func Test_reconcileService(t *testing.T) {
 	}
 	service2 := service1.DeepCopy()
 	service2.Labels = mergeLabels(generatedLabels, updateLabel)
-	service2.Spec.Selector = mergeLabels(generatedLabels, updateLabel)
+	service2.Spec.Selector = generatedLabels
 
 	service3 := service1.DeepCopy()
 	service3.Spec.Ports[0].NodePort = 30000
@@ -344,7 +344,7 @@ func Test_reconcileDeployment(t *testing.T) {
 	// deployment 2 == initial deployment + labels from eventListener
 	deployment2 := deployment1.DeepCopy()
 	deployment2.Labels = mergeLabels(generatedLabels, updateLabel)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(generatedLabels, updateLabel)
+	deployment2.Spec.Selector.MatchLabels = generatedLabels
 	deployment2.Spec.Template.Labels = mergeLabels(generatedLabels, updateLabel)
 
 	// deployment 3 == initial deployment + updated replicas
@@ -604,7 +604,7 @@ func TestReconcile(t *testing.T) {
 
 	deployment2 := deployment1.DeepCopy()
 	deployment2.Labels = mergeLabels(updateLabel, generatedLabels)
-	deployment2.Spec.Selector.MatchLabels = mergeLabels(updateLabel, generatedLabels)
+	deployment2.Spec.Selector.MatchLabels = generatedLabels
 	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
 
 	deployment3 := deployment2.DeepCopy()
@@ -630,7 +630,7 @@ func TestReconcile(t *testing.T) {
 
 	service2 := service1.DeepCopy()
 	service2.Labels = mergeLabels(updateLabel, generatedLabels)
-	service2.Spec.Selector = mergeLabels(updateLabel, generatedLabels)
+	service2.Spec.Selector = generatedLabels
 
 	service3 := service2.DeepCopy()
 	service3.Spec.Type = corev1.ServiceTypeNodePort
@@ -660,12 +660,16 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "update-eventlistener-labels",
 		key:  reconcileKey,
+		// Resources before reconcile starts: EL has extra label that deployment/svc does not
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener2},
 			Deployments:    []*appsv1.Deployment{deployment1},
 			Services:       []*corev1.Service{service1},
 		},
+		// We expect the deployment and services to propagate the extra label
+		// but the selectors in both Service and deployment should have the same
+		// label
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{eventListener2},
