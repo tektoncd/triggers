@@ -175,7 +175,7 @@ func (c *Reconciler) reconcileService(el *v1alpha1.EventListener) error {
 	service := &corev1.Service{
 		ObjectMeta: generateObjectMeta(el),
 		Spec: corev1.ServiceSpec{
-			Selector: mergeLabels(el.Labels, GenerateResourceLabels(el.Name)),
+			Selector: GenerateResourceLabels(el.Name),
 			Type:     el.Spec.ServiceType,
 			Ports: []corev1.ServicePort{
 				{
@@ -300,7 +300,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: GenerateResourceLabels(el.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
