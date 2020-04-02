@@ -17,7 +17,7 @@ using [Event Interceptors](#Interceptors).
 - [Syntax](#syntax)
   - [ServiceAccountName](#serviceAccountName)
   - [Triggers](#triggers)
-    - [Interceptors](#Interceptors)
+    - [Interceptors](#interceptors)
 - [Logging](#logging)
 - [Labels](#labels)
 - [Examples](#examples)
