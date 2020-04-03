@@ -110,7 +110,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
-	//only when at least one of the execution completed successfully, it returns response code 201(Accepted) otherwise it returns 202 (Created).
+	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
 	for i := 0; i < len(el.Spec.Triggers); i++ {
 		thiscode := <-result
@@ -144,7 +144,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, header, err := r.executeInterceptors(t, request, event, eventID, log)
+	finalPayload, header, err := r.executeInterceptors(t, request, event, log)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -178,7 +178,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	return nil
 }
 
-func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, eventID string, log *zap.SugaredLogger) ([]byte, http.Header, error) {
+func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger) ([]byte, http.Header, error) {
 	if len(t.Interceptors) == 0 {
 		return event, in.Header, nil
 	}
