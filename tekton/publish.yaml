@@ -17,6 +17,9 @@ spec:
       description: TODO(tektoncd/pipeline#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
     - name: pathToProject
       description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+    - name: releaseAsLatest
+      description: "Whether to tag and publish this release as Pipelines' latest"
+      default: "true"
   outputs:
     resources:
     - name: bucket
@@ -37,13 +40,14 @@ spec:
     - -r
     - "/workspace/bucket"
     - "/workspace/output/"
+
   - name: ensure-release-dirs-exist
     image: busybox
     command: ["mkdir"]
     args:
     - "-p"
     - "/workspace/output/bucket/latest/"
-    - "/workspace/output/bucket/previous/"
+    - "/workspace/output/bucket/previous/$(inputs.params.versionTag)/"
 
   - name: run-ko
     image: gcr.io/tekton-nightly/ko-ci # tekton-releases broken, see https://github.com/tektoncd/plumbing/issues/128
@@ -72,21 +76,28 @@ spec:
       sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/webhook.yaml
       sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/triggers/config/webhook-service.yaml
 
+      OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+
       # Publish images and create release.yaml
-      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/triggers/config/ > /workspace/output/bucket/latest/release.yaml
+      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/triggers/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
     volumeMounts:
       - name: gcp-secret
         mountPath: /secret
 
-  - name: copy-to-tagged-bucket
+  - name: copy-to-latest-bucket
     image: busybox
     workingDir: "/workspace/output/bucket"
     script: |
       #!/bin/sh
       set -ex
 
-      mkdir -p /workspace/output/bucket/previous/$(inputs.params.versionTag)/
-      cp /workspace/output/bucket/latest/release.yaml /workspace/output/bucket/previous/$(inputs.params.versionTag)/release.yaml
+      if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+      then
+        mkdir -p "/workspace/output/bucket/latest/"
+        OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+        OUTPUT_BUCKET_LATEST_DIR="/workspace/output/bucket/latest"
+        cp "$OUTPUT_BUCKET_RELEASE_DIR/release.yaml" "$OUTPUT_BUCKET_LATEST_DIR/release.yaml"
+      fi
 
   - name: tag-images
     image: google/cloud-sdk
@@ -110,14 +121,24 @@ spec:
       for IMAGE in "${BUILT_IMAGES[@]}"
       do
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:$(inputs.params.versionTag)
+        IMAGE_WITHOUT_SHA_AND_TAG=${IMAGE_WITHOUT_SHA%%:*}
+        IMAGE_WITH_SHA=${IMAGE_WITHOUT_SHA_AND_TAG}@${IMAGE##*@}
+        if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+        then
+          gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${IMAGE_WITHOUT_SHA_AND_TAG}:latest
+        fi
         for REGION in "${REGIONS[@]}"
         do
-          for TAG in "latest" $(inputs.params.versionTag)
-          do
-            gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:$TAG
-          done
+          if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+          then
+            for TAG in "latest" $(inputs.params.versionTag)
+            do
+              gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
+            done
+          else
+            TAG="$(inputs.params.versionTag)"
+            gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
+          fi
         done
       done
     volumeMounts:
