@@ -12,7 +12,7 @@ spec:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"
             - key: extensions.branch_name
-              expression: "truncate(body.ref.split, '/')[2]"
+              expression: "split(body.ref, '/')[2]"
       bindings:
       - name: pipeline-binding
       template:
