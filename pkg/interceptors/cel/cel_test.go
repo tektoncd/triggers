@@ -335,6 +335,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			want: types.NewStringList(types.NewRegistry(), []string{"testing"}),
 		},
 		{
+			name: "combine split and truncate",
+			expr: "truncate(split(body.value, '/')[0], 2)",
+			want: types.String("te"),
+		},
+		{
 			name: "exact header lookup",
 			expr: "header.canonical('X-Test-Header')",
 			want: types.String("value"),

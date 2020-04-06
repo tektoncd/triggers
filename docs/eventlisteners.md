@@ -115,7 +115,6 @@ EventListener sink uses to create the Tekton resources. The ServiceAccount needs
 a role with the following rules:
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
-
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -135,6 +134,7 @@ rules:
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
 ```
+
 
 If your EventListener is using
 [`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
@@ -290,7 +290,6 @@ if desired. The response body and headers of the last Interceptor is used for
 resource binding/templating.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -321,6 +320,7 @@ spec:
         name: pipeline-template
 ```
 
+
 ### GitHub Interceptors
 
 GitHub Interceptors contain logic to validate and filter webhooks that come from
@@ -342,7 +342,6 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
-
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -365,6 +364,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 ### GitLab Interceptors
 
@@ -425,7 +425,6 @@ It also modifies the incoming request, adding an extra key to the JSON body,
 with a truncated string coming from the hook body.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -454,6 +453,7 @@ spec:
       template:
         name: pipeline-template
 ```
+
 
 In addition to the standard expressions provided by CEL, Triggers supports some
 useful functions for dealing with event data
@@ -463,7 +463,6 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -493,13 +492,13 @@ spec:
         name: pipeline-template
 ```
 
+
 The `filter` expression must return a `true` value if this trigger is to be
 processed, and the `overlays` applied.
 
 Optionally, no `filter` expression can be provided, and the `overlays` will be
 applied to the incoming body.
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -520,13 +519,13 @@ spec:
         name: pipeline-template
 ```
 
+
 #### Overlays
 
 The CEL interceptor supports "overlays", these are CEL expressions that are
 applied to the body before it's returned to the event-listener.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-multiple-overlays.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -542,12 +541,13 @@ spec:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"
             - key: extensions.branch_name
-              expression: "truncate(body.ref.split, '/')[2]"
+              expression: "split(body.ref, '/')[2]"
       bindings:
       - name: pipeline-binding
       template:
         name: pipeline-template
 ```
+
 
 In this example, the bindings will see two additional fields:
 
@@ -611,7 +611,6 @@ the path to an existing value.
 Anything that is applied as an overlay can be extracted using a binding e.g.
 
 <!-- FILE: examples/triggerbindings/cel-example-trigger-binding.yaml -->
-
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -624,6 +623,7 @@ spec:
   - name: branch
     value: $(body.pull_request.head.short_sha)
 ```
+
 
 
 ## Examples
