@@ -424,6 +424,47 @@ func TestEventListenerCreate(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
 		t.Errorf("sink did not return 401/403 response. Got status code: %d", resp.StatusCode)
 	}
+
+	// now set the trigger SA to the original one, should not get a 401/403
+	if err := WaitFor(func() (bool, error) {
+		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(el.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, nil
+		}
+		for i, trigger := range el.Spec.Triggers {
+			trigger.ServiceAccount = &corev1.ObjectReference{
+				Namespace: namespace,
+				Name:      sa.Name,
+			}
+			el.Spec.Triggers[i] = trigger
+		}
+		_, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(el)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}); err != nil {
+		t.Fatalf("Failed to update EventListener for trigger auth test: %s", err)
+	}
+
+	// Verify the EventListener is ready with the new update
+	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
+		t.Fatalf("EventListener not ready after trigger auth update: %s", err)
+	}
+	// Send POST request to EventListener sink
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	if err != nil {
+		t.Fatalf("Error creating POST request for trigger auth: %s", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Error sending POST request for trigger auth: %s", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		t.Errorf("sink returned 401/403 response: %d", resp.StatusCode)
+	}
 }
 
 // The structure of this field corresponds to values for the `license` key in
