@@ -18,7 +18,7 @@ spec:
     - name: pathToProject
       description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
     - name: releaseAsLatest
-      description: "Whether to tag and publish this release as Pipelines' latest"
+      description: "Whether to tag and publish this release as Triggers' latest"
       default: "true"
   outputs:
     resources:
