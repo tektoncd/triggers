@@ -83,6 +83,7 @@ type Reconciler struct {
 	*reconciler.Base
 	// listers index properties about resources
 	eventListenerLister listers.EventListenerLister
+	systemNamespace     string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -108,7 +109,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) (returnError err
 		if err != nil {
 			return err
 		}
-		if len(cfgs) > 0 {
+		if len(cfgs) > 0 || namespace == c.systemNamespace {
 			return nil
 		}
 		err = c.KubeClientSet.CoreV1().ConfigMaps(namespace).Delete(eventListenerConfigMapName, &metav1.DeleteOptions{})

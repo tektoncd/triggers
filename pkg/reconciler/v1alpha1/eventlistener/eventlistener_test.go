@@ -19,6 +19,7 @@ package eventlistener
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 
@@ -61,12 +62,18 @@ var (
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 
 	// 0 indicates pre-reconciliation
-	eventListener0    *v1alpha1.EventListener
-	eventListenerName = "my-eventlistener"
-	namespace         = "tekton-pipelines"
-	namespaceResource = &corev1.Namespace{
+	eventListener0      *v1alpha1.EventListener
+	eventListenerName   = "my-eventlistener"
+	namespace           = "test-pipelines"
+	reconcilerNamespace = "tekton-pipelines"
+	namespaceResource   = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
+		},
+	}
+	reconcilerNamespaceResource = &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: reconcilerNamespace,
 		},
 	}
 	reconcileKey                 = fmt.Sprintf("%s/%s", namespace, eventListenerName)
@@ -490,6 +497,7 @@ func Test_reconcileDeployment(t *testing.T) {
 }
 
 func TestReconcile(t *testing.T) {
+	os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 	eventListener1 := bldr.EventListener(eventListenerName, namespace,
 		bldr.EventListenerSpec(
 			bldr.EventListenerServiceAccount("sa"),
@@ -637,6 +645,8 @@ func TestReconcile(t *testing.T) {
 
 	loggingConfigMap := defaultLoggingConfigMap()
 	loggingConfigMap.ObjectMeta.Namespace = namespace
+	reconcilerLoggingConfigMap := defaultLoggingConfigMap()
+	reconcilerLoggingConfigMap.ObjectMeta.Namespace = reconcilerNamespace
 
 	tests := []struct {
 		name           string
@@ -725,6 +735,17 @@ func TestReconcile(t *testing.T) {
 			Namespaces: []*corev1.Namespace{namespaceResource},
 		},
 	}, {
+		name: "delete-last-eventlistener-in-our-namespace",
+		key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
+		startResources: test.Resources{
+			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
+			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
+			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
+		},
+	}, {
 		name: "delete-eventlistener-with-remaining-eventlistener",
 		key:  reconcileKey,
 		startResources: test.Resources{
@@ -746,7 +767,6 @@ func TestReconcile(t *testing.T) {
 			// Setup with startResources
 			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources)
 			defer cancel()
-
 			// Run Reconcile
 			err := testAssets.Controller.Reconciler.Reconcile(context.Background(), tt.key)
 			if err != nil {
