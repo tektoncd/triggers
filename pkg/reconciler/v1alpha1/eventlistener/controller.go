@@ -18,6 +18,7 @@ package eventlistener
 
 import (
 	"context"
+	"os"
 	"time"
 
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -63,6 +64,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	c := &Reconciler{
 		Base:                reconciler.NewBase(opt, eventListenerAgentName),
 		eventListenerLister: eventListenerInformer.Lister(),
+		systemNamespace:     os.Getenv("SYSTEM_NAMESPACE"),
 	}
 	impl := controller.NewImpl(c, c.Logger, eventListenerControllerName)
 
