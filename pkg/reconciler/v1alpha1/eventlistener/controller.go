@@ -21,8 +21,6 @@ import (
 	"os"
 	"time"
 
-	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	resourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
@@ -44,8 +42,6 @@ const (
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	logger := logging.FromContext(ctx)
 	kubeclientset := kubeclient.Get(ctx)
-	pipelineclientset := pipelineclient.Get(ctx)
-	resourceclientset := resourceclient.Get(ctx)
 	triggersclientset := triggersclient.Get(ctx)
 	eventListenerInformer := eventlistenerinformer.Get(ctx)
 	deploymentInformer := deployinformer.Get(ctx)
@@ -53,8 +49,6 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeclientset,
-		PipelineClientSet: pipelineclientset,
-		ResourceClientSet: resourceclientset,
 		TriggersClientSet: triggersclientset,
 		ConfigMapWatcher:  cmw,
 		Logger:            logger,
