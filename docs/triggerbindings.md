@@ -65,6 +65,15 @@ $($(body.b)) -> $(body.b)
 $($($(body.b))) -> $(body.b)
 ```
 
+#### Keys with dots `.`
+
+To access JSON keys that contain `.` character, we need to escape the `.` e.g.
+
+```shell script
+# body contains a filed called "tekton.dev" e.g. {"body": {"tekton.dev": "triggers"}}
+$(body.tekton\.dev) -> "triggers"
+```
+
 ### Examples
 
 ```shell script
