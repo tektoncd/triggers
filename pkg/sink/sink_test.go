@@ -40,7 +40,6 @@ import (
 	"github.com/gorilla/mux"
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
@@ -86,7 +85,8 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 	clients := test.SeedResources(t, ctx, resources)
 	test.AddTektonResources(clients.Kube)
 
-	logger, _ := logging.NewLogger("", "")
+	logger, _ := zap.NewProduction()
+
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
@@ -97,7 +97,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 		DiscoveryClient:        clients.Kube.Discovery(),
 		KubeClientSet:          clients.Kube,
 		TriggersClient:         clients.Triggers,
-		Logger:                 logger,
+		Logger:                 logger.Sugar(),
 		Auth:                   auth,
 	}
 	return r, dynamicClient
@@ -555,10 +555,11 @@ func TestExecuteInterceptor(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	logger, _ := logging.NewLogger("", "")
+	logger, _ := zap.NewProduction()
+
 	r := Sink{
 		HTTPClient: srv.Client(),
-		Logger:     logger,
+		Logger:     logger.Sugar(),
 	}
 
 	a := &triggersv1.EventInterceptor{
@@ -590,7 +591,7 @@ func TestExecuteInterceptor(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), logger)
+			resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), logger.Sugar())
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -638,10 +639,10 @@ func TestExecuteInterceptor_error(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	logger, _ := logging.NewLogger("", "")
+	logger, _ := zap.NewProduction()
 	s := Sink{
 		HTTPClient: client,
-		Logger:     logger,
+		Logger:     logger.Sugar(),
 	}
 
 	trigger := &triggersv1.EventListenerTrigger{
@@ -671,7 +672,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, err := s.executeInterceptors(trigger, req, nil, logger); err == nil {
+	if resp, _, err := s.executeInterceptors(trigger, req, nil, logger.Sugar()); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 

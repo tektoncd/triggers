@@ -19,8 +19,6 @@ package sink
 import (
 	"flag"
 
-	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	resourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"golang.org/x/xerrors"
 	discoveryclient "k8s.io/client-go/discovery"
@@ -60,8 +58,6 @@ type Clients struct {
 	DiscoveryClient discoveryclient.DiscoveryInterface
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
-	PipelineClient  pipelineclientset.Interface
-	ResourceClient  resourceclientset.Interface
 }
 
 // GetArgs returns the flagged Args
@@ -97,20 +93,10 @@ func ConfigureClients() (Clients, error) {
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
-	pipelineclient, err := pipelineclientset.NewForConfig(clusterConfig)
-	if err != nil {
-		return Clients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
-	}
-	resourceclient, err := resourceclientset.NewForConfig(clusterConfig)
-	if err != nil {
-		return Clients{}, xerrors.Errorf("Failed to create ResourceClient: %s", err)
-	}
 
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
-		PipelineClient:  pipelineclient,
-		ResourceClient:  resourceclient,
 	}, nil
 }
