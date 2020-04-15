@@ -39,6 +39,7 @@ import (
 
 	"github.com/gorilla/mux"
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -446,7 +447,13 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: interceptorObjectRef,
-					Header:    []pipelinev1alpha1.Param{bldr.Param("Name", fmt.Sprintf("my-resource-%d", i))},
+					Header: []v1beta1.Param{{
+						Name: "Name",
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: fmt.Sprintf("my-resource-%d", i),
+						},
+					}},
 				},
 			}},
 		}

@@ -160,7 +160,8 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 		log.Error(err)
 		return err
 	}
-	log.Info("params: %+v", params)
+
+	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
 	token, err := r.retrieveAuthToken(t.ServiceAccount, eventLog)
 	if err != nil {

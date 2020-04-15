@@ -45,8 +45,8 @@ func init() {
 
 // TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
-	Params            []pipelinev1beta1.ParamSpec `json:"params,omitempty"`
-	ResourceTemplates []TriggerResourceTemplate   `json:"resourcetemplates,omitempty"`
+	Params            []ParamSpec               `json:"params,omitempty"`
+	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
 // TriggerResourceTemplate describes a resource to create

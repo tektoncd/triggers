@@ -1,7 +1,6 @@
 package builder
 
 import (
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -56,13 +55,9 @@ func TriggerBindingSpec(ops ...TriggerBindingSpecOp) TriggerBindingOp {
 // TriggerBindingParam adds a param to the TriggerBindingSpec.
 func TriggerBindingParam(name, value string) TriggerBindingSpecOp {
 	return func(spec *v1alpha1.TriggerBindingSpec) {
-		spec.Params = append(spec.Params,
-			pipelinev1.Param{
-				Name: name,
-				Value: pipelinev1.ArrayOrString{
-					StringVal: value,
-					Type:      pipelinev1.ParamTypeString,
-				},
-			})
+		spec.Params = append(spec.Params, v1alpha1.Param{
+			Name:  name,
+			Value: value,
+		})
 	}
 }

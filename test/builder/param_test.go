@@ -4,18 +4,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
 func TestParam(t *testing.T) {
 	got := Param("foo", "bar")
 
-	want := v1beta1.Param{
-		Name: "foo",
-		Value: v1beta1.ArrayOrString{
-			Type:      v1beta1.ParamTypeString,
-			StringVal: "bar",
-		},
+	want := v1alpha1.Param{
+		Name:  "foo",
+		Value: "bar",
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {

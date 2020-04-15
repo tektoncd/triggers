@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -41,7 +40,7 @@ func (tb *TriggerBinding) Copy() TriggerBindingInterface {
 // TriggerBindingSpec defines the desired state of the TriggerBinding.
 type TriggerBindingSpec struct {
 	// Params defines the parameter mapping from the given input event.
-	Params []pipelinev1.Param `json:"params,omitempty"`
+	Params []Param `json:"params,omitempty"`
 }
 
 // TriggerBindingStatus defines the observed state of TriggerBinding.

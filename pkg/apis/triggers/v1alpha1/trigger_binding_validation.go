@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
 
@@ -36,7 +35,7 @@ func (s *TriggerBindingSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-func validateParams(params []v1beta1.Param) *apis.FieldError {
+func validateParams(params []Param) *apis.FieldError {
 	// Ensure there aren't multiple params with the same name.
 	seen := map[string]struct{}{}
 	for _, param := range params {
