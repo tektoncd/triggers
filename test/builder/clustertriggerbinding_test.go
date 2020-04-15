@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -52,13 +51,10 @@ func TestClusterTriggerBindingBuilder(t *testing.T) {
 					Name: "name",
 				},
 				Spec: v1alpha1.TriggerBindingSpec{
-					Params: []pipelinev1.Param{
+					Params: []v1alpha1.Param{
 						{
-							Name: "param1",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Name:  "param1",
+							Value: "value1",
 						},
 					},
 				},
@@ -76,20 +72,13 @@ func TestClusterTriggerBindingBuilder(t *testing.T) {
 					Name: "name",
 				},
 				Spec: v1alpha1.TriggerBindingSpec{
-					Params: []pipelinev1.Param{
+					Params: []v1alpha1.Param{
 						{
-							Name: "param1",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
-						},
+							Name:  "param1",
+							Value: "value1"},
 						{
-							Name: "param2",
-							Value: pipelinev1.ArrayOrString{
-								StringVal: "value2",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Name:  "param2",
+							Value: "value2",
 						},
 					},
 				},

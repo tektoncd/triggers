@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -75,8 +74,8 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 
 // MergeInDefaultParams returns the params with the addition of all
 // paramSpecs that have default values and are already in the params list
-func MergeInDefaultParams(params []pipelinev1.Param, paramSpecs []pipelinev1.ParamSpec) []pipelinev1.Param {
-	allParamsMap := map[string]pipelinev1.ArrayOrString{}
+func MergeInDefaultParams(params []triggersv1.Param, paramSpecs []triggersv1.ParamSpec) []triggersv1.Param {
+	allParamsMap := map[string]string{}
 	for _, paramSpec := range paramSpecs {
 		if paramSpec.Default != nil {
 			allParamsMap[paramSpec.Name] = *paramSpec.Default
@@ -90,7 +89,7 @@ func MergeInDefaultParams(params []pipelinev1.Param, paramSpecs []pipelinev1.Par
 
 // ApplyParamsToResourceTemplate returns the TriggerResourceTemplate with the
 // param values substituted for all matching param variables in the template
-func ApplyParamsToResourceTemplate(params []pipelinev1.Param, rt json.RawMessage) json.RawMessage {
+func ApplyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage) json.RawMessage {
 	// Assume the params are valid
 	for _, param := range params {
 		rt = applyParamToResourceTemplate(param, rt)
@@ -100,12 +99,12 @@ func ApplyParamsToResourceTemplate(params []pipelinev1.Param, rt json.RawMessage
 
 // applyParamToResourceTemplate returns the TriggerResourceTemplate with the
 // param value substituted for all matching param variables in the template
-func applyParamToResourceTemplate(param pipelinev1.Param, rt json.RawMessage) json.RawMessage {
+func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(params.%s)", param.Name)
 	// Escape quotes so that that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
-	paramValue := strings.Replace(param.Value.StringVal, `"`, `\"`, -1)
+	paramValue := strings.Replace(param.Value, `"`, `\"`, -1)
 	return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
 }
 
@@ -118,17 +117,17 @@ func ApplyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage 
 	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
 }
 
-func convertParamMapToArray(paramMap map[string]pipelinev1.ArrayOrString) []pipelinev1.Param {
-	params := []pipelinev1.Param{}
+func convertParamMapToArray(paramMap map[string]string) []triggersv1.Param {
+	params := []triggersv1.Param{}
 	for name, value := range paramMap {
-		params = append(params, pipelinev1.Param{Name: name, Value: value})
+		params = append(params, triggersv1.Param{Name: name, Value: value})
 	}
 	return params
 }
 
 // MergeBindingParams merges params across multiple bindings.
-func MergeBindingParams(bindings []*triggersv1.TriggerBinding, clusterbindings []*triggersv1.ClusterTriggerBinding) ([]pipelinev1.Param, error) {
-	params := []pipelinev1.Param{}
+func MergeBindingParams(bindings []*triggersv1.TriggerBinding, clusterbindings []*triggersv1.ClusterTriggerBinding) ([]triggersv1.Param, error) {
+	params := []triggersv1.Param{}
 	for _, b := range bindings {
 		params = append(params, b.Spec.Params...)
 	}

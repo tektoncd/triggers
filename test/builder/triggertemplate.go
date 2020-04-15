@@ -1,7 +1,6 @@
 package builder
 
 import (
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,13 +70,10 @@ func TriggerResourceTemplate(resourceTemplate runtime.RawExtension) TriggerTempl
 func TriggerTemplateParam(name, description, defaultValue string) TriggerTemplateSpecOp {
 	return func(spec *v1alpha1.TriggerTemplateSpec) {
 		spec.Params = append(spec.Params,
-			pipelinev1.ParamSpec{
+			v1alpha1.ParamSpec{
 				Name:        name,
 				Description: description,
-				Default: &pipelinev1.ArrayOrString{
-					StringVal: defaultValue,
-					Type:      pipelinev1.ParamTypeString,
-				},
+				Default:     &defaultValue,
 			})
 	}
 }

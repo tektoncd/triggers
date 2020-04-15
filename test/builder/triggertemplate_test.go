@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestTriggerTemplateBuilder(t *testing.T) {
+	defaultValue1 := "value1"
+	defaultValue2 := "value2"
 	tests := []struct {
 		name    string
 		normal  *v1alpha1.TriggerTemplate
@@ -39,14 +40,11 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 					Namespace: "namespace",
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
-					Params: []pipelinev1.ParamSpec{
+					Params: []v1alpha1.ParamSpec{
 						{
 							Name:        "param1",
 							Description: "description",
-							Default: &pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Default:     &defaultValue1,
 						},
 					},
 				},
@@ -65,22 +63,16 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 					Namespace: "namespace",
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
-					Params: []pipelinev1.ParamSpec{
+					Params: []v1alpha1.ParamSpec{
 						{
 							Name:        "param1",
 							Description: "description",
-							Default: &pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Default:     &defaultValue1,
 						},
 						{
 							Name:        "param2",
 							Description: "description",
-							Default: &pipelinev1.ArrayOrString{
-								StringVal: "value2",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Default:     &defaultValue2,
 						},
 					},
 				},
@@ -153,22 +145,16 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				},
 				Spec: v1alpha1.TriggerTemplateSpec{
-					Params: []pipelinev1.ParamSpec{
+					Params: []v1alpha1.ParamSpec{
 						{
 							Name:        "param1",
 							Description: "description",
-							Default: &pipelinev1.ArrayOrString{
-								StringVal: "value1",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Default:     &defaultValue1,
 						},
 						{
 							Name:        "param2",
 							Description: "description",
-							Default: &pipelinev1.ArrayOrString{
-								StringVal: "value2",
-								Type:      pipelinev1.ParamTypeString,
-							},
+							Default:     &defaultValue2,
 						},
 					},
 					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{

@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"strings"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,7 +85,7 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldE
 }
 
 // Verify every param in the ResourceTemplates is declared with a ParamSpec
-func verifyParamDeclarations(params []pipelinev1.ParamSpec, templates []TriggerResourceTemplate) *apis.FieldError {
+func verifyParamDeclarations(params []ParamSpec, templates []TriggerResourceTemplate) *apis.FieldError {
 	declaredParamNames := map[string]struct{}{}
 	for _, param := range params {
 		declaredParamNames[param.Name] = struct{}{}
