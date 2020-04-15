@@ -3,6 +3,7 @@ package cel
 import (
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"reflect"
 	"strings"
@@ -89,6 +90,19 @@ func decodeB64String(val ref.Val) ref.Val {
 		return types.NewErr("failed to decode '%v' in decodeB64: %w", str, err)
 	}
 	return types.Bytes(dec)
+}
+
+func parseJSONString(val ref.Val) ref.Val {
+	str, ok := val.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to parseJSON", val.Type())
+	}
+	decodedVal := map[string]interface{}{}
+	err := json.Unmarshal([]byte(str), &decodedVal)
+	if err != nil {
+		return types.NewErr("failed to decode '%v' in parseJSON: %w", str, err)
+	}
+	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
 }
 
 func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.FunctionOp {

@@ -241,5 +241,18 @@ interceptor.
      <pre>header.canonical('X-Secret-Token').compareSecret('key', 'secret-name')</pre>
     </td>
   </tr>
-
+  <tr>
+    <th>
+     parseJSON
+    </th>
+    <td>
+      parseJSON(string) -> map
+    </td>
+    <td>
+     This parses a string that contains a JSON body into a map which which can be subsequently used in other expressions.
+    </td>
+    <td>
+     <pre>parseJSON('{"testing":"value"}').testing == "value"</pre>
+    </td>
+  </tr>
 </table>
