@@ -288,7 +288,8 @@ func TestExpressionEvaluation(t *testing.T) {
 		"pull_request": map[string]interface{}{
 			"commits": 2,
 		},
-		"b64value": "ZXhhbXBsZQ==",
+		"b64value":  "ZXhhbXBsZQ==",
+		"json_body": `{"testing": "value"}`,
 	}
 	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
@@ -376,6 +377,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			expr:   "'secrettoken'.compareSecret('token', 'test-secret') ",
 			want:   types.Bool(true),
 			secret: makeSecret(),
+		},
+		{
+			name: "parse JSON body in a string",
+			expr: "parseJSON(body.json_body).testing == 'value'",
+			want: types.Bool(true),
 		},
 	}
 	for _, tt := range tests {
@@ -476,6 +482,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			expr:     "'testing'.compareSecret('testSecret', 'mytoken')",
 			secretNS: "another-ns",
 			want:     "failed to find secret.*another-ns.*",
+		},
+		{
+			name: "invalid parseJSON body",
+			expr: "parseJSON(body.value).test == 'test'",
+			want: "invalid character 'e' in literal",
 		},
 	}
 	for _, tt := range tests {

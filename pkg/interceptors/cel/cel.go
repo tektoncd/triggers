@@ -59,6 +59,8 @@ func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns s
 	}
 }
 
+var mapStrDyn = decls.NewMapType(decls.String, decls.Dyn)
+
 // ExecuteTrigger is an implementation of the Interceptor interface.
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
 	env, err := makeCelEnv()
@@ -172,13 +174,15 @@ func embeddedFunctions(ns string, k kubernetes.Interface) cel.ProgramOption {
 			Operator: "decodeb64",
 			Unary:    decodeB64String},
 		&functions.Overload{
+			Operator: "parseJSON",
+			Unary:    parseJSONString},
+		&functions.Overload{
 			Operator: "compareSecret",
 			Function: makeCompareSecret(ns, k)},
 	)
 
 }
 func makeCelEnv() (cel.Env, error) {
-	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	listStr := decls.NewListType(decls.String)
 	return cel.NewEnv(
 		cel.Declarations(
@@ -202,6 +206,9 @@ func makeCelEnv() (cel.Env, error) {
 			decls.NewFunction("decodeb64",
 				decls.NewOverload("decodeb64_string",
 					[]*exprpb.Type{decls.String}, decls.String)),
+			decls.NewFunction("parseJSON",
+				decls.NewOverload("parseJSON_string",
+					[]*exprpb.Type{decls.String}, mapStrDyn)),
 			decls.NewFunction("truncate",
 				decls.NewOverload("truncate_string_uint",
 					[]*exprpb.Type{decls.String, decls.Int}, decls.String))))
