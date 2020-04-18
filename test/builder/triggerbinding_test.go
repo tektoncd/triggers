@@ -111,6 +111,31 @@ func TestTriggerBindingBuilder(t *testing.T) {
 				),
 			),
 		},
+		{
+			name: "Param of Array type",
+			normal: &v1alpha1.TriggerBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: v1alpha1.TriggerBindingSpec{
+					Params: []pipelinev1.Param{
+						{
+							Name: "param1",
+							Value: pipelinev1.ArrayOrString{
+								ArrayVal: []string{"value1"},
+								Type:     pipelinev1.ParamTypeArray,
+							},
+						},
+					},
+				},
+			},
+			builder: TriggerBinding("name", "namespace",
+				TriggerBindingSpec(
+					TriggerBindingArrayParam("param1", []string{"value1"}),
+				),
+			),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

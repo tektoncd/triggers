@@ -66,3 +66,17 @@ func TriggerBindingParam(name, value string) TriggerBindingSpecOp {
 			})
 	}
 }
+
+// TriggerBindingArrayParam adds a param of type array to the TriggerBindingSpec.
+func TriggerBindingArrayParam(name string, value []string) TriggerBindingSpecOp {
+	return func(spec *v1alpha1.TriggerBindingSpec) {
+		spec.Params = append(spec.Params,
+			pipelinev1.Param{
+				Name: name,
+				Value: pipelinev1.ArrayOrString{
+					ArrayVal: value,
+					Type:     pipelinev1.ParamTypeArray,
+				},
+			})
+	}
+}

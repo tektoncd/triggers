@@ -568,6 +568,26 @@ func TestMergeBindingParams(t *testing.T) {
 			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
 		}},
 	}, {
+		name: "multiple param type binding with multiple params",
+		clusterBindings: []*triggersv1.ClusterTriggerBinding{
+			bldr.ClusterTriggerBinding("", bldr.ClusterTriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "value1"),
+				bldr.TriggerBindingParam("param2", "value2"),
+				bldr.TriggerBindingArrayParam("param3", []string{"value3"}),
+			)),
+		},
+		bindings: []*triggersv1.TriggerBinding{},
+		want: []pipelinev1beta1.Param{{
+			Name:  "param1",
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value1", Type: pipelinev1beta1.ParamTypeString},
+		}, {
+			Name:  "param2",
+			Value: pipelinev1beta1.ArrayOrString{StringVal: "value2", Type: pipelinev1beta1.ParamTypeString},
+		}, {
+			Name:  "param3",
+			Value: pipelinev1beta1.ArrayOrString{ArrayVal: []string{"value3"}, Type: pipelinev1beta1.ParamTypeArray},
+		}},
+	}, {
 		name: "multiple bindings each with multiple params",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{
 			bldr.ClusterTriggerBinding("", bldr.ClusterTriggerBindingSpec(

@@ -38,6 +38,7 @@ func Test_TriggerBindingValidate(t *testing.T) {
 				bldr.TriggerBindingParam("param1", "$(body.input1)"),
 				bldr.TriggerBindingParam("param2", "$(body.input2)"),
 				bldr.TriggerBindingParam("param3", "$(body.input3)"),
+				bldr.TriggerBindingArrayParam("param4", []string{"$(body.input4)"}),
 			)),
 	}, {
 		name: "multiple params case sensitive",
