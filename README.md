@@ -7,7 +7,7 @@
 </p>
 
 Triggers is a Kubernetes
-[Custom Resource Defintion](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+[Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 (CRD) controller that allows you to extract information from events payloads (a
 "trigger") to create Kubernetes resources.
 

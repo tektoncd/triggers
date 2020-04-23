@@ -6,7 +6,7 @@ by json payloads sent to HTTP endpoints (Tekton Triggers).
 In 2020 we would like to add missing features and then push for a `beta` release in the
 same year.
 
-We are targetting improving the experience for both end users and operators:
+We are targeting improving the experience for both end users and operators:
 
 * For end users:
   * [Pluggable core interceptors](https://github.com/tektoncd/triggers/issues/271)

@@ -135,7 +135,7 @@ PipelineRun and create a release:
    # Create the resoruces - i.e. set the revision that you wan to build from
    kubectl apply -f tekton/resources.yaml
 
-   # Change thie environment variable to the verison you would like to use.
+   # Change the environment variable to the version you would like to use.
    # Be careful: due to #983 it is possible to overwrite previous releases.
    export VERSION_TAG=v0.X.Y
 
