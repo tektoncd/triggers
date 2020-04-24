@@ -61,7 +61,6 @@ import (
 	traceapi "cloud.google.com/go/trace/apiv2"
 	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
 	"go.opencensus.io/resource"
-	"go.opencensus.io/resource/resourcekeys"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 	"golang.org/x/oauth2/google"
@@ -259,7 +258,8 @@ type Options struct {
 	ReportingInterval time.Duration
 
 	// NumberOfWorkers sets the number of go rountines that send requests
-	// to Stackdriver Monitoring and Trace. The minimum number of workers is 1.
+	// to Stackdriver Monitoring. This is only used for Proto metrics export
+	// for now. The minimum number of workers is 1.
 	NumberOfWorkers int
 
 	// ResourceByDescriptor may be provided to supply monitored resource dynamically
@@ -347,14 +347,12 @@ func NewExporter(o Options) (*Exporter, error) {
 		// Populate internal resource labels for defaulting project_id, location, and
 		// generic resource labels of applicable monitored resources.
 		res.Labels[stackdriverProjectID] = o.ProjectID
-		res.Labels[resourcekeys.CloudKeyZone] = o.Location
+		res.Labels[stackdriverLocation] = o.Location
 		res.Labels[stackdriverGenericTaskNamespace] = "default"
 		res.Labels[stackdriverGenericTaskJob] = path.Base(os.Args[0])
 		res.Labels[stackdriverGenericTaskID] = getTaskValue()
-		log.Printf("OpenCensus detected resource: %v", res)
 
 		o.Resource = o.MapResource(res)
-		log.Printf("OpenCensus using monitored resource: %v", o.Resource)
 	}
 	if o.MetricPrefix != "" && !strings.HasSuffix(o.MetricPrefix, "/") {
 		o.MetricPrefix = o.MetricPrefix + "/"

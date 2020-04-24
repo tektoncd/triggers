@@ -76,9 +76,6 @@ func newTraceExporterWithClient(o Options, c *tracingclient.Client) *traceExport
 	} else {
 		b.BundleCountThreshold = 50
 	}
-	if o.NumberOfWorkers > 0 {
-		b.HandlerLimit = o.NumberOfWorkers
-	}
 	// The measured "bytes" are not really bytes, see exportReceiver.
 	b.BundleByteThreshold = b.BundleCountThreshold * 200
 	b.BundleByteLimit = b.BundleCountThreshold * 1000

@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"time"
 )
 
@@ -17,7 +16,6 @@ import (
 // Note that it's wrapping a Commit, so author/committer information is in two places,
 // but contain different details about them: in RepositoryCommit "github details", in Commit - "git details".
 type RepositoryCommit struct {
-	NodeID      *string  `json:"node_id,omitempty"`
 	SHA         *string  `json:"sha,omitempty"`
 	Commit      *Commit  `json:"commit,omitempty"`
 	Author      *User    `json:"author,omitempty"`
@@ -50,17 +48,16 @@ func (c CommitStats) String() string {
 
 // CommitFile represents a file modified in a commit.
 type CommitFile struct {
-	SHA              *string `json:"sha,omitempty"`
-	Filename         *string `json:"filename,omitempty"`
-	Additions        *int    `json:"additions,omitempty"`
-	Deletions        *int    `json:"deletions,omitempty"`
-	Changes          *int    `json:"changes,omitempty"`
-	Status           *string `json:"status,omitempty"`
-	Patch            *string `json:"patch,omitempty"`
-	BlobURL          *string `json:"blob_url,omitempty"`
-	RawURL           *string `json:"raw_url,omitempty"`
-	ContentsURL      *string `json:"contents_url,omitempty"`
-	PreviousFilename *string `json:"previous_filename,omitempty"`
+	SHA         *string `json:"sha,omitempty"`
+	Filename    *string `json:"filename,omitempty"`
+	Additions   *int    `json:"additions,omitempty"`
+	Deletions   *int    `json:"deletions,omitempty"`
+	Changes     *int    `json:"changes,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	Patch       *string `json:"patch,omitempty"`
+	BlobURL     *string `json:"blob_url,omitempty"`
+	RawURL      *string `json:"raw_url,omitempty"`
+	ContentsURL *string `json:"contents_url,omitempty"`
 }
 
 func (c CommitFile) String() string {
@@ -115,13 +112,6 @@ type CommitsListOptions struct {
 	ListOptions
 }
 
-// BranchCommit is the result of listing branches with commit SHA.
-type BranchCommit struct {
-	Name      *string `json:"name,omitempty"`
-	Commit    *Commit `json:"commit,omitempty"`
-	Protected *string `json:"protected,omitempty"`
-}
-
 // ListCommits lists the commits of a repository.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/commits/#list
@@ -136,6 +126,9 @@ func (s *RepositoriesService) ListCommits(ctx context.Context, owner, repo strin
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeGitSigningPreview)
 
 	var commits []*RepositoryCommit
 	resp, err := s.client.Do(ctx, req, &commits)
@@ -157,6 +150,9 @@ func (s *RepositoriesService) GetCommit(ctx context.Context, owner, repo, sha st
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeGitSigningPreview)
 
 	commit := new(RepositoryCommit)
 	resp, err := s.client.Do(ctx, req, commit)
@@ -198,7 +194,7 @@ func (s *RepositoriesService) GetCommitRaw(ctx context.Context, owner string, re
 //
 // GitHub API docs: https://developer.github.com/v3/repos/commits/#get-the-sha-1-of-a-commit-reference
 func (s *RepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/commits/%v", owner, repo, url.QueryEscape(ref))
+	u := fmt.Sprintf("repos/%v/%v/commits/%v", owner, repo, ref)
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -238,27 +234,4 @@ func (s *RepositoriesService) CompareCommits(ctx context.Context, owner, repo st
 	}
 
 	return comp, resp, nil
-}
-
-// ListBranchesHeadCommit gets all branches where the given commit SHA is the HEAD,
-// or latest commit for the branch.
-//
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-branches-for-head-commit
-func (s *RepositoriesService) ListBranchesHeadCommit(ctx context.Context, owner, repo, sha string) ([]*BranchCommit, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/commits/%v/branches-where-head", owner, repo, sha)
-
-	req, err := s.client.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeListPullsOrBranchesForCommitPreview)
-	var branchCommits []*BranchCommit
-	resp, err := s.client.Do(ctx, req, &branchCommits)
-	if err != nil {
-		return nil, resp, err
-	}
-
-	return branchCommits, resp, nil
 }
