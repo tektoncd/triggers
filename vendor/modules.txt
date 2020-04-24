@@ -146,11 +146,10 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-github v17.0.0+incompatible
+# github.com/google/go-github/v31 v31.0.0
 ## explicit
-github.com/google/go-github/github
+github.com/google/go-github/v31/github
 # github.com/google/go-querystring v1.0.0
-## explicit
 github.com/google/go-querystring/query
 # github.com/google/gofuzz v1.1.0
 github.com/google/gofuzz
@@ -309,6 +308,13 @@ go.uber.org/zap/zapcore
 go.uber.org/zap/zaptest
 # golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 ## explicit
+golang.org/x/crypto/cast5
+golang.org/x/crypto/openpgp
+golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/elgamal
+golang.org/x/crypto/openpgp/errors
+golang.org/x/crypto/openpgp/packet
+golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/exp v0.0.0-20191002040644-a1355ae1e2c3
 golang.org/x/exp/apidiff
