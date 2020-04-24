@@ -10,8 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.3
 	github.com/google/cel-go v0.3.2
 	github.com/google/go-cmp v0.4.0
-	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/openzipkin/zipkin-go v0.2.2 // indirect
