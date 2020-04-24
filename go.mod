@@ -15,23 +15,26 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/openzipkin/zipkin-go v0.2.2 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/tektoncd/pipeline v0.11.3
 	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
 	github.com/tidwall/gjson v1.3.5 // indirect
 	github.com/tidwall/sjson v1.0.4
 	go.uber.org/zap v1.13.0
+	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/genproto v0.0.0-20191009194640-548a555dbc03
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.2
-	k8s.io/apiextensions-apiserver v0.18.2 // indirect
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v0.18.2
-	k8s.io/code-generator v0.18.2
+	k8s.io/code-generator v0.17.1
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
+	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89 // indirect
 	knative.dev/caching v0.0.0-20200228235451-13d271455c74
 	knative.dev/pkg v0.0.0-20200207155214-fef852970f43
+	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 // Knative deps (release-0.12)

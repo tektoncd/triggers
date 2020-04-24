@@ -9,10 +9,9 @@ import "context"
 
 // UserEmail represents user's email address
 type UserEmail struct {
-	Email      *string `json:"email,omitempty"`
-	Primary    *bool   `json:"primary,omitempty"`
-	Verified   *bool   `json:"verified,omitempty"`
-	Visibility *string `json:"visibility,omitempty"`
+	Email    *string `json:"email,omitempty"`
+	Primary  *bool   `json:"primary,omitempty"`
+	Verified *bool   `json:"verified,omitempty"`
 }
 
 // ListEmails lists all email addresses for the authenticated user.
