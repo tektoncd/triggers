@@ -43,13 +43,12 @@ APIS_PKG="$3"
 GROUPS_WITH_VERSIONS="$4"
 shift 4
 
-# FIXME(vdemeester) Uncomment that when switching to go modules
-#(
+(
   # To support running this script from anywhere, we have to first cd into this directory
   # so we can install the tools.
-#  cd $(dirname "${0}")
-#  go install knative.dev/pkg/codegen/cmd/injection-gen
-#)
+  cd $(dirname "${0}")
+  go install knative.dev/pkg/codegen/cmd/injection-gen
+)
 
 function codegen::join() { local IFS="$1"; shift; echo "$*"; }
 
