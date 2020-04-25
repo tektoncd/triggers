@@ -105,11 +105,16 @@ func main() {
 		serviceName = "tekton-triggers-webhook"
 	}
 
+	secretName := os.Getenv("WEBHOOK_SECRET_NAME")
+	if secretName == "" {
+		secretName = "triggers-webhook-certs"
+	}
+
 	// Set up a signal context with our webhook options
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
 		ServiceName: serviceName,
 		Port:        8443,
-		SecretName:  "triggers-webhook-certs",
+		SecretName:  secretName,
 	})
 
 	sharedmain.MainWithContext(ctx, "webhook",

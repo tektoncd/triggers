@@ -55,6 +55,8 @@ spec:
           value: config-logging-triggers
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-triggers-webhook
+        - name: WEBHOOK_SECRET_NAME
+          value: triggers-webhook-certs
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
         ports:
