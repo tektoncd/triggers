@@ -18,27 +18,35 @@ metadata:
   name: tekton-triggers-webhook
   namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/name: tekton-triggers
-    app.kubernetes.io/component: webhook-controller
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: tekton-triggers
     # tekton.dev/release value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
     triggers.tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tekton-triggers-webhook
+      app.kubernetes.io/name: webhook
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
+        app.kubernetes.io/name: webhook
+        app.kubernetes.io/component: webhook
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: tekton-triggers
         app: tekton-triggers-webhook
         triggers.tekton.dev/release: "devel"
         # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
         version: "devel"
-        role: webhook
-        app.kubernetes.io/name: tekton-triggers
-        app.kubernetes.io/component: webhook-controller
     spec:
       serviceAccountName: tekton-triggers-controller
       containers:
