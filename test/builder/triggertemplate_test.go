@@ -93,6 +93,41 @@ func TestTriggerTemplateBuilder(t *testing.T) {
 			),
 		},
 		{
+			name: "Both string and array Param",
+			normal: &v1alpha1.TriggerTemplate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: v1alpha1.TriggerTemplateSpec{
+					Params: []pipelinev1.ParamSpec{
+						{
+							Name:        "param1",
+							Description: "description",
+							Default: &pipelinev1.ArrayOrString{
+								StringVal: "value1",
+								Type:      pipelinev1.ParamTypeString,
+							},
+						},
+						{
+							Name:        "param2",
+							Description: "description",
+							Default: &pipelinev1.ArrayOrString{
+								ArrayVal: []string{"value2", "value3"},
+								Type:     pipelinev1.ParamTypeArray,
+							},
+						},
+					},
+				},
+			},
+			builder: TriggerTemplate("name", "namespace",
+				TriggerTemplateSpec(
+					TriggerTemplateParam("param1", "description", "value1"),
+					TriggerTemplateArrayParam("param2", "description", []string{"value2", "value3"}),
+				),
+			),
+		},
+		{
 			name: "One Resource Template",
 			normal: &v1alpha1.TriggerTemplate{
 				ObjectMeta: metav1.ObjectMeta{

@@ -81,3 +81,18 @@ func TriggerTemplateParam(name, description, defaultValue string) TriggerTemplat
 			})
 	}
 }
+
+// TriggerTemplateArrayParam adds a ParamSpec of array type to the TriggerTemplateSpec.
+func TriggerTemplateArrayParam(name, description string, value []string) TriggerTemplateSpecOp {
+	return func(spec *v1alpha1.TriggerTemplateSpec) {
+		spec.Params = append(spec.Params,
+			pipelinev1.ParamSpec{
+				Name:        name,
+				Description: description,
+				Default: &pipelinev1.ArrayOrString{
+					ArrayVal: value,
+					Type:     pipelinev1.ParamTypeArray,
+				},
+			})
+	}
+}
