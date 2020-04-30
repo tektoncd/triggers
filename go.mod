@@ -16,7 +16,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.2.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/tektoncd/pipeline v0.11.3
-	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
+	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 	github.com/tidwall/gjson v1.3.5 // indirect
 	github.com/tidwall/sjson v1.0.4
 	go.uber.org/zap v1.13.0
