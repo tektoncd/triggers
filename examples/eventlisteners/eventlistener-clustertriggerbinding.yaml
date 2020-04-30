@@ -8,9 +8,9 @@ spec:
   triggers:
     - name: foo-trig
       bindings:
-        - name: pipeline-clusterbinding
+        - ref: pipeline-clusterbinding
           kind: ClusterTriggerBinding
-        - name: message-clusterbinding
+        - ref: message-clusterbinding
           kind: ClusterTriggerBinding
       template:
         name: pipeline-template

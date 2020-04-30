@@ -52,7 +52,7 @@ func TestEventListenerScale(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		trigger := bldr.Trigger("my-triggertemplate", "v1alpha1",
-			bldr.EventListenerTriggerBinding("my-triggerbinding", "", "v1alpha1"),
+			bldr.EventListenerTriggerBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
 		)
 		trigger.Name = fmt.Sprintf("%d", i)
 		el.Spec.Triggers = append(el.Spec.Triggers, trigger)

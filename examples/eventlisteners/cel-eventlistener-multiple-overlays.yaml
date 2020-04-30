@@ -14,6 +14,6 @@ spec:
             - key: extensions.branch_name
               expression: "split(body.ref, '/')[2]"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template

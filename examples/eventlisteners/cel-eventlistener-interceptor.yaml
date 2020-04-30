@@ -21,6 +21,6 @@ spec:
         - cel:
             filter: "header.canonical('X-GitHub-Event') == 'push'"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template

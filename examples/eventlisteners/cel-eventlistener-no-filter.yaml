@@ -12,6 +12,6 @@ spec:
             - key: extensions.truncated_sha
               expression: "truncate(body.pull_request.head.sha, 7)"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template

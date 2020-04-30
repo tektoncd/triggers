@@ -34,52 +34,48 @@ func Test_EventListenerValidate(t *testing.T) {
 		name: "TriggerTemplate Does Not Exist",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
-				bldr.EventListenerTrigger("dne", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
-				))),
+				bldr.EventListenerTrigger("dne", "v1alpha1"))),
 	}, {
 		name: "Valid EventListener No TriggerBinding",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
-				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("", "", "v1alpha1"),
-				))),
+				bldr.EventListenerTrigger("tt", "v1alpha1"))),
 	}, {
 		name: "Valid EventListener with TriggerBinding",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "tb", "v1alpha1"),
 				))),
 	}, {
 		name: "Valid EventListener with ClusterTriggerBinding",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "ClusterTriggerBinding", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "ClusterTriggerBinding", "tb", "v1alpha1"),
 				))),
 	}, {
 		name: "Valid EventListener with multiple TriggerBindings",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb1", "ClusterTriggerBinding", "v1alpha1"),
-					bldr.EventListenerTriggerBinding("tb2", "TriggerBinding", "v1alpha1"),
-					bldr.EventListenerTriggerBinding("tb3", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb1", "ClusterTriggerBinding", "tb1", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb2", "TriggerBinding", "tb2", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb3", "", "tb3", "v1alpha1"),
 				))),
 	}, {
 		name: "Valid EventListener No Interceptor",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 				))),
 	}, {
 		name: "Valid EventListener Interceptor",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
 				))),
 	}, {
@@ -87,7 +83,7 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
 						bldr.EventInterceptorParam("Valid-Header-Key", "valid value"),
 					),
@@ -97,7 +93,7 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace",
 						bldr.EventInterceptorParam("Valid-Header-Key1", "valid value1"),
 						bldr.EventInterceptorParam("Valid-Header-Key1", "valid value2"),
@@ -109,18 +105,18 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("svc", "v1", "Service", "namespace"),
 				),
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 				))),
 	}, {
 		name: "Valid EventListener with CEL interceptor",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerCELInterceptor("body.value == 'test'"),
 				))),
 	}, {
@@ -128,14 +124,21 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
+				))),
+	}, {
+		name: "Valid EventListener with embedded bindings",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("", "", "", "v1alpha1", bldr.TriggerBindingParam("key", "value")),
 				))),
 	}, {
 		name: "Valid EventListener with CEL overlays",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerCELInterceptor("", bldr.EventListenerCELOverlay("body.value", "'testing'")),
 				))),
 	}}
@@ -165,6 +168,20 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Triggers: nil,
 			},
 		},
+	}, {
+		name: "TriggerBinding with no ref or spec",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("", "", "tb", "v1alpha1"),
+				))),
+	}, {
+		name: "TriggerBinding with both ref and spec",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1", bldr.TriggerBindingParam("key", "value")),
+				))),
 	}, {
 		name: "Bindings missing name",
 		el: &v1alpha1.EventListener{
@@ -202,7 +219,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt", APIVersion: "invalid"},
 				}},
 			},
@@ -216,7 +233,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "", APIVersion: "v1alpha1"},
 				}},
 			},
@@ -226,7 +243,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("svc", "", "", ""),
 				))),
 	}, {
@@ -238,7 +255,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings:     []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings:     []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template:     v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*v1alpha1.EventInterceptor{{}},
 				}},
@@ -253,7 +270,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
@@ -270,14 +287,14 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "NamespaceTriggerBinding", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "NamespaceTriggerBinding", "tb", "v1alpha1"),
 				))),
 	}, {
 		name: "Interceptor Wrong APIVersion",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("foo", "v3", "Service", ""),
 				))),
 	}, {
@@ -285,7 +302,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", ""),
 				))),
 	}, {
@@ -293,7 +310,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
 						bldr.EventInterceptorParam("non-canonical-header-key", "valid value"),
 					),
@@ -303,7 +320,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
 						bldr.EventInterceptorParam("", "valid value"),
 					),
@@ -313,7 +330,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerInterceptor("foo", "v1", "Deployment", "",
 						bldr.EventInterceptorParam("Valid-Header-Key", ""),
 					),
@@ -327,7 +344,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						GitHub: &v1alpha1.GitHubInterceptor{},
@@ -345,7 +362,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Bindings: []*v1alpha1.EventListenerBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: v1alpha1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						CEL: &v1alpha1.CELInterceptor{},
@@ -358,7 +375,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerName("github.com/tektoncd/triggers"),
 				))),
 	}, {
@@ -366,7 +383,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
-					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerName("1234567890123456789012345678901234567890123456789012345678901234"),
 				))),
 	}}

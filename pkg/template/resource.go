@@ -49,14 +49,24 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
 	ctb := make([]*triggersv1.ClusterTriggerBinding, 0, len(trigger.Bindings))
 	for _, b := range trigger.Bindings {
+		if b.Spec != nil {
+			tb = append(tb, &triggersv1.TriggerBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: b.Name,
+				},
+				Spec: *b.Spec,
+			})
+			continue
+		}
+
 		if b.Kind == triggersv1.ClusterTriggerBindingKind {
-			ctb2, err := getCTB(b.Name, metav1.GetOptions{})
+			ctb2, err := getCTB(b.Ref, metav1.GetOptions{})
 			if err != nil {
 				return ResolvedTrigger{}, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
 			}
 			ctb = append(ctb, ctb2)
 		} else {
-			tb2, err := getTB(b.Name, metav1.GetOptions{})
+			tb2, err := getTB(b.Ref, metav1.GetOptions{})
 			if err != nil {
 				return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
 			}
