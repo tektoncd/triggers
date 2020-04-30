@@ -2,19 +2,17 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: github-listener-interceptor
+  name: listener-embed-binding
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: foo-trig
-      interceptors:
-        - github:
-            secretRef:
-              secretName: foo
-              secretKey: bar
-            eventTypes:
-              - pull_request
       bindings:
         - ref: pipeline-binding
+        - name: message-binding
+          spec:
+            params:
+              - name: message
+                value: Hello from the Triggers EventListener(listener-embed-binding)!
       template:
         name: pipeline-template

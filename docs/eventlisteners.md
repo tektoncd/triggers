@@ -149,7 +149,7 @@ The `triggers` field is required. Each EventListener can consist of one or more
 - `name` - (Optional) a valid
   [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 - [`interceptors`](#interceptors) - (Optional) list of interceptors to use
-- `bindings` - A list of names of `TriggerBindings` to use
+- `bindings` - A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use.
 - `template` - The name of `TriggerTemplate` to use
 
 ```yaml
@@ -160,7 +160,12 @@ triggers:
           eventTypes: ["pull_request"]
     bindings:
       - name: pipeline-binding
+        ref:  pipeline-binding
       - name: message-binding
+        spec:
+            params:
+              - name: message
+                value: Hello from the Triggers EventListener!
     template:
       name: pipeline-template
 ```
@@ -180,7 +185,9 @@ triggers:
           eventTypes: ["pull_request"]
     bindings:
       - name: pipeline-binding
+        ref:  pipeline-binding
       - name: message-binding
+        ref:  message-binding
     template:
       name: pipeline-template
 ``` 
@@ -315,7 +322,7 @@ spec:
               apiVersion: v1
               namespace: default
       bindings:
-        - name: pipeline-binding
+        - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -360,7 +367,7 @@ spec:
             eventTypes:
               - pull_request
       bindings:
-        - name: pipeline-binding
+        - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -405,6 +412,7 @@ spec:
               - Push Hook
       bindings:
         - name: pipeline-binding
+          ref:  pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -449,7 +457,7 @@ spec:
         - cel:
             filter: "header.canonical('X-GitHub-Event') == 'push'"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -487,7 +495,7 @@ spec:
         - cel:
             filter: "header.canonical('X-GitHub-Event') == 'push'"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -514,7 +522,7 @@ spec:
             - key: extensions.truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -543,7 +551,7 @@ spec:
             - key: extensions.branch_name
               expression: "body.ref.split('/')[2]"
       bindings:
-      - name: pipeline-binding
+      - ref: pipeline-binding
       template:
         name: pipeline-template
 ```

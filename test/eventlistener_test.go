@@ -228,8 +228,8 @@ func TestEventListenerCreate(t *testing.T) {
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
 				bldr.EventListenerTrigger(tt.Name, "",
-					bldr.EventListenerTriggerBinding(tb.Name, "", "v1alpha1"),
-					bldr.EventListenerTriggerBinding(ctb.Name, "ClusterTriggerBinding", "v1alpha1"),
+					bldr.EventListenerTriggerBinding(tb.Name, "", tb.Name, "v1alpha1"),
+					bldr.EventListenerTriggerBinding(ctb.Name, "ClusterTriggerBinding", ctb.Name, "v1alpha1"),
 				),
 			),
 		))

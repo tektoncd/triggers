@@ -28,6 +28,6 @@ spec:
               apiVersion: v1
               namespace: default
       bindings:
-        - name: pipeline-binding
+        - ref: pipeline-binding
       template:
         name: pipeline-template

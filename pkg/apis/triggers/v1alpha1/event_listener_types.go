@@ -134,9 +134,11 @@ type SecretRef struct {
 
 // EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBindingresource.
 type EventListenerBinding struct {
-	Name       string             `json:"name"`
-	Kind       TriggerBindingKind `json:"kind"`
-	APIVersion string             `json:"apiversion,omitempty"`
+	Name       string              `json:"name,omitempty"`
+	Kind       TriggerBindingKind  `json:"kind,omitempty"`
+	Ref        string              `json:"ref,omitempty"`
+	Spec       *TriggerBindingSpec `json:"spec,omitempty"`
+	APIVersion string              `json:"apiversion,omitempty"`
 }
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.

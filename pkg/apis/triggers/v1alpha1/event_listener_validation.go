@@ -46,11 +46,17 @@ func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *ap
 func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
 	// Validate optional Bindings
 	for i, b := range t.Bindings {
-		if b.Name == "" {
-			return apis.ErrMissingField(fmt.Sprintf("bindings[%d].name", i))
+		// Either Ref or Spec should be present
+		if b.Ref == "" && b.Spec == nil {
+			return apis.ErrMissingOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Spec", i))
 		}
 
-		if b.Kind != NamespacedTriggerBindingKind && b.Kind != ClusterTriggerBindingKind {
+		// Both Ref and Spec can't be present at the same time
+		if b.Ref != "" && b.Spec != nil {
+			return apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Spec", i))
+		}
+
+		if b.Ref != "" && b.Kind != NamespacedTriggerBindingKind && b.Kind != ClusterTriggerBindingKind {
 			return apis.ErrInvalidValue(fmt.Errorf("invalid kind"), fmt.Sprintf("bindings[%d].kind", i))
 		}
 	}
