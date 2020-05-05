@@ -50,7 +50,7 @@ spec:
     - "/workspace/output/bucket/previous/$(inputs.params.versionTag)/"
 
   - name: run-ko
-    image: gcr.io/tekton-nightly/ko-ci # tekton-releases broken, see https://github.com/tektoncd/plumbing/issues/128
+    image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
     env:
     - name: KO_DOCKER_REPO
       value: $(inputs.params.imageRegistry)
