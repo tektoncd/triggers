@@ -45,7 +45,7 @@ manipulate certain Tekton Resources in the same way, a simple, single EventListe
 
 Your options at that point are as follows:
 
-### Multiple EventListers (One EventListener Per Namespace)
+### Multiple EventListeners (One EventListener Per Namespace)
 
 You can create multiple EventListener objects, where your set of Triggers and Interceptors are spread out across the 
 EventListeners.
@@ -185,7 +185,7 @@ triggers:
       name: pipeline-template
 ``` 
 
-The default ClusterRole for the EventLister allows for reading ServiceAccounts from any namespace.
+The default ClusterRole for the EventListener allows for reading ServiceAccounts from any namespace.
 
 ### ServiceType
 
