@@ -8,7 +8,7 @@ spec:
   triggers:
     - name: foo-trig
       bindings:
-        - ref: pipeline-binding
-        - ref: message-binding
+        - name: pipeline-binding
+        - name: message-binding
       template:
         name: pipeline-template
