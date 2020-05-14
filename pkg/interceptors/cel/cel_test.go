@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -205,8 +204,8 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				rt.Fatalf("error reading response body: %v", err)
 			}
 			defer resp.Body.Close()
-			if !reflect.DeepEqual(got, tt.want) {
-				rt.Errorf("Interceptor.ExecuteTrigger() = %s, want %s", got, tt.want)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
 			}
 		})
 	}

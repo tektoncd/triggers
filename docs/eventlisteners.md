@@ -249,6 +249,7 @@ Event Interceptors can take several different forms today:
 - [Webhook Interceptors](#Webhook-Interceptors)
 - [GitHub Interceptors](#GitHub-Interceptors)
 - [GitLab Interceptors](#GitLab-Interceptors)
+- [Bitbucket Interceptors](#Bitbucket-Interceptors)
 - [CEL Interceptors](#CEL-Interceptors)
 
 ### Webhook Interceptors
@@ -415,6 +416,48 @@ spec:
           ref:  pipeline-binding
       template:
         name: pipeline-template
+```
+
+### Bitbucket Interceptors
+
+Bitbucket Interceptors contain logic to validate and filter webhooks that come from
+Bitbucket server or cloud. Supported features include validating webhooks actually came from Bitbucket as well as
+filtering incoming events.
+
+To use this Interceptor as a validator, create a secret string using the method
+of your choice, and configure the Bitbucket webhook to use that secret value.
+Create a Kubernetes secret containing this value, and pass that as a reference
+to the `bitbucket` Interceptor.
+
+To use this Interceptor as a filter, add the event types you would like to
+accept to the `eventTypes` field. Valid values can be found in Bitbucket
+[docs](https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html).
+
+The body/header of the incoming request will be preserved in this Interceptor's
+response.
+
+<!-- FILE: examples/bitbucket/bitbucket-eventlistener-interceptor.yaml -->
+```YAML
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: bitbucket-listener
+spec:
+  serviceAccountName: tekton-triggers-bitbucket-sa
+  triggers:
+    - name: bitbucket-triggers
+      interceptors:
+        - bitbucket:
+            secretRef:
+              secretName: bitbucket-secret
+              secretKey: secretToken
+            eventTypes:
+              - repo:refs_changed
+      bindings:
+        - name: bitbucket-binding
+      template:
+        name: bitbucket-template
 ```
 
 ### CEL Interceptors

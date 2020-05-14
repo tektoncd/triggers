@@ -81,10 +81,11 @@ type EventListenerTrigger struct {
 
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor struct {
-	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
-	GitHub  *GitHubInterceptor  `json:"github,omitempty"`
-	GitLab  *GitLabInterceptor  `json:"gitlab,omitempty"`
-	CEL     *CELInterceptor     `json:"cel,omitempty"`
+	Webhook   *WebhookInterceptor   `json:"webhook,omitempty"`
+	GitHub    *GitHubInterceptor    `json:"github,omitempty"`
+	GitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
+	CEL       *CELInterceptor       `json:"cel,omitempty"`
+	Bitbucket *BitBucketInterceptor `json:"bitbucket,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -97,6 +98,12 @@ type WebhookInterceptor struct {
 	// interceptor request headers. This allows the interceptor to make
 	// decisions specific to an EventListenerTrigger.
 	Header []v1beta1.Param `json:"header,omitempty"`
+}
+
+// BitBucketInterceptor provides a webhook to intercept and pre-process events
+type BitBucketInterceptor struct {
+	SecretRef  *SecretRef `json:"secretRef,omitempty"`
+	EventTypes []string   `json:"eventTypes,omitempty"`
 }
 
 // GitHubInterceptor provides a webhook to intercept and pre-process events
