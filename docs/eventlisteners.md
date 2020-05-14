@@ -348,7 +348,7 @@ accept to the `eventTypes` field. Valid values can be found in GitHub
 The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
-<!-- FILE: examples/eventlisteners/github-eventlistener-interceptor.yaml -->
+<!-- FILE: examples/github/github-eventlistener-interceptor.yaml -->
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -356,20 +356,20 @@ kind: EventListener
 metadata:
   name: github-listener-interceptor
 spec:
-  serviceAccountName: tekton-triggers-example-sa
+  serviceAccountName: tekton-triggers-github-sa
   triggers:
-    - name: foo-trig
+    - name: github-listener
       interceptors:
         - github:
             secretRef:
-              secretName: foo
-              secretKey: bar
+              secretName: github-secret
+              secretKey: secretToken
             eventTypes:
               - pull_request
       bindings:
-        - ref: pipeline-binding
+        - ref: github-binding
       template:
-        name: pipeline-template
+        name: github-template
 ```
 
 

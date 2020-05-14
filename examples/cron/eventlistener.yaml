@@ -3,7 +3,7 @@ kind: EventListener
 metadata:
   name: cron-listener
 spec:
-  serviceAccountName: tekton-triggers-example-sa
+  serviceAccountName: tekton-triggers-cron-sa
   triggers:
     - name: cron-trig
       bindings:
