@@ -139,11 +139,12 @@ import (
 //     'https://example.com/testing'.parseURL().host == 'example.com'
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, k kubernetes.Interface) cel.EnvOption {
-	return cel.Lib(triggersLib{defaultNS: ns, client: k})
+func Triggers(request *http.Request, ns string, k kubernetes.Interface) cel.EnvOption {
+	return cel.Lib(triggersLib{request: request, defaultNS: ns, client: k})
 }
 
 type triggersLib struct {
+	request   *http.Request
 	defaultNS string
 	client    kubernetes.Interface
 }
@@ -201,7 +202,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.defaultNS, t.client)},
+				Function: makeCompareSecret(t.request, t.defaultNS, t.client)},
 		)}
 }
 
@@ -266,7 +267,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.FunctionOp {
+func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Interface) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -300,7 +301,7 @@ func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.Funct
 			SecretName: string(secretName),
 			Namespace:  string(secretNS),
 		}
-		secretToken, err := interceptors.GetSecretToken(k, secretRef, string(secretNS))
+		secretToken, err := interceptors.GetSecretToken(request, k, secretRef, string(secretNS))
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}
