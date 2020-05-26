@@ -431,7 +431,7 @@ func TestExpressionEvaluation(t *testing.T) {
 					rt.Error(err)
 				}
 			}
-			env, err := makeCelEnv(testNS, kubeClient)
+			env, err := makeCelEnv(&http.Request{}, testNS, kubeClient)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -540,7 +540,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				}
 				ns = tt.secretNS
 			}
-			env, err := makeCelEnv(ns, kubeClient)
+			env, err := makeCelEnv(&http.Request{}, ns, kubeClient)
 			if err != nil {
 				t.Fatal(err)
 			}
