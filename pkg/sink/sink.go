@@ -186,6 +186,11 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		Header: in.Header,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
 	}
+
+	// We create a cache against each request, so whenever we make network calls like
+	// fetching kubernetes secrets, we can do so only once per request.
+	request = interceptors.WithCache(request)
+
 	var resp *http.Response
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
