@@ -85,7 +85,7 @@ func TestEventListenerCreate(t *testing.T) {
 			Name:      "pr1",
 			Namespace: namespace,
 			Labels: map[string]string{
-				"$(params.oneparam)": "$(params.oneparam)",
+				"$(tt.params.oneparam)": "$(tt.params.oneparam)",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -107,15 +107,15 @@ func TestEventListenerCreate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pr2",
 			Labels: map[string]string{
-				"$(params.twoparamname)": "$(params.twoparamvalue)",
+				"$(tt.params.twoparamname)": "$(tt.params.twoparamvalue)",
 			},
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
 			Params: []v1alpha1.ResourceParam{
-				{Name: "license", Value: "$(params.license)"},
-				{Name: "header", Value: "$(params.header)"},
-				{Name: "prmessage", Value: "$(params.prmessage)"},
+				{Name: "license", Value: "$(tt.params.license)"},
+				{Name: "header", Value: "$(tt.params.header)"},
+				{Name: "prmessage", Value: "$(tt.params.prmessage)"},
 			},
 		},
 	}
