@@ -18,13 +18,70 @@ package interceptors
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
+
+// WebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
+type WebhookSecretStore interface {
+	Get(sr triggersv1.SecretRef) ([]byte, error)
+}
+
+type webhookSecretStore struct {
+	store cache.Store
+	Stop  <-chan struct{}
+}
+
+func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration) WebhookSecretStore {
+	secretsClient := cs.CoreV1().Secrets(ns)
+	store := cache.NewStore(func(obj interface{}) (string, error) {
+		secret, ok := obj.(corev1.Secret)
+		if !ok {
+			return "", errors.New("Object is not a secret")
+		}
+
+		return secret.Name
+	})
+
+	secretStore := webhookSecretStore{
+		store: store,
+		Stop:  make(chan struct{}),
+	}
+
+	reflector := cache.NewReflector(secretsClient, corev1.Secret{}, store, resyncInterval)
+
+	go reflector.Run(secretStore.Stop)
+
+	return secretStore
+}
+
+func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
+	cachedObj, ok, _ := ws.store.GetByKey(sr.SecretName)
+	if !ok {
+		return nil, fmt.Errorf("Secret not found: %s", sr.SecretName)
+	}
+
+	secret, ok := cachedObj.(corev1.Secret)
+	if !ok {
+		return nil, fmt.Errorf("Cached object is not a secret: %s", sr.SecretName)
+	}
+
+	value, ok := secret.Data[sr.SecretKey]
+	if !ok {
+		return nil, fmt.Errorf("key not found: %s", sr.SecretKey)
+	}
+
+	return value, nil
+}
 
 // Interceptor is the interface that all interceptors implement.
 type Interceptor interface {

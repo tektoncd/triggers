@@ -31,18 +31,16 @@ import (
 )
 
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
-	Logger                 *zap.SugaredLogger
-	GitLab                 *triggersv1.GitLabInterceptor
-	EventListenerNamespace string
+	webhookSecretStore interceptors.WebhookSecretStore
+	Logger             *zap.SugaredLogger
+	GitLab             *triggersv1.GitLabInterceptor
 }
 
-func NewInterceptor(gl *triggersv1.GitLabInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gl *triggersv1.GitLabInterceptor, w interceptors.WebhookSecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:                 l,
-		GitLab:                 gl,
-		KubeClientSet:          k,
-		EventListenerNamespace: ns,
+		Logger:             l,
+		GitLab:             gl,
+		webhookSecretStore: w,
 	}
 }
 
@@ -54,7 +52,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 			return nil, errors.New("no X-GitLab-Token header set")
 		}
 
-		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.GitLab.SecretRef, w.EventListenerNamespace)
+		secretToken, err := w.webhookSecretStore.Get(w.GitLab.SecretRef)
 		if err != nil {
 			return nil, err
 		}

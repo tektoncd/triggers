@@ -46,6 +46,7 @@ import (
 // Sink defines the sink resource for processing incoming events for the
 // EventListener.
 type Sink struct {
+	WebhookSecretStore     interceptors.WebhookSecretStore
 	KubeClientSet          kubernetes.Interface
 	SecretStore            secrets.SecretStore
 	TriggersClient         triggersclientset.Interface
@@ -199,9 +200,9 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
 		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(i.GitHub, r.SecretStore, log)
+			interceptor = github.NewInterceptor(i.GitHub, r.WebhookSecretStore, log)
 		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(i.GitLab, r.SecretStore, log)
+			interceptor = gitlab.NewInterceptor(i.GitHub, r.WebhookSecretStore, log)
 		case i.CEL != nil:
 			interceptor = cel.NewInterceptor(i.CEL, r.SecretStore, r.EventListenerNamespace, log)
 		case i.Bitbucket != nil:
