@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"reflect"
 	"regexp"
 	"strings"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -296,6 +298,7 @@ func TestInterceptor_ExecuteTrigger_Errors(t *testing.T) {
 }
 
 func TestExpressionEvaluation(t *testing.T) {
+	reg := types.NewRegistry()
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
 	testRef := "refs/heads/master"
 	jsonMap := map[string]interface{}{
@@ -307,7 +310,10 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		"b64value":  "ZXhhbXBsZQ==",
 		"json_body": `{"testing": "value"}`,
+		"testURL":   "https://user:password@site.example.com/path/to?query=search#first",
+		"multiURL":  "https://user:password@site.example.com/path/to?query=search&query=results",
 	}
+
 	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
 	header.Add("X-Test-Header", "value")
@@ -400,6 +406,21 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "parse JSON body in a string",
 			expr: "body.json_body.parseJSON().testing == 'value'",
 			want: types.Bool(true),
+		},
+		{
+			name: "parse URL",
+			expr: "body.testURL.parseURL().path == '/path/to'",
+			want: types.Bool(true),
+		},
+		{
+			name: "parse URL and extract single string",
+			expr: "body.testURL.parseURL().query['query'] == 'search'",
+			want: types.Bool(true),
+		},
+		{
+			name: "parse URL and extract multiple strings",
+			expr: "body.multiURL.parseURL().queryStrings['query']",
+			want: types.NewStringList(reg, []string{"search", "results"}),
 		},
 	}
 	for _, tt := range tests {
@@ -529,6 +550,31 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				rt.Errorf("evaluate() got %s, wanted %s", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestURLToMap(t *testing.T) {
+	u, err := url.Parse("https://user:testing@example.com/search?q=dotnet#first")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := urlToMap(u)
+	want := map[string]interface{}{
+		"scheme": "https",
+		"auth": map[string]string{
+			"username": "user",
+			"password": "testing",
+		},
+		"host":         "example.com",
+		"path":         "/search",
+		"rawQuery":     "q=dotnet",
+		"fragment":     "first",
+		"query":        map[string]string{"q": "dotnet"},
+		"queryStrings": url.Values{"q": {"dotnet"}},
+	}
+
+	if diff := cmp.Diff(want, m); diff != "" {
+		t.Fatalf("urlToMap failed:\n%s", diff)
 	}
 }
 
