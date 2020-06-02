@@ -20,7 +20,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -114,6 +116,27 @@ import (
 // Examples:
 //
 //     header.canonical('X-Secret-Token').compareSecret('key', 'secret-name')
+//
+// parseJSON
+//
+// Parses a string into a map of strings to dynamic values.
+//
+//     <string>.parseJSON() -> map<string, dyn>
+//
+// Examples:
+//
+//     body.field.parseJSON().item
+//
+// parseURL
+//
+// Parses a URL (in the form of a string) into a map with keys representing the
+// elements of the URL.
+//
+//     <string>.parseURL() -> map<string, dyn>
+//
+// Examples:
+//
+//     'https://example.com/testing'.parseURL().host == 'example.com'
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
 func Triggers(ns string, k kubernetes.Interface) cel.EnvOption {
@@ -147,6 +170,9 @@ func (triggersLib) CompileOptions() []cel.EnvOption {
 			decls.NewFunction("parseJSON",
 				decls.NewInstanceOverload("parseJSON_string",
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
+			decls.NewFunction("parseURL",
+				decls.NewInstanceOverload("parseURL_string",
+					[]*exprpb.Type{decls.String}, mapStrDyn)),
 			decls.NewFunction("compareSecret",
 				decls.NewInstanceOverload("compareSecret_string_string",
 					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.String)))}
@@ -170,6 +196,9 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "parseJSON",
 				Unary:    parseJSONString},
+			&functions.Overload{
+				Operator: "parseURL",
+				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
 				Function: makeCompareSecret(t.defaultNS, t.client)},
@@ -292,6 +321,20 @@ func parseJSONString(val ref.Val) ref.Val {
 	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
 }
 
+func parseURLString(val ref.Val) ref.Val {
+	str, ok := val.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to parseURL", val.Type())
+	}
+
+	parsed, err := url.Parse(string(str))
+	if err != nil {
+		return types.NewErr("failed to decode '%v' in parseURL: %w", str, err)
+	}
+
+	return types.NewDynamicMap(types.NewRegistry(), urlToMap(parsed))
+}
+
 func max(x, y types.Int) types.Int {
 	switch x.Compare(y) {
 	case types.IntNegOne:
@@ -301,4 +344,33 @@ func max(x, y types.Int) types.Int {
 	default:
 		return x
 	}
+}
+
+func urlToMap(u *url.URL) map[string]interface{} {
+	// This doesn't return the RawPath.
+	m := map[string]interface{}{
+		"scheme":       u.Scheme,
+		"host":         u.Host,
+		"path":         u.Path,
+		"rawQuery":     u.RawQuery,
+		"fragment":     u.Fragment,
+		"queryStrings": u.Query(),
+		"query":        flatten(u.Query()),
+	}
+	if u.User != nil {
+		pass, _ := u.User.Password()
+		m["auth"] = map[string]string{
+			"username": u.User.Username(),
+			"password": pass,
+		}
+	}
+	return m
+}
+
+func flatten(uv url.Values) map[string]string {
+	r := map[string]string{}
+	for k, v := range uv {
+		r[k] = strings.Join(v, ",")
+	}
+	return r
 }
