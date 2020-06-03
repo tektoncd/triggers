@@ -45,7 +45,7 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 	store := cache.NewStore(func(obj interface{}) (string, error) {
 		secret, ok := obj.(corev1.Secret)
 		if !ok {
-			return "", errors.New("Object is not a secret")
+			return "", errors.New("object is not a secret")
 		}
 
 		return fmt.Sprintf("%s/%s", secret.Namespace, secret.Name), nil
@@ -67,12 +67,12 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	cachedObj, ok, _ := ws.store.GetByKey(getKey(sr))
 	if !ok {
-		return nil, fmt.Errorf("Secret not found: %s", sr.SecretName)
+		return nil, fmt.Errorf("secret not found: %s", sr.SecretName)
 	}
 
 	secret, ok := cachedObj.(corev1.Secret)
 	if !ok {
-		return nil, fmt.Errorf("Cached object is not a secret: %s", sr.SecretName)
+		return nil, fmt.Errorf("cached object is not a secret: %s", sr.SecretName)
 	}
 
 	value, ok := secret.Data[sr.SecretKey]
