@@ -25,6 +25,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fields "k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -41,7 +42,6 @@ type webhookSecretStore struct {
 
 // NewWebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
 func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) WebhookSecretStore {
-	secretsClient := cs.CoreV1().Secrets(metav1.NamespaceAll)
 	store := cache.NewStore(func(obj interface{}) (string, error) {
 		secret, ok := obj.(corev1.Secret)
 		if !ok {
@@ -56,7 +56,8 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 		eventListenerNamespace: ns,
 	}
 
-	reflector := cache.NewReflector(secretsClient, corev1.Secret{}, store, resyncInterval)
+	lw := cache.NewListWatchFromClient(cs.CoreV1().RESTClient(), "secrets", metav1.NamespaceAll, fields.Everything())
+	reflector := cache.NewReflector(lw, corev1.Secret{}, store, resyncInterval)
 
 	go reflector.Run(stopCh)
 
@@ -64,8 +65,8 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 }
 
 // Get returns the secret value for a given SecretRef.
-func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
-	cachedObj, ok, _ := ws.store.GetByKey(getKey(sr))
+func (ws webhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
+	cachedObj, ok, _ := ws.store.GetByKey(ws.getKey(sr))
 	if !ok {
 		return nil, fmt.Errorf("secret not found: %s", sr.SecretName)
 	}
@@ -83,6 +84,7 @@ func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	return value, nil
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 // Interceptor is the interface that all interceptors implement.
 type Interceptor interface {
@@ -109,6 +111,9 @@ func getCache(req *http.Request) map[string]interface{} {
 		return cache
 =======
 func (ws *WebhookSecretStore) getKey(sr triggersv1.SecretRef) string {
+=======
+func (ws *webhookSecretStore) getKey(sr triggersv1.SecretRef) string {
+>>>>>>> 2f3a47e6... Use RESTClient instead of secrets client
 	var namespace string
 	if sr.Namespace == "" {
 		namespace = ws.eventListenerNamespace
@@ -116,7 +121,7 @@ func (ws *WebhookSecretStore) getKey(sr triggersv1.SecretRef) string {
 		namespace = sr.Namespace
 >>>>>>> 68edb108... use webhook secret store
 	}
-	return fmt.Sprintf("%s/%s", namespace, sr.Name)
+	return fmt.Sprintf("%s/%s", namespace, sr.SecretName)
 }
 
 // Interceptor is the interface that all interceptors implement.
