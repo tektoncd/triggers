@@ -150,6 +150,7 @@ import (
 // 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
+<<<<<<< HEAD
 func Triggers(request *http.Request, ns string, k kubernetes.Interface) cel.EnvOption {
 	return cel.Lib(triggersLib{request: request, defaultNS: ns, client: k})
 }
@@ -158,6 +159,15 @@ type triggersLib struct {
 	request   *http.Request
 	defaultNS string
 	client    kubernetes.Interface
+=======
+func Triggers(ns string, ws kubernetes.Interface) cel.EnvOption {
+	return cel.Lib(triggersLib{defaultNS: ns, webhookSecretStore: ws})
+}
+
+type triggersLib struct {
+	defaultNS          string
+	webhookSecretStore interceptors.WebhookSecretStore
+>>>>>>> 88e7977a... use webhook secret store
 }
 
 func (triggersLib) CompileOptions() []cel.EnvOption {
@@ -219,7 +229,11 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
+<<<<<<< HEAD
 				Function: makeCompareSecret(t.request, t.defaultNS, t.client)},
+=======
+				Function: makeCompareSecret(t.defaultNS, t.webhookSecretStore)},
+>>>>>>> 88e7977a... use webhook secret store
 		)}
 }
 
@@ -284,7 +298,11 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
+<<<<<<< HEAD
 func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Interface) functions.FunctionOp {
+=======
+func makeCompareSecret(defaultNS string, ws interceptors.WebhookSecretStore) functions.FunctionOp {
+>>>>>>> 88e7977a... use webhook secret store
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -318,7 +336,11 @@ func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Int
 			SecretName: string(secretName),
 			Namespace:  string(secretNS),
 		}
+<<<<<<< HEAD
 		secretToken, err := interceptors.GetSecretToken(request, k, secretRef, string(secretNS))
+=======
+		secretToken, err := ws.Get(secretRef)
+>>>>>>> 88e7977a... use webhook secret store
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

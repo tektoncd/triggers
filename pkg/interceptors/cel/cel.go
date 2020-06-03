@@ -36,7 +36,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"k8s.io/client-go/kubernetes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
@@ -45,7 +44,7 @@ import (
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
+	WebhookSecretStore     interceptors.WebhookSecretStore
 	Logger                 *zap.SugaredLogger
 	CEL                    *triggersv1.CELInterceptor
 	EventListenerNamespace string
@@ -57,18 +56,18 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(cel *triggersv1.CELInterceptor, ws interceptors.WebhookSecretStore, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
 		CEL:                    cel,
-		KubeClientSet:          k,
+		WebhookSecretStore:     ws,
 		EventListenerNamespace: ns,
 	}
 }
 
 // ExecuteTrigger is an implementation of the Interceptor interface.
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	env, err := makeCelEnv(request, w.EventListenerNamespace, w.KubeClientSet)
+	env, err := makeCelEnv(w.EventListenerNamespace, w.WebhookSecretStore)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cel environment: %w", err)
 	}
@@ -173,10 +172,10 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(request *http.Request, ns string, k kubernetes.Interface) (*cel.Env, error) {
+func makeCelEnv(ns string, ws interceptors.WebhookSecretStore) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
-		Triggers(request, ns, k),
+		Triggers(ns, ws),
 		celext.Strings(),
 		cel.Declarations(
 			decls.NewVar("body", mapStrDyn),

@@ -17,11 +17,9 @@ limitations under the License.
 package interceptors
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
 	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -37,35 +35,37 @@ type WebhookSecretStore interface {
 }
 
 type webhookSecretStore struct {
-	store cache.Store
-	Stop  <-chan struct{}
+	store                  cache.Store
+	eventListenerNamespace string
 }
 
-func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration) WebhookSecretStore {
-	secretsClient := cs.CoreV1().Secrets(ns)
+// NewWebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
+func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) WebhookSecretStore {
+	secretsClient := cs.CoreV1().Secrets(metav1.NamespaceAll)
 	store := cache.NewStore(func(obj interface{}) (string, error) {
 		secret, ok := obj.(corev1.Secret)
 		if !ok {
 			return "", errors.New("Object is not a secret")
 		}
 
-		return secret.Name
+		return fmt.Sprintf("%s/%s", secret.Namespace, secret.Name), nil
 	})
 
 	secretStore := webhookSecretStore{
-		store: store,
-		Stop:  make(chan struct{}),
+		store:                  store,
+		eventListenerNamespace: ns,
 	}
 
 	reflector := cache.NewReflector(secretsClient, corev1.Secret{}, store, resyncInterval)
 
-	go reflector.Run(secretStore.Stop)
+	go reflector.Run(stopCh)
 
 	return secretStore
 }
 
+// Get returns the secret value for a given SecretRef.
 func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
-	cachedObj, ok, _ := ws.store.GetByKey(sr.SecretName)
+	cachedObj, ok, _ := ws.store.GetByKey(getKey(sr))
 	if !ok {
 		return nil, fmt.Errorf("Secret not found: %s", sr.SecretName)
 	}
@@ -83,6 +83,7 @@ func (ws *WebhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	return value, nil
 }
 
+<<<<<<< HEAD
 // Interceptor is the interface that all interceptors implement.
 type Interceptor interface {
 	ExecuteTrigger(req *http.Request) (*http.Response, error)
@@ -106,41 +107,19 @@ func WithCache(req *http.Request) *http.Request {
 func getCache(req *http.Request) map[string]interface{} {
 	if cache, ok := req.Context().Value(requestCacheKey).(map[string]interface{}); ok {
 		return cache
+=======
+func (ws *WebhookSecretStore) getKey(sr triggersv1.SecretRef) string {
+	var namespace string
+	if sr.Namespace == "" {
+		namespace = ws.eventListenerNamespace
+	} else {
+		namespace = sr.Namespace
+>>>>>>> 68edb108... use webhook secret store
 	}
-
-	return make(map[string]interface{})
+	return fmt.Sprintf("%s/%s", namespace, sr.Name)
 }
 
-// GetSecretToken queries Kubernetes for the given secret reference. We use this function
-// to resolve secret material like Github webhook secrets, and call it once for every
-// trigger that references it.
-//
-// As we may have many triggers that all use the same secret, we cache the secret values
-// in the request cache.
-func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, eventListenerNamespace string) ([]byte, error) {
-	var cache map[string]interface{}
-
-	cacheKey := path.Join("secret", sr.Namespace, sr.SecretName, sr.SecretKey)
-	if req != nil {
-		cache = getCache(req)
-		if secretValue, ok := cache[cacheKey]; ok {
-			return secretValue.([]byte), nil
-		}
-	}
-
-	ns := sr.Namespace
-	if ns == "" {
-		ns = eventListenerNamespace
-	}
-	secret, err := cs.CoreV1().Secrets(ns).Get(sr.SecretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	secretValue := secret.Data[sr.SecretKey]
-	if req != nil {
-		cache[cacheKey] = secret.Data[sr.SecretKey]
-	}
-
-	return secretValue, nil
+// Interceptor is the interface that all interceptors implement.
+type Interceptor interface {
+	ExecuteTrigger(req *http.Request) (*http.Response, error)
 }

@@ -40,15 +40,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 )
 
 // Sink defines the sink resource for processing incoming events for the
 // EventListener.
 type Sink struct {
 	WebhookSecretStore     interceptors.WebhookSecretStore
+<<<<<<< HEAD
 	KubeClientSet          kubernetes.Interface
 	SecretStore            secrets.SecretStore
+=======
+>>>>>>> cf34229c... use webhook secret store
 	TriggersClient         triggersclientset.Interface
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
@@ -204,7 +206,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.GitLab != nil:
 			interceptor = gitlab.NewInterceptor(i.GitHub, r.WebhookSecretStore, log)
 		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(i.CEL, r.SecretStore, r.EventListenerNamespace, log)
+			interceptor = cel.NewInterceptor(i.CEL, r.WebhookSecretStore, r.EventListenerNamespace, log)
 		case i.Bitbucket != nil:
 			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.SecretStore, log)
 		default:
