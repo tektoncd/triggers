@@ -380,9 +380,8 @@ spec:
 
 ### Bitbucket Interceptors
 
-Bitbucket Interceptors contain logic to validate and filter webhooks that come from
-Bitbucket server or cloud. Supported features include validating webhooks actually came from Bitbucket as well as
-filtering incoming events.
+The Bitbucket interceptor provides support for hooks originating in [Bitbucket server](https://confluence.atlassian.com/bitbucketserver), providing server hook signature validation and event-filtering.
+[Bitbucket cloud](https://support.atlassian.com/bitbucket-cloud/) is not currently supported by this interceptor, as it has no secret validation, so you could match on the incoming requests using the CEL interceptor.
 
 To use this Interceptor as a validator, create a secret string using the method
 of your choice, and configure the Bitbucket webhook to use that secret value.
