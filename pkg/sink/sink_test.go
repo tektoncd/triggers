@@ -898,7 +898,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 
 }
 
-func TestHandleEventWithBitBucketInterceptors(t *testing.T) {
+func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 	eventBody := json.RawMessage(`{"repository": {"links": {"clone": [{"href": "testurl", "name": "ssh"}, {"href": "testurl", "name": "http"}]}}, "changes": [{"ref": {"displayId": "test-branch"}}]}`)
 	tb, tt := getResources(t, "$(body.repository.links.clone[1].href)")
 
@@ -924,7 +924,7 @@ func TestHandleEventWithBitBucketInterceptors(t *testing.T) {
 				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
 				Template: triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
-					Bitbucket: &triggersv1.BitBucketInterceptor{
+					Bitbucket: &triggersv1.BitbucketInterceptor{
 						SecretRef: &triggersv1.SecretRef{
 							SecretKey:  "secretKey",
 							SecretName: "secret",

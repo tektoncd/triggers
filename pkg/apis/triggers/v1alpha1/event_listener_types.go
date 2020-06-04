@@ -85,7 +85,7 @@ type EventInterceptor struct {
 	GitHub    *GitHubInterceptor    `json:"github,omitempty"`
 	GitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
 	CEL       *CELInterceptor       `json:"cel,omitempty"`
-	Bitbucket *BitBucketInterceptor `json:"bitbucket,omitempty"`
+	Bitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -100,8 +100,8 @@ type WebhookInterceptor struct {
 	Header []v1beta1.Param `json:"header,omitempty"`
 }
 
-// BitBucketInterceptor provides a webhook to intercept and pre-process events
-type BitBucketInterceptor struct {
+// BitbucketInterceptor provides a webhook to intercept and pre-process events
+type BitbucketInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
 }
