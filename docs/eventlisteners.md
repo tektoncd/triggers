@@ -21,67 +21,7 @@ using [Event Interceptors](#Interceptors).
 - [Logging](#logging)
 - [Labels](#labels)
 - [Examples](#examples)
-
-## Multi-Tenant Concerns
-
-The EventListener is effectively an additional form of client into Tekton, versus what 
-example usage via `kubectl` or `tkn` which you have seen elsewhere.  In particular, the HTTP based
-events bypass the normal Kubernetes authentication path you get via `kubeconfig` files 
-and the `kubectl config` family of commands.
-
-As such, there are set of items to consider when deciding how to 
-
-- best expose (each) EventListener in your cluster to the outside world.
-- best control how (each) EventListener and the underlying API Objects described below access, create,
-and update Tekton related API Objects in your cluster.
-
-Minimally, each EventListener has its [ServiceAccountName](#serviceAccountName) as noted below and all
-events coming over the "Sink" result in any Tekton resource interactions being done with the permissions 
-assigned to that ServiceAccount.
-
-However, if you need differing levels of permissions over a set of Tekton resources across the various
-[Triggers](#triggers) and [Interceptors](#Interceptors), where not all Triggers or Interceptors can 
-manipulate certain Tekton Resources in the same way, a simple, single EventListener will not suffice.
-
-Your options at that point are as follows:
-
-### Multiple EventListeners (One EventListener Per Namespace)
-
-You can create multiple EventListener objects, where your set of Triggers and Interceptors are spread out across the 
-EventListeners.
-
-If you create each of those EventListeners in their own namespace, it becomes easy to assign 
-varying permissions to the ServiceAccount of each one to serve your needs.  And often times namespace
-creation is coupled with a default set of ServiceAccounts and Secrets that are also defined.
-So conceivably some administration steps are taken care of.  You just update the permissions
-of the automatically created ServiceAccounts.
-
-Possible drawbacks:
-- Namespaces with associated Secrets and ServiceAccounts in an aggregate sense prove to be the most expensive
-items in Kubernetes underlying `etcd` store.  In larger clusters `etcd` storage capacity can become a concern.
-- Multiple EventListeners means multiple HTTP ports that must be exposed to the external entities accessing 
-the "Sink".  If you happen to have a HTTP Firewall between your Cluster and external entities, that means more
-administrative cost, opening ports in the firewall for each Service, unless you can employ Kubernetes `Ingress` to
-serve as a routing abstraction layer for your set of EventListeners. 
-
-### Multiple EventListeners (Multiple EventListeners per Namespace)
-
-Multiple EventListeners per namespace will most likely mean more ServiceAccount/Secret/RBAC manipulation for
-the administrator, as some of the built in generation of those artifacts as part of namespace creation are not
-applicable.
-
-However you will save some on the `etcd` storage costs by reducing the number of namespaces.
-
-Multiple EventListeners and potential Firewall concerns still apply (again unless you employ `Ingress`).
-
-### ServiceAccount per EventListenerTrigger
-
-Being able to set a ServiceAccount on an EventListenerTrigger allows for finer grained permissions as well.
-
-You still have to create the additional ServiceAccounts.
-
-But staying within 1 namespace and minimizing the number of EventListeners with their associated "Sinks" minimizes 
-concerns around `etcd` storage and port considerations with Firewalls if `Ingress` is not utilized.
+- [Multi-Tenant Concerns](#multi-tenant-concerns)
 
 ## Syntax
 
@@ -675,12 +615,71 @@ spec:
     value: $(body.pull_request.head.short_sha)
 ```
 
-
-
 ## Examples
 
 For complete examples, see
 [the examples folder](https://github.com/tektoncd/triggers/tree/master/examples).
+
+## Multi-Tenant Concerns
+
+The EventListener is effectively an additional form of client into Tekton, versus what 
+example usage via `kubectl` or `tkn` which you have seen elsewhere.  In particular, the HTTP based
+events bypass the normal Kubernetes authentication path you get via `kubeconfig` files 
+and the `kubectl config` family of commands.
+
+As such, there are set of items to consider when deciding how to 
+
+- best expose (each) EventListener in your cluster to the outside world.
+- best control how (each) EventListener and the underlying API Objects described below access, create,
+and update Tekton related API Objects in your cluster.
+
+Minimally, each EventListener has its [ServiceAccountName](#serviceAccountName) as noted below and all
+events coming over the "Sink" result in any Tekton resource interactions being done with the permissions 
+assigned to that ServiceAccount.
+
+However, if you need differing levels of permissions over a set of Tekton resources across the various
+[Triggers](#triggers) and [Interceptors](#Interceptors), where not all Triggers or Interceptors can 
+manipulate certain Tekton Resources in the same way, a simple, single EventListener will not suffice.
+
+Your options at that point are as follows:
+
+### Multiple EventListeners (One EventListener Per Namespace)
+
+You can create multiple EventListener objects, where your set of Triggers and Interceptors are spread out across the 
+EventListeners.
+
+If you create each of those EventListeners in their own namespace, it becomes easy to assign 
+varying permissions to the ServiceAccount of each one to serve your needs.  And often times namespace
+creation is coupled with a default set of ServiceAccounts and Secrets that are also defined.
+So conceivably some administration steps are taken care of.  You just update the permissions
+of the automatically created ServiceAccounts.
+
+Possible drawbacks:
+- Namespaces with associated Secrets and ServiceAccounts in an aggregate sense prove to be the most expensive
+items in Kubernetes underlying `etcd` store.  In larger clusters `etcd` storage capacity can become a concern.
+- Multiple EventListeners means multiple HTTP ports that must be exposed to the external entities accessing 
+the "Sink".  If you happen to have a HTTP Firewall between your Cluster and external entities, that means more
+administrative cost, opening ports in the firewall for each Service, unless you can employ Kubernetes `Ingress` to
+serve as a routing abstraction layer for your set of EventListeners. 
+
+### Multiple EventListeners (Multiple EventListeners per Namespace)
+
+Multiple EventListeners per namespace will most likely mean more ServiceAccount/Secret/RBAC manipulation for
+the administrator, as some of the built in generation of those artifacts as part of namespace creation are not
+applicable.
+
+However you will save some on the `etcd` storage costs by reducing the number of namespaces.
+
+Multiple EventListeners and potential Firewall concerns still apply (again unless you employ `Ingress`).
+
+### ServiceAccount per EventListenerTrigger
+
+Being able to set a ServiceAccount on an EventListenerTrigger allows for finer grained permissions as well.
+
+You still have to create the additional ServiceAccounts.
+
+But staying within 1 namespace and minimizing the number of EventListeners with their associated "Sinks" minimizes 
+concerns around `etcd` storage and port considerations with Firewalls if `Ingress` is not utilized.
 
 ---
 
