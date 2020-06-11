@@ -67,6 +67,7 @@ type EventListenerTrigger struct {
 	Template EventListenerTemplate   `json:"template"`
 	// +optional
 	Name         string              `json:"name,omitempty"`
+	Ref          string              `json:"ref,omitempty"`
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
 	// ServiceAccount optionally associates credentials with each trigger;
 	// more granular authorization for
