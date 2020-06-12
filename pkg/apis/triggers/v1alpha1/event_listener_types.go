@@ -57,6 +57,11 @@ type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
 	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
+	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
+}
+
+type PodTemplate struct {
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // EventListenerTrigger represents a connection between TriggerBinding, Params,

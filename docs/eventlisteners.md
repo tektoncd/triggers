@@ -16,6 +16,7 @@ using [Event Interceptors](#Interceptors).
 
 - [Syntax](#syntax)
   - [ServiceAccountName](#serviceAccountName)
+  - [PodTemplate](#podTemplate)
   - [Triggers](#triggers)
     - [Interceptors](#interceptors)
 - [Logging](#logging)
@@ -44,6 +45,8 @@ the following fields:
 - Optional:
   - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
     is exposed as
+  - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
+    for your EventListener pod
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -146,6 +149,23 @@ documentations for details.
 
 For external services to connect to your cluster (e.g. GitHub sending webhooks),
 check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
+
+## PodTemplate
+
+The `podTemplate` field is optional. A PodTemplate is specifications for 
+creating EventListener pod. A PodTemplate consists of:
+- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
+This is needed only if you want to schedule EventListener pod to a tainted node.
+
+```yaml
+spec:
+  podTemplate:
+    tolerations:
+    - key: key
+      value: value
+      operator: Equal
+      effect: NoSchedule
+```
 
 ### Logging
 
