@@ -120,14 +120,34 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			want:    []byte(`{"replaced":"testing","new":"master","ref":"refs/head/master","name":"testing"}`),
 		},
 		{
-			name: "update with base64 decoding",
+			name: "decodeB64 with parseJSON",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "value", Expression: "body.value.decodeb64().parseJSON().test"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
+			want:    []byte(`{"value":"decode"}`),
+		},
+		{
+			name: "decodeB64 to a field",
 			CEL: &triggersv1.CELInterceptor{
 				Overlays: []triggersv1.CELOverlay{
 					{Key: "value", Expression: "body.value.decodeb64()"},
 				},
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`)),
-			want:    []byte(`{"value":{"test":"decode"}}`),
+			want:    []byte(`{"value":"{\"test\":\"decode\"}"}`),
+		},
+		{
+			name: "decode base64 string",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "value", Expression: "body.value.decodeb64()"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"dGVzdGluZw=="}`)),
+			want:    []byte(`{"value":"testing"}`),
 		},
 		{
 			name: "multiple overlays",
@@ -205,7 +225,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			}
 			defer resp.Body.Close()
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
+				rt.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
 			}
 		})
 	}
@@ -376,7 +396,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name: "decode a base64 value",
 			expr: "body.b64value.decodeb64()",
-			want: types.Bytes("example"),
+			want: types.String("example"),
 		},
 		{
 			name: "increment an integer",
