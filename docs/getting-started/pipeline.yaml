@@ -79,6 +79,9 @@ kind: Task
 metadata:
   name: build-docker-image
   namespace: getting-started
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/img: unconfined
+    container.seccomp.security.alpha.kubernetes.io/img: unconfined
 spec:
   params:
   - name: pathToContext
