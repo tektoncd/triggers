@@ -262,7 +262,7 @@ func decodeB64String(val ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("failed to decode '%v' in decodeB64: %w", str, err)
 	}
-	return types.Bytes(dec)
+	return types.String(dec)
 }
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
