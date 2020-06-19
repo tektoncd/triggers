@@ -1,0 +1,15 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: listener-replicas
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  replicas: 3
+  triggers:
+    - name: foo-trig
+      bindings:
+        - ref: pipeline-binding
+        - ref: message-binding
+      template:
+        name: pipeline-template

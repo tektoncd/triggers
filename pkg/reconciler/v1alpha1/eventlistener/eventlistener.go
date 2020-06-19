@@ -260,6 +260,9 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 
 	labels := mergeLabels(el.Labels, GenerateResourceLabels(el.Name))
 	var replicas int32 = 1
+	if el.Spec.Replicas != 0 {
+		replicas = el.Spec.Replicas
+	}
 	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *elImage,
@@ -320,6 +323,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 				},
 				Spec: corev1.PodSpec{
 					Tolerations:        el.Spec.PodTemplate.Tolerations,
+					NodeSelector:       el.Spec.PodTemplate.NodeSelector,
 					ServiceAccountName: el.Spec.ServiceAccountName,
 					Containers:         []corev1.Container{container},
 
@@ -361,6 +365,10 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		}
 		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Tolerations, deployment.Spec.Template.Spec.Tolerations) {
 			existingDeployment.Spec.Template.Spec.Tolerations = deployment.Spec.Template.Spec.Tolerations
+			updated = true
+		}
+		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.NodeSelector, deployment.Spec.Template.Spec.NodeSelector) {
+			existingDeployment.Spec.Template.Spec.NodeSelector = deployment.Spec.Template.Spec.NodeSelector
 			updated = true
 		}
 		if len(existingDeployment.Spec.Template.Spec.Containers) == 0 ||

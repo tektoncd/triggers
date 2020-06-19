@@ -92,6 +92,13 @@ func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 	}
 }
 
+// EventListenerReplicas sets the specified Replicas of the EventListener.
+func EventListenerReplicas(replicas int32) EventListenerSpecOp {
+	return func(spec *v1alpha1.EventListenerSpec) {
+		spec.Replicas = replicas
+	}
+}
+
 // EventListenerPodTemplate sets the specified pod template of the EventListener.
 func EventListenerPodTemplate(podTemplate v1alpha1.PodTemplate) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
@@ -114,6 +121,13 @@ func EventListenerPodTemplateSpec(ops ...EventListenerPodTemplateOp) v1alpha1.Po
 func EventListenerPodTemplateTolerations(tolerations []corev1.Toleration) EventListenerPodTemplateOp {
 	return func(pt *v1alpha1.PodTemplate) {
 		pt.Tolerations = tolerations
+	}
+}
+
+// EventListenerPodTemplateNodeSelector sets the specified NodeSelector of the EventListener PodTemplate.
+func EventListenerPodTemplateNodeSelector(nodeSelector map[string]string) EventListenerPodTemplateOp {
+	return func(pt *v1alpha1.PodTemplate) {
+		pt.NodeSelector = nodeSelector
 	}
 }
 
