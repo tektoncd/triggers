@@ -16,6 +16,7 @@ using [Event Interceptors](#Interceptors).
 
 - [Syntax](#syntax)
   - [ServiceAccountName](#serviceAccountName)
+  - [Replicas](#replicas)
   - [PodTemplate](#podTemplate)
   - [Triggers](#triggers)
     - [Interceptors](#interceptors)
@@ -45,6 +46,7 @@ the following fields:
 - Optional:
   - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
     is exposed as
+  - [`replicas`](#replicas) - Specifies the number of EventListener pods
   - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
     for your EventListener pod
 
@@ -150,16 +152,24 @@ documentations for details.
 For external services to connect to your cluster (e.g. GitHub sending webhooks),
 check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
 
-## PodTemplate
+### Replicas
+
+The `replicas` field is optional. By default, the number of replicas of EventListener is 1.
+If you want to deploy more than one pod, you can specify the number to this field. 
+
+### PodTemplate
 
 The `podTemplate` field is optional. A PodTemplate is specifications for 
 creating EventListener pod. A PodTemplate consists of:
 - `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
 This is needed only if you want to schedule EventListener pod to a tainted node.
+- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on. 
 
 ```yaml
 spec:
   podTemplate:
+    nodeSelector:
+      app: test
     tolerations:
     - key: key
       value: value

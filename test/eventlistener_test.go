@@ -230,8 +230,10 @@ func TestEventListenerCreate(t *testing.T) {
 			),
 			bldr.EventListenerSpec(
 				bldr.EventListenerServiceAccount(sa.Name),
+				bldr.EventListenerReplicas(3),
 				bldr.EventListenerPodTemplate(
 					bldr.EventListenerPodTemplateSpec(
+						bldr.EventListenerPodTemplateNodeSelector(map[string]string{"beta.kubernetes.io/arch": "amd64"}),
 						bldr.EventListenerPodTemplateTolerations([]corev1.Toleration{
 							{
 								Key:      "key",
