@@ -338,7 +338,7 @@ func TestEventListenerCreate(t *testing.T) {
 		hostIP := strings.TrimPrefix(config.Host, "https://")
 		serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
 		dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
-		out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+		out, errOut := new(Buffer), new(Buffer)
 		readyChan := make(chan struct{}, 1)
 		forwarder, err := portforward.New(dialer, []string{portString}, stopChan, readyChan, out, errOut)
 		if err != nil {
