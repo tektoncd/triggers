@@ -31,6 +31,7 @@ import (
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
@@ -137,6 +138,16 @@ import (
 // Examples:
 //
 //     'https://example.com/testing'.parseURL().host == 'example.com'
+//
+// parseYAML
+//
+// Parses a YAML string into a map of strings to dynamic values
+//
+// 		<string>.parseYAML() -> map<string, dyn>
+//
+// Examples:
+//
+// 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
 func Triggers(request *http.Request, ns string, k kubernetes.Interface) cel.EnvOption {
@@ -171,6 +182,9 @@ func (triggersLib) CompileOptions() []cel.EnvOption {
 			decls.NewFunction("parseJSON",
 				decls.NewInstanceOverload("parseJSON_string",
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
+			decls.NewFunction("parseYAML",
+				decls.NewInstanceOverload("parseYAML_string",
+					[]*exprpb.Type{decls.String}, mapStrDyn)),
 			decls.NewFunction("parseURL",
 				decls.NewInstanceOverload("parseURL_string",
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
@@ -197,6 +211,9 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "parseJSON",
 				Unary:    parseJSONString},
+			&functions.Overload{
+				Operator: "parseYAML",
+				Unary:    parseYAMLString},
 			&functions.Overload{
 				Operator: "parseURL",
 				Unary:    parseURLString},
@@ -318,6 +335,19 @@ func parseJSONString(val ref.Val) ref.Val {
 	err := json.Unmarshal([]byte(str), &decodedVal)
 	if err != nil {
 		return types.NewErr("failed to decode '%v' in parseJSON: %w", str, err)
+	}
+	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
+}
+
+func parseYAMLString(val ref.Val) ref.Val {
+	str, ok := val.(types.String)
+	if !ok {
+		return types.ValOrErr(str, "unexpected type '%v' passed to parseYAML", val.Type())
+	}
+	decodedVal := map[string]interface{}{}
+	err := yaml.Unmarshal([]byte(str), &decodedVal)
+	if err != nil {
+		return types.NewErr("failed to decode '%v' in parseYAML: %w", str, err)
 	}
 	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
 }

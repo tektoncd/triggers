@@ -329,6 +329,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		"b64value":  "ZXhhbXBsZQ==",
 		"json_body": `{"testing": "value"}`,
+		"yaml_body": "key1: value1\nkey2: value2\nkey3: value3\n",
 		"testURL":   "https://user:password@site.example.com/path/to?query=search#first",
 		"multiURL":  "https://user:password@site.example.com/path/to?query=search&query=results",
 	}
@@ -427,6 +428,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			want: types.Bool(true),
 		},
 		{
+			name: "parse YAML body in a string",
+			expr: "body.yaml_body.parseYAML().key1 == 'value1'",
+			want: types.Bool(true),
+		},
+		{
 			name: "parse URL",
 			expr: "body.testURL.parseURL().path == '/path/to'",
 			want: types.Bool(true),
@@ -477,8 +483,10 @@ func TestExpressionEvaluation(t *testing.T) {
 func TestExpressionEvaluation_Error(t *testing.T) {
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
 	jsonMap := map[string]interface{}{
-		"value": "testing",
-		"sha":   testSHA,
+		"value":        "testing",
+		"sha":          testSHA,
+		"valid_yaml":   "key1: value1\nkey2: value2\n",
+		"invalid_yaml": "key1: value1key2: value2\n",
 		"pull_request": map[string]interface{}{
 			"commits": []string{},
 		},
@@ -546,6 +554,21 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "parseJSON decoding non-string",
 			expr: "body.pull_request.parseJSON().test == 'test'",
 			want: "unexpected type 'map' passed to parseJSON",
+		},
+		{
+			name: "parseYAML decoding non-string",
+			expr: "body.pull_request.parseYAML().key1 == 'value1'",
+			want: "unexpected type 'map' passed to parseYAML",
+		},
+		{
+			name: "unknown key",
+			expr: "body.valid_yaml.parseYAML().key3 == 'value3'",
+			want: "no such key: key3",
+		},
+		{
+			name: "invalid YAML body",
+			expr: "body.invalid_yaml.parseYAML().key1 == 'value1'",
+			want: "failed to decode 'key1: value1key2: value2\n' in parseYAML:",
 		},
 	}
 	for _, tt := range tests {

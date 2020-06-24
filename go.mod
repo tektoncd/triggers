@@ -35,7 +35,7 @@ require (
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89 // indirect
 	knative.dev/caching v0.0.0-20200228235451-13d271455c74
 	knative.dev/pkg v0.0.0-20200207155214-fef852970f43
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	sigs.k8s.io/yaml v1.2.0
 )
 
 // Knative deps (release-0.12)
