@@ -278,6 +278,20 @@ interceptor.
   </tr>
   <tr>
     <th>
+     parseYAML()
+    </th>
+    <td>
+     <pre>&lt;string&gt;.parseYAML() -> map&lt;string, dyn&gt;</pre>
+    </td>
+    <td>
+     This parses a string that contains a YAML body into a map which which can be subsequently used in other expressions.
+    </td>
+    <td>
+     <pre>'key1: value1\nkey2: value2\n'.parseYAML().key1 == "value"</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
      parseURL()
     </th>
     <td>
