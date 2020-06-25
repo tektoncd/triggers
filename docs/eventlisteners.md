@@ -327,6 +327,8 @@ spec:
               secretKey: secretToken
             eventTypes:
               - pull_request
+        - cel:
+            filter: "body.action in ['opened', 'synchronize', 'reopened']"
       bindings:
         - ref: github-binding
       template:
