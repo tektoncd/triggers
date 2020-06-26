@@ -110,7 +110,7 @@ set -x
 # Apply ClusterRole/ClusterRoleBinding for default SA to run create Ingress Task
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress
 # Apply Ingress Task
-kubectl apply -f ${REPO_ROOT_DIR}/docs/create-ingress.yaml
+kubectl apply -f ${REPO_ROOT_DIR}/docs/getting-started/create-ingress.yaml
 kubectl apply -f ${REPO_ROOT_DIR}/examples/triggerbindings/triggerbinding.yaml
 kubectl apply -f ${REPO_ROOT_DIR}/examples/triggertemplates/triggertemplate.yaml
 

@@ -1,3 +1,4 @@
+<!-- prettier-ignore start -->
 <!--
 ---
 title: "Triggers and EventListeners"
@@ -9,6 +10,9 @@ cascade:
   github_project_repo: https://github.com/tektoncd/triggers
 ---
 -->
+
+<!-- prettier-ignore end -->
+
 # Tekton Triggers
 
 Triggers enables users to map fields from an event payload into resource
@@ -28,7 +32,3 @@ See the following links for more on each of the resources involved:
 - [`EventListener`](eventlisteners.md)
 - [`ClusterTriggerBinding`](clustertriggerbindings.md)
 
-## Getting Started Tasks
-
-- [Create an Ingress on the EventListener Service](create-ingress.yaml)
-- [Create a GitHub webhook](create-webhook.yaml)

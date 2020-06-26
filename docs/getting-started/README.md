@@ -87,11 +87,11 @@ new ingress by configuring GitHub with our GitHub Task.
 
 First lets create our ingress Task.
 
-`kubectl apply -f ./docs/create-ingress.yaml -n getting-started`
+`kubectl apply -f ./docs/getting-started/create-ingress.yaml -n getting-started`
 
 Now lets create our webhook Task.
 
-`kubectl apply -f ./docs/create-webhook.yaml -n getting-started`
+`kubectl apply -f ./docs/getting-started/create-webhook.yaml -n getting-started`
 
 ## Run Ingress Task
 
