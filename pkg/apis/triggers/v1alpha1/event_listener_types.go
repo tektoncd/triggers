@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,55 +84,7 @@ type EventListenerTrigger struct {
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events
-type EventInterceptor struct {
-	Webhook   *WebhookInterceptor   `json:"webhook,omitempty"`
-	GitHub    *GitHubInterceptor    `json:"github,omitempty"`
-	GitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
-	CEL       *CELInterceptor       `json:"cel,omitempty"`
-	Bitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
-}
-
-// WebhookInterceptor provides a webhook to intercept and pre-process events
-type WebhookInterceptor struct {
-	// ObjectRef is a reference to an object that will resolve to a cluster DNS
-	// name to use as the EventInterceptor. Either objectRef or url can be specified
-	// +optional
-	ObjectRef *corev1.ObjectReference `json:"objectRef,omitempty"`
-	// Header is a group of key-value pairs that can be appended to the
-	// interceptor request headers. This allows the interceptor to make
-	// decisions specific to an EventListenerTrigger.
-	Header []v1beta1.Param `json:"header,omitempty"`
-}
-
-// BitbucketInterceptor provides a webhook to intercept and pre-process events
-type BitbucketInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
-}
-
-// GitHubInterceptor provides a webhook to intercept and pre-process events
-type GitHubInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
-}
-
-// GitLabInterceptor provides a webhook to intercept and pre-process events
-type GitLabInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
-}
-
-// CELInterceptor provides a webhook to intercept and pre-process events
-type CELInterceptor struct {
-	Filter   string       `json:"filter,omitempty"`
-	Overlays []CELOverlay `json:"overlays,omitempty"`
-}
-
-// CELOverlay provides a way to modify the request body using CEL expressions
-type CELOverlay struct {
-	Key        string `json:"key,omitempty"`
-	Expression string `json:"expression,omitempty"`
-}
+type EventInterceptor = TriggerInterceptor
 
 // SecretRef contains the information required to reference a single secret string
 // This is needed because the other secretRef types are not cross-namespace and do not
