@@ -1,5 +1,6 @@
 source $(dirname $0)/e2e-common.sh
 
+set -x
 set -o errexit
 set -o pipefail
 
@@ -29,9 +30,13 @@ for op in apply delete;do
         kubectl ${op} -f ${file}
     done
 
-# Apply docs disabled - pending deletion
-# See https://github.com/tektoncd/triggers/issues/164
-#    for file in $(find ${REPO_ROOT_DIR}/docs -name *.yaml | sort); do
-#        kubectl ${op} -f ${file}
-#    done
 done
+
+# Test getting-started examples that use the `getting-started` namespace
+kubectl create namespace getting-started
+for op in apply delete;do
+  for file in $(find ${REPO_ROOT_DIR}/docs/getting-started -name *.yaml | sort); do
+      kubectl ${op} -f ${file}
+  done
+done
+kubectl delete namespace getting-started
