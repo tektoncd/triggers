@@ -160,7 +160,9 @@ func makeCelEnv(request *http.Request, ns string, k kubernetes.Interface) (*cel.
 		celext.Strings(),
 		cel.Declarations(
 			decls.NewIdent("body", mapStrDyn, nil),
-			decls.NewIdent("header", mapStrDyn, nil)))
+			decls.NewIdent("header", mapStrDyn, nil),
+			decls.NewIdent("requestURL", decls.String, nil),
+		))
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {
@@ -169,5 +171,9 @@ func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, erro
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{"body": jsonMap, "header": r.Header}, nil
+	return map[string]interface{}{
+		"body":       jsonMap,
+		"header":     r.Header,
+		"requestURL": r.URL.String(),
+	}, nil
 }
