@@ -139,6 +139,20 @@ headers are also available.
       <pre>header['X-Test'][0] == 'test-value'</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+      requestURL
+    </th>
+    <td>
+      string
+    </td>
+    <td>
+      This is the URL for the incoming HTTP request.
+    </td>
+    <td>
+      <pre>requestURL.parseURL().path</pre>
+    </td>
+  </tr>
 </table>
 
 NOTE: The header value is a Go `http.Header`, which is

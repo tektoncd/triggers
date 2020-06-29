@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -207,6 +208,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			}
 			w := NewInterceptor(tt.CEL, kubeClient, "testing-ns", logger)
 			request := &http.Request{
+				URL:  mustParseURL(t, "https://testing.example.com"),
 				Body: tt.payload,
 				Header: http.Header{
 					"Content-Type":   []string{"application/json"},
@@ -298,6 +300,7 @@ func TestInterceptor_ExecuteTrigger_Errors(t *testing.T) {
 				Logger: logger,
 			}
 			request := &http.Request{
+				URL:  mustParseURL(t, "https://example.com/testing"),
 				Body: ioutil.NopCloser(bytes.NewReader(tt.payload)),
 				GetBody: func() (io.ReadCloser, error) {
 					return ioutil.NopCloser(bytes.NewReader(tt.payload)), nil
@@ -337,7 +340,8 @@ func TestExpressionEvaluation(t *testing.T) {
 	refParts := strings.Split(testRef, "/")
 	header := http.Header{}
 	header.Add("X-Test-Header", "value")
-	evalEnv := map[string]interface{}{"body": jsonMap, "header": header}
+	req := httptest.NewRequest(http.MethodPost, "https://example.com/testing?param=value", nil)
+	evalEnv := map[string]interface{}{"body": jsonMap, "header": header, "requestURL": req.URL.String()}
 	tests := []struct {
 		name   string
 		expr   string
@@ -447,6 +451,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			expr: "body.multiURL.parseURL().queryStrings['query']",
 			want: types.NewStringList(reg, []string{"search", "results"}),
 		},
+		{
+			name: "parse request url",
+			expr: "requestURL.parseURL().path",
+			want: types.String("/testing"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
@@ -457,11 +466,10 @@ func TestExpressionEvaluation(t *testing.T) {
 					rt.Error(err)
 				}
 			}
-			env, err := makeCelEnv(&http.Request{}, testNS, kubeClient)
+			env, err := makeCelEnv(req, testNS, kubeClient)
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			got, err := evaluate(tt.expr, env, evalEnv)
 			if err != nil {
 				rt.Errorf("evaluate() got an error %s", err)
@@ -472,7 +480,6 @@ func TestExpressionEvaluation(t *testing.T) {
 				rt.Errorf("error evaluating expression: %s", got)
 				return
 			}
-
 			if !got.Equal(tt.want).(types.Bool) {
 				rt.Errorf("evaluate() = %s, want %s", got, tt.want)
 			}
@@ -639,4 +646,13 @@ func makeSecret() *corev1.Secret {
 			"token": []byte("secrettoken"),
 		},
 	}
+}
+
+func mustParseURL(t *testing.T, u string) *url.URL {
+	t.Helper()
+	parsed, err := url.Parse(u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed
 }
