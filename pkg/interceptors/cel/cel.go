@@ -82,7 +82,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	if w.CEL.Filter != "" {
 		out, err := evaluate(w.CEL.Filter, env, evalContext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate expression '%s': %w", w.CEL.Filter, err)
+			return nil, err
 		}
 
 		if out != types.True {
@@ -93,7 +93,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	for _, u := range w.CEL.Overlays {
 		val, err := evaluate(u.Expression, env, evalContext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate overlay expression '%s': %w", u.Expression, err)
+			return nil, err
 		}
 
 		var raw interface{}
@@ -136,21 +136,24 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, error) {
 	parsed, issues := env.Parse(expr)
 	if issues != nil && issues.Err() != nil {
-		return nil, issues.Err()
+		return nil, fmt.Errorf("failed to parse expression %#v: %s", expr, issues.Err())
 	}
 
 	checked, issues := env.Check(parsed)
 	if issues != nil && issues.Err() != nil {
-		return nil, issues.Err()
+		return nil, fmt.Errorf("expression %#v check failed: %s", expr, issues.Err())
 	}
 
 	prg, err := env.Program(checked)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("expression %#v failed to create a Program: %s", expr, err)
 	}
 
 	out, _, err := prg.Eval(data)
-	return out, err
+	if err != nil {
+		return nil, fmt.Errorf("expression %#v failed to evaluate: %s", expr, err)
+	}
+	return out, nil
 }
 
 func makeCelEnv(request *http.Request, ns string, k kubernetes.Interface) (*cel.Env, error) {
@@ -167,7 +170,7 @@ func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, erro
 	var jsonMap map[string]interface{}
 	err := json.Unmarshal(body, &jsonMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse the body as JSON: %s", err)
 	}
 	return map[string]interface{}{"body": jsonMap, "header": r.Header}, nil
 }
