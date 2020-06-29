@@ -151,14 +151,14 @@ spec:
   triggers:
     - name: prod-trigger
       bindings:
-        - name: event-binding
-        - name: prod-env
+        - ref: event-binding
+        - ref: prod-env
       template:
         name: pipeline-template
     - name: staging-trigger
       bindings:
-        - name: event-binding
-        - name: staging-env
+        - ref: event-binding
+        - ref: staging-env
       template:
         name: pipeline-template
 ```

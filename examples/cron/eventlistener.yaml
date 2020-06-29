@@ -7,6 +7,6 @@ spec:
   triggers:
     - name: cron-trig
       bindings:
-      - name: cron-binding
+      - ref: cron-binding
       template:
         name: pipeline-template

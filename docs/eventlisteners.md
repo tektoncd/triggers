@@ -102,8 +102,7 @@ triggers:
       - github:
           eventTypes: ["pull_request"]
     bindings:
-      - name: pipeline-binding
-        ref:  pipeline-binding
+      - ref: pipeline-binding
       - name: message-binding
         spec:
             params:
@@ -127,10 +126,8 @@ triggers:
       - github:
           eventTypes: ["pull_request"]
     bindings:
-      - name: pipeline-binding
-        ref:  pipeline-binding
-      - name: message-binding
-        ref:  message-binding
+      - ref: pipeline-binding
+      - ref: message-binding
     template:
       name: pipeline-template
 ``` 
@@ -374,8 +371,7 @@ spec:
             eventTypes:
               - Push Hook
       bindings:
-        - name: pipeline-binding
-          ref:  pipeline-binding
+        - ref: pipeline-binding
       template:
         name: pipeline-template
 ```
@@ -416,7 +412,7 @@ spec:
             eventTypes:
               - repo:refs_changed
       bindings:
-        - name: bitbucket-binding
+        - ref: bitbucket-binding
       template:
         name: bitbucket-template
 ```

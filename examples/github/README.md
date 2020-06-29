@@ -27,7 +27,7 @@ Creates an EventListener that listens for GitHub webhook events.
    ```bash
    curl -v \
    -H 'X-GitHub-Event: pull_request' \
-   -H 'X-Hub-Signature: sha1=0835c8c5dc317870c4e48659df5f3c53213cd348' \
+   -H 'X-Hub-Signature: sha1=13eaa0168f8d8efcdf5189ea75b782cf89809de6' \
    -H 'Content-Type: application/json' \
    -d '{"action": "opened", "head_commit":{"id":"master"},"repository":{"url": "https://github.com/tektoncd/triggers"}}' \
    http://localhost:8080

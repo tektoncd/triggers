@@ -15,6 +15,6 @@ spec:
             eventTypes:
               - repo:refs_changed
       bindings:
-        - name: bitbucket-binding
+        - ref: bitbucket-binding
       template:
         name: bitbucket-template
