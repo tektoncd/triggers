@@ -289,7 +289,7 @@ func TestInterceptor_ExecuteTrigger_Errors(t *testing.T) {
 				},
 			},
 			payload: []byte(`{"value":"test"}`),
-			want:    "failed to evaluate overlay expression 'test.value'",
+			want:    `expression "test.value" check failed: ERROR:.*undeclared reference to 'test'`,
 		},
 	}
 	for _, tt := range tests {
@@ -509,12 +509,12 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 		{
 			name: "unknown value",
 			expr: "body.val",
-			want: "no such key: val",
+			want: `expression "body.val" failed to evaluate: no such key: val`,
 		},
 		{
 			name: "invalid syntax",
 			expr: "body.value = 'testing'",
-			want: "Syntax error: token recognition error",
+			want: `failed to parse expression "body.value = 'testing'"`,
 		},
 		{
 			name: "unknown function",
@@ -624,6 +624,17 @@ func TestURLToMap(t *testing.T) {
 
 	if diff := cmp.Diff(want, m); diff != "" {
 		t.Fatalf("urlToMap failed:\n%s", diff)
+	}
+}
+
+func TestMakeEvalContextWithError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	payload := []byte(`{"tes`)
+
+	_, err := makeEvalContext(payload, req)
+
+	if !matchError(t, "failed to parse the body as JSON: unexpected end of JSON input", err) {
+		t.Fatalf("failed to match the error: %s", err)
 	}
 }
 
