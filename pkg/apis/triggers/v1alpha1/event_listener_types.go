@@ -33,6 +33,7 @@ var _ apis.Validatable = (*EventListener)(nil)
 var _ apis.Defaultable = (*EventListener)(nil)
 
 // +genclient
+// +genreconciler
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EventListener exposes a service to accept HTTP event payloads.
