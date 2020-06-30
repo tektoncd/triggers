@@ -30,7 +30,6 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -150,7 +149,7 @@ import (
 // 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, ws kubernetes.Interface) cel.EnvOption {
+func Triggers(ns string, ws interceptors.WebhookSecretStore) cel.EnvOption {
 	return cel.Lib(triggersLib{defaultNS: ns, webhookSecretStore: ws})
 }
 
@@ -317,7 +316,7 @@ func makeCompareSecret(defaultNS string, ws interceptors.WebhookSecretStore) fun
 			SecretName: string(secretName),
 			Namespace:  string(secretNS),
 		}
-		secretToken, err := ws.Get(secretRef)
+		secretToken, err := ws.Get(*secretRef)
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

@@ -86,6 +86,7 @@ func main() {
 
 	// Create EventListener Sink
 	r := sink.Sink{
+		KubeClientSet:          kubeClient,
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		DynamicClient:          dynamicCS,
 		TriggersClient:         sinkClients.TriggersClient,

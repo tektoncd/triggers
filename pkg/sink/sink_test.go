@@ -78,6 +78,12 @@ func comparePR(x, y pipelinev1alpha1.PipelineResource) bool {
 	return x.GetName() < y.GetName()
 }
 
+type fakeSecretStore struct{}
+
+func (s fakeSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
+	return []byte("secret"), nil
+}
+
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic
 // client. The returned client is used to creating the fake resources and can be
 // used to check if the correct resources were created.
@@ -93,6 +99,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	r := Sink{
+		WebhookSecretStore:     fakeSecretStore{},
 		EventListenerName:      elName,
 		EventListenerNamespace: namespace,
 		DynamicClient:          dynamicSet,

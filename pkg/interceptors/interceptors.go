@@ -17,9 +17,9 @@ limitations under the License.
 package interceptors
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -43,9 +43,9 @@ type webhookSecretStore struct {
 // NewWebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
 func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) WebhookSecretStore {
 	store := cache.NewStore(func(obj interface{}) (string, error) {
-		secret, ok := obj.(corev1.Secret)
+		secret, ok := obj.(*corev1.Secret)
 		if !ok {
-			return "", errors.New("object is not a secret")
+			return "", fmt.Errorf("object is not a secret; got %s", reflect.TypeOf(obj))
 		}
 
 		return fmt.Sprintf("%s/%s", secret.Namespace, secret.Name), nil
@@ -71,7 +71,7 @@ func (ws webhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 		return nil, fmt.Errorf("secret not found: %s", sr.SecretName)
 	}
 
-	secret, ok := cachedObj.(corev1.Secret)
+	secret, ok := cachedObj.(*corev1.Secret)
 	if !ok {
 		return nil, fmt.Errorf("cached object is not a secret: %s", sr.SecretName)
 	}
@@ -84,42 +84,12 @@ func (ws webhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	return value, nil
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-// Interceptor is the interface that all interceptors implement.
-type Interceptor interface {
-	ExecuteTrigger(req *http.Request) (*http.Response, error)
-}
-
-type key string
-
-const requestCacheKey key = "interceptors.RequestCache"
-
-// WithCache clones the given request and sets the request context to include a cache.
-// This allows us to cache results from expensive operations and perform them just once
-// per each trigger.
-//
-// Each request should have its own cache, and those caches should expire once the request
-// is processed. For this reason, it's appropriate to store the cache on the request
-// context.
-func WithCache(req *http.Request) *http.Request {
-	return req.WithContext(context.WithValue(req.Context(), requestCacheKey, make(map[string]interface{})))
-}
-
-func getCache(req *http.Request) map[string]interface{} {
-	if cache, ok := req.Context().Value(requestCacheKey).(map[string]interface{}); ok {
-		return cache
-=======
-func (ws *WebhookSecretStore) getKey(sr triggersv1.SecretRef) string {
-=======
 func (ws *webhookSecretStore) getKey(sr triggersv1.SecretRef) string {
->>>>>>> 2f3a47e6... Use RESTClient instead of secrets client
 	var namespace string
 	if sr.Namespace == "" {
 		namespace = ws.eventListenerNamespace
 	} else {
 		namespace = sr.Namespace
->>>>>>> 68edb108... use webhook secret store
 	}
 	return fmt.Sprintf("%s/%s", namespace, sr.SecretName)
 }

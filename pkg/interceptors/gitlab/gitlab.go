@@ -27,7 +27,6 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 )
 
 type Interceptor struct {
@@ -52,7 +51,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 			return nil, errors.New("no X-GitLab-Token header set")
 		}
 
-		secretToken, err := w.webhookSecretStore.Get(w.GitLab.SecretRef)
+		secretToken, err := w.webhookSecretStore.Get(*w.GitLab.SecretRef)
 		if err != nil {
 			return nil, err
 		}
