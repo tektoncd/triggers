@@ -191,7 +191,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
-			webhookSecretStore := fakeSecretStore{text: tt.args.secret}
+			secretStore := fakeSecretStore{text: tt.args.secret}
 			request := &http.Request{
 				Body: tt.args.payload,
 				Header: http.Header{
@@ -205,9 +205,9 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				request.Header.Add("X-Hub-Signature", tt.args.signature)
 			}
 			w := &Interceptor{
-				webhookSecretStore: webhookSecretStore,
-				GitHub:             tt.GitHub,
-				Logger:             logger,
+				secretStore: secretStore,
+				GitHub:      tt.GitHub,
+				Logger:      logger,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {

@@ -149,13 +149,13 @@ import (
 // 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, ws interceptors.WebhookSecretStore) cel.EnvOption {
-	return cel.Lib(triggersLib{defaultNS: ns, webhookSecretStore: ws})
+func Triggers(ns string, ws interceptors.SecretStore) cel.EnvOption {
+	return cel.Lib(triggersLib{defaultNS: ns, secretStore: ws})
 }
 
 type triggersLib struct {
-	defaultNS          string
-	webhookSecretStore interceptors.WebhookSecretStore
+	defaultNS   string
+	secretStore interceptors.SecretStore
 }
 
 func (triggersLib) CompileOptions() []cel.EnvOption {
@@ -217,7 +217,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.defaultNS, t.webhookSecretStore)},
+				Function: makeCompareSecret(t.defaultNS, t.secretStore)},
 		)}
 }
 
@@ -282,7 +282,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, ws interceptors.WebhookSecretStore) functions.FunctionOp {
+func makeCompareSecret(defaultNS string, ws interceptors.SecretStore) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)

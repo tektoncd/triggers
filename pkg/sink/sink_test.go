@@ -99,7 +99,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	r := Sink{
-		WebhookSecretStore:     fakeSecretStore{},
+		SecretStore:     fakeSecretStore{},
 		EventListenerName:      elName,
 		EventListenerNamespace: namespace,
 		DynamicClient:          dynamicSet,

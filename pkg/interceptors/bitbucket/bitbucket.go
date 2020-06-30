@@ -30,16 +30,16 @@ import (
 )
 
 type Interceptor struct {
-	webhookSecretStore interceptors.WebhookSecretStore
-	Logger             *zap.SugaredLogger
-	Bitbucket          *triggersv1.BitbucketInterceptor
+	secretStore interceptors.SecretStore
+	Logger      *zap.SugaredLogger
+	Bitbucket   *triggersv1.BitbucketInterceptor
 }
 
-func NewInterceptor(bh *triggersv1.BitbucketInterceptor, w interceptors.WebhookSecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(bh *triggersv1.BitbucketInterceptor, w interceptors.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:             l,
-		Bitbucket:          bh,
-		webhookSecretStore: w,
+		Logger:      l,
+		Bitbucket:   bh,
+		secretStore: w,
 	}
 }
 
@@ -61,7 +61,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		if header == "" {
 			return nil, errors.New("no X-Hub-Signature header set")
 		}
-		secretToken, err := w.webhookSecretStore.Get(*w.Bitbucket.SecretRef)
+		secretToken, err := w.secretStore.Get(*w.Bitbucket.SecretRef)
 		if err != nil {
 			return nil, err
 		}

@@ -82,7 +82,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	webhookSecretStore := interceptors.NewWebhookSecretStore(kubeClient, sinkArgs.ElNamespace, 5*time.Second, stopCh)
+	secretStore := interceptors.NewSecretStore(kubeClient, sinkArgs.ElNamespace, 5*time.Second, stopCh)
 
 	// Create EventListener Sink
 	r := sink.Sink{
@@ -90,7 +90,7 @@ func main() {
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		DynamicClient:          dynamicCS,
 		TriggersClient:         sinkClients.TriggersClient,
-		WebhookSecretStore:     webhookSecretStore,
+		SecretStore:            secretStore,
 		HTTPClient:             http.DefaultClient,
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,

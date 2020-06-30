@@ -30,16 +30,16 @@ import (
 )
 
 type Interceptor struct {
-	webhookSecretStore interceptors.WebhookSecretStore
-	Logger             *zap.SugaredLogger
-	GitLab             *triggersv1.GitLabInterceptor
+	secretStore interceptors.SecretStore
+	Logger      *zap.SugaredLogger
+	GitLab      *triggersv1.GitLabInterceptor
 }
 
-func NewInterceptor(gl *triggersv1.GitLabInterceptor, w interceptors.WebhookSecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gl *triggersv1.GitLabInterceptor, w interceptors.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:             l,
-		GitLab:             gl,
-		webhookSecretStore: w,
+		Logger:      l,
+		GitLab:      gl,
+		secretStore: w,
 	}
 }
 
@@ -51,7 +51,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 			return nil, errors.New("no X-GitLab-Token header set")
 		}
 
-		secretToken, err := w.webhookSecretStore.Get(*w.GitLab.SecretRef)
+		secretToken, err := w.secretStore.Get(*w.GitLab.SecretRef)
 		if err != nil {
 			return nil, err
 		}

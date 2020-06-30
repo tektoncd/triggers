@@ -174,7 +174,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
-			webhookSecretStore := fakeSecretStore{text: tt.args.secret}
+			secretStore := fakeSecretStore{text: tt.args.secret}
 			request := &http.Request{
 				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
 				Header: http.Header{
@@ -188,9 +188,9 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				request.Header.Add("X-GitLab-Event", tt.args.eventType)
 			}
 			w := &Interceptor{
-				webhookSecretStore: webhookSecretStore,
-				GitLab:             tt.GitLab,
-				Logger:             logger,
+				secretStore: secretStore,
+				GitLab:      tt.GitLab,
+				Logger:      logger,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {

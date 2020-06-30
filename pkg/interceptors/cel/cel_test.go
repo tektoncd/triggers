@@ -210,8 +210,8 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			logger, _ := logging.NewLogger("", "")
-			webhookSecretStore := fakeSecretStore{text: "secrettoken"}
-			w := NewInterceptor(tt.CEL, webhookSecretStore, testNS, logger)
+			secretStore := fakeSecretStore{text: "secrettoken"}
+			w := NewInterceptor(tt.CEL, secretStore, testNS, logger)
 			request := &http.Request{
 				URL:  mustParseURL(t, "https://testing.example.com"),
 				Body: tt.payload,
@@ -465,8 +465,8 @@ func TestExpressionEvaluation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			webhookSecretStore := fakeSecretStore{text: tt.secret}
-			env, err := makeCelEnv(testNS, webhookSecretStore)
+			secretStore := fakeSecretStore{text: tt.secret}
+			env, err := makeCelEnv(testNS, secretStore)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -575,8 +575,8 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			ns := testNS
-			webhookSecretStore := fakeSecretStore{text: tt.secret}
-			env, err := makeCelEnv(ns, webhookSecretStore)
+			secretStore := fakeSecretStore{text: tt.secret}
+			env, err := makeCelEnv(ns, secretStore)
 			if err != nil {
 				t.Fatal(err)
 			}

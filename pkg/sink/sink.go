@@ -47,12 +47,7 @@ import (
 // EventListener.
 type Sink struct {
 	KubeClientSet          kubernetes.Interface
-	WebhookSecretStore     interceptors.WebhookSecretStore
-<<<<<<< HEAD
-	KubeClientSet          kubernetes.Interface
 	SecretStore            secrets.SecretStore
-=======
->>>>>>> cf34229c... use webhook secret store
 	TriggersClient         triggersclientset.Interface
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
@@ -204,13 +199,13 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
 		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(i.GitHub, r.WebhookSecretStore, log)
+			interceptor = github.NewInterceptor(i.GitHub, r.SecretStore, log)
 		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(i.GitLab, r.WebhookSecretStore, log)
+			interceptor = gitlab.NewInterceptor(i.GitLab, r.SecretStore, log)
 		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(i.CEL, r.WebhookSecretStore, r.EventListenerNamespace, log)
+			interceptor = cel.NewInterceptor(i.CEL, r.SecretStore, r.EventListenerNamespace, log)
 		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.WebhookSecretStore, log)
+			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.SecretStore, log)
 		default:
 			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}

@@ -30,18 +30,18 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// WebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
-type WebhookSecretStore interface {
+// SecretStore provides cached lookups of k8s secrets, backed by a Reflector.
+type SecretStore interface {
 	Get(sr triggersv1.SecretRef) ([]byte, error)
 }
 
-type webhookSecretStore struct {
+type secretStore struct {
 	store                  cache.Store
 	eventListenerNamespace string
 }
 
-// NewWebhookSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
-func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) WebhookSecretStore {
+// NewSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
+func NewSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) SecretStore {
 	store := cache.NewStore(func(obj interface{}) (string, error) {
 		secret, ok := obj.(*corev1.Secret)
 		if !ok {
@@ -51,7 +51,7 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 		return fmt.Sprintf("%s/%s", secret.Namespace, secret.Name), nil
 	})
 
-	secretStore := webhookSecretStore{
+	secretStore := secretStore{
 		store:                  store,
 		eventListenerNamespace: ns,
 	}
@@ -65,7 +65,7 @@ func NewWebhookSecretStore(cs kubernetes.Interface, ns string, resyncInterval ti
 }
 
 // Get returns the secret value for a given SecretRef.
-func (ws webhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
+func (ws secretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	cachedObj, ok, _ := ws.store.GetByKey(ws.getKey(sr))
 	if !ok {
 		return nil, fmt.Errorf("secret not found: %s", sr.SecretName)
@@ -84,7 +84,7 @@ func (ws webhookSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	return value, nil
 }
 
-func (ws *webhookSecretStore) getKey(sr triggersv1.SecretRef) string {
+func (ws *secretStore) getKey(sr triggersv1.SecretRef) string {
 	var namespace string
 	if sr.Namespace == "" {
 		namespace = ws.eventListenerNamespace

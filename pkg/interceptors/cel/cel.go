@@ -44,7 +44,7 @@ import (
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	WebhookSecretStore     interceptors.WebhookSecretStore
+	SecretStore            interceptors.SecretStore
 	Logger                 *zap.SugaredLogger
 	CEL                    *triggersv1.CELInterceptor
 	EventListenerNamespace string
@@ -56,18 +56,18 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(cel *triggersv1.CELInterceptor, ws interceptors.WebhookSecretStore, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(cel *triggersv1.CELInterceptor, ws interceptors.SecretStore, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
 		CEL:                    cel,
-		WebhookSecretStore:     ws,
+		SecretStore:            ws,
 		EventListenerNamespace: ns,
 	}
 }
 
 // ExecuteTrigger is an implementation of the Interceptor interface.
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	env, err := makeCelEnv(w.EventListenerNamespace, w.WebhookSecretStore)
+	env, err := makeCelEnv(w.EventListenerNamespace, w.SecretStore)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cel environment: %w", err)
 	}
@@ -172,7 +172,7 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(ns string, ws interceptors.WebhookSecretStore) (*cel.Env, error) {
+func makeCelEnv(ns string, ws interceptors.SecretStore) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
 		Triggers(ns, ws),
