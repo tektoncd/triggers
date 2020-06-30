@@ -22,6 +22,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -42,12 +43,10 @@ import (
 )
 
 var (
-	eventListenerName        = "my-eventlistener"
-	generatedResourceName    = fmt.Sprintf("el-%s", eventListenerName)
-	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+	eventListenerName     = "my-eventlistener"
+	generatedResourceName = fmt.Sprintf("el-%s", eventListenerName)
 
-	namespace = "test-pipelines"
-
+	namespace         = "test-pipelines"
 	namespaceResource = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
@@ -129,6 +128,7 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, co
 // If no ops are specified, it generates a base EventListener with no triggers and no Status
 func makeEL(ops ...func(el *v1alpha1.EventListener)) *v1alpha1.EventListener {
 	e := bldr.EventListener(eventListenerName, namespace,
+
 		bldr.EventListenerSpec(
 			bldr.EventListenerServiceAccount("sa"),
 		),
@@ -271,6 +271,12 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 	return &s
 }
 
+func logConfig(ns string) *corev1.ConfigMap {
+	lc := defaultLoggingConfigMap()
+	lc.Namespace = ns
+	return lc
+}
+
 var withStatus = bldr.EventListenerStatus(
 	bldr.EventListenerConfig(generatedResourceName),
 	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, *ElPort)),
@@ -305,9 +311,28 @@ func withAddedLabels(el *v1alpha1.EventListener) {
 func withAddedAnnotations(el *v1alpha1.EventListener) {
 	el.Annotations = updateAnnotation
 }
+func withFinalizer(el *v1alpha1.EventListener) {
+	el.Finalizers = []string{"eventlisteners.triggers.tekton.dev"}
+}
+
+func withFinalizerRemoved(el *v1alpha1.EventListener) {
+	el.Finalizers = []string{}
+}
+
+func withControllerNamespace(el *v1alpha1.EventListener) {
+	el.Namespace = reconcilerNamespace
+}
+
+func withDeletionTimestamp(el *v1alpha1.EventListener) {
+	deletionTime := metav1.NewTime(time.Unix(1e9, 0))
+	el.DeletionTimestamp = &deletionTime
+}
 
 func TestReconcile(t *testing.T) {
-	os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	err := os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	elPreReoncile := makeEL()
 	elWithStatus := makeEL(withStatus)
@@ -647,43 +672,21 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
-		name:           "delete-eventlistener",
-		key:            reconcileKey,
-		startResources: test.Resources{},
-		endResources:   test.Resources{},
-	}, {
-		name:           "delete-last-eventlistener",
-		key:            reconcileKey,
-		startResources: test.Resources{},
-		endResources:   test.Resources{},
-	}, {
-		name: "delete-last-eventlistener-in-our-namespace",
-		key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
-		startResources: test.Resources{
-			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
-			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
-		},
-		endResources: test.Resources{
-			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
-			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
-		},
-	}, {
-		name: "delete-eventlistener-with-remaining-eventlistener",
+		name: "eventlistener-config-volume-mount-update",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
-	},
-	}
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup with startResources
@@ -700,7 +703,94 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tt.endResources, *actualEndResources, ignoreLastTransitionTime); diff != "" {
+			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
+				apis.Condition{}.LastTransitionTime.Inner.Time,
+				metav1.ObjectMeta{}.Finalizers,
+			)); diff != "" {
+				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestReconcile_Delete(t *testing.T) {
+	tests := []struct {
+		name           string
+		key            string
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
+	}{{
+		name: "delete-eventlistener-with-remaining-eventlisteners",
+		key:  fmt.Sprintf("%s/%s", namespace, "el-2"),
+		startResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(), makeEL(withFinalizer, withDeletionTimestamp, func(el *v1alpha1.EventListener) {
+				el.Name = "el-2" // TODO: makeEL take name, ns as args
+			})},
+			ConfigMaps: []*corev1.ConfigMap{logConfig(namespace)},
+		},
+		endResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(), makeEL(withFinalizerRemoved, withDeletionTimestamp, func(el *v1alpha1.EventListener) {
+				el.Name = "el-2"
+			})},
+			ConfigMaps: []*corev1.ConfigMap{logConfig(namespace)},
+		},
+	}, {
+		name: "delete-last-eventlistener-in-reconciler-namespace",
+		key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{reconcilerNamespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withControllerNamespace, withFinalizer, withDeletionTimestamp)},
+			ConfigMaps:     []*corev1.ConfigMap{logConfig(reconcilerNamespace)},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{reconcilerNamespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withControllerNamespace, withDeletionTimestamp, withFinalizerRemoved)},
+			ConfigMaps:     []*corev1.ConfigMap{logConfig(reconcilerNamespace)}, // We should not delete the logging configMap
+		},
+	}, {
+		name: "delete-last-eventlistener-in-namespace",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withFinalizer, withDeletionTimestamp)},
+			ConfigMaps:     []*corev1.ConfigMap{logConfig(namespace)},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withDeletionTimestamp, withFinalizerRemoved)},
+		},
+	}, {
+		name: "delete-last-eventlistener-in-namespace-with-no-logging-config",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withFinalizer, withDeletionTimestamp)},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withDeletionTimestamp, withFinalizerRemoved)},
+		},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup with startResources
+			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources)
+			defer cancel()
+			// Run Reconcile
+			err := testAssets.Controller.Reconciler.Reconcile(context.Background(), tt.key)
+			if err != nil {
+				t.Errorf("eventlistener.Reconcile() returned error: %s", err)
+				return
+			}
+			// Grab test resource results
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})

@@ -4,6 +4,7 @@ run:
   skip-dirs:
   - vendor
   - pkg/client/clientset/(.*)/fake
+  - pkg/client/injection
 linters-settings:
   errcheck:
     exclude: .errcheck.txt

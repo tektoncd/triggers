@@ -16,8 +16,11 @@ limitations under the License.
 package main
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
 )
@@ -29,7 +32,9 @@ const (
 
 func main() {
 	klog.InitFlags(nil)
-	sharedmain.Main(ControllerLogKey,
-		eventlistener.NewController,
-	)
+
+	sharedmain.MainWithContext(
+		injection.WithNamespaceScope(signals.NewContext(), corev1.NamespaceAll),
+		ControllerLogKey,
+		eventlistener.NewController)
 }

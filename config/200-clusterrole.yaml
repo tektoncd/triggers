@@ -21,7 +21,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-triggers
 rules:
   - apiGroups: [""]
-    resources: ["configmaps", "secrets", "services"]
+    resources: ["configmaps", "secrets", "services", "events"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "deployments/finalizers"]
