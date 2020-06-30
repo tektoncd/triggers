@@ -26,16 +26,17 @@ import (
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/secrets"
 	"go.uber.org/zap"
 )
 
 type Interceptor struct {
-	secretStore interceptors.SecretStore
+	secretStore secrets.SecretStore
 	Logger      *zap.SugaredLogger
 	GitHub      *triggersv1.GitHubInterceptor
 }
 
-func NewInterceptor(gh *triggersv1.GitHubInterceptor, w interceptors.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gh *triggersv1.GitHubInterceptor, w secrets.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:      l,
 		GitHub:      gh,

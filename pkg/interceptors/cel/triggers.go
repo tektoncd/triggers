@@ -29,7 +29,7 @@ import (
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
-	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/secrets"
 	"sigs.k8s.io/yaml"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -149,13 +149,13 @@ import (
 // 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, ws interceptors.SecretStore) cel.EnvOption {
+func Triggers(ns string, ws secrets.SecretStore) cel.EnvOption {
 	return cel.Lib(triggersLib{defaultNS: ns, secretStore: ws})
 }
 
 type triggersLib struct {
 	defaultNS   string
-	secretStore interceptors.SecretStore
+	secretStore secrets.SecretStore
 }
 
 func (triggersLib) CompileOptions() []cel.EnvOption {
@@ -282,7 +282,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, ws interceptors.SecretStore) functions.FunctionOp {
+func makeCompareSecret(defaultNS string, ws secrets.SecretStore) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)

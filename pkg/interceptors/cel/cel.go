@@ -32,6 +32,7 @@ import (
 	"github.com/google/cel-go/common/types/traits"
 	celext "github.com/google/cel-go/ext"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/secrets"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -44,7 +45,7 @@ import (
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	SecretStore            interceptors.SecretStore
+	SecretStore            secrets.SecretStore
 	Logger                 *zap.SugaredLogger
 	CEL                    *triggersv1.CELInterceptor
 	EventListenerNamespace string
@@ -56,7 +57,7 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(cel *triggersv1.CELInterceptor, ws interceptors.SecretStore, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(cel *triggersv1.CELInterceptor, ws secrets.SecretStore, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:                 l,
 		CEL:                    cel,
@@ -172,7 +173,7 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(ns string, ws interceptors.SecretStore) (*cel.Env, error) {
+func makeCelEnv(ns string, ws secrets.SecretStore) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
 		Triggers(ns, ws),

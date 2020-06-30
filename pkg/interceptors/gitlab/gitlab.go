@@ -23,6 +23,7 @@ import (
 	"net/http"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/secrets"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
@@ -30,12 +31,12 @@ import (
 )
 
 type Interceptor struct {
-	secretStore interceptors.SecretStore
+	secretStore secrets.SecretStore
 	Logger      *zap.SugaredLogger
 	GitLab      *triggersv1.GitLabInterceptor
 }
 
-func NewInterceptor(gl *triggersv1.GitLabInterceptor, w interceptors.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(gl *triggersv1.GitLabInterceptor, w secrets.SecretStore, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:      l,
 		GitLab:      gl,
