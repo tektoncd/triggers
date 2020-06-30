@@ -18,6 +18,7 @@ package gitlab
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -26,16 +27,24 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/logging"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
+
+type fakeSecretStore struct {
+	text string
+}
+
+func (s fakeSecretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
+	if s.text == "" {
+		return []byte(""), errors.New("Not found")
+	}
+
+	return []byte(s.text), nil
+}
 
 func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	type args struct {
 		payload   []byte
-		secret    *corev1.Secret
+		secret    string
 		token     string
 		eventType string
 	}
@@ -65,15 +74,8 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				},
 			},
 			args: args{
-				token: "foo",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
+				token:   "foo",
+				secret:  "secrettoken",
 				payload: []byte("somepayload"),
 			},
 			wantErr: true,
@@ -87,15 +89,8 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				},
 			},
 			args: args{
-				token: "secret",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secret"),
-					},
-				},
+				token:   "secret",
+				secret:  "secret",
 				payload: []byte("somepayload"),
 			},
 			wantErr: false,
@@ -137,14 +132,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				eventType: "bar",
 				payload:   []byte("somepayload"),
 				token:     "foo",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
+				secret:    "mysecret",
 			},
 			wantErr: true,
 		},
@@ -161,14 +149,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				eventType: "baz",
 				payload:   []byte("somepayload"),
 				token:     "secrettoken",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
+				secret:    "secrettoken",
 			},
 			wantErr: true,
 		},
@@ -185,23 +166,15 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				eventType: "bar",
 				payload:   []byte("somepayload"),
 				token:     "secrettoken",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
+				secret:    "secrettoken",
 			},
 			want: []byte("somepayload"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
 			logger, _ := logging.NewLogger("", "")
-			kubeClient := fakekubeclient.Get(ctx)
+			webhookSecretStore := fakeSecretStore{text: tt.args.secret}
 			request := &http.Request{
 				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
 				Header: http.Header{
@@ -214,19 +187,10 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			if tt.args.eventType != "" {
 				request.Header.Add("X-GitLab-Event", tt.args.eventType)
 			}
-			if tt.args.secret != nil {
-				ns := tt.GitLab.SecretRef.Namespace
-				if ns == "" {
-					ns = metav1.NamespaceDefault
-				}
-				if _, err := kubeClient.CoreV1().Secrets(ns).Create(tt.args.secret); err != nil {
-					t.Error(err)
-				}
-			}
 			w := &Interceptor{
-				KubeClientSet: kubeClient,
-				GitLab:        tt.GitLab,
-				Logger:        logger,
+				webhookSecretStore: webhookSecretStore,
+				GitLab:             tt.GitLab,
+				Logger:             logger,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {
