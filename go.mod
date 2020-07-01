@@ -7,9 +7,9 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.9 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/golang/protobuf v1.3.4
-	github.com/google/cel-go v0.4.2
-	github.com/google/go-cmp v0.4.0
+	github.com/golang/protobuf v1.4.1
+	github.com/google/cel-go v0.5.1
+	github.com/google/go-cmp v0.5.0
 	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
@@ -23,7 +23,8 @@ require (
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
-	google.golang.org/genproto v0.0.0-20200305110556-506484158171
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2

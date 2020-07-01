@@ -19,6 +19,7 @@ package parser
 import (
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 
@@ -69,12 +70,30 @@ type parser struct {
 	macros map[string]Macro
 }
 
-var _ gen.CELVisitor = (*parser)(nil)
+var (
+	_ gen.CELVisitor = (*parser)(nil)
+
+	lexerPool *sync.Pool = &sync.Pool{
+		New: func() interface{} {
+			return gen.NewCELLexer(nil)
+		},
+	}
+
+	parserPool *sync.Pool = &sync.Pool{
+		New: func() interface{} {
+			return gen.NewCELParser(nil)
+		},
+	}
+)
 
 func (p *parser) parse(expression string) *exprpb.Expr {
-	stream := antlr.NewInputStream(expression)
-	lexer := gen.NewCELLexer(stream)
-	prsr := gen.NewCELParser(antlr.NewCommonTokenStream(lexer, 0))
+	lexer := lexerPool.Get().(*gen.CELLexer)
+	lexer.SetInputStream(antlr.NewInputStream(expression))
+	defer lexerPool.Put(lexer)
+
+	prsr := parserPool.Get().(*gen.CELParser)
+	prsr.SetInputStream(antlr.NewCommonTokenStream(lexer, 0))
+	defer parserPool.Put(prsr)
 
 	lexer.RemoveErrorListeners()
 	prsr.RemoveErrorListeners()

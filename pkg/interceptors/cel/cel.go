@@ -29,10 +29,13 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 	celext "github.com/google/cel-go/ext"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/client-go/kubernetes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -47,6 +50,11 @@ type Interceptor struct {
 	CEL                    *triggersv1.CELInterceptor
 	EventListenerNamespace string
 }
+
+var (
+	structType = reflect.TypeOf(&structpb.Value{})
+	listType   = reflect.TypeOf(&structpb.ListValue{})
+)
 
 // NewInterceptor creates a prepopulated Interceptor.
 func NewInterceptor(cel *triggersv1.CELInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
@@ -101,19 +109,28 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 
 		switch val.(type) {
 		case types.String:
-			raw, err = val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+			raw, err = val.ConvertToNative(structType)
 			if err == nil {
 				b, err = json.Marshal(raw.(*structpb.Value).GetStringValue())
 			}
 		case types.Double, types.Int:
-			raw, err = val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+			raw, err = val.ConvertToNative(structType)
 			if err == nil {
 				b, err = json.Marshal(raw.(*structpb.Value).GetNumberValue())
 			}
-
+		case traits.Lister:
+			raw, err = val.ConvertToNative(listType)
+			if err == nil {
+				s, err := protojson.Marshal(raw.(proto.Message))
+				if err == nil {
+					b = []byte(s)
+				}
+			}
 		default:
 			raw, err = val.ConvertToNative(reflect.TypeOf([]byte{}))
-			b = raw.([]byte)
+			if err == nil {
+				b = raw.([]byte)
+			}
 		}
 
 		if err != nil {
@@ -159,8 +176,10 @@ func makeCelEnv(request *http.Request, ns string, k kubernetes.Interface) (*cel.
 		Triggers(request, ns, k),
 		celext.Strings(),
 		cel.Declarations(
-			decls.NewIdent("body", mapStrDyn, nil),
-			decls.NewIdent("header", mapStrDyn, nil)))
+			decls.NewVar("body", mapStrDyn),
+			decls.NewVar("header", mapStrDyn),
+			decls.NewVar("requestURL", decls.String),
+		))
 }
 
 func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, error) {

@@ -96,8 +96,8 @@ func (e *Env) Add(decls ...*exprpb.Decl) error {
 
 // LookupIdent returns a Decl proto for typeName as an identifier in the Env.
 // Returns nil if no such identifier is found in the Env.
-func (e *Env) LookupIdent(typeName string) *exprpb.Decl {
-	for _, candidate := range e.packager.ResolveCandidateNames(typeName) {
+func (e *Env) LookupIdent(name string) *exprpb.Decl {
+	for _, candidate := range e.packager.ResolveCandidateNames(name) {
 		if ident := e.declarations.FindIdent(candidate); ident != nil {
 			return ident
 		}
@@ -106,7 +106,7 @@ func (e *Env) LookupIdent(typeName string) *exprpb.Decl {
 		// the declaration is added to the outest (global) scope of the
 		// environment, so next time we can access it faster.
 		if t, found := e.provider.FindType(candidate); found {
-			decl := decls.NewIdent(candidate, t, nil)
+			decl := decls.NewVar(candidate, t)
 			e.declarations.AddIdent(decl)
 			return decl
 		}
@@ -128,8 +128,8 @@ func (e *Env) LookupIdent(typeName string) *exprpb.Decl {
 
 // LookupFunction returns a Decl proto for typeName as a function in env.
 // Returns nil if no such function is found in env.
-func (e *Env) LookupFunction(typeName string) *exprpb.Decl {
-	for _, candidate := range e.packager.ResolveCandidateNames(typeName) {
+func (e *Env) LookupFunction(name string) *exprpb.Decl {
+	for _, candidate := range e.packager.ResolveCandidateNames(name) {
 		if fn := e.declarations.FindFunction(candidate); fn != nil {
 			return fn
 		}
@@ -162,7 +162,8 @@ func (e *Env) addOverload(f *exprpb.Decl, overload *exprpb.Decl_FunctionDecl_Ove
 	}
 
 	for _, macro := range parser.AllMacros {
-		if macro.Function() == f.Name && macro.IsReceiverStyle() == overload.GetIsInstanceFunction() &&
+		if macro.Function() == f.Name &&
+			macro.IsReceiverStyle() == overload.GetIsInstanceFunction() &&
 			macro.ArgCount() == len(overload.GetParams()) {
 			errMsgs = append(errMsgs, overlappingMacroError(f.Name, macro.ArgCount()))
 		}

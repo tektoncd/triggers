@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 
@@ -163,6 +164,13 @@ func (i Int) ConvertToType(typeVal ref.Type) ref.Val {
 		return Double(i)
 	case StringType:
 		return String(fmt.Sprintf("%d", int64(i)))
+	case TimestampType:
+		t := time.Unix(int64(i), 0)
+		ts, err := ptypes.TimestampProto(t)
+		if err != nil {
+			return NewErr(err.Error())
+		}
+		return Timestamp{Timestamp: ts}
 	case TypeType:
 		return IntType
 	}
