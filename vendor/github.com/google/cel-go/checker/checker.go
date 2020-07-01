@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common"
+	"github.com/google/cel-go/common/packages"
 	"github.com/google/cel-go/common/types/ref"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
@@ -144,31 +145,41 @@ func (c *checker) checkNullLiteral(e *exprpb.Expr) {
 
 func (c *checker) checkIdent(e *exprpb.Expr) {
 	identExpr := e.GetIdentExpr()
-	if ident := c.env.LookupIdent(identExpr.Name); ident != nil {
+	// Check to see if the identifier is declared.
+	if ident := c.env.LookupIdent(identExpr.GetName()); ident != nil {
 		c.setType(e, ident.GetIdent().Type)
-		c.setReference(e, newIdentReference(ident.Name, ident.GetIdent().Value))
+		c.setReference(e, newIdentReference(ident.GetName(), ident.GetIdent().Value))
+		// Overwrite the identifier with its fully qualified name.
+		identExpr.Name = ident.GetName()
 		return
 	}
 
 	c.setType(e, decls.Error)
 	c.errors.undeclaredReference(
-		c.location(e), c.env.packager.Package(), identExpr.Name)
+		c.location(e), c.env.packager.Package(), identExpr.GetName())
 }
 
 func (c *checker) checkSelect(e *exprpb.Expr) {
 	sel := e.GetSelectExpr()
 	// Before traversing down the tree, try to interpret as qualified name.
-	qname, found := toQualifiedName(e)
+	qname, found := packages.ToQualifiedName(e)
 	if found {
 		ident := c.env.LookupIdent(qname)
 		if ident != nil {
 			if sel.TestOnly {
 				c.errors.expressionDoesNotSelectField(c.location(e))
 				c.setType(e, decls.Bool)
-			} else {
-				c.setType(e, ident.GetIdent().Type)
-				c.setReference(e,
-					newIdentReference(ident.Name, ident.GetIdent().Value))
+				return
+			}
+			// Rewrite the node to be a variable reference to the resolved fully-qualified
+			// variable name.
+			c.setType(e, ident.GetIdent().Type)
+			c.setReference(e, newIdentReference(ident.GetName(), ident.GetIdent().Value))
+			identName := ident.GetName()
+			e.ExprKind = &exprpb.Expr_IdentExpr{
+				IdentExpr: &exprpb.Expr_Ident{
+					Name: identName,
+				},
 			}
 			return
 		}
@@ -217,50 +228,82 @@ func (c *checker) checkSelect(e *exprpb.Expr) {
 }
 
 func (c *checker) checkCall(e *exprpb.Expr) {
+	// Note: similar logic exists within the `interpreter/planner.go`. If making changes here
+	// please consider the impact on planner.go and consolidate implementations or mirror code
+	// as appropriate.
 	call := e.GetCallExpr()
+	target := call.GetTarget()
+	args := call.GetArgs()
+	fnName := call.GetFunction()
+
 	// Traverse arguments.
-	for _, arg := range call.Args {
+	for _, arg := range args {
 		c.check(arg)
 	}
 
-	var resolution *overloadResolution
-
-	if call.Target == nil {
-		// Regular static call with simple name.
-		if fn := c.env.LookupFunction(call.Function); fn != nil {
-			resolution = c.resolveOverload(c.location(e), fn, nil, call.Args)
-		} else {
+	// Regular static call with simple name.
+	if target == nil {
+		// Check for the existence of the function.
+		fn := c.env.LookupFunction(fnName)
+		if fn == nil {
 			c.errors.undeclaredReference(
-				c.location(e), c.env.packager.Package(), call.Function)
+				c.location(e), c.env.packager.Package(), fnName)
+			c.setType(e, decls.Error)
+			return
 		}
-	} else {
-		// Check whether the target is actually a qualified name for a static function.
-		if qname, found := toQualifiedName(call.Target); found {
-			fn := c.env.LookupFunction(qname + "." + call.Function)
-			if fn != nil {
-				resolution = c.resolveOverload(c.location(e), fn, nil, call.Args)
-			}
-		}
+		// Overwrite the function name with its fully qualified resolved name.
+		call.Function = fn.GetName()
+		// Check to see whether the overload resolves.
+		c.resolveOverloadOrError(c.location(e), e, fn, nil, args)
+		return
+	}
 
-		if resolution == nil {
-			// Regular instance call.
-			c.check(call.Target)
-
-			if fn := c.env.LookupFunction(call.Function); fn != nil {
-				resolution = c.resolveOverload(c.location(e), fn, call.Target, call.Args)
-			} else {
-				c.errors.undeclaredReference(
-					c.location(e), c.env.packager.Package(), call.Function)
-			}
+	// If a receiver 'target' is present, it may either be a receiver function, or a namespaced
+	// function, but not both. Given a.b.c() either a.b.c is a function or c is a function with
+	// target a.b.
+	//
+	// Check whether the target is a namespaced function name.
+	qualifiedPrefix, maybeQualified := packages.ToQualifiedName(target)
+	if maybeQualified {
+		maybeQualifiedName := qualifiedPrefix + "." + fnName
+		fn := c.env.LookupFunction(maybeQualifiedName)
+		if fn != nil {
+			// The function name is namespaced and so preserving the target operand would
+			// be an inaccurate representation of the desired evaluation behavior.
+			// Overwrite with fully-qualified resolved function name sans receiver target.
+			call.Target = nil
+			call.Function = fn.GetName()
+			c.resolveOverloadOrError(c.location(e), e, fn, nil, args)
+			return
 		}
 	}
 
-	if resolution != nil {
-		c.setType(e, resolution.Type)
-		c.setReference(e, resolution.Reference)
-	} else {
+	// Regular instance call.
+	c.check(call.Target)
+	fn := c.env.LookupFunction(fnName)
+	// Function found, attempt overload resolution.
+	if fn != nil {
+		c.resolveOverloadOrError(c.location(e), e, fn, target, args)
+		return
+	}
+	// Function name not declared, record error.
+	c.errors.undeclaredReference(c.location(e), c.env.packager.Package(), fnName)
+}
+
+func (c *checker) resolveOverloadOrError(
+	loc common.Location,
+	e *exprpb.Expr,
+	fn *exprpb.Decl, target *exprpb.Expr, args []*exprpb.Expr) {
+	// Attempt to resolve the overload.
+	resolution := c.resolveOverload(loc, fn, target, args)
+	// No such overload, error noted in the resolveOverload call, type recorded here.
+	if resolution == nil {
 		c.setType(e, decls.Error)
+		return
 	}
+	// Overload found.
+	c.setType(e, resolution.Type)
+	c.setReference(e, resolution.Reference)
 }
 
 func (c *checker) resolveOverload(
@@ -315,7 +358,7 @@ func (c *checker) resolveOverload(
 	}
 
 	if resultType == nil {
-		c.errors.noMatchingOverload(loc, fn.Name, argTypes, target != nil)
+		c.errors.noMatchingOverload(loc, fn.GetName(), argTypes, target != nil)
 		resultType = decls.Error
 		return nil
 	}
@@ -376,8 +419,9 @@ func (c *checker) checkCreateMessage(e *exprpb.Expr) {
 			c.location(e), c.env.packager.Package(), msgVal.MessageName)
 		return
 	}
-
-	c.setReference(e, newIdentReference(decl.Name, nil))
+	// Ensure the type name is fully qualified in the AST.
+	msgVal.MessageName = decl.GetName()
+	c.setReference(e, newIdentReference(decl.GetName(), nil))
 	ident := decl.GetIdent()
 	identKind := kindOf(ident.Type)
 	if identKind != kindError {
@@ -446,10 +490,10 @@ func (c *checker) checkComprehension(e *exprpb.Expr) {
 	// Create a scope for the comprehension since it has a local accumulation variable.
 	// This scope will contain the accumulation variable used to compute the result.
 	c.env = c.env.enterScope()
-	c.env.Add(decls.NewIdent(comp.AccuVar, accuType, nil))
+	c.env.Add(decls.NewVar(comp.AccuVar, accuType))
 	// Create a block scope for the loop.
 	c.env = c.env.enterScope()
-	c.env.Add(decls.NewIdent(comp.IterVar, varType, nil))
+	c.env.Add(decls.NewVar(comp.IterVar, varType))
 	// Check the variable references in the condition and step.
 	c.check(comp.LoopCondition)
 	c.assertType(comp.LoopCondition, decls.Bool)
@@ -589,21 +633,4 @@ func newIdentReference(name string, value *exprpb.Constant) *exprpb.Reference {
 
 func newFunctionReference(overloads ...string) *exprpb.Reference {
 	return &exprpb.Reference{OverloadId: overloads}
-}
-
-// Attempt to interpret an expression as a qualified name. This traverses select and getIdent
-// expression and returns the name they constitute, or null if the expression cannot be
-// interpreted like this.
-func toQualifiedName(e *exprpb.Expr) (string, bool) {
-	switch e.ExprKind.(type) {
-	case *exprpb.Expr_IdentExpr:
-		i := e.GetIdentExpr()
-		return i.Name, true
-	case *exprpb.Expr_SelectExpr:
-		s := e.GetSelectExpr()
-		if qname, found := toQualifiedName(s.Operand); found {
-			return qname + "." + s.Field, true
-		}
-	}
-	return "", false
 }

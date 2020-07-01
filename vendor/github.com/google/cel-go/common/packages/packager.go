@@ -19,6 +19,8 @@ package packages
 
 import (
 	"strings"
+
+	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Packager helps interpret qualified names.
@@ -79,4 +81,20 @@ func (p *defaultPackage) ResolveCandidateNames(name string) []string {
 		candidates = append(candidates, nextPkg+"."+name)
 	}
 	return append(candidates, name)
+}
+
+// ToQualifiedName converts an expression AST into a qualified name if possible, with a boolean
+// 'found' value that indicates if the conversion is successful.
+func ToQualifiedName(e *exprpb.Expr) (string, bool) {
+	switch e.ExprKind.(type) {
+	case *exprpb.Expr_IdentExpr:
+		id := e.GetIdentExpr()
+		return id.Name, true
+	case *exprpb.Expr_SelectExpr:
+		sel := e.GetSelectExpr()
+		if qual, found := ToQualifiedName(sel.Operand); found {
+			return qual + "." + sel.Field, true
+		}
+	}
+	return "", false
 }

@@ -83,10 +83,9 @@ type Env struct {
 	pkg          packages.Packager
 	adapter      ref.TypeAdapter
 	provider     ref.TypeProvider
+	features     map[int]bool
 	// program options tied to the environment.
 	progOpts []ProgramOption
-	// environment options, true by default.
-	enableDynamicAggregateLiterals bool
 
 	// Internal checker representation
 	chk    *checker.Env
@@ -118,13 +117,13 @@ func NewEnv(opts ...EnvOption) (*Env, error) {
 func NewCustomEnv(opts ...EnvOption) (*Env, error) {
 	registry := types.NewRegistry()
 	return (&Env{
-		declarations:                   []*exprpb.Decl{},
-		macros:                         []parser.Macro{},
-		pkg:                            packages.DefaultPackage,
-		adapter:                        registry,
-		provider:                       registry,
-		enableDynamicAggregateLiterals: true,
-		progOpts:                       []ProgramOption{},
+		declarations: []*exprpb.Decl{},
+		macros:       []parser.Macro{},
+		pkg:          packages.DefaultPackage,
+		adapter:      registry,
+		provider:     registry,
+		features:     map[int]bool{},
+		progOpts:     []ProgramOption{},
 	}).configure(opts)
 }
 
@@ -142,7 +141,10 @@ func (e *Env) Check(ast *Ast) (*Ast, *Issues) {
 	// Construct the internal checker env, erroring if there is an issue adding the declarations.
 	e.once.Do(func() {
 		ce := checker.NewEnv(e.pkg, e.provider)
-		ce.EnableDynamicAggregateLiterals(e.enableDynamicAggregateLiterals)
+		ce.EnableDynamicAggregateLiterals(true)
+		if e.HasFeature(FeatureDisableDynamicAggregateLiterals) {
+			ce.EnableDynamicAggregateLiterals(false)
+		}
 		err := ce.Add(e.declarations...)
 		if err != nil {
 			e.chkErr = err
@@ -250,16 +252,28 @@ func (e *Env) Extend(opts ...EnvOption) (*Env, error) {
 		adapter = adapterReg.Copy()
 	}
 
+	featuresCopy := make(map[int]bool, len(e.features))
+	for k, v := range e.features {
+		featuresCopy[k] = v
+	}
+
 	ext := &Env{
-		declarations:                   decsCopy,
-		macros:                         macsCopy,
-		progOpts:                       progOptsCopy,
-		adapter:                        adapter,
-		enableDynamicAggregateLiterals: e.enableDynamicAggregateLiterals,
-		pkg:                            e.pkg,
-		provider:                       provider,
+		declarations: decsCopy,
+		macros:       macsCopy,
+		progOpts:     progOptsCopy,
+		adapter:      adapter,
+		features:     featuresCopy,
+		pkg:          e.pkg,
+		provider:     provider,
 	}
 	return ext.configure(opts)
+}
+
+// HasFeature checks whether the environment enables the given feature
+// flag, as enumerated in options.go.
+func (e *Env) HasFeature(flag int) bool {
+	_, has := e.features[flag]
+	return has
 }
 
 // Parse parses the input expression value `txt` to a Ast and/or a set of Issues.
@@ -301,6 +315,11 @@ func (e *Env) Program(ast *Ast, opts ...ProgramOption) (Program, error) {
 		optSet = mergedOpts
 	}
 	return newProgram(e, ast, optSet)
+}
+
+// SetFeature sets the given feature flag, as enumerated in options.go.
+func (e *Env) SetFeature(flag int) {
+	e.features[flag] = true
 }
 
 // TypeAdapter returns the `ref.TypeAdapter` configured for the environment.
