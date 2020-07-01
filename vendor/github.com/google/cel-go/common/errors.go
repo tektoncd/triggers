@@ -16,6 +16,7 @@ package common
 
 import (
 	"fmt"
+	"sort"
 )
 
 // Errors type which contains a list of errors observed during parsing.
@@ -57,6 +58,12 @@ func (e *Errors) Append(errs []Error) *Errors {
 // ToDisplayString returns the error set to a newline delimited string.
 func (e *Errors) ToDisplayString() string {
 	var result = ""
+	sort.SliceStable(e.errors, func(i, j int) bool {
+		ei := e.errors[i].Location
+		ej := e.errors[j].Location
+		return ei.Line() < ej.Line() ||
+			(ei.Line() == ej.Line() && ei.Column() < ej.Column())
+	})
 	for i, err := range e.errors {
 		if i >= 1 {
 			result += "\n"
