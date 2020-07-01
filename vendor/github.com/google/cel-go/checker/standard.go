@@ -37,13 +37,13 @@ func StandardDeclarations() []*exprpb.Decl {
 		decls.Int, decls.Uint, decls.Bool,
 		decls.Double, decls.Bytes, decls.String} {
 		idents = append(idents,
-			decls.NewIdent(FormatCheckedType(t), decls.NewTypeType(t), nil))
+			decls.NewVar(FormatCheckedType(t), decls.NewTypeType(t)))
 	}
 	idents = append(idents,
-		decls.NewIdent("list", decls.NewTypeType(listOfA), nil),
-		decls.NewIdent("map", decls.NewTypeType(mapOfAB), nil),
-		decls.NewIdent("null_type", decls.NewTypeType(decls.Null), nil),
-		decls.NewIdent("type", decls.NewTypeType(decls.NewTypeType(nil)), nil))
+		decls.NewVar("list", decls.NewTypeType(listOfA)),
+		decls.NewVar("map", decls.NewTypeType(mapOfAB)),
+		decls.NewVar("null_type", decls.NewTypeType(decls.Null)),
+		decls.NewVar("type", decls.NewTypeType(decls.NewTypeType(nil))))
 
 	// Booleans
 	// TODO: allow the conditional to return a heterogenous type.

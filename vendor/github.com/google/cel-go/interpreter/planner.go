@@ -16,6 +16,7 @@ package interpreter
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/common/packages"
@@ -249,16 +250,17 @@ func (p *planner) planSelect(expr *exprpb.Expr) (Interpretable, error) {
 // optimized Interpretable values.
 func (p *planner) planCall(expr *exprpb.Expr) (Interpretable, error) {
 	call := expr.GetCallExpr()
-	fnName := call.Function
+	target, fnName, oName := p.resolveFunction(expr)
 	argCount := len(call.GetArgs())
 	var offset int
-	if call.Target != nil {
+	if target != nil {
 		argCount++
 		offset++
 	}
+
 	args := make([]Interpretable, argCount, argCount)
-	if call.Target != nil {
-		arg, err := p.Plan(call.Target)
+	if target != nil {
+		arg, err := p.Plan(target)
 		if err != nil {
 			return nil, err
 		}
@@ -270,11 +272,6 @@ func (p *planner) planCall(expr *exprpb.Expr) (Interpretable, error) {
 			return nil, err
 		}
 		args[i+offset] = arg
-	}
-	var oName string
-	if oRef, found := p.refMap[expr.Id]; found &&
-		len(oRef.GetOverloadId()) == 1 {
-		oName = oRef.GetOverloadId()[0]
 	}
 
 	// Generate specialized Interpretable operators by function name if possible.
@@ -555,15 +552,7 @@ func (p *planner) planCreateStruct(expr *exprpb.Expr) (Interpretable, error) {
 // planCreateObj generates an object construction Interpretable.
 func (p *planner) planCreateObj(expr *exprpb.Expr) (Interpretable, error) {
 	obj := expr.GetStructExpr()
-	typeName := obj.MessageName
-	var defined bool
-	for _, qualifiedTypeName := range p.pkg.ResolveCandidateNames(typeName) {
-		if _, found := p.provider.FindType(qualifiedTypeName); found {
-			typeName = qualifiedTypeName
-			defined = true
-			break
-		}
-	}
+	typeName, defined := p.resolveTypeName(obj.MessageName)
 	if !defined {
 		return nil, fmt.Errorf("unknown type: %s", typeName)
 	}
@@ -653,4 +642,103 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 		return types.Uint(c.GetUint64Value()), nil
 	}
 	return nil, fmt.Errorf("unknown constant type: %v", c)
+}
+
+// resolveTypeName takes a qualified string constructed at parse time, applies the proto
+// namespace resolution rules to it in a scan over possible matching types in the TypeProvider.
+func (p *planner) resolveTypeName(typeName string) (string, bool) {
+	for _, qualifiedTypeName := range p.pkg.ResolveCandidateNames(typeName) {
+		if _, found := p.provider.FindType(qualifiedTypeName); found {
+			return qualifiedTypeName, true
+		}
+	}
+	return "", false
+}
+
+// resolveFunction determines the call target, function name, and overload name from a given Expr
+// value.
+//
+// The resolveFunction resolves ambiguities where a function may either be a receiver-style
+// invocation or a qualified global function name.
+// - The target expression may only consist of ident and select expressions.
+// - The function is declared in the environment using its fully-qualified name.
+// - The fully-qualified function name matches the string serialized target value.
+func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, string) {
+	// Note: similar logic exists within the `checker/checker.go`. If making changes here
+	// please consider the impact on checker.go and consolidate implementations or mirror code
+	// as appropriate.
+	call := expr.GetCallExpr()
+	target := call.GetTarget()
+	fnName := call.GetFunction()
+
+	// Checked expressions always have a reference map entry, and _should_ have the fully qualified
+	// function name as the fnName value.
+	oRef, hasOverload := p.refMap[expr.Id]
+	if hasOverload {
+		if len(oRef.GetOverloadId()) == 1 {
+			return target, fnName, oRef.GetOverloadId()[0]
+		}
+		// Note, this namespaced function name will not appear as a fully qualified name in ASTs
+		// built and stored before cel-go v0.5.0; however, this functionality did not work at all
+		// before the v0.5.0 release.
+		return target, fnName, ""
+	}
+
+	// Parse-only expressions need to handle the same logic as is normally performed at check time,
+	// but with potentially much less information. The only reliable source of information about
+	// which functions are configured is the dispatcher.
+	if target == nil {
+		// If the user has a parse-only expression, then it should have been configured as such in
+		// the interpreter dispatcher as it may have been omitted from the checker environment.
+		for _, qualifiedName := range p.pkg.ResolveCandidateNames(fnName) {
+			_, found := p.disp.FindOverload(qualifiedName)
+			if found {
+				return nil, qualifiedName, ""
+			}
+		}
+		// It's possible that the overload was not found, but this situation is accounted for in
+		// the planCall phase; however, the leading dot used for denoting fully-qualified
+		// namespaced identifiers must be stripped, as all declarations already use fully-qualified
+		// names. This stripping behavior is handled automatically by the ResolveCandidateNames
+		// call.
+		return target, stripLeadingDot(fnName), ""
+	}
+
+	// Handle the situation where the function target actually indicates a qualified function name.
+	qualifiedPrefix, maybeQualified := p.toQualifiedName(target)
+	if maybeQualified {
+		maybeQualifiedName := qualifiedPrefix + "." + fnName
+		for _, qualifiedName := range p.pkg.ResolveCandidateNames(maybeQualifiedName) {
+			_, found := p.disp.FindOverload(qualifiedName)
+			if found {
+				// Clear the target to ensure the proper arity is used for finding the
+				// implementation.
+				return nil, qualifiedName, ""
+			}
+		}
+	}
+	// In the default case, the function is exactly as it was advertised: a receiver call on with
+	// an expression-based target with the given simple function name.
+	return target, fnName, ""
+}
+
+// toQualifiedName converts an expression AST into a qualified name if possible, with a boolean
+// 'found' value that indicates if the conversion is successful.
+func (p *planner) toQualifiedName(operand *exprpb.Expr) (string, bool) {
+	// If the checker identified the expression as an attribute by the type-checker, then it can't
+	// possibly be part of qualified name in a namespace.
+	_, isAttr := p.refMap[operand.Id]
+	if isAttr {
+		return "", false
+	}
+	// Since functions cannot be both namespaced and receiver functions, if the operand is not an
+	// qualified variable name, return the (possibly) qualified name given the expressions.
+	return packages.ToQualifiedName(operand)
+}
+
+func stripLeadingDot(name string) string {
+	if strings.HasPrefix(name, ".") {
+		return name[1:]
+	}
+	return name
 }

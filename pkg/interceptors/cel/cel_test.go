@@ -196,6 +196,16 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"count":1,"measure":1.7}`)),
 			want:    []byte(`{"count":1,"measure":1.7}`),
 		},
+		{
+			name: "handling a list response",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "event", Expression: "body.event.map(s, s['testing'])"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"event":[{"testing":"value"},{"testing":"another"}]}`)),
+			want:    []byte(`{"event":["value", "another"]}`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
