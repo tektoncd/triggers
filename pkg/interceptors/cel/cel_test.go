@@ -190,9 +190,17 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			want:    []byte(`{"count":1,"measure":1.7}`),
 		},
 		{
+			name: "validating a secret",
+			CEL: &triggersv1.CELInterceptor{
+				Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret', 'testing-ns') && body.count == 1.0",
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"count":1,"measure":1.7}`)),
+			want:    []byte(`{"count":1,"measure":1.7}`),
+		},
+		{
 			name: "validating a secret in the default namespace",
 			CEL: &triggersv1.CELInterceptor{
-				Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret')",
+				Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret') && body.count == 1.0",
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"count":1,"measure":1.7}`)),
 			want:    []byte(`{"count":1,"measure":1.7}`),

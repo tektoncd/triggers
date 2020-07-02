@@ -178,7 +178,7 @@ func (triggersLib) CompileOptions() []cel.EnvOption {
 					[]*exprpb.Type{decls.String, decls.Int}, decls.String)),
 			decls.NewFunction("compareSecret",
 				decls.NewInstanceOverload("compareSecret_string_string_string",
-					[]*exprpb.Type{decls.String, decls.String, decls.String, decls.String}, decls.String)),
+					[]*exprpb.Type{decls.String, decls.String, decls.String, decls.String}, decls.Bool)),
 			decls.NewFunction("parseJSON",
 				decls.NewInstanceOverload("parseJSON_string",
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
@@ -190,7 +190,7 @@ func (triggersLib) CompileOptions() []cel.EnvOption {
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
 			decls.NewFunction("compareSecret",
 				decls.NewInstanceOverload("compareSecret_string_string",
-					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.String)))}
+					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.Bool)))}
 }
 
 func (t triggersLib) ProgramOptions() []cel.ProgramOption {
