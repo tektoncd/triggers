@@ -19,11 +19,11 @@ package secrets
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fields "k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -34,38 +34,66 @@ type SecretStore interface {
 	Get(sr triggersv1.SecretRef) ([]byte, error)
 }
 
+// We need one store per namespace, so we create this map
+type storeSet map[string]cache.Store
+
 type secretStore struct {
-	store                  cache.Store
+	mutex                  *sync.Mutex
+	resyncInterval         time.Duration
+	store                  storeSet
+	stopCh                 <-chan struct{}
+	kubeClient             kubernetes.Interface
 	eventListenerNamespace string
 }
 
 // NewSecretStore provides cached lookups of k8s secrets, backed by a Reflector.
 func NewSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Duration, stopCh <-chan struct{}) SecretStore {
+	return secretStore{
+		mutex:                  &sync.Mutex{},
+		store:                  storeSet{},
+		resyncInterval:         resyncInterval,
+		stopCh:                 stopCh,
+		kubeClient:             cs,
+		eventListenerNamespace: ns,
+	}
+}
+
+func (ws secretStore) addStore(ns string) cache.Store {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
 	store := cache.NewStore(func(obj interface{}) (string, error) {
 		secret, ok := obj.(*corev1.Secret)
 		if !ok {
 			return "", fmt.Errorf("object is not a secret; got %s", reflect.TypeOf(obj))
 		}
 
-		return fmt.Sprintf("%s/%s", secret.Namespace, secret.Name), nil
+		return secret.Name, nil
 	})
 
-	secretStore := secretStore{
-		store:                  store,
-		eventListenerNamespace: ns,
-	}
+	lw := cache.NewListWatchFromClient(ws.kubeClient.CoreV1().RESTClient(), "secrets", ns, fields.Everything())
+	reflector := cache.NewReflector(lw, corev1.Secret{}, store, ws.resyncInterval)
 
-	lw := cache.NewListWatchFromClient(cs.CoreV1().RESTClient(), "secrets", metav1.NamespaceAll, fields.Everything())
-	reflector := cache.NewReflector(lw, corev1.Secret{}, store, resyncInterval)
+	go reflector.Run(ws.stopCh)
 
-	go reflector.Run(stopCh)
+	ws.store[ns] = store
 
-	return secretStore
+	return store
 }
 
 // Get returns the secret value for a given SecretRef.
 func (ws secretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
-	cachedObj, ok, _ := ws.store.GetByKey(ws.getKey(sr))
+	ns := sr.Namespace
+	if ns == "" {
+		ns = ws.eventListenerNamespace
+	}
+
+	store, ok := ws.store[ns]
+	if !ok {
+		store = ws.addStore(ns)
+	}
+
+	cachedObj, ok, _ := store.GetByKey(sr.SecretName)
 	if !ok {
 		return nil, fmt.Errorf("secret not found: %s", sr.SecretName)
 	}
@@ -81,14 +109,4 @@ func (ws secretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 	}
 
 	return value, nil
-}
-
-func (ws *secretStore) getKey(sr triggersv1.SecretRef) string {
-	var namespace string
-	if sr.Namespace == "" {
-		namespace = ws.eventListenerNamespace
-	} else {
-		namespace = sr.Namespace
-	}
-	return fmt.Sprintf("%s/%s", namespace, sr.SecretName)
 }
