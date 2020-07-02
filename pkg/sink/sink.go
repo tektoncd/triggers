@@ -185,6 +185,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	request := &http.Request{
 		Method: http.MethodPost,
 		Header: in.Header,
+		URL:    in.URL,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
 	}
 
@@ -221,6 +222,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		request = &http.Request{
 			Method: http.MethodPost,
 			Header: resp.Header,
+			URL:    in.URL,
 			Body:   ioutil.NopCloser(resp.Body),
 		}
 	}
