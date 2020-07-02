@@ -6890,7 +6890,7 @@ spec:
           eventTypes:
           - pull_request
       - cel:
-          filter: 'false'
+          filter: 'true'
       bindings:
       - ref: github-binding
       template:
