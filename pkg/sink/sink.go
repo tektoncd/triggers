@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
+	"github.com/tektoncd/triggers/pkg/interceptors/secrets"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
@@ -46,6 +47,7 @@ import (
 // EventListener.
 type Sink struct {
 	KubeClientSet          kubernetes.Interface
+	SecretStore            secrets.SecretStore
 	TriggersClient         triggersclientset.Interface
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
@@ -184,14 +186,11 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	// The request body to the first interceptor in the chain should be the received event body.
 	request := &http.Request{
 		Method: http.MethodPost,
+		URL:    in.URL,
 		Header: in.Header,
 		URL:    in.URL,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
 	}
-
-	// We create a cache against each request, so whenever we make network calls like
-	// fetching kubernetes secrets, we can do so only once per request.
-	request = interceptors.WithCache(request)
 
 	var resp *http.Response
 	for _, i := range t.Interceptors {
@@ -200,13 +199,13 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
 		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(i.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = github.NewInterceptor(i.GitHub, r.SecretStore, log)
 		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = gitlab.NewInterceptor(i.GitLab, r.SecretStore, log)
 		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(i.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = cel.NewInterceptor(i.CEL, r.SecretStore, r.EventListenerNamespace, log)
 		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.SecretStore, log)
 		default:
 			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
@@ -221,6 +220,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		// request chaining.
 		request = &http.Request{
 			Method: http.MethodPost,
+			URL:    request.URL,
 			Header: resp.Header,
 			URL:    in.URL,
 			Body:   ioutil.NopCloser(resp.Body),

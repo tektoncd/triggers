@@ -191,9 +191,15 @@ func makeEvalContext(body []byte, r *http.Request) (map[string]interface{}, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the body as JSON: %s", err)
 	}
+
+	requestURL := ""
+	if r.URL != nil {
+		requestURL = r.URL.String()
+	}
+
 	return map[string]interface{}{
 		"body":       jsonMap,
 		"header":     r.Header,
-		"requestURL": r.URL.String(),
+		"requestURL": requestURL,
 	}, nil
 }
