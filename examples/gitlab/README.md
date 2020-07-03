@@ -26,7 +26,7 @@ Creates an EventListener that listens for Gitlab webhook events.
 
    ```bash
    curl -v \
-   -H 'X-GitLab-Token: abcde' \
+   -H 'X-GitLab-Token: 1234567' \
    -H 'X-Gitlab-Event: Push Hook' \
    -H 'Content-Type: application/json' \
    --data-binary "@examples/gitlab/gitlab-push-event.json" \
