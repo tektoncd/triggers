@@ -25,6 +25,11 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
+const (
+	jsonPathErr = "failed to replace JSONPath value for param"
+	marshalErr  = "failed to marshal event"
+)
+
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
 func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]triggersv1.Param, error) {
@@ -87,7 +92,7 @@ func newEvent(body []byte, headers http.Header) (*event, error) {
 func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header) ([]triggersv1.Param, error) {
 	event, err := newEvent(body, header)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal event: %w", err)
+		return nil, fmt.Errorf(marshalErr+": %w", err)
 	}
 
 	for idx, p := range params {
@@ -97,11 +102,22 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 		for i, expr := range expressions {
 			val, err := ParseJSONPath(event, expr)
 			if err != nil {
-				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
+				return nil, fmt.Errorf(jsonPathErr+"%s: %s: %w", p.Name, p.Value, err)
 			}
 			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
 		params[idx].Value = pValue
 	}
 	return params, nil
+}
+
+// IsParseErr determines if err is an error which indicates that parsing event failed
+func IsParseErr(err error) bool {
+	if strings.Contains(err.Error(), jsonPathErr) {
+		return true
+	}
+	if strings.Contains(err.Error(), marshalErr) {
+		return true
+	}
+	return false
 }

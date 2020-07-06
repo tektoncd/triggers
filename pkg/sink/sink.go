@@ -99,6 +99,9 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				if kerrors.IsForbidden(err) {
 					result <- http.StatusForbidden
 				}
+				if template.IsParseErr(err) {
+					result <- http.StatusBadRequest
+				}
 				result <- http.StatusAccepted
 				return
 			}
