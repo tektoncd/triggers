@@ -21,6 +21,7 @@ using [Event Interceptors](#Interceptors).
     - [Interceptors](#interceptors)
 - [Logging](#logging)
 - [Labels](#labels)
+- [EventListener Response](#eventlistener-response)
 - [Examples](#examples)
 - [Multi-Tenant Concerns](#multi-tenant-concerns)
 
@@ -631,6 +632,17 @@ spec:
   - name: branch
     value: $(body.pull_request.head.short_sha)
 ```
+
+## EventListener Response
+
+The EventListener responds with 201 Created status code when at least one of the trigger is executed successfully. Otherwise, it returns 202 Accepted status code.
+The EventListener responds with following message after receiving the event:
+```JSON
+{"eventListener":"listener","namespace":"default","eventID":"h2bb7"}
+```
+- `eventListener` - Refers to the EventListener Name.
+- `namespace` - Refers to the namespace of the EventListener
+- `eventID` - Refers to the uniqueID that gets assigned to each incoming request
 
 ## Examples
 
