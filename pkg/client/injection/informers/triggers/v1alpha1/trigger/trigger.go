@@ -19,7 +19,7 @@ limitations under the License.
 package trigger
 
 import (
-	"context"
+	context "context"
 
 	v1alpha1 "github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1alpha1"
 	factory "github.com/tektoncd/triggers/pkg/client/injection/informers/factory"
