@@ -19,7 +19,6 @@ package webhook
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,16 +26,15 @@ import (
 
 	// Injection stuff
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	kubeinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory"
+	kubeinformerfactory "knative.dev/pkg/injection/clients/namespacedkube/informers/factory"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/network"
 	"knative.dev/pkg/system"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
@@ -63,30 +61,57 @@ type Options struct {
 	StatsReporter StatsReporter
 }
 
-// AdmissionController provides the interface for different admission controllers
-type AdmissionController interface {
-	// Path returns the path that this particular admission controller serves on.
-	Path() string
+// Operation is the verb being operated on
+// it is aliasde in Validation from the k8s admission package
+type Operation = admissionv1beta1.Operation
 
-	// Admit is the callback which is invoked when an HTTPS request comes in on Path().
-	Admit(context.Context, *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse
-}
+// Operation types
+const (
+	Create  Operation = admissionv1beta1.Create
+	Update  Operation = admissionv1beta1.Update
+	Delete  Operation = admissionv1beta1.Delete
+	Connect Operation = admissionv1beta1.Connect
+)
+
+var (
+	// GracePeriod is the duration that the webhook will wait after it's
+	// context is cancelled (and probes are failing) before shutting down
+	// the http server.
+	GracePeriod = 30 * time.Second
+)
 
 // Webhook implements the external webhook for validation of
 // resources and configuration.
 type Webhook struct {
-	Client               kubernetes.Interface
-	Options              Options
-	Logger               *zap.SugaredLogger
-	admissionControllers map[string]AdmissionController
-	secretlister         corelisters.SecretLister
+	Client  kubernetes.Interface
+	Options Options
+	Logger  *zap.SugaredLogger
+
+	// synced is function that is called when the informers have been synced.
+	synced context.CancelFunc
+
+	// stopCh is closed when we should start failing readiness probes.
+	stopCh chan struct{}
+	// grace period is how long to wait after failing readiness probes
+	// before shutting down.
+	gracePeriod time.Duration
+
+	mux          http.ServeMux
+	secretlister corelisters.SecretLister
 }
 
 // New constructs a Webhook
 func New(
 	ctx context.Context,
-	admissionControllers []AdmissionController,
-) (*Webhook, error) {
+	controllers []interface{},
+) (webhook *Webhook, err error) {
+
+	// ServeMux.Handle panics on duplicate paths
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error creating webhook %v", r)
+		}
+	}()
 
 	client := kubeclient.Get(ctx)
 
@@ -111,35 +136,59 @@ func New(
 		opts.StatsReporter = reporter
 	}
 
-	// Build up a map of paths to admission controllers for routing handlers.
-	acs := make(map[string]AdmissionController, len(admissionControllers))
-	for _, ac := range admissionControllers {
-		if _, ok := acs[ac.Path()]; ok {
-			return nil, fmt.Errorf("duplicate webhook for path: %v", ac.Path())
-		}
-		acs[ac.Path()] = ac
+	syncCtx, cancel := context.WithCancel(context.Background())
+
+	webhook = &Webhook{
+		Client:       client,
+		Options:      *opts,
+		secretlister: secretInformer.Lister(),
+		Logger:       logger,
+		synced:       cancel,
+		stopCh:       make(chan struct{}),
+		gracePeriod:  GracePeriod,
 	}
 
-	return &Webhook{
-		Client:               client,
-		Options:              *opts,
-		secretlister:         secretInformer.Lister(),
-		admissionControllers: acs,
-		Logger:               logger,
-	}, nil
+	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, fmt.Sprintf("no controller registered for: %s", r.URL.Path), http.StatusBadRequest)
+	})
+
+	for _, controller := range controllers {
+		switch c := controller.(type) {
+		case AdmissionController:
+			handler := admissionHandler(logger, opts.StatsReporter, c, syncCtx.Done())
+			webhook.mux.Handle(c.Path(), handler)
+
+		case ConversionController:
+			handler := conversionHandler(logger, opts.StatsReporter, c)
+			webhook.mux.Handle(c.Path(), handler)
+
+		default:
+			return nil, fmt.Errorf("unknown webhook controller type:  %T", controller)
+		}
+
+	}
+
+	return
+}
+
+// InformersHaveSynced is called when the informers have all been synced, which allows any outstanding
+// admission webhooks through.
+func (wh *Webhook) InformersHaveSynced() {
+	wh.synced()
+	wh.Logger.Info("Informers have been synced, unblocking admission webhooks.")
 }
 
 // Run implements the admission controller run loop.
-func (ac *Webhook) Run(stop <-chan struct{}) error {
-	logger := ac.Logger
+func (wh *Webhook) Run(stop <-chan struct{}) error {
+	logger := wh.Logger
 	ctx := logging.WithLogger(context.Background(), logger)
 
 	server := &http.Server{
-		Handler: ac,
-		Addr:    fmt.Sprintf(":%v", ac.Options.Port),
+		Handler: wh,
+		Addr:    fmt.Sprintf(":%d", wh.Options.Port),
 		TLSConfig: &tls.Config{
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.Options.SecretName)
+				secret, err := wh.secretlister.Secrets(system.Namespace()).Get(wh.Options.SecretName)
 				if err != nil {
 					return nil, err
 				}
@@ -161,8 +210,6 @@ func (ac *Webhook) Run(stop <-chan struct{}) error {
 		},
 	}
 
-	logger.Info("Found certificates for webhook...")
-
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
@@ -174,21 +221,40 @@ func (ac *Webhook) Run(stop <-chan struct{}) error {
 
 	select {
 	case <-stop:
-		if err := server.Close(); err != nil {
-			return err
-		}
+		eg.Go(func() error {
+			// Start failing readiness probes immediately.
+			logger.Info("Starting to fail readiness probes...")
+			close(wh.stopCh)
+
+			// Wait for a grace period for the above to take effect and this Pod's
+			// endpoint to be removed from the webhook service's Endpoints.
+			// For this to be effective, it must be greater than the probe's
+			// periodSeconds times failureThreshold by a margin suitable to
+			// propagate the new Endpoints data across the cluster.
+			time.Sleep(wh.gracePeriod)
+
+			return server.Shutdown(context.Background())
+		})
+
+		// Wait for all outstanding go routined to terminate, including our new one.
 		return eg.Wait()
+
 	case <-ctx.Done():
-		return fmt.Errorf("webhook server bootstrap failed %v", ctx.Err())
+		return fmt.Errorf("webhook server bootstrap failed %w", ctx.Err())
 	}
 }
 
-// ServeHTTP implements the external admission webhook for mutating
-// serving resources.
-func (ac *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var ttStart = time.Now()
-	logger := ac.Logger
-	logger.Infof("Webhook ServeHTTP request=%#v", r)
+func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Respond to probes regardless of path.
+	if network.IsKubeletProbe(r) {
+		select {
+		case <-wh.stopCh:
+			http.Error(w, "shutting down", http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+		return
+	}
 
 	// Verify the content type is accurate.
 	contentType := r.Header.Get("Content-Type")
@@ -197,55 +263,5 @@ func (ac *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var review admissionv1beta1.AdmissionReview
-	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		http.Error(w, fmt.Sprintf("could not decode body: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	logger = logger.With(
-		zap.String(logkey.Kind, fmt.Sprint(review.Request.Kind)),
-		zap.String(logkey.Namespace, review.Request.Namespace),
-		zap.String(logkey.Name, review.Request.Name),
-		zap.String(logkey.Operation, fmt.Sprint(review.Request.Operation)),
-		zap.String(logkey.Resource, fmt.Sprint(review.Request.Resource)),
-		zap.String(logkey.SubResource, fmt.Sprint(review.Request.SubResource)),
-		zap.String(logkey.UserInfo, fmt.Sprint(review.Request.UserInfo)))
-	ctx := logging.WithLogger(r.Context(), logger)
-
-	c, ok := ac.admissionControllers[r.URL.Path]
-	if !ok {
-		http.Error(w, fmt.Sprintf("no admission controller registered for: %s", r.URL.Path), http.StatusBadRequest)
-		return
-	}
-
-	var response admissionv1beta1.AdmissionReview
-	reviewResponse := c.Admit(ctx, review.Request)
-	logger.Infof("AdmissionReview for %#v: %s/%s response=%#v",
-		review.Request.Kind, review.Request.Namespace, review.Request.Name, reviewResponse)
-
-	if !reviewResponse.Allowed {
-		response.Response = reviewResponse
-	} else if reviewResponse.PatchType != nil || response.Response == nil {
-		response.Response = reviewResponse
-	}
-	response.Response.UID = review.Request.UID
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, fmt.Sprintf("could encode response: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	if ac.Options.StatsReporter != nil {
-		// Only report valid requests
-		ac.Options.StatsReporter.ReportRequest(review.Request, response.Response, time.Since(ttStart))
-	}
-}
-
-func MakeErrorStatus(reason string, args ...interface{}) *admissionv1beta1.AdmissionResponse {
-	result := apierrors.NewBadRequest(fmt.Sprintf(reason, args...)).Status()
-	return &admissionv1beta1.AdmissionResponse{
-		Result:  &result,
-		Allowed: false,
-	}
+	wh.mux.ServeHTTP(w, r)
 }
