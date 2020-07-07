@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -86,16 +87,16 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldE
 
 // Verify every param in the ResourceTemplates is declared with a ParamSpec
 func verifyParamDeclarations(params []ParamSpec, templates []TriggerResourceTemplate) *apis.FieldError {
-	declaredParamNames := map[string]struct{}{}
+	declaredParamNames := sets.NewString()
 	for _, param := range params {
-		declaredParamNames[param.Name] = struct{}{}
+		declaredParamNames.Insert(param.Name)
 	}
 	for i, template := range templates {
 		// Get all params in the template $(tt.params.NAME) or $(params.NAME)
 		templateParams := paramsRegexp.FindAllSubmatch(template.RawExtension.Raw, -1)
 		for _, templateParam := range templateParams {
 			templateParamName := string(templateParam[2])
-			if _, ok := declaredParamNames[templateParamName]; !ok {
+			if !declaredParamNames.Has(templateParamName) {
 				// This logic is to get the tag and display error dynamically for both tt.params and params.
 				// TODO(#606)
 				var tag string
