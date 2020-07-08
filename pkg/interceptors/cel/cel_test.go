@@ -18,6 +18,7 @@ package cel
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -244,8 +245,9 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				rt.Fatalf("error reading response body: %v", err)
 			}
 			defer resp.Body.Close()
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				rt.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
+
+			if diff := cmp.Diff(mustUnmarshal(t, tt.want), mustUnmarshal(t, got)); diff != "" {
+				t.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
 			}
 		})
 	}
@@ -684,4 +686,14 @@ func mustParseURL(t *testing.T, u string) *url.URL {
 		t.Fatal(err)
 	}
 	return parsed
+}
+
+func mustUnmarshal(t *testing.T, b []byte) map[string]interface{} {
+	t.Helper()
+	v := map[string]interface{}{}
+	err := json.Unmarshal(b, &v)
+	if err != nil {
+		t.Fatalf("failed to unmarshal the body '%s': %s", b, err)
+	}
+	return v
 }
