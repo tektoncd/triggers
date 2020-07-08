@@ -191,7 +191,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			want:    []byte(`{"count":1,"measure":1.7}`),
 		},
 		{
-			name: "validating a secret",
+			name: "validating a secret with a namespace and name",
 			CEL: &triggersv1.CELInterceptor{
 				Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret', 'testing-ns') && body.count == 1.0",
 			},
@@ -214,7 +214,19 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				},
 			},
 			payload: ioutil.NopCloser(bytes.NewBufferString(`{"event":[{"testing":"value"},{"testing":"another"}]}`)),
-			want:    []byte(`{"event":["value", "another"]}`),
+			want:    []byte(`{"event":["value","another"]}`),
+		},
+		{
+			name: "return different types of expression",
+			CEL: &triggersv1.CELInterceptor{
+				Overlays: []triggersv1.CELOverlay{
+					{Key: "test.one", Expression: "'yo'"},
+					{Key: "test.two", Expression: "false ? true : false"},
+					{Key: "test.three", Expression: "body.test"},
+				},
+			},
+			payload: ioutil.NopCloser(bytes.NewBufferString(`{"value":"test","test":{"other":"thing"}}`)),
+			want:    []byte(`{"test":{"one":"yo","two":false,"three":{"other": "thing"},"other":"thing"},"value":"test"}`),
 		},
 	}
 	for _, tt := range tests {
