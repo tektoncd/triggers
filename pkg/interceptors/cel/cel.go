@@ -54,6 +54,7 @@ type Interceptor struct {
 var (
 	structType = reflect.TypeOf(&structpb.Value{})
 	listType   = reflect.TypeOf(&structpb.ListValue{})
+	mapType    = reflect.TypeOf(&structpb.Struct{})
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
@@ -125,6 +126,19 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 				if err == nil {
 					b = []byte(s)
 				}
+			}
+		case traits.Mapper:
+			raw, err = val.ConvertToNative(mapType)
+			if err == nil {
+				s, err := protojson.Marshal(raw.(proto.Message))
+				if err == nil {
+					b = []byte(s)
+				}
+			}
+		case types.Bool:
+			raw, err = val.ConvertToNative(structType)
+			if err == nil {
+				b, err = json.Marshal(raw.(*structpb.Value).GetBoolValue())
 			}
 		default:
 			raw, err = val.ConvertToNative(reflect.TypeOf([]byte{}))
