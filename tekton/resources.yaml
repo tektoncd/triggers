@@ -1,14 +1,14 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: tekton-triggers-git
+  name: tekton-triggers-git # Replace with a new name e.g. tekton-triggers-git-v0-6-1
 spec:
   type: git
   params:
   - name: url
     value: https://github.com/tektoncd/triggers
   - name: revision
-    value: v0.X.Y  # REPLACE with the commit you want to release
+    value: $REPLACE_ME # REPLACE with the commit you want to release
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
