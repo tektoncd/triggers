@@ -229,6 +229,9 @@ headers before being sent;
 [canonical](https://golang.org/pkg/net/textproto/#CanonicalMIMEHeaderKey) names
 must be specified.
 
+The incoming request URL (received by the EventListener) is provided in the
+`Eventlistener-Request-URL` header provided to the Webhook interceptor.
+
 When multiple Interceptors are specified, requests are piped through each
 Interceptor sequentially for processing - e.g. the headers/body of the first
 Interceptor's response will be sent as the request to the second Interceptor. It
