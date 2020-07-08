@@ -50,6 +50,10 @@ func TestWebHookInterceptor(t *testing.T) {
 			http.Error(w, "Expected header does not match", http.StatusBadRequest)
 			return
 		}
+		if r.Header.Get(webhookURLHeader) != "http://doesnotmatter.example.com" {
+			http.Error(w, "Expected webhookURLHeader does not match", http.StatusBadRequest)
+			return
+		}
 		// Return new values back in the response. It is expected for interceptors
 		// to be able to mutate the request.
 		w.Header().Set("Foo", "bar")

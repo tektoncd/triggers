@@ -33,8 +33,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// Timeout for outgoing requests to interceptor services
-const interceptorTimeout = 5 * time.Second
+const (
+	// Timeout for outgoing requests to interceptor services
+	interceptorTimeout = 5 * time.Second
+	// the incoming request URL is passed through to the webhook in this header.
+	webhookURLHeader = "EventListener-Request-URL"
+)
 
 type Interceptor struct {
 	HTTPClient             *http.Client
@@ -61,6 +65,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 	if err != nil {
 		return nil, err
 	}
+	request.Header.Set(webhookURLHeader, request.URL.String())
 	request.URL = u
 	request.Host = u.Host
 	addInterceptorHeaders(request.Header, w.Webhook.Header)
