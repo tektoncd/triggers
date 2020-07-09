@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: trigger-run
+spec:
+  bindings:
+    - name: triggerSpecBinding1
+    - name: triggerSpecBinding2
+  template:
+    name: triggerSpecTemplate

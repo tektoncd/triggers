@@ -22,12 +22,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TriggerSpec represents a connection between TriggerBinding, Params,
-// and TriggerTemplate; TriggerBinding provides extracted values for
-// TriggerTemplate to then create resources from.
+// TriggerSpec represents a connection between TriggerSpecBinding,
+// and TriggerSpecTemplate; TriggerSpecBinding provides extracted values for
+// TriggerSpecTemplate to then create resources from.
 type TriggerSpec struct {
-	Bindings []*TriggerBinding `json:"bindings"`
-	Template TriggerTemplate   `json:"template"`
+	Bindings []*TriggerSpecBinding `json:"bindings"`
+	Template TriggerSpecTemplate   `json:"template"`
 	// +optional
 	Name         string                `json:"name,omitempty"`
 	Interceptors []*TriggerInterceptor `json:"interceptors,omitempty"`
@@ -40,6 +40,19 @@ type TriggerSpec struct {
 	// TODO do we want to restrict this to the event listener namespace and just ask for the service account name here?
 	// +optional
 	ServiceAccount *corev1.ObjectReference `json:"serviceAccount,omitempty"`
+}
+
+type TriggerSpecTemplate struct {
+	Name       string `json:"name"`
+	APIVersion string `json:"apiversion,omitempty"`
+}
+
+type TriggerSpecBinding struct {
+	Name       string              `json:"name,omitempty"`
+	Kind       TriggerBindingKind  `json:"kind,omitempty"`
+	Ref        string              `json:"ref,omitempty"`
+	Spec       *TriggerBindingSpec `json:"spec,omitempty"`
+	APIVersion string              `json:"apiversion,omitempty"`
 }
 
 // +genclient
