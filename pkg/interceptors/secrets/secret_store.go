@@ -58,7 +58,7 @@ func NewSecretStore(cs kubernetes.Interface, ns string, resyncInterval time.Dura
 	}
 }
 
-func (ws secretStore) addStore(ns string) cache.Store {
+func (ws secretStore) AddStore(ns string) cache.Store {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
@@ -90,7 +90,7 @@ func (ws secretStore) Get(sr triggersv1.SecretRef) ([]byte, error) {
 
 	store, ok := ws.store[ns]
 	if !ok {
-		store = ws.addStore(ns)
+		store = ws.AddStore(ns)
 	}
 
 	cachedObj, ok, _ := store.GetByKey(sr.SecretName)

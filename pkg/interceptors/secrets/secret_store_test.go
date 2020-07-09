@@ -17,74 +17,111 @@ limitations under the License.
 package secrets
 
 // TODO make this work
-// import (
-//     "bytes"
-//     "testing"
-//     "time"
+import (
+	"bytes"
+	"sync"
+	"testing"
+	"time"
 
-//     triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-//     corev1 "k8s.io/api/core/v1"
-//     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-//     fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-//     rtesting "knative.dev/pkg/reconciler/testing"
-// )
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	core "k8s.io/client-go/testing"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	rtesting "knative.dev/pkg/reconciler/testing"
+)
 
-// func TestSecretStoreManyNamespaces(t *testing.T) {
-//     ctx, _ := rtesting.SetupFakeContext(t)
-//     kubeClient := fakekubeclient.Get(ctx)
-//     stopCh := make(<-chan struct{})
-//     store := NewSecretStore(kubeClient, metav1.NamespaceAll, time.Millisecond*1, stopCh)
+func TestSecretStoreManyNamespaces(t *testing.T) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	kubeClient := fakekubeclient.Get(ctx)
+	stopCh := make(<-chan struct{})
+	store := secretStore{
+		mutex:                  &sync.Mutex{},
+		store:                  storeSet{},
+		resyncInterval:         time.Millisecond,
+		stopCh:                 stopCh,
+		kubeClient:             kubeClient,
+		eventListenerNamespace: "ns-1",
+	}
 
-//     _, err := kubeClient.CoreV1().Secrets("ns-1").Create(
-//         &corev1.Secret{
-//             ObjectMeta: metav1.ObjectMeta{
-//                 Name: "secret-1",
-//             },
-//             StringData: map[string]string{"pwd": "topsecret"},
-//         },
-//     )
-//     if err != nil {
-//         t.Fatalf("Could not create secrets: %s", err.Error())
-//     }
+	listReactor := func(a core.Action) (bool, runtime.Object, error) {
+		result := &corev1.SecretList{
+			ListMeta: metav1.ListMeta{
+				ResourceVersion: "123",
+			},
+			Items: []corev1.Secret{
+				corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-1",
+						Namespace: "ns-1",
+					},
+					StringData: map[string]string{"pwd": "topsecret"},
+				},
+				corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-2",
+						Namespace: "ns-2",
+					},
+					StringData: map[string]string{"pwd": "stilltopsecret"},
+				},
+			},
+		}
+		return true, result, nil
+	}
+	kubeClient.AddReactor("list", "secrets", listReactor)
+	fakeWatch := watch.NewFake()
+	kubeClient.AddWatchReactor("secrets", core.DefaultWatchReactor(fakeWatch, nil))
 
-//     _, err = kubeClient.CoreV1().Secrets("ns-2").Create(
-//         &corev1.Secret{
-//             ObjectMeta: metav1.ObjectMeta{
-//                 Name: "secret-2",
-//             },
-//             StringData: map[string]string{"pwd": "stilltopsecret"},
-//         },
-//     )
-//     if err != nil {
-//         t.Fatalf("Could not create secrets: %s", err.Error())
-//     }
+	_, err := kubeClient.CoreV1().Secrets("ns-1").Create(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "secret-1",
+			},
+			StringData: map[string]string{"pwd": "topsecret"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Could not create secrets: %s", err.Error())
+	}
 
-//     err = store.Resync()
-//     if err != nil {
-//         t.Fatalf("Could not resync store: %s", err.Error())
-//     }
+	_, err = kubeClient.CoreV1().Secrets("ns-2").Create(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "secret-2",
+			},
+			StringData: map[string]string{"pwd": "stilltopsecret"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Could not create secrets: %s", err.Error())
+	}
 
-//     secret1, err := store.Get(triggersv1.SecretRef{
-//         SecretKey:  "pwd",
-//         Namespace:  "ns-1",
-//         SecretName: "secret-1",
-//     })
-//     if err != nil {
-//         t.Fatalf("Could not retrieve secret: %s", err.Error())
-//     }
-//     if bytes.Equal(secret1, []byte("topsecret")) {
-//         t.Fatalf("Expected topsecret, got %s", string(secret1))
-//     }
+	_ = store.AddStore("ns-1").Resync()
+	_ = store.AddStore("ns-2").Resync()
 
-//     secret2, err := store.Get(triggersv1.SecretRef{
-//         SecretKey:  "pwd",
-//         Namespace:  "ns-2",
-//         SecretName: "secret-2",
-//     })
-//     if err != nil {
-//         t.Fatalf("Could not retrieve secret: %s", err.Error())
-//     }
-//     if bytes.Equal(secret2, []byte("stilltopsecret")) {
-//         t.Fatalf("Expected stilltopsecret, got %s", string(secret1))
-//     }
-// }
+	secret1, err := store.Get(triggersv1.SecretRef{
+		SecretKey:  "pwd",
+		Namespace:  "ns-1",
+		SecretName: "secret-1",
+	})
+	if err != nil {
+		t.Fatalf("Could not retrieve secret: %s", err.Error())
+	}
+	if bytes.Equal(secret1, []byte("topsecret")) {
+		t.Fatalf("Expected topsecret, got %s", string(secret1))
+	}
+
+	secret2, err := store.Get(triggersv1.SecretRef{
+		SecretKey:  "pwd",
+		Namespace:  "ns-2",
+		SecretName: "secret-2",
+	})
+	if err != nil {
+		t.Fatalf("Could not retrieve secret: %s", err.Error())
+	}
+	if bytes.Equal(secret2, []byte("stilltopsecret")) {
+		t.Fatalf("Expected stilltopsecret, got %s", string(secret1))
+	}
+}
