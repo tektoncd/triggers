@@ -986,7 +986,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 		}
 
 		if resp.StatusCode != testCase.statusCode {
-			t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire statutes %v",
+			t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire status %v",
 				testCase.statusCode,
 				resp.StatusCode,
 				resp.Status)
@@ -1076,7 +1076,7 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire statutes %v",
+		t.Fatalf("Response code doesn't match: expected status code %d vs. actual %d, entire status %v",
 			http.StatusCreated,
 			resp.StatusCode,
 			resp.Status)
