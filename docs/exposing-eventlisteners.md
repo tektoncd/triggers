@@ -27,10 +27,10 @@ The following instructions have been tested on GKE cluster running version
 services can be found
 [here](https://kubernetes.github.io/ingress-nginx/deploy/).
 
-1. First, install Nginx ingress controller:
+1. First, install Nginx ingress controller. One liner below, check the [website](https://kubernetes.github.io/ingress-nginx/deploy/#gce-gke) for more information:
    ```sh
-     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml
-     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/cloud-generic.yaml
+      # Check https://kubernetes.github.io/ingress-nginx/deploy for other installation options
+      kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.1/deploy/static/provider/cloud/deploy.yaml
    ```
 2. Find the service name expose by the Eventlistener service:
    ```sh
