@@ -105,7 +105,7 @@ Lets first update the TaskRun to make any needed changes
 
 Edit the `docs/getting-started/ingress-run.yaml` file to adjust the settings.
 
-At the mimimum, you will need to update the ExternalDomain field to match your
+At the minimum, you will need to update the ExternalDomain field to match your
 own DNS name.
 
 ### Run the Ingress Task
