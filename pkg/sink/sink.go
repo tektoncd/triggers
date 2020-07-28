@@ -213,7 +213,6 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		var err error
 		resp, err = interceptor.ExecuteTrigger(request)
 		if err != nil {
-			log.Error(err)
 			return nil, nil, err
 		}
 
