@@ -17,7 +17,7 @@ spec:
       kind: PipelineRun
       metadata:
         name: getting-started-pipeline-run-$(uid)
-        namespace: $(params.namespace)
+        namespace: $(tt.params.namespace)
       spec:
         serviceAccountName: tekton-triggers-admin
         pipelineRef:
@@ -28,9 +28,9 @@ spec:
               type: git
               params:
               - name: revision
-                value: $(params.gitrevision)
+                value: $(tt.params.gitrevision)
               - name: url
-                value: $(params.gitrepositoryurl)
+                value: $(tt.params.gitrepositoryurl)
           - name: image-source
             resourceSpec:
               type: image

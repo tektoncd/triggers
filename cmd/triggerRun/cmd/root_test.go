@@ -115,7 +115,7 @@ func Test_processTriggerSpec(t *testing.T) {
 			Name:      "my-taskrun",
 			Namespace: "default",
 			Labels: map[string]string{
-				"someLabel": "$(params.foo)",
+				"someLabel": "$(tt.params.foo)",
 			},
 		},
 		Spec: pipelinev1alpha1.TaskRunSpec{
