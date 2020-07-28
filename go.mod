@@ -35,7 +35,11 @@ require (
 )
 
 // Knative deps (release-0.15)
-replace contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
+replace (
+	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
+	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
+	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.4.0+incompatible
+)
 
 // Pin k8s deps to 1.16.5
 replace (

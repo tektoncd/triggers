@@ -1,0 +1,12 @@
+POST /foo HTTP/1.1
+Content-Length: 135
+Content-Type: application/json
+X-Header: testheader
+X-Gitlab-Event: Push Hook
+
+{
+  "checkout_sha": "1a1736ec3d7b03349b31218a2f2c572c7c7206d6",
+  "repository": {
+    "url": "git@gitlab.com:dibyom/triggers.git"
+  }
+}

@@ -141,7 +141,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, header, err := r.executeInterceptors(t, request, event, log)
+	finalPayload, header, err := r.ExecuteInterceptors(t, request, event, log)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -169,14 +169,14 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 		log.Error(err)
 		return err
 	}
-	if err := r.createResources(token, resources, t.Name, eventID, log); err != nil {
+	if err := r.CreateResources(token, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger) ([]byte, http.Header, error) {
+func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger) ([]byte, http.Header, error) {
 	if len(t.Interceptors) == 0 {
 		return event, in.Header, nil
 	}
@@ -233,7 +233,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	return payload, resp.Header, nil
 }
 
-func (r Sink) createResources(token string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
+func (r Sink) CreateResources(token string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
 	discoveryClient := r.DiscoveryClient
 	dynamicClient := r.DynamicClient
 	var err error
