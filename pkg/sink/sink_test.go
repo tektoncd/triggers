@@ -156,15 +156,15 @@ func TestHandleEvent(t *testing.T) {
 			Name:      "$(tt.params.name)",
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app":  "$(params.foo)",
-				"type": "$(params.type)",
+				"app":  "$(tt.params.foo)",
+				"type": "$(tt.params.type)",
 			},
 		},
 		Spec: pipelinev1alpha1.PipelineResourceSpec{
 			Type: pipelinev1alpha1.PipelineResourceTypeGit,
 			Params: []pipelinev1alpha1.ResourceParam{
-				{Name: "url", Value: "$(params.url)"},
-				{Name: "revision", Value: "$(params.revision)"},
+				{Name: "url", Value: "$(tt.params.url)"},
+				{Name: "revision", Value: "$(tt.params.revision)"},
 			},
 		},
 	}

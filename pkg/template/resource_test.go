@@ -183,16 +183,6 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 				rt: json.RawMessage(`{"foo": "$(tt.params.p1)"}`),
 			},
 			want: json.RawMessage(`{"foo": "{\"a\":\"b\"}"}`),
-		}, {
-			name: "deprecated params in resourcetemplate",
-			args: args{
-				param: triggersv1.Param{
-					Name:  "p1",
-					Value: `{"a":"b"}`,
-				},
-				rt: json.RawMessage(`{"p1": "$(params.p1)"}`),
-			},
-			want: json.RawMessage(`{"p1": "{\"a\":\"b\"}"}`),
 		},
 	}
 	for _, tt := range tests {
@@ -207,8 +197,6 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 
 func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 	rt := json.RawMessage(`{"oneparam": "$(tt.params.oneid)", "twoparam": "$(tt.params.twoid)", "threeparam": "$(tt.params.threeid)"`)
-	rt1 := json.RawMessage(`{"deprecatedParam": "$(params.oneid)"`)
-	rt2 := json.RawMessage(`{"actualParam": "$(tt.params.oneid)", "deprecatedParam": "$(params.twoid)"`)
 	rt3 := json.RawMessage(`{"actualParam": "$(tt.params.oneid)", "invalidParam": "$(tt.params1.invalidid)", "deprecatedParam": "$(params.twoid)"`)
 	type args struct {
 		params []triggersv1.Param
@@ -250,27 +238,6 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 			want: json.RawMessage(`{"oneparam": "onevalue", "twoparam": "twovalue", "threeparam": "threevalue"`),
 		},
 		{
-			name: "deprecated params",
-			args: args{
-				params: []triggersv1.Param{
-					{Name: "oneid", Value: "deprecatedParamValue"},
-				},
-				rt: rt1,
-			},
-			want: json.RawMessage(`{"deprecatedParam": "deprecatedParamValue"`),
-		},
-		{
-			name: "both params and tt.params together",
-			args: args{
-				params: []triggersv1.Param{
-					{Name: "oneid", Value: "actualValue"},
-					{Name: "twoid", Value: "deprecatedParamValue"},
-				},
-				rt: rt2,
-			},
-			want: json.RawMessage(`{"actualParam": "actualValue", "deprecatedParam": "deprecatedParamValue"`),
-		},
-		{
 			name: "valid and invalid params together",
 			args: args{
 				params: []triggersv1.Param{
@@ -280,7 +247,7 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 				},
 				rt: rt3,
 			},
-			want: json.RawMessage(`{"actualParam": "actualValue", "invalidParam": "$(tt.params1.invalidid)", "deprecatedParam": "deprecatedParamValue"`),
+			want: json.RawMessage(`{"actualParam": "actualValue", "invalidParam": "$(tt.params1.invalidid)", "deprecatedParam": "$(params.twoid)"`),
 		},
 	}
 	for _, tt := range tests {

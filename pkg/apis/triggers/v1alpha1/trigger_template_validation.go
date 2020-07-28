@@ -29,8 +29,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// paramsRegexp captures TriggerTemplate parameter names $(tt.params.NAME) or $(params.NAME)
-var paramsRegexp = regexp.MustCompile(`\$\((params|tt.params).([_a-zA-Z][_a-zA-Z0-9.-]*)\)`)
+// paramsRegexp captures TriggerTemplate parameter names $(tt.params.NAME)
+var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-9.-]*)\)`)
 
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
@@ -92,24 +92,16 @@ func verifyParamDeclarations(params []ParamSpec, templates []TriggerResourceTemp
 		declaredParamNames.Insert(param.Name)
 	}
 	for i, template := range templates {
-		// Get all params in the template $(tt.params.NAME) or $(params.NAME)
+		// Get all params in the template $(tt.params.NAME)
 		templateParams := paramsRegexp.FindAllSubmatch(template.RawExtension.Raw, -1)
 		for _, templateParam := range templateParams {
-			templateParamName := string(templateParam[2])
+			templateParamName := string(templateParam[1])
 			if !declaredParamNames.Has(templateParamName) {
-				// This logic is to get the tag and display error dynamically for both tt.params and params.
-				// TODO(#606)
-				var tag string
-				if string(templateParam[1]) == "params" {
-					tag = "params"
-				} else {
-					tag = "tt.params"
-				}
 				fieldErr := apis.ErrInvalidValue(
-					fmt.Sprintf("undeclared param '$(%s.%s)'", tag, templateParamName),
+					fmt.Sprintf("undeclared param '$(tt.params.%s)'", templateParamName),
 					fmt.Sprintf("[%d]", i),
 				)
-				fieldErr.Details = fmt.Sprintf("'$(%s.%s)' must be declared in spec.params", tag, templateParamName)
+				fieldErr.Details = fmt.Sprintf("'$(tt.params.%s)' must be declared in spec.params", templateParamName)
 				return fieldErr
 			}
 		}
