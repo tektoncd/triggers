@@ -51,11 +51,11 @@ spec:
       serviceAccountName: tekton-triggers-controller
       containers:
       - name: tekton-triggers-controller
-        image: github.com/tektoncd/triggers/cmd/controller
+        image: "ko://github.com/tektoncd/triggers/cmd/controller"
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
-          "-el-image", "github.com/tektoncd/triggers/cmd/eventlistenersink",
+          "-el-image", "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
           "-el-port", "8080",
           "-period-seconds", "10",
           "-failure-threshold", "1"
