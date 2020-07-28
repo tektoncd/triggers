@@ -42,7 +42,7 @@ func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate validates a TriggerTemplateSpec.
 func (s *TriggerTemplateSpec) validate(ctx context.Context) *apis.FieldError {
-	if equality.Semantic.DeepEqual(s, TriggerTemplateSpec{}) {
+	if equality.Semantic.DeepEqual(s, &TriggerTemplateSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 	if len(s.ResourceTemplates) == 0 {

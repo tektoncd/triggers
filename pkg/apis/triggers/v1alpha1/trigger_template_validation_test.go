@@ -176,6 +176,10 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 				b.TriggerTemplateParam("foo", "desc", "val"),
 				b.TriggerResourceTemplate(invalidParamResourceTemplate))),
 			want: nil,
+		}, {
+			name:     "no spec to triggertemplate",
+			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec()),
+			want:     apis.ErrMissingField("spec"),
 		}}
 
 	for _, tc := range tcs {
