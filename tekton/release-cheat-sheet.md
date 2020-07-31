@@ -76,7 +76,7 @@ the triggers repo, a terminal window and a text editor.
         -i source=${GIT_RESOURCE_NAME} \
         -p package=tektoncd/triggers \
         -p release-tag=${VERSION_TAG} \
-        -p previous-release-tag=${PREV_VERSION_TAG} \
+        -p previous-release-tag=${PREVIOUS_VERSION_TAG} \
         create-draft-triggers-release
       ```
 
