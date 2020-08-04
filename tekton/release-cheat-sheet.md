@@ -107,12 +107,12 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.6.1/release.yaml
     ```
 
 14. Announce the release in Slack channels #general and #triggers.
