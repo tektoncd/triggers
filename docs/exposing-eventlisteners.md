@@ -34,7 +34,7 @@ services can be found
    ```
 2. Find the service name expose by the Eventlistener service:
    ```sh
-    kubectl get el <EVENTLISTENR_NAME> -o=jsonpath='{.status.configuration.generatedName}'
+    kubectl get el <EVENTLISTENR_NAME> -o=jsonpath='{.status.configuration.generatedName}{"\n"}'
    ```
 3. Create the Ingress resource. A sample Ingress is below. Check the docs
    [here](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/)
@@ -45,7 +45,6 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: ingress-resource
-  namespace: getting-started
   annotations:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -55,7 +54,7 @@ spec:
         paths:
           - path: /
             backend:
-              serviceName: getting-started-listener-b8rqz # REPLACE WITH YOUR SERVICE NAME FROM STEP 2
+              serviceName: EVENT_LISTENER_SERVICE_NAME # REPLACE WITH YOUR SERVICE NAME FROM STEP 2
               servicePort: 8080
 ```
 
