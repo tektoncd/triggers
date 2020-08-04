@@ -85,6 +85,10 @@ spec:
     description:
       The build directory used by img
     default: /workspace/source-repo
+  - name: pathToDockerFile
+    type: string
+    description: The path to the dockerfile to build
+    default: $(resources.inputs.source-repo.path)/Dockerfile
   resources:
     inputs:
       - name: source-repo
@@ -94,15 +98,13 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: r.j3ss.co/img
+      image: gcr.io/kaniko-project/executor:v0.16.0
       command:
-        - /usr/bin/img
+        - /kaniko/executor
       args:
-        - build
-        - -t
-        - "$(resources.outputs.builtImage.url)"
-        - --no-cache
-        - "$(params.pathToContext)"
+        - --dockerfile=$(params.pathToDockerFile)
+        - --destination=$(resources.outputs.builtImage.url)
+        - --context=$(params.pathToContext)
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
@@ -116,7 +118,8 @@ spec:
   check:
     image: golang
     command: ["go"]
-    args: ['test', "$(resources.source-repo.path)/..."]
+    workingDir: "$(resources.source-repo.path)"
+    args: ['test', "./..."]
 ---
 # Finally, we need something to receive our cloudevent announcing success!
 # That is this services only purpose

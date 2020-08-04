@@ -59,6 +59,17 @@ Our Pipeline will do a few things.
 - Push the image to the specified repository
 - Run the image locally
 
+If your cluster doesn't have access to your docker registry you may
+need to add the secret to your Kubernetes cluster and `pipeline.yaml`.
+For that please follow the instructions [here](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md#configuring-task-execution-credentials) and also add
+```
+  env:
+    - name: "DOCKER_CONFIG"
+      value: "/tekton/home/.docker/"
+```
+to the `pipeline.yaml` tasks similar to [this](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md#specifying-task-inputs-and-outputs) and re-apply
+the yaml file.
+
 #### What does it do?
 
 The Pipeline will build a Docker image with
