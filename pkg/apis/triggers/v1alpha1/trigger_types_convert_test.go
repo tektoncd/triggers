@@ -53,7 +53,7 @@ func TestToEventListenerTrigger(t *testing.T) {
 			name: "Convert Full Object",
 			in: TriggerSpec{
 				Name: "a",
-				ServiceAccount: &v1.ObjectReference{
+				ServiceAccount: &v1.LocalObjectReference{
 					Name: "a",
 				},
 				Interceptors: []*TriggerInterceptor{{

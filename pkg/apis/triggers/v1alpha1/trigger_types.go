@@ -32,14 +32,10 @@ type TriggerSpec struct {
 	Name         string                `json:"name,omitempty"`
 	Interceptors []*TriggerInterceptor `json:"interceptors,omitempty"`
 	// ServiceAccount optionally associates credentials with each trigger;
-	// more granular authorization for
-	// who is allowed to utilize the associated pipeline
-	// vs. defaulting to whatever permissions are associated
-	// with the entire EventListener and associated sink facilitates
-	// multi-tenant model based scenarios
-	// TODO do we want to restrict this to the event listener namespace and just ask for the service account name here?
+	// Unlike EventListeners, this should be scoped to the same namespace
+	// as the Trigger itself
 	// +optional
-	ServiceAccount *corev1.ObjectReference `json:"serviceAccount,omitempty"`
+	ServiceAccount *corev1.LocalObjectReference `json:"serviceAccount,omitempty"`
 }
 
 type TriggerSpecTemplate struct {

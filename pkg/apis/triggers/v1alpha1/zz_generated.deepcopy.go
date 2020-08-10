@@ -730,7 +730,7 @@ func (in *TriggerSpec) DeepCopyInto(out *TriggerSpec) {
 	}
 	if in.ServiceAccount != nil {
 		in, out := &in.ServiceAccount, &out.ServiceAccount
-		*out = new(v1.ObjectReference)
+		*out = new(v1.LocalObjectReference)
 		**out = **in
 	}
 	return
