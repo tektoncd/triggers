@@ -30,6 +30,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -39,6 +41,7 @@ import (
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,6 +67,55 @@ func loadExamplePREventBytes() ([]byte, error) {
 		return nil, fmt.Errorf("couldn't load testdata example PullRequest event data: %v", err)
 	}
 	return bytes, nil
+}
+
+func impersonateRBAC(t *testing.T, sa, namespace string, kubeClient kubernetes.Interface) {
+	impersonateName := fmt.Sprintf("impersonate-%s-defaultSA", namespace)
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: impersonateName, Namespace: namespace},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Verbs:           []string{"impersonate"},
+				APIGroups:       []string{""},
+				Resources:       []string{"users", "groups", "serviceaccounts"},
+				ResourceNames:   nil,
+				NonResourceURLs: nil,
+			},
+		},
+	}
+	_, err := kubeClient.RbacV1().Roles(namespace).Get(impersonateName, metav1.GetOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		_, err := kubeClient.RbacV1().Roles(namespace).Create(role)
+		if err != nil {
+			t.Fatalf("impersonate role creation failed namespace %q: %s", namespace, err)
+		}
+	} else {
+		t.Fatalf("Pre-check for impersonate failed namespace %q: %s", namespace, err)
+	}
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: impersonateName, Namespace: namespace},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      sa,
+				Namespace: namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     impersonateName,
+		},
+	}
+	_, err = kubeClient.RbacV1().RoleBindings(namespace).Get(impersonateName, metav1.GetOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		_, err := kubeClient.RbacV1().RoleBindings(namespace).Create(roleBinding)
+		if err != nil {
+			t.Fatalf("View rolebinding creation failed namespace %q: %s", namespace, err)
+		}
+	} else {
+		t.Fatalf("Pre-check for view rolebinding failed namespace %q: %s", namespace, err)
+	}
 }
 
 func TestEventListenerCreate(t *testing.T) {
@@ -221,6 +273,8 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating RoleBinding: %s", err)
 	}
+
+	impersonateRBAC(t, sa.Name, namespace, c.KubeClient)
 
 	// EventListener
 	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(

@@ -72,13 +72,16 @@ rules:
   resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
   verbs: ["get"]
 - apiGroups: [""]
-  # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
-  resources: ["configmaps", "secrets", "serviceaccounts"]
+  # secrets are only needed for Github/Gitlab interceptors
+  resources: ["configmaps", "secrets"]
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
+#- apiGroups: [""]
+#  resources: ["users", "groups", "serviceaccounts"]
+#  verbs: ["impersonate"]
 ```
 
 
@@ -135,7 +138,15 @@ triggers:
       name: pipeline-template
 ``` 
 
-The default ClusterRole for the EventListener allows for reading ServiceAccounts from any namespace.
+An update to the `Role` assigned to the EventListener's SeviceAccount is needed to allow it to impersonate
+the ServiceAccount specified for the trigger.
+
+```yaml
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["impersonate"]
+```
 
 ### ServiceType
 
