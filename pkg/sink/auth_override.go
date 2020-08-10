@@ -17,6 +17,8 @@ limitations under the License.
 package sink
 
 import (
+	"fmt"
+
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
@@ -34,7 +36,7 @@ import (
 //REST config used to build those client.  The other non-credential related parameters for the
 //REST client used are copied from the in cluster config of the event sink.
 type AuthOverride interface {
-	OverrideAuthentication(token string,
+	OverrideAuthentication(sa *corev1.ObjectReference,
 		log *zap.SugaredLogger,
 		defaultDiscoveryClient discoveryclient.ServerResourcesInterface,
 		defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
@@ -109,18 +111,10 @@ func (r Sink) retrieveAuthToken(saRef *corev1.ObjectReference, eventLog *zap.Sug
 	return "", savedErr
 }
 
-func newConfig(newToken string, config *rest.Config) *rest.Config {
-	// first clean out all user credentials from the pods' in cluster config
-	newConfig := rest.AnonymousClientConfig(config)
-	// add the token from our interceptors
-	newConfig.BearerToken = newToken
-	return newConfig
-}
-
 type DefaultAuthOverride struct {
 }
 
-func (r DefaultAuthOverride) OverrideAuthentication(token string,
+func (r DefaultAuthOverride) OverrideAuthentication(sa *corev1.ObjectReference,
 	log *zap.SugaredLogger,
 	defaultDiscoverClient discoveryclient.ServerResourcesInterface,
 	defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
@@ -133,7 +127,9 @@ func (r DefaultAuthOverride) OverrideAuthentication(token string,
 		log.Errorf("overrideAuthentication: problem getting in cluster config: %#v\n", err)
 		return
 	}
-	clusterConfig = newConfig(token, clusterConfig)
+	clusterConfig.Impersonate = rest.ImpersonationConfig{
+		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", sa.Namespace, sa.Name),
+	}
 	dc, err := dynamic.NewForConfig(clusterConfig)
 	if err != nil {
 		log.Errorf("overrideAuthentication: problem getting dynamic client set: %#v\n", err)

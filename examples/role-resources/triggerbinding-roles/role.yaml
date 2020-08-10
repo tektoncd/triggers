@@ -8,10 +8,13 @@ rules:
   resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
   verbs: ["get"]
 - apiGroups: [""]
-  # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
-  resources: ["configmaps", "secrets", "serviceaccounts"]
+  # secrets are only needed for Github/Gitlab interceptors
+  resources: ["configmaps", "secrets"]
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
+#- apiGroups: [""]
+#  resources: ["users", "groups", "serviceaccounts"]
+#  verbs: ["impersonate"]

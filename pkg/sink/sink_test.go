@@ -851,18 +851,18 @@ type fakeAuth struct {
 
 var triggerAuthWG sync.WaitGroup
 
-func (r fakeAuth) OverrideAuthentication(token string,
+func (r fakeAuth) OverrideAuthentication(sa *corev1.ObjectReference,
 	log *zap.SugaredLogger,
 	defaultDiscoverClient discoveryclient.ServerResourcesInterface,
 	defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
 	dynamicClient dynamic.Interface,
 	err error) {
 
-	if token == userWithoutPermissions {
+	if sa.Name == userWithoutPermissions {
 		dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 			defer triggerAuthWG.Done()
-			return true, nil, kerrors.NewUnauthorized(token + " unauthorized")
+			return true, nil, kerrors.NewUnauthorized(sa.Name + " unauthorized")
 		})
 		dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 		return defaultDiscoverClient, dynamicSet, nil
