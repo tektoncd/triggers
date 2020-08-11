@@ -35,7 +35,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
@@ -165,12 +164,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
-	/*token, err := r.retrieveAuthToken(t.ServiceAccount, eventLog)
-	if err != nil {
-		log.Error(err)
-		return err
-	}*/
-	if err := r.CreateResources(t.ServiceAccount, resources, t.Name, eventID, log); err != nil {
+	if err := r.CreateResources(t.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -234,17 +228,17 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	return payload, resp.Header, nil
 }
 
-func (r Sink) CreateResources(sa *corev1.ObjectReference, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
+func (r Sink) CreateResources(sa string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
 	discoveryClient := r.DiscoveryClient
 	dynamicClient := r.DynamicClient
 	var err error
-	if sa != nil {
+	if len(sa) > 0 {
 		// So at start up the discovery and dynamic clients are created using the in cluster config
 		// of this pod (i.e. using the credentials of the serviceaccount associated with the EventListener)
 
-		// However, we also have a ServiceAccount/Secret/SecretKey reference with each EventListenerTrigger to allow
+		// However, we also have a ServiceAccountName reference with each EventListenerTrigger to allow
 		// for more fine grained authorization control around the resources we create below.
-		discoveryClient, dynamicClient, err = r.Auth.OverrideAuthentication(sa, log, r.DiscoveryClient, r.DynamicClient)
+		discoveryClient, dynamicClient, err = r.Auth.OverrideAuthentication(sa, r.EventListenerNamespace, log, r.DiscoveryClient, r.DynamicClient)
 		if err != nil {
 			log.Errorf("problem cloning rest config: %#v", err)
 			return err

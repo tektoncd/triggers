@@ -79,9 +79,9 @@ rules:
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]
-#- apiGroups: [""]
-#  resources: ["users", "groups", "serviceaccounts"]
-#  verbs: ["impersonate"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["impersonate"]
 ```
 
 

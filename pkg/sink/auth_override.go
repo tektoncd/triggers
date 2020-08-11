@@ -19,12 +19,9 @@ package sink
 import (
 	"fmt"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -36,7 +33,8 @@ import (
 //REST config used to build those client.  The other non-credential related parameters for the
 //REST client used are copied from the in cluster config of the event sink.
 type AuthOverride interface {
-	OverrideAuthentication(sa *corev1.ObjectReference,
+	OverrideAuthentication(sa string,
+		namespace string,
 		log *zap.SugaredLogger,
 		defaultDiscoveryClient discoveryclient.ServerResourcesInterface,
 		defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
@@ -44,77 +42,11 @@ type AuthOverride interface {
 		err error)
 }
 
-func isServiceAccountToken(secret *corev1.Secret, sa *corev1.ServiceAccount) bool {
-	if secret.Type != corev1.SecretTypeServiceAccountToken {
-		return false
-	}
-
-	name := secret.Annotations[corev1.ServiceAccountNameKey]
-	uid := secret.Annotations[corev1.ServiceAccountUIDKey]
-	if name != sa.Name {
-		// Name must match
-		return false
-	}
-	if len(uid) > 0 && uid != string(sa.UID) {
-		// If UID is specified, it must match
-		return false
-	}
-
-	return true
-}
-
-func (r Sink) retrieveAuthToken(saRef *corev1.ObjectReference, eventLog *zap.SugaredLogger) (string, error) {
-	if saRef == nil {
-		return "", nil
-	}
-
-	if len(saRef.Name) == 0 || len(saRef.Namespace) == 0 {
-		return "", nil
-	}
-
-	var log *zap.SugaredLogger
-	if eventLog != nil {
-		log = eventLog.With(zap.String(triggersv1.TriggerLabelKey, "retriveAuthToken"))
-	}
-
-	sa, err := r.KubeClientSet.CoreV1().ServiceAccounts(saRef.Namespace).Get(saRef.Name, metav1.GetOptions{})
-	if err != nil {
-		if log != nil {
-			log.Error(err)
-		}
-		return "", err
-	}
-	var savedErr error
-	for _, ref := range sa.Secrets {
-		// secret ref namespace most likely won't be set, as the secret can only reside in
-		// sa's namespace, so use that
-		secret, err := r.KubeClientSet.CoreV1().Secrets(saRef.Namespace).Get(ref.Name, metav1.GetOptions{})
-		if err != nil {
-			if log != nil {
-				log.Error(err)
-			}
-			savedErr = err
-			continue
-		}
-		if isServiceAccountToken(secret, sa) {
-			token, exists := secret.Data[corev1.ServiceAccountTokenKey]
-			if log != nil {
-				log.Debugf("retrieveAuthToken found SA auth: %v", exists)
-			}
-			if !exists {
-				continue
-			}
-
-			return string(token), nil
-		}
-	}
-	return "", savedErr
-}
-
 type DefaultAuthOverride struct {
 }
 
-func (r DefaultAuthOverride) OverrideAuthentication(sa *corev1.ObjectReference,
+func (r DefaultAuthOverride) OverrideAuthentication(sa string,
+	namespace string,
 	log *zap.SugaredLogger,
 	defaultDiscoverClient discoveryclient.ServerResourcesInterface,
 	defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
@@ -128,7 +60,7 @@ func (r DefaultAuthOverride) OverrideAuthentication(sa *corev1.ObjectReference,
 		return
 	}
 	clusterConfig.Impersonate = rest.ImpersonationConfig{
-		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", sa.Namespace, sa.Name),
+		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, sa),
 	}
 	dc, err := dynamic.NewForConfig(clusterConfig)
 	if err != nil {

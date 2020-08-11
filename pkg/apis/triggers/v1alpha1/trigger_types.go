@@ -31,11 +31,11 @@ type TriggerSpec struct {
 	// +optional
 	Name         string                `json:"name,omitempty"`
 	Interceptors []*TriggerInterceptor `json:"interceptors,omitempty"`
-	// ServiceAccount optionally associates credentials with each trigger;
+	// ServiceAccountName optionally associates credentials with each trigger;
 	// Unlike EventListeners, this should be scoped to the same namespace
 	// as the Trigger itself
 	// +optional
-	ServiceAccount *corev1.LocalObjectReference `json:"serviceAccount,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 type TriggerSpecTemplate struct {
