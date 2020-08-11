@@ -28,8 +28,6 @@ import (
 	"sync"
 	"testing"
 
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
-
 	"go.uber.org/zap"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -789,80 +787,24 @@ func TestExecuteInterceptor_error(t *testing.T) {
 const userWithPermissions = "user-with-permissions"
 const userWithoutPermissions = "user-with-no-permissions"
 
-func TestRetriveveAuthToken(t *testing.T) {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: userWithoutPermissions,
-			UID:  types.UID(userWithoutPermissions),
-			Annotations: map[string]string{
-				corev1.ServiceAccountNameKey: userWithoutPermissions,
-				corev1.ServiceAccountUIDKey:  userWithoutPermissions,
-			},
-		},
-		Type: corev1.SecretTypeServiceAccountToken,
-		Data: map[string][]byte{
-			corev1.ServiceAccountTokenKey: []byte(userWithoutPermissions),
-		},
-	}
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      userWithoutPermissions,
-			Namespace: userWithoutPermissions,
-			UID:       types.UID(userWithoutPermissions),
-		},
-		Secrets: []corev1.ObjectReference{
-			{
-				Name:      userWithoutPermissions,
-				Namespace: userWithoutPermissions,
-			},
-		},
-	}
-
-	kubeClient := fakekubeclientset.NewSimpleClientset()
-	test.AddTektonResources(kubeClient)
-	if err := kubeClient.CoreV1().Secrets(userWithoutPermissions).Delete(userWithoutPermissions, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
-		t.Fatalf("Error deleting secret %v: %s", secret, err.Error())
-	}
-	if _, err := kubeClient.CoreV1().Secrets(userWithoutPermissions).Create(secret); err != nil {
-		t.Fatalf("Error creating secret %v: %s", secret, err.Error())
-	}
-	if err := kubeClient.CoreV1().ServiceAccounts(userWithoutPermissions).Delete(userWithoutPermissions, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
-		t.Fatalf("Error delete sa %v: %s", sa, err.Error())
-	}
-	if _, err := kubeClient.CoreV1().ServiceAccounts(userWithoutPermissions).Create(sa); err != nil {
-		t.Fatalf("Error creating sa %v: %s", sa, err.Error())
-	}
-
-	r := Sink{
-		KubeClientSet: kubeClient,
-	}
-
-	token, err := r.retrieveAuthToken(&corev1.ObjectReference{Name: userWithoutPermissions, Namespace: userWithoutPermissions}, nil)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	if token != userWithoutPermissions {
-		t.Fatalf("got token %s instead of %s", token, userWithoutPermissions)
-	}
-}
-
 type fakeAuth struct {
 }
 
 var triggerAuthWG sync.WaitGroup
 
-func (r fakeAuth) OverrideAuthentication(sa *corev1.ObjectReference,
+func (r fakeAuth) OverrideAuthentication(sa string,
+	namespace string,
 	log *zap.SugaredLogger,
 	defaultDiscoverClient discoveryclient.ServerResourcesInterface,
 	defaultDynamicClient dynamic.Interface) (discoveryClient discoveryclient.ServerResourcesInterface,
 	dynamicClient dynamic.Interface,
 	err error) {
 
-	if sa.Name == userWithoutPermissions {
+	if sa == userWithoutPermissions {
 		dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 			defer triggerAuthWG.Done()
-			return true, nil, kerrors.NewUnauthorized(sa.Name + " unauthorized")
+			return true, nil, kerrors.NewUnauthorized(sa + " unauthorized")
 		})
 		dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 		return defaultDiscoverClient, dynamicSet, nil
@@ -923,12 +865,9 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 			},
 			Spec: triggersv1.EventListenerSpec{
 				Triggers: []triggersv1.EventListenerTrigger{{
-					ServiceAccount: &corev1.ObjectReference{
-						Namespace: testCase.userVal,
-						Name:      testCase.userVal,
-					},
-					Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-					Template: triggersv1.EventListenerTemplate{Name: "tt"},
+					ServiceAccountName: testCase.userVal,
+					Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+					Template:           triggersv1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*triggersv1.EventInterceptor{{
 						GitHub: &triggersv1.GitHubInterceptor{
 							SecretRef: &triggersv1.SecretRef{
@@ -1014,12 +953,9 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 		},
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
-				ServiceAccount: &corev1.ObjectReference{
-					Namespace: userWithPermissions,
-					Name:      userWithPermissions,
-				},
-				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-				Template: triggersv1.EventListenerTemplate{Name: "tt"},
+				ServiceAccountName: userWithPermissions,
+				Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+				Template:           triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					Bitbucket: &triggersv1.BitbucketInterceptor{
 						SecretRef: &triggersv1.SecretRef{

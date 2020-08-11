@@ -85,7 +85,7 @@ func EventListenerSpec(ops ...EventListenerSpecOp) EventListenerOp {
 	}
 }
 
-// EventListenerServiceAccount sets the specified ServiceAccount of the EventListener.
+// EventListenerServiceAccount sets the specified ServiceAccountName of the EventListener.
 func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
 		spec.ServiceAccountName = saName
@@ -209,13 +209,10 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 	}
 }
 
-// EventListenerTriggerServiceAccount set the specified ServiceAccount of the EventListenerTrigger.
+// EventListenerTriggerServiceAccount set the specified ServiceAccountName of the EventListenerTrigger.
 func EventListenerTriggerServiceAccount(saName, namespace string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
-		trigger.ServiceAccount = &corev1.ObjectReference{
-			Namespace: saName,
-			Name:      namespace,
-		}
+		trigger.ServiceAccountName = saName
 	}
 }
 

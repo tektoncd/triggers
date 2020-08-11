@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1 "k8s.io/api/core/v1"
 )
 
 func TestToEventListenerTrigger(t *testing.T) {
@@ -52,10 +51,8 @@ func TestToEventListenerTrigger(t *testing.T) {
 		{
 			name: "Convert Full Object",
 			in: TriggerSpec{
-				Name: "a",
-				ServiceAccount: &v1.LocalObjectReference{
-					Name: "a",
-				},
+				Name:               "a",
+				ServiceAccountName: "a",
 				Interceptors: []*TriggerInterceptor{{
 					Webhook: &WebhookInterceptor{},
 				}},
@@ -77,10 +74,8 @@ func TestToEventListenerTrigger(t *testing.T) {
 				},
 			},
 			out: EventListenerTrigger{
-				Name: "a",
-				ServiceAccount: &v1.ObjectReference{
-					Name: "a",
-				},
+				Name:               "a",
+				ServiceAccountName: "a",
 				Interceptors: []*TriggerInterceptor{{
 					Webhook: &WebhookInterceptor{},
 				}},

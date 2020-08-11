@@ -333,11 +333,6 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 			}
 		}
 	}
-	if in.ServiceAccount != nil {
-		in, out := &in.ServiceAccount, &out.ServiceAccount
-		*out = new(v1.ObjectReference)
-		**out = **in
-	}
 	return
 }
 
@@ -727,11 +722,6 @@ func (in *TriggerSpec) DeepCopyInto(out *TriggerSpec) {
 				(*in).DeepCopyInto(*out)
 			}
 		}
-	}
-	if in.ServiceAccount != nil {
-		in, out := &in.ServiceAccount, &out.ServiceAccount
-		*out = new(v1.LocalObjectReference)
-		**out = **in
 	}
 	return
 }

@@ -77,7 +77,7 @@ func impersonateRBAC(t *testing.T, sa, namespace string, kubeClient kubernetes.I
 			{
 				Verbs:           []string{"impersonate"},
 				APIGroups:       []string{""},
-				Resources:       []string{"users", "groups", "serviceaccounts"},
+				Resources:       []string{"serviceaccounts"},
 				ResourceNames:   nil,
 				NonResourceURLs: nil,
 			},
@@ -492,10 +492,7 @@ func TestEventListenerCreate(t *testing.T) {
 			return false, nil
 		}
 		for i, trigger := range el.Spec.Triggers {
-			trigger.ServiceAccount = &corev1.ObjectReference{
-				Namespace: namespace,
-				Name:      userWithoutPermissions,
-			}
+			trigger.ServiceAccountName = userWithoutPermissions
 			el.Spec.Triggers[i] = trigger
 		}
 		_, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(el)
@@ -533,10 +530,7 @@ func TestEventListenerCreate(t *testing.T) {
 			return false, nil
 		}
 		for i, trigger := range el.Spec.Triggers {
-			trigger.ServiceAccount = &corev1.ObjectReference{
-				Namespace: namespace,
-				Name:      sa.Name,
-			}
+			trigger.ServiceAccountName = sa.Name
 			el.Spec.Triggers[i] = trigger
 		}
 		_, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(el)
