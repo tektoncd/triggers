@@ -1,4 +1,4 @@
-# Copyright 2019 The Tekton Authors
+# Copyright 2020 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,34 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-triggers
+  name: tekton-triggers-admin
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-triggers
-spec:
-  privileged: false
-  allowPrivilegeEscalation: false
-  volumes:
-  - 'emptyDir'
-  - 'configMap'
-  - 'secret'
-  hostNetwork: false
-  hostIPC: false
-  hostPID: false
-  runAsUser:
-    rule: 'MustRunAsNonRoot'
-  seLinux:
-    rule: 'RunAsAny'
-  supplementalGroups:
-    rule: 'MustRunAs'
-    ranges:
-    - min: 1
-      max: 65535
-  fsGroup:
-    rule: 'MustRunAs'
-    ranges:
-    - min: 1
-      max: 65535
+rules:
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    resourceNames: ["tekton-triggers"]
+    verbs: ["use"]
