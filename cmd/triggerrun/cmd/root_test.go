@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +38,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
+
+func TestTrigger_Error(t *testing.T) {
+	//error case for show feature
+	buf := new(bytes.Buffer)
+	err := trigger("../testdata/trigger.yaml", "../testdata/http.txt", "show", buf)
+
+	wantError := "fail to get clients: Failed to build config from the flags: invalid configuration: no configuration has been provided"
+
+	if err.Error() != wantError {
+		t.Errorf("Error actual = %v, and Expected = %v.", err, wantError)
+	}
+
+	gotValue := buf.Bytes()
+	wantValue := []uint8(nil)
+	if diff := cmp.Diff(wantValue, gotValue); diff != "" {
+		t.Errorf("Trigger mismatch -want +got: %s", diff)
+	}
+}
 
 func TestReadTrigger(t *testing.T) {
 	tri, err := readTrigger("../testdata/trigger.yaml")
@@ -229,11 +248,16 @@ func Test_processTriggerSpec(t *testing.T) {
 			logger, _ := zap.NewProduction()
 			eventLog := logger.Sugar()
 			kubeClient, triggerClient := getFakeTriggersClient(t, tt.args.resources)
-			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, eventLog)
+			s := sink.Sink{
+				KubeClientSet: kubeClient,
+				HTTPClient:    http.DefaultClient,
+			}
+			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, eventLog, s)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processTriggerSpec() error = %v. wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if diff := cmp.Diff(got, tt.want); diff != "" {
 				t.Errorf("did not get expected response back -want,+got: %s", diff)
 			}

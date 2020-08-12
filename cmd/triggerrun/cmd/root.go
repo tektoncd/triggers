@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
@@ -31,13 +32,17 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
+	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
@@ -50,19 +55,20 @@ var (
 		Long:  "tkn-trigger will allow users easily test out the Trigger config.",
 		RunE:  rootRun,
 	}
-
+	action      string
 	triggerFile string
 	httpPath    string
 )
 
 func init() {
+	rootCmd.Flags().StringVarP(&action, "show or create", "a", "", "it's to show or create resources")
 	rootCmd.Flags().StringVarP(&triggerFile, "triggerFile", "t", "", "Path to trigger yaml file")
 	rootCmd.Flags().StringVarP(&httpPath, "httpPath", "r", "", "Path to body event")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", "", "absolute path to the kubeconfig file")
 }
 
 func rootRun(cmd *cobra.Command, args []string) error {
-	err := trigger(triggerFile, httpPath)
+	err := trigger(triggerFile, httpPath, action, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("fail to call trigger: %v", err)
 	}
@@ -70,7 +76,7 @@ func rootRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func trigger(triggerFile, httpPath string) error {
+func trigger(triggerFile, httpPath, action string, writer io.Writer) error {
 	// Read HTTP request.
 	request, body, err := readHTTP(httpPath)
 	if err != nil {
@@ -88,24 +94,42 @@ func trigger(triggerFile, httpPath string) error {
 		return fmt.Errorf("fail to get clients: %w", err)
 	}
 
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return fmt.Errorf("Failed to build config from the flags: %w", err)
+	}
+
 	logger, _ := zap.NewProduction()
 	sugerLogger := logger.Sugar()
 	eventID := template.UID()
+	r := newSink(config, sugerLogger)
+	eventLog := sugerLogger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 	for _, tri := range triggers {
-		eventLog := sugerLogger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 		resources, err := processTriggerSpec(kubeClient, triggerClient, tri,
-			request, body, eventID, eventLog)
+			request, body, eventID, eventLog, r)
 		if err != nil {
 			return fmt.Errorf("fail to create resources: %w", err)
 		}
 
-		for _, resource := range resources {
-			s, err := yaml.Marshal(resource)
-			if err != nil {
-				return fmt.Errorf("fail to print out the resource: %w", err)
+		switch action {
+		case "show":
+			{
+				for _, resource := range resources {
+					s, err := yaml.Marshal(resource)
+					if err != nil {
+						return fmt.Errorf("fail to print out the resource: %w", err)
+					}
+					fmt.Fprintln(writer, "-----------------------------------")
+					fmt.Fprintf(writer, "%s", s)
+				}
 			}
-			fmt.Println("-----------------------------------")
-			fmt.Printf("%s", s)
+		case "create":
+			{
+				err := r.CreateResources("", resources, tri.Name, eventID, eventLog)
+				if err != nil {
+					return fmt.Errorf("fail to create resources: %w", err)
+				}
+			}
 		}
 	}
 
@@ -162,27 +186,7 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 	return request, body, err
 }
 
-func getKubeClient(kubeconfig string) (kubernetes.Interface, triggersclientset.Interface, error) {
-	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to build config from the flags: %w", err)
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get the Kubernetes client set: %v", err)
-	}
-
-	client, err := triggersclientset.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get the trigger client set: %v", err)
-	}
-
-	return kubeClient, client, nil
-}
-
-func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientset.Interface, tri *triggersv1.Trigger, request *http.Request, body []byte, eventID string, eventLog *zap.SugaredLogger) ([]json.RawMessage, error) {
+func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientset.Interface, tri *triggersv1.Trigger, request *http.Request, body []byte, eventID string, eventLog *zap.SugaredLogger, r sink.Sink) ([]json.RawMessage, error) {
 	if tri == nil {
 		return nil, errors.New("trigger is not defined")
 	}
@@ -194,12 +198,6 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	}
 
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, el.Name))
-
-	r := sink.Sink{
-		KubeClientSet: kubeClient,
-		HTTPClient:    http.DefaultClient,
-		Auth:          sink.DefaultAuthOverride{},
-	}
 
 	finalPayload, header, err := r.ExecuteInterceptors(&el, request, body, log)
 	if err != nil {
@@ -230,6 +228,56 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
 
 	return resources, nil
+}
+
+func newSink(config *rest.Config, sugerLogger *zap.SugaredLogger) sink.Sink {
+	sinkClients, err := sink.ConfigureClients(config)
+	if err != nil {
+		log.Fatalf("Failed to get the sink client: %v", err)
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to get the dynamic client: %v", err)
+	}
+
+	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
+	kubeClient, _, err := getKubeClient(kubeconfig)
+	if err != nil {
+		log.Fatal("fail to get clients: %w", err)
+	}
+
+	s := sink.Sink{
+		KubeClientSet:          kubeClient,
+		HTTPClient:             http.DefaultClient,
+		Auth:                   sink.DefaultAuthOverride{},
+		DiscoveryClient:        sinkClients.DiscoveryClient,
+		DynamicClient:          dynamicCS,
+		Logger:                 sugerLogger,
+		EventListenerNamespace: "default",
+	}
+
+	return s
+}
+
+func getKubeClient(kubeconfig string) (kubernetes.Interface, triggersclientset.Interface, error) {
+	// use the current context in kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to build config from the flags: %w", err)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get the Kubernetes client set: %v", err)
+	}
+
+	client, err := triggersclientset.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get the trigger client set: %v", err)
+	}
+
+	return kubeClient, client, nil
 }
 
 // Execute runs the command.
