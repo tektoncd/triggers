@@ -80,11 +80,7 @@ func GetArgs() (Args, error) {
 }
 
 // ConfigureClients returns the kubernetes and triggers clientsets
-func ConfigureClients() (Clients, error) {
-	clusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return Clients{}, xerrors.Errorf("Failed to get in cluster config: %s", err)
-	}
+func ConfigureClients(clusterConfig *rest.Config) (Clients, error) {
 	kubeClient, err := kubeclientset.NewForConfig(clusterConfig)
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create KubeClient: %s", err)
@@ -93,7 +89,6 @@ func ConfigureClients() (Clients, error) {
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
-
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),

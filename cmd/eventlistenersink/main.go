@@ -75,7 +75,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	sinkClients, err := sink.ConfigureClients()
+	sinkClients, err := sink.ConfigureClients(clusterConfig)
 	if err != nil {
 		logger.Fatal(err)
 	}
