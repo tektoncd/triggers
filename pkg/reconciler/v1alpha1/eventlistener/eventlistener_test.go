@@ -34,7 +34,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/rand"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -42,32 +41,20 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
-func init() {
-	rand.Seed(0)
-}
-
 var (
-	// FIXME: This seems wrong. THe name should be el-{elName}
-	generatedResourceName    = fmt.Sprintf("%s-cbhtc", eventListenerName) // rand.Seed(0) in init()
+	eventListenerName        = "my-eventlistener"
+	generatedResourceName    = fmt.Sprintf("el-%s", eventListenerName)
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 
-	// 0 indicates pre-reconciliation
-	eventListener0 = bldr.EventListener(eventListenerName, namespace,
-		bldr.EventListenerSpec(
-			bldr.EventListenerServiceAccount("sa"),
-		),
-		bldr.EventListenerStatus( // If this is pre-reconciled, why are we setting the status here???
-			bldr.EventListenerConfig(generatedResourceName),
-		),
-	)
-	eventListenerName   = "my-eventlistener"
-	namespace           = "test-pipelines"
-	reconcilerNamespace = "tekton-pipelines"
-	namespaceResource   = &corev1.Namespace{
+	namespace = "test-pipelines"
+
+	namespaceResource = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 		},
 	}
+
+	reconcilerNamespace         = "tekton-pipelines"
 	reconcilerNamespaceResource = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: reconcilerNamespace,
@@ -76,14 +63,12 @@ var (
 	reconcileKey      = fmt.Sprintf("%s/%s", namespace, eventListenerName)
 	updateLabel       = map[string]string{"update": "true"}
 	updatedSa         = "updatedSa"
-	updateTolerations = []corev1.Toleration{
-		{
-			Key:      "key",
-			Operator: "Equal",
-			Value:    "value",
-			Effect:   "NoSchedule",
-		},
-	}
+	updateTolerations = []corev1.Toleration{{
+		Key:      "key",
+		Operator: "Equal",
+		Value:    "value",
+		Effect:   "NoSchedule",
+	}}
 	updateNodeSelector           = map[string]string{"app": "test"}
 	deploymentAvailableCondition = appsv1.DeploymentCondition{
 		Type:    appsv1.DeploymentAvailable,
@@ -97,7 +82,15 @@ var (
 		Message: fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
 		Reason:  "NewReplicaSetAvailable",
 	}
-	generatedLabels = GenerateResourceLabels(eventListenerName)
+
+	// Standard labels added by EL reconciler to the underlying el-deployments/services
+	generatedLabels = map[string]string{
+		"app.kubernetes.io/managed-by": "EventListener",
+		"app.kubernetes.io/part-of":    "Triggers",
+		"eventlistener":                eventListenerName,
+	}
+
+	replicas int32 = 1
 )
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
@@ -130,68 +123,35 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, co
 	}, cancel
 }
 
-func TestReconcile(t *testing.T) {
-	os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	eventListener1 := bldr.EventListener(eventListenerName, namespace,
+// makeEL is a helper to build an EventListener for tests.
+// It generates a base EventListener that can then be modified by the passed in op function
+// If no ops are specified, it generates a base EventListener with no triggers and no Status
+func makeEL(ops ...func(el *v1alpha1.EventListener)) *v1alpha1.EventListener {
+	e := bldr.EventListener(eventListenerName, namespace,
 		bldr.EventListenerSpec(
 			bldr.EventListenerServiceAccount("sa"),
-			bldr.EventListenerPodTemplate(
-				bldr.EventListenerPodTemplateSpec(
-					bldr.EventListenerPodTemplateTolerations(nil),
-				),
-			),
-		),
-		bldr.EventListenerStatus(
-			bldr.EventListenerConfig(generatedResourceName),
-			bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, *ElPort)),
-			bldr.EventListenerCondition(
-				v1alpha1.ServiceExists,
-				corev1.ConditionTrue,
-				"Service exists", "",
-			),
-			bldr.EventListenerCondition(
-				v1alpha1.DeploymentExists,
-				corev1.ConditionTrue,
-				"Deployment exists", "",
-			),
-			bldr.EventListenerCondition(
-				apis.ConditionType(appsv1.DeploymentAvailable),
-				corev1.ConditionTrue,
-				"Deployment has minimum availability",
-				"MinimumReplicasAvailable",
-			),
-			bldr.EventListenerCondition(
-				apis.ConditionType(appsv1.DeploymentProgressing),
-				corev1.ConditionTrue,
-				fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
-				"NewReplicaSetAvailable",
-			),
 		),
 	)
+	for _, op := range ops {
+		op(e)
+	}
+	return e
+}
 
-	eventListener2 := eventListener1.DeepCopy()
-	eventListener2.Labels = updateLabel
+// makeDeployment is a helper to build a Deployment that is created by an EventListener.
+// It generates a basic Deployment for the simplest EventListener and accepts functions for modification
+func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
+	ownerRefs := makeEL().GetOwnerReference()
 
-	eventListener3 := eventListener2.DeepCopy()
-	eventListener3.Spec.ServiceAccountName = updatedSa
-
-	eventListener4 := eventListener3.DeepCopy()
-	eventListener4.Spec.ServiceType = corev1.ServiceTypeNodePort
-
-	eventListener5 := eventListener2.DeepCopy()
-	eventListener5.Spec.PodTemplate.Tolerations = updateTolerations
-
-	eventListener6 := eventListener2.DeepCopy()
-	eventListener6.Spec.PodTemplate.NodeSelector = updateNodeSelector
-
-	elWithDeploymentReplicaFailure := eventListener1.DeepCopy()
-	elWithDeploymentReplicaFailure.Status.SetCondition(&apis.Condition{
-		Type: apis.ConditionType(appsv1.DeploymentReplicaFailure),
-	})
-
-	var replicas int32 = 1
-	deployment1 := &appsv1.Deployment{
-		ObjectMeta: generateObjectMeta(eventListener0),
+	d := appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generatedResourceName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*ownerRefs,
+			},
+			Labels: generatedLabels,
+		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
@@ -202,9 +162,7 @@ func TestReconcile(t *testing.T) {
 					Labels: generatedLabels,
 				},
 				Spec: corev1.PodSpec{
-					Tolerations:        eventListener0.Spec.PodTemplate.Tolerations,
-					NodeSelector:       eventListener0.Spec.PodTemplate.NodeSelector,
-					ServiceAccountName: eventListener0.Spec.ServiceAccountName,
+					ServiceAccountName: "sa",
 					Containers: []corev1.Container{{
 						Name:  "event-listener",
 						Image: *elImage,
@@ -273,57 +231,149 @@ func TestReconcile(t *testing.T) {
 		},
 	}
 
-	deployment2 := deployment1.DeepCopy()
-	deployment2.Labels = mergeLabels(updateLabel, generatedLabels)
-	deployment2.Spec.Selector.MatchLabels = generatedLabels
-	deployment2.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
+	for _, op := range ops {
+		op(&d)
+	}
+	return &d
+}
 
-	deployment3 := deployment2.DeepCopy()
-	deployment3.Spec.Template.Spec.ServiceAccountName = updatedSa
-
-	deployment4 := deployment2.DeepCopy()
-	deployment4.Spec.Template.Spec.Tolerations = updateTolerations
-
-	deployment5 := deployment2.DeepCopy()
-	deployment5.Spec.Template.Spec.NodeSelector = updateNodeSelector
-
-	// deployment 3 == initial deployment + updated replicas
-	deploymentWithUpdatedReplicas := deployment1.DeepCopy()
-	var updateReplicas int32 = 5
-	deploymentWithUpdatedReplicas.Spec.Replicas = &updateReplicas
-
-	deploymentMissingVolumes := deployment1.DeepCopy()
-	deploymentMissingVolumes.Spec.Template.Spec.Volumes = nil
-	deploymentMissingVolumes.Spec.Template.Spec.Containers[0].VolumeMounts = nil
-
-	service1 := &corev1.Service{
-		ObjectMeta: generateObjectMeta(eventListener0),
+// makeService is a helper to build a Service that is created by an EventListener.
+// It generates a basic Service for the simplest EventListener and accepts functions for modification.
+func makeService(ops ...func(*corev1.Service)) *corev1.Service {
+	ownerRefs := makeEL().GetOwnerReference()
+	s := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generatedResourceName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*ownerRefs,
+			},
+			Labels: generatedLabels,
+		},
 		Spec: corev1.ServiceSpec{
 			Selector: generatedLabels,
-			Type:     eventListener1.Spec.ServiceType,
-			Ports: []corev1.ServicePort{
-				{
-					Name:     eventListenerServicePortName,
-					Protocol: corev1.ProtocolTCP,
-					Port:     int32(*ElPort),
-					TargetPort: intstr.IntOrString{
-						IntVal: int32(*ElPort),
-					},
+			Ports: []corev1.ServicePort{{
+				Name:     eventListenerServicePortName,
+				Protocol: corev1.ProtocolTCP,
+				Port:     int32(*ElPort),
+				TargetPort: intstr.IntOrString{
+					IntVal: int32(*ElPort),
 				},
-			},
+			}},
 		},
 	}
 
-	service2 := service1.DeepCopy()
-	service2.Labels = mergeLabels(updateLabel, generatedLabels)
-	service2.Spec.Selector = generatedLabels
+	for _, op := range ops {
+		op(&s)
+	}
 
-	service3 := service2.DeepCopy()
-	service3.Spec.Type = corev1.ServiceTypeNodePort
+	return &s
+}
 
-	service4 := service1.DeepCopy()
-	service3.Spec.Type = corev1.ServiceTypeNodePort
-	service4.Spec.Ports[0].NodePort = 30000
+var withStatus = bldr.EventListenerStatus(
+	bldr.EventListenerConfig(generatedResourceName),
+	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, *ElPort)),
+	bldr.EventListenerCondition(
+		v1alpha1.ServiceExists,
+		corev1.ConditionTrue,
+		"Service exists", "",
+	),
+	bldr.EventListenerCondition(
+		v1alpha1.DeploymentExists,
+		corev1.ConditionTrue,
+		"Deployment exists", "",
+	),
+	bldr.EventListenerCondition(
+		apis.ConditionType(appsv1.DeploymentAvailable),
+		corev1.ConditionTrue,
+		"Deployment has minimum availability",
+		"MinimumReplicasAvailable",
+	),
+	bldr.EventListenerCondition(
+		apis.ConditionType(appsv1.DeploymentProgressing),
+		corev1.ConditionTrue,
+		fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
+		"NewReplicaSetAvailable",
+	),
+)
+
+func withAddedLabels(el *v1alpha1.EventListener) {
+	el.Labels = updateLabel
+}
+
+func TestReconcile(t *testing.T) {
+	os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+
+	elPreReoncile := makeEL()
+	elWithStatus := makeEL(withStatus)
+	elWithLabels := makeEL(withStatus, withAddedLabels)
+
+	elWithUpdatedSA := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.ServiceAccountName = updatedSa
+	})
+
+	elWithNodePortServiceType := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.ServiceType = corev1.ServiceTypeNodePort
+	})
+
+	elWithTolerations := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.PodTemplate.Tolerations = updateTolerations
+	})
+
+	elWithNodeSelector := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.PodTemplate.NodeSelector = updateNodeSelector
+	})
+
+	elWithDeploymentReplicaFailure := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Status.SetCondition(&apis.Condition{
+			Type: apis.ConditionType(appsv1.DeploymentReplicaFailure),
+		})
+	})
+
+	elDeployment := makeDeployment()
+	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
+		d.Labels = mergeLabels(updateLabel, generatedLabels)
+		d.Spec.Selector.MatchLabels = generatedLabels
+		d.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
+	})
+
+	elDeploymentWithUpdatedSA := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.ServiceAccountName = updatedSa
+	})
+
+	elDeploymentWithTolerations := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Tolerations = updateTolerations
+	})
+
+	elDeploymentWithNodeSelector := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.NodeSelector = updateNodeSelector
+	})
+
+	deploymentWithUpdatedReplicas := makeDeployment(func(d *appsv1.Deployment) {
+		var updateReplicas int32 = 5
+		d.Spec.Replicas = &updateReplicas
+	})
+
+	deploymentMissingVolumes := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Volumes = nil
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+	})
+
+	elService := makeService()
+
+	elServiceWithLabels := makeService(func(s *corev1.Service) {
+		s.Labels = mergeLabels(updateLabel, generatedLabels)
+		s.Spec.Selector = generatedLabels
+	})
+
+	elServiceTypeNodePort := makeService(func(s *corev1.Service) {
+		s.Spec.Type = corev1.ServiceTypeNodePort
+	})
+
+	elServiceWithUpdatedNodePort := makeService(func(s *corev1.Service) {
+		s.Spec.Type = corev1.ServiceTypeNodePort
+		s.Spec.Ports[0].NodePort = 30000
+	})
 
 	loggingConfigMap := defaultLoggingConfigMap()
 	loggingConfigMap.ObjectMeta.Namespace = namespace
@@ -333,20 +383,20 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		startResources test.Resources
-		endResources   test.Resources
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{{
 		name: "create-eventlistener",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener0},
+			EventListeners: []*v1alpha1.EventListener{elPreReoncile},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Deployments:    []*appsv1.Deployment{deployment1},
-			Services:       []*corev1.Service{service1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -355,18 +405,18 @@ func TestReconcile(t *testing.T) {
 		// Resources before reconcile starts: EL has extra label that deployment/svc does not
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener2},
-			Deployments:    []*appsv1.Deployment{deployment1},
-			Services:       []*corev1.Service{service1},
+			EventListeners: []*v1alpha1.EventListener{elWithLabels},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
 		},
 		// We expect the deployment and services to propagate the extra label
 		// but the selectors in both Service and deployment should have the same
 		// label
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener2},
-			Deployments:    []*appsv1.Deployment{deployment2},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithLabels},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
+			Services:       []*corev1.Service{elServiceWithLabels},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -374,15 +424,15 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener3},
-			Deployments:    []*appsv1.Deployment{deployment2},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithUpdatedSA},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
+			Services:       []*corev1.Service{elService},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener3},
-			Deployments:    []*appsv1.Deployment{deployment3},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithUpdatedSA},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithUpdatedSA},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -390,15 +440,15 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener5},
-			Deployments:    []*appsv1.Deployment{deployment2},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithTolerations},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
+			Services:       []*corev1.Service{elService},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener5},
-			Deployments:    []*appsv1.Deployment{deployment4},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithTolerations},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithTolerations},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -406,15 +456,15 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener6},
-			Deployments:    []*appsv1.Deployment{deployment2},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithNodeSelector},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
+			Services:       []*corev1.Service{elService},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener6},
-			Deployments:    []*appsv1.Deployment{deployment5},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithNodeSelector},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithNodeSelector},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -422,33 +472,32 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener4},
-			Deployments:    []*appsv1.Deployment{deployment3},
-			Services:       []*corev1.Service{service2},
+			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elServiceWithLabels},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener4},
-			Deployments:    []*appsv1.Deployment{deployment3},
-			Services:       []*corev1.Service{service3},
+			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elServiceTypeNodePort},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
 		// Check that if a user manually updates the labels for a service, we revert the change.
-		// TODO: why did we do this?
 		name: "update-el-serivice-labels",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Services:       []*corev1.Service{service2},
-			Deployments:    []*appsv1.Deployment{deployment1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Services:       []*corev1.Service{elServiceWithLabels},
+			Deployments:    []*appsv1.Deployment{elDeployment},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Services:       []*corev1.Service{service1}, // We expect the service to drop the user added labels
-			Deployments:    []*appsv1.Deployment{deployment1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added labels
+			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -457,15 +506,15 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Deployments:    []*appsv1.Deployment{deployment1},
-			Services:       []*corev1.Service{service4},
+			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elServiceWithUpdatedNodePort},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Deployments:    []*appsv1.Deployment{deployment1},
-			Services:       []*corev1.Service{service4},
+			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elServiceWithUpdatedNodePort},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -473,31 +522,32 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Deployments:    []*appsv1.Deployment{deployment2},
-			Services:       []*corev1.Service{service1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
+			Services:       []*corev1.Service{elService},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
-			Deployments:    []*appsv1.Deployment{deployment1},
-			Services:       []*corev1.Service{service1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
+		// Checks that we do not overwrite replicas changed on the deployment itself
 		name: "deployment-replica-update",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
-			Services:       []*corev1.Service{service1},
+			Services:       []*corev1.Service{elService},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{eventListener1},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
-			Services:       []*corev1.Service{service1},
+			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	},
@@ -507,14 +557,14 @@ func TestReconcile(t *testing.T) {
 			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{elWithDeploymentReplicaFailure},
-				Services:       []*corev1.Service{service1},
-				Deployments:    []*appsv1.Deployment{deployment1},
+				Services:       []*corev1.Service{elService},
+				Deployments:    []*appsv1.Deployment{elDeployment},
 			},
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
+				Deployments:    []*appsv1.Deployment{elDeployment},
+				Services:       []*corev1.Service{elService},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			},
 		},
@@ -523,14 +573,14 @@ func TestReconcile(t *testing.T) {
 			key:  reconcileKey,
 			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
 				Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
 			},
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
+				Deployments:    []*appsv1.Deployment{elDeployment},
+				Services:       []*corev1.Service{elService},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			},
 		}, {
@@ -559,15 +609,15 @@ func TestReconcile(t *testing.T) {
 			key:  reconcileKey,
 			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			},
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{eventListener1},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				Deployments:    []*appsv1.Deployment{deployment1},
-				Services:       []*corev1.Service{service1},
+				Deployments:    []*appsv1.Deployment{elDeployment},
+				Services:       []*corev1.Service{elService},
 			},
 		},
 	}
