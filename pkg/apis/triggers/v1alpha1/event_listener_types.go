@@ -55,7 +55,7 @@ type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
 	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
-	Replicas           int32                  `json:"replicas"`
+	Replicas           *int32                 `json:"replicas,omitempty"`
 	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
 }
 
