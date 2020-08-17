@@ -348,7 +348,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		el.Status.SetDeploymentConditions(existingDeployment.Status.Conditions)
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
-		if existingDeployment.Spec.Replicas == nil || *existingDeployment.Spec.Replicas == 0 {
+		if existingDeployment.Spec.Replicas != deployment.Spec.Replicas {
 			existingDeployment.Spec.Replicas = replicas
 			updated = true
 		}

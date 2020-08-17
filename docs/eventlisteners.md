@@ -166,6 +166,8 @@ check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
 The `replicas` field is optional. By default, the number of replicas of EventListener is 1.
 If you want to deploy more than one pod, you can specify the number to this field. 
 
+**Note:** If user sets `replicas` field while creating eventlistener yaml then it won't respects replicas values edited by user manually or through any other mechanism (ex: HPA).
+
 ### PodTemplate
 
 The `podTemplate` field is optional. A PodTemplate is specifications for 
