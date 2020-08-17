@@ -387,12 +387,19 @@ func TestEventListenerValidate_error(t *testing.T) {
 					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
 					bldr.EventListenerTriggerName("1234567890123456789012345678901234567890123456789012345678901234"),
 				))),
+	}, {
+		name: "user specify invalid replicas which are 0 and negative values",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerReplicas(0),
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "tb", "v1alpha1"),
+				))),
 	}}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.el.Validate(context.Background())
-			if err == nil {
+			if err := test.el.Validate(context.Background()); err == nil {
 				t.Errorf("EventListener.Validate() expected error, but get none, EventListener: %v", test.el)
 			}
 		})

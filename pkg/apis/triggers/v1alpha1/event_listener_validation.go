@@ -28,10 +28,15 @@ import (
 
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return e.Spec.validate(ctx, e)
+	return e.Spec.validate(ctx)
 }
 
-func (s *EventListenerSpec) validate(ctx context.Context, el *EventListener) *apis.FieldError {
+func (s *EventListenerSpec) validate(ctx context.Context) *apis.FieldError {
+	if s.Replicas != nil {
+		if *s.Replicas <= 0 {
+			return apis.ErrInvalidValue(*s.Replicas, "spec.replicas")
+		}
+	}
 	if len(s.Triggers) == 0 {
 		return apis.ErrMissingField("spec.triggers")
 	}

@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -259,8 +260,8 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 	}
 
 	labels := mergeLabels(el.Labels, GenerateResourceLabels(el.Name))
-	var replicas int32 = 1
-	if el.Spec.Replicas != 0 {
+	var replicas = ptr.Int32(1)
+	if el.Spec.Replicas != nil {
 		replicas = el.Spec.Replicas
 	}
 	container := corev1.Container{
@@ -313,7 +314,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 	deployment := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
+			Replicas: replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: GenerateResourceLabels(el.Name),
 			},
@@ -348,7 +349,7 @@ func (c *Reconciler) reconcileDeployment(el *v1alpha1.EventListener) error {
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
 		if existingDeployment.Spec.Replicas == nil || *existingDeployment.Spec.Replicas == 0 {
-			existingDeployment.Spec.Replicas = &replicas
+			existingDeployment.Spec.Replicas = replicas
 			updated = true
 		}
 		if existingDeployment.Spec.Selector != deployment.Spec.Selector {
