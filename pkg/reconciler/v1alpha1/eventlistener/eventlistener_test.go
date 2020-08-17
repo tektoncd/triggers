@@ -546,7 +546,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
+			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
