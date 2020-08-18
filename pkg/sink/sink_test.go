@@ -19,6 +19,7 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -51,6 +52,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -786,6 +788,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 
 const userWithPermissions = "user-with-permissions"
 const userWithoutPermissions = "user-with-no-permissions"
+const userWithForbiddenAccess = "user-forbidden"
 
 type fakeAuth struct {
 }
@@ -810,6 +813,16 @@ func (r fakeAuth) OverrideAuthentication(sa string,
 		return defaultDiscoverClient, dynamicSet, nil
 	}
 
+	if sa == userWithForbiddenAccess {
+		dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
+		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+			defer triggerAuthWG.Done()
+			return true, nil, kerrors.NewForbidden(schema.GroupResource{}, sa, errors.New("Action not Allowed"))
+		})
+		dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
+		return defaultDiscoverClient, dynamicSet, nil
+	}
+
 	return defaultDiscoverClient, defaultDynamicClient, nil
 }
 
@@ -825,6 +838,10 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 		{
 			userVal:    userWithPermissions,
 			statusCode: http.StatusCreated,
+		},
+		{
+			userVal:    userWithForbiddenAccess,
+			statusCode: http.StatusForbidden,
 		},
 	} {
 		eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
