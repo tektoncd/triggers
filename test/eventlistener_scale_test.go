@@ -51,7 +51,7 @@ func TestEventListenerScale(t *testing.T) {
 		bldr.EventListenerReplicas(3),
 		bldr.EventListenerPodTemplate(
 			bldr.EventListenerPodTemplateSpec(
-				bldr.EventListenerPodTemplateNodeSelector(map[string]string{"beta.kubernetes.io/arch": "amd64"}),
+				bldr.EventListenerPodTemplateNodeSelector(map[string]string{"beta.kubernetes.io/os": "linux"}),
 				bldr.EventListenerPodTemplateTolerations([]corev1.Toleration{
 					{
 						Key:      "key",
