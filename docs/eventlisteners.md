@@ -23,6 +23,7 @@ using [Event Interceptors](#Interceptors).
 - [Logging](#logging)
 - [Labels](#labels)
 - [EventListener Response](#eventlistener-response)
+- [How does the EventListener work?](#how-does-the-eventlistener-work)
 - [Examples](#examples)
 - [Multi-Tenant Concerns](#multi-tenant-concerns)
 
@@ -714,6 +715,39 @@ The EventListener responds with following message after receiving the event:
 - `eventListener` - Refers to the EventListener Name.
 - `namespace` - Refers to the namespace of the EventListener
 - `eventID` - Refers to the uniqueID that gets assigned to each incoming request
+
+## How does the EventListener work?
+
+Lets understand how an EventListener works with an example using GitHub
+
+* Create a sample GitHub example
+```bash
+kubectl create -f https://github.com/tektoncd/triggers/tree/master/examples/github
+```
+
+* Once the EventListener is created,  the Triggers controller will create a new `Deployment` and `Service` for the EventListener. We can use `kubectl` to see them running:
+```bash
+kubectl get deployment
+NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
+el-github-listener-interceptor   1/1     1            1           11s
+
+kubectl get svc
+NAME                             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+el-github-listener-interceptor   ClusterIP   10.99.188.140   <none>        8080/TCP   52s
+```
+The Triggers controller uses fields from the EventListener's `spec` (which is described in the [Syntax](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#syntax) section, as well as [`metadata.labels`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#labels)
+in addition to some pre-configured information like (container `Image`, `Name`, `Port`) to create the **Deployment** and **Service**.
+
+We follow a naming convention while creating these resources. An EventListener named `foo` will create a deployment and a service both named `el-foo`.
+
+Once all the resources are up and running user can get a URL to send webhook events. This URL points to the service created above and points to the deployment.
+```bash
+kubectl get eventlistener
+NAME                          ADDRESS                                                              AVAILABLE   REASON
+github-listener-interceptor   http://el-github-listener-interceptor.ptest.svc.cluster.local:8080   True        MinimumReplicasAvailable
+```
+
+Follow [GitHub example](https://github.com/tektoncd/triggers/blob/master/examples/github/README.md) to try out locally.
 
 ## Examples
 
