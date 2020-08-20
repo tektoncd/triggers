@@ -27,8 +27,8 @@ Creates an EventListener that listens for Bitbucket webhook events.
    ```bash
    curl -v \
    -H 'X-Event-Key: repo:refs_changed' \
-   -H 'X-Hub-Signature: sha1=c401e56873be567c1403d8504763760a39236c51' \
-   -d '{"repository": {"links": {"clone": [{"href": "ssh://git@localhost:7999/~test/helloworld.git", "name": "ssh"}, {"href": "http://localhost:7990/scm/~test/helloworld.git", "name": "http"}]}}, "changes": [{"ref": {"displayId": "master"}}]}' \
+   -H 'X-Hub-Signature: sha1=544dde67b85743361b0321c9cc55f84472a608dd' \
+   -d '{"repository": {"links": {"clone": [{"href": "http://localhost:7990/scm/~test/helloworld.git", "name": "http"}, {"href": "ssh://git@localhost:7999/~test/helloworld.git", "name": "ssh"}]}}, "changes": [{"ref": {"displayId": "master"}}]}' \
    http://localhost:8080
    ```
 
