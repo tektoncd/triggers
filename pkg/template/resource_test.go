@@ -322,9 +322,16 @@ func Test_ResolveTrigger(t *testing.T) {
 	}{
 		{
 			name: "1 binding",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "my-triggerbinding",
+					Kind: triggersv1.NamespacedTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
 			want: ResolvedTrigger{
 				TriggerBindings:        []*triggersv1.TriggerBinding{tb},
 				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{},
@@ -333,9 +340,16 @@ func Test_ResolveTrigger(t *testing.T) {
 		},
 		{
 			name: "1 clustertype binding",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("my-clustertriggerbinding", "ClusterTriggerBinding", "my-clustertriggerbinding", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "my-clustertriggerbinding",
+					Kind: triggersv1.ClusterTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
 			want: ResolvedTrigger{
 				TriggerBindings:        []*triggersv1.TriggerBinding{},
 				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{ctb},
@@ -344,9 +358,21 @@ func Test_ResolveTrigger(t *testing.T) {
 		},
 		{
 			name: "1 embed binding",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("", "", "my-embed-binding", "v1alpha1", bldr.TriggerBindingParam("key", "value")),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Name: "my-embed-binding",
+					Spec: &triggersv1.TriggerBindingSpec{
+						Params: []triggersv1.Param{{
+							Name:  "key",
+							Value: "value",
+						}},
+					},
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
 			want: ResolvedTrigger{
 				TriggerBindings: []*triggersv1.TriggerBinding{
 					{
@@ -372,18 +398,6 @@ func Test_ResolveTrigger(t *testing.T) {
 				},
 			},
 			want: ResolvedTrigger{TriggerBindings: []*triggersv1.TriggerBinding{}, ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{}, TriggerTemplate: &tt},
-		},
-		{
-			name: "multiple bindings with builder",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
-				bldr.EventListenerTriggerBinding("my-clustertriggerbinding", "ClusterTriggerBinding", "my-clustertriggerbinding", "v1alpha1"),
-			),
-			want: ResolvedTrigger{
-				TriggerBindings:        []*triggersv1.TriggerBinding{tb},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{ctb},
-				TriggerTemplate:        &tt,
-			},
 		},
 		{
 			name: "multiple bindings",
@@ -474,36 +488,64 @@ func Test_ResolveTrigger_error(t *testing.T) {
 	}{
 		{
 			name: "error triggerbinding",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("invalid-tb-name", "", "invalid-tb-name", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "invalid-tb-name",
+					Kind: triggersv1.NamespacedTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
 			getTB:  getTB,
 			getCTB: getCTB,
 			getTT:  getTT,
 		},
 		{
 			name: "error clustertriggerbinding",
-			trigger: bldr.Trigger("my-triggertemplate", "v1alpha1",
-				bldr.EventListenerTriggerBinding("invalid-ctb-name", "ClusterTriggerBinding", "invalid-ctb-name", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "invalid-ctb-name",
+					Kind: triggersv1.ClusterTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "my-triggertemplate",
+					APIVersion: "v1alpha1",
+				},
+			},
 			getTB:  getTB,
 			getCTB: getCTB,
 			getTT:  getTT,
 		},
 		{
 			name: "error triggertemplate",
-			trigger: bldr.Trigger("invalid-tt-name", "v1alpha1",
-				bldr.EventListenerTriggerBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "my-triggerbinding",
+					Kind: triggersv1.NamespacedTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "invalid-tt-name",
+					APIVersion: "v1alpha1",
+				},
+			},
 			getTB:  getTB,
 			getCTB: getCTB,
 			getTT:  getTT,
 		},
 		{
 			name: "error triggerbinding and triggertemplate",
-			trigger: bldr.Trigger("invalid-tt-name", "v1alpha1",
-				bldr.EventListenerTriggerBinding("invalid-tb-name", "", "invalid-tb-name", "v1alpha1"),
-			),
+			trigger: triggersv1.EventListenerTrigger{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  "invalid-tb-name",
+					Kind: triggersv1.NamespacedTriggerBindingKind,
+				}},
+				Template: triggersv1.EventListenerTemplate{
+					Name:       "invalid-tt-name",
+					APIVersion: "v1alpha1",
+				},
+			},
 			getTB:  getTB,
 			getCTB: getCTB,
 			getTT:  getTT,
