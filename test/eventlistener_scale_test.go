@@ -65,9 +65,18 @@ func TestEventListenerScale(t *testing.T) {
 	))
 
 	for i := 0; i < 1000; i++ {
-		trigger := bldr.Trigger("my-triggertemplate", "v1alpha1",
-			bldr.EventListenerTriggerBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
-		)
+		trigger := triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Name:       "my-triggerbinding",
+				Kind:       triggersv1.NamespacedTriggerBindingKind,
+				Ref:        "tb1",
+				APIVersion: "v1alpha1",
+			}},
+			Template: triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
+			},
+		}
 		trigger.Name = fmt.Sprintf("%d", i)
 		el.Spec.Triggers = append(el.Spec.Triggers, trigger)
 	}

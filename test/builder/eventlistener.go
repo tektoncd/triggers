@@ -135,7 +135,18 @@ func EventListenerPodTemplateNodeSelector(nodeSelector map[string]string) EventL
 // Any number of EventListenerTriggerOp modifiers can be passed to create/modify it.
 func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.Triggers = append(spec.Triggers, Trigger(ttName, apiVersion, ops...))
+		t := v1alpha1.EventListenerTrigger{
+			Template: v1alpha1.EventListenerTemplate{
+				Name:       ttName,
+				APIVersion: apiVersion,
+			},
+		}
+
+		for _, op := range ops {
+			op(&t)
+		}
+
+		spec.Triggers = append(spec.Triggers, t)
 	}
 }
 
@@ -182,24 +193,6 @@ func NewAddressable(hostname string) *duckv1alpha1.Addressable {
 		Host:   hostname,
 	}
 	return addressable
-}
-
-// Trigger creates an EventListenerTrigger. Any number of EventListenerTriggerOp
-// modifiers can be passed to create/modify it. For creating an EventListenerBinding
-// you have to pass a EventListenerTriggerOp
-func Trigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) v1alpha1.EventListenerTrigger {
-	t := v1alpha1.EventListenerTrigger{
-		Template: v1alpha1.EventListenerTemplate{
-			Name:       ttName,
-			APIVersion: apiVersion,
-		},
-	}
-
-	for _, op := range ops {
-		op(&t)
-	}
-
-	return t
 }
 
 // EventListenerTriggerName adds a Name to the Trigger in EventListenerSpec Triggers.
