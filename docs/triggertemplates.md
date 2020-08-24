@@ -38,9 +38,9 @@ spec:
         name: simple-pipeline
       params:
       - name: message
-        value: $(params.message)
+        value: $(tt.params.message)
       - name: contenttype
-        value: $(params.contenttype)
+        value: $(tt.params.contenttype)
       resources:
       - name: git-source
         resourceSpec:
