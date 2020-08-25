@@ -35,9 +35,10 @@ Creates an EventListener that listens for GitHub webhook events.
 
    The response status code should be `201 Created`
    
-   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature. 
+   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
    
-   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload* and `secretKey` is the *given secretToken*.
+   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload ex:* `{"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git"}}`
+   and `secretKey` is the *given secretToken ex:* `1234567`.
 
 1. You should see a new TaskRun that got created:
 
