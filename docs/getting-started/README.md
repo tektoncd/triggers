@@ -34,11 +34,20 @@ Now that we have our cluster ready, we need to setup our getting-started
 namespace and RBAC. We will keep everything inside this single namespace for
 easy cleanup. In the unlikely event that you get stuck/flummoxed, the best
 course of action might be to just delete this namespace and start fresh.
+You should take note of the _ingress_ subdomain, or the external IP of
+your cluster, you will need this for your Webhook in later steps.
 
 - Create the _getting-started_ namespace, where all our resources will live.
   - `kubectl create namespace getting-started`
 - [Create the admin user, role and rolebinding](./rbac/admin-role.yaml)
   - `kubectl apply -f ./docs/getting-started/rbac/admin-role.yaml`
+- If you have a cluster secret for a Let's Encrypt cert already provisioned
+you will need to export it, and reimport it to the _getting-started_ namespace.
+The following is a general example of what you'd need to do.
+  - ```bash
+	kubectl get secret <name> --namespace=<namespace> --export -o yaml |\
+	   kubectl apply --namespace=<new namespace> -f -
+	```
 - [Create the create-webhook user, role and rolebinding](./rbac/webhook-role.yaml)
   - `kubectl apply -f ./docs/getting-started/rbac/webhook-role.yaml`
   - This will allow our webhook to create the things it needs to.
@@ -131,10 +140,15 @@ You will need to create a
 [GitHub Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line#creating-a-token)
 with the following access.
 
+
 - `public_repo`
 - `admin:repo_hook`
 
 Next, create a secret like so with your access token.
+
+**NOTE**: You do NOT have to `base64` encode this access token, just copy paste it in.
+Also, the `secret` can be any string data. Examples: mordor-awaits, my-name-is-bill,
+tekton, tekton-1s-awes0me.
 
 ```
 apiVersion: v1
@@ -157,6 +171,7 @@ minimum.
 - GitHubOrg: The GitHub org you are using for this getting-started.
 - GitHubUser: Your GitHub username.
 - GitHubRepo: The repo we will be using for this example.
+- ExternalDomain: Update this to be the to something other then `demo.iancoffey.com`
 
 ### Run the Webhook Task
 
