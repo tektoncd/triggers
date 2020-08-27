@@ -53,6 +53,30 @@ func TestObjectMeta(t *testing.T) {
 				Label("key2", "value2"),
 			},
 		},
+		{
+			name: "One Annotation",
+			normal: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"key1": "value1",
+				},
+			},
+			builderFuncs: []ObjectMetaOp{
+				Annotation("key1", "value1"),
+			},
+		},
+		{
+			name: "Two Annotations",
+			normal: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+				},
+			},
+			builderFuncs: []ObjectMetaOp{
+				Annotation("key1", "value1"),
+				Annotation("key2", "value2"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

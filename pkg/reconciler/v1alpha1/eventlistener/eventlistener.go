@@ -166,6 +166,10 @@ func reconcileObjectMeta(oldMeta *metav1.ObjectMeta, newMeta metav1.ObjectMeta) 
 		updated = true
 		oldMeta.Labels = newMeta.Labels
 	}
+	if !reflect.DeepEqual(oldMeta.Annotations, newMeta.Annotations) {
+		updated = true
+		oldMeta.Annotations = newMeta.Annotations
+	}
 	if !reflect.DeepEqual(oldMeta.OwnerReferences, newMeta.OwnerReferences) {
 		updated = true
 		oldMeta.OwnerReferences = newMeta.OwnerReferences
@@ -448,6 +452,7 @@ func generateObjectMeta(el *v1alpha1.EventListener) metav1.ObjectMeta {
 		Name:            el.Status.Configuration.GeneratedResourceName,
 		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
 		Labels:          mergeLabels(el.Labels, GenerateResourceLabels(el.Name)),
+		Annotations:     el.Annotations,
 	}
 }
 

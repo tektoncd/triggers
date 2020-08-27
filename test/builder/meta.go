@@ -40,6 +40,16 @@ func Label(key, value string) ObjectMetaOp {
 	}
 }
 
+// Annotation adds a single annotation to the ObjectMeta.
+func Annotation(key, value string) ObjectMetaOp {
+	return func(m *metav1.ObjectMeta) {
+		if m.Annotations == nil {
+			m.Annotations = make(map[string]string)
+		}
+		m.Annotations[key] = value
+	}
+}
+
 // TypeMeta sets the TypeMeta struct with default values.
 func TypeMeta(kind, apiVersion string) TypeMetaOp {
 	return func(m *metav1.TypeMeta) {
