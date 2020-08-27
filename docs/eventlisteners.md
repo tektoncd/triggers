@@ -22,6 +22,7 @@ using [Event Interceptors](#Interceptors).
     - [Interceptors](#interceptors)
 - [Logging](#logging)
 - [Labels](#labels)
+- [Annotations](#annotations)
 - [EventListener Response](#eventlistener-response)
 - [Examples](#examples)
 - [Multi-Tenant Concerns](#multi-tenant-concerns)
@@ -219,6 +220,27 @@ Since the EventListener name and Trigger name are used as label values, they
 must adhere to the
 [Kubernetes syntax and character set requirements](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 for label values.
+
+## Annotations
+
+All the annotations provided in Eventlistener will be further propagated to the service
+and deployment created by that Eventlistener.
+
+Example: You may need to add some annotation to the service like you need to annotation
+for TLS support to a LoadBalancer service on AWS, you can specify that annotation in 
+Eventlistener and it will be available to the service created by EventListener.
+
+```
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: eventlistener
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: https
+```
+
+**Note**: If there are any annotations attached to the service or the deployment, they will get overwritten 
+by the annotations available in the eventlistener.
 
 ## Interceptors
 

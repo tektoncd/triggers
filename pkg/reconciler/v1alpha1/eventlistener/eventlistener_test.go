@@ -62,6 +62,7 @@ var (
 	}
 	reconcileKey      = fmt.Sprintf("%s/%s", namespace, eventListenerName)
 	updateLabel       = map[string]string{"update": "true"}
+	updateAnnotation  = map[string]string{"update": "true"}
 	updatedSa         = "updatedSa"
 	updateTolerations = []corev1.Toleration{{
 		Key:      "key",
@@ -301,12 +302,17 @@ func withAddedLabels(el *v1alpha1.EventListener) {
 	el.Labels = updateLabel
 }
 
+func withAddedAnnotations(el *v1alpha1.EventListener) {
+	el.Annotations = updateAnnotation
+}
+
 func TestReconcile(t *testing.T) {
 	os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	elPreReoncile := makeEL()
 	elWithStatus := makeEL(withStatus)
 	elWithLabels := makeEL(withStatus, withAddedLabels)
+	elWithAnnotations := makeEL(withStatus, withAddedAnnotations)
 
 	elWithUpdatedSA := makeEL(withStatus, func(el *v1alpha1.EventListener) {
 		el.Spec.ServiceAccountName = updatedSa
@@ -337,6 +343,10 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
 	})
 
+	elDeploymentWithAnnotations := makeDeployment(func(d *appsv1.Deployment) {
+		d.Annotations = updateAnnotation
+	})
+
 	elDeploymentWithUpdatedSA := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.ServiceAccountName = updatedSa
 	})
@@ -364,6 +374,10 @@ func TestReconcile(t *testing.T) {
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
 		s.Labels = mergeLabels(updateLabel, generatedLabels)
 		s.Spec.Selector = generatedLabels
+	})
+
+	elServiceWithAnnotation := makeService(func(s *corev1.Service) {
+		s.Annotations = updateAnnotation
 	})
 
 	elServiceTypeNodePort := makeService(func(s *corev1.Service) {
@@ -417,6 +431,24 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithLabels},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elServiceWithLabels},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		name: "update-eventlistener-annotations",
+		key:  reconcileKey,
+		// Resources before reconcile starts: EL has annotation that deployment/svc does not
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithAnnotations},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+		},
+		// We expect the deployment and services to propagate the annotations
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithAnnotations},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
+			Services:       []*corev1.Service{elServiceWithAnnotation},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -485,7 +517,7 @@ func TestReconcile(t *testing.T) {
 		},
 	}, {
 		// Check that if a user manually updates the labels for a service, we revert the change.
-		name: "update-el-serivice-labels",
+		name: "update-el-service-labels",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -497,6 +529,23 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added labels
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		// Check that if a user manually updates the annotations for a service, we revert the change.
+		name: "update-el-service-annotations",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Services:       []*corev1.Service{elServiceWithAnnotation},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added annotations
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
@@ -534,6 +583,22 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
+		name: "deployment-annotation-update",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
+			Services:       []*corev1.Service{elService},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
 		// Checks that we do not overwrite replicas changed on the deployment itself
 		name: "deployment-replica-update",
 		key:  reconcileKey,
@@ -550,76 +615,74 @@ func TestReconcile(t *testing.T) {
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
+	}, {
+		name: "eventlistener-replica-failure-status-update",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithDeploymentReplicaFailure},
+			Services:       []*corev1.Service{elService},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		name: "eventlistener-config-volume-mount-update",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		name:           "delete-eventlistener",
+		key:            reconcileKey,
+		startResources: test.Resources{},
+		endResources:   test.Resources{},
+	}, {
+		name:           "delete-last-eventlistener",
+		key:            reconcileKey,
+		startResources: test.Resources{},
+		endResources:   test.Resources{},
+	}, {
+		name: "delete-last-eventlistener-in-our-namespace",
+		key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
+		startResources: test.Resources{
+			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
+			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
+			ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
+		},
+	}, {
+		name: "delete-eventlistener-with-remaining-eventlistener",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+		},
 	},
-		{
-			name: "eventlistener-replica-failure-status-update",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithDeploymentReplicaFailure},
-				Services:       []*corev1.Service{elService},
-				Deployments:    []*appsv1.Deployment{elDeployment},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				Deployments:    []*appsv1.Deployment{elDeployment},
-				Services:       []*corev1.Service{elService},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-		},
-		{
-			name: "eventlistener-config-volume-mount-update",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				Deployments:    []*appsv1.Deployment{elDeployment},
-				Services:       []*corev1.Service{elService},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-		}, {
-			name:           "delete-eventlistener",
-			key:            reconcileKey,
-			startResources: test.Resources{},
-			endResources:   test.Resources{},
-		}, {
-			name:           "delete-last-eventlistener",
-			key:            reconcileKey,
-			startResources: test.Resources{},
-			endResources:   test.Resources{},
-		}, {
-			name: "delete-last-eventlistener-in-our-namespace",
-			key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
-			startResources: test.Resources{
-				Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
-				ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
-			},
-			endResources: test.Resources{
-				Namespaces: []*corev1.Namespace{reconcilerNamespaceResource},
-				ConfigMaps: []*corev1.ConfigMap{reconcilerLoggingConfigMap},
-			},
-		}, {
-			name: "delete-eventlistener-with-remaining-eventlistener",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				Deployments:    []*appsv1.Deployment{elDeployment},
-				Services:       []*corev1.Service{elService},
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -800,6 +863,27 @@ func Test_generateObjectMeta(t *testing.T) {
 				BlockOwnerDeletion: &blockOwnerDeletion,
 			}},
 			Labels: mergeLabels(map[string]string{"k": "v"}, generatedLabels),
+		},
+	}, {
+		name: "EventListener with Annotation",
+		el: bldr.EventListener(eventListenerName, "",
+			bldr.EventListenerMeta(
+				bldr.Annotation("k", "v"),
+			),
+		),
+		expectedObjectMeta: metav1.ObjectMeta{
+			Namespace: "",
+			Name:      "",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "triggers.tekton.dev/v1alpha1",
+				Kind:               "EventListener",
+				Name:               eventListenerName,
+				UID:                "",
+				Controller:         &isController,
+				BlockOwnerDeletion: &blockOwnerDeletion,
+			}},
+			Labels:      generatedLabels,
+			Annotations: map[string]string{"k": "v"},
 		},
 	}}
 	for i := range tests {
