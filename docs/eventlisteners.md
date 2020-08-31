@@ -52,6 +52,8 @@ the following fields:
   - [`replicas`](#replicas) - Specifies the number of EventListener pods
   - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
     for your EventListener pod
+  - [`resources`](#resources) - Specifies the Kubernetes Resource information
+    for your EventListener pod
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -197,6 +199,50 @@ spec:
       value: value
       operator: Equal
       effect: NoSchedule
+```
+
+### Resources
+
+The `resources` field is optional.
+Resource field helps to provide Kubernetes or custom resource information.
+
+For more info on the design refer [TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md)
+
+Right now the `resources` field is optional in order to support backward compatibility with original behavior of `podTemplate`, `serviceType` and `serviceAccountName` fieds.
+In the future, we plan to deprecate `serviceAccountName`, `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
+
+For now `resources` has support for `kubernetesResource` but later it will have a support for Custom CRD`(ex: Knative Service)` as `customResource`
+
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: NodePort
+      spec:
+        template:
+          metadata:
+            labels:
+              key: "value"
+            annotations:
+              key: "value"
+          spec:
+            serviceAccountName: tekton-triggers-github-sa
+            nodeSelector:
+              app: test
+            tolerations:
+            - key: key
+              value: value
+              operator: Equal
+              effect: NoSchedule
+```
+
+With the help of `kubernetesResource` user can specify [PodTemplateSpec](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704).
+
+Right now the allowed values as part of `podSpec` are
+```text
+ServiceAccountName
+NodeSelector
+Tolerations
 ```
 
 ### Logging
@@ -373,7 +419,6 @@ kind: EventListener
 metadata:
   name: github-listener-interceptor
 spec:
-  serviceAccountName: tekton-triggers-github-sa
   triggers:
     - name: github-listener
       interceptors:
@@ -389,6 +434,12 @@ spec:
         - ref: github-pr-binding
       template:
         name: github-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-github-sa
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding

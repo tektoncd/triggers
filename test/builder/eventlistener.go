@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 )
 
@@ -39,6 +40,12 @@ type EventListenerStatusOp func(*v1alpha1.EventListenerStatus)
 
 // EventListenerTriggerOp is an operation which modifies the Trigger.
 type EventListenerTriggerOp func(*v1alpha1.EventListenerTrigger)
+
+// EventListenerKubernetesResourceOp is an operation which modifies the Kubernetes Resources.
+type EventListenerKubernetesResourceOp func(*v1alpha1.KubernetesResource)
+
+// EventListenerResourceOp is an operation which modifies the EventListener spec Resources.
+type EventListenerResourceOp func(*v1alpha1.Resources)
 
 // EventInterceptorOp is an operation which modifies the EventInterceptor.
 type EventInterceptorOp func(*v1alpha1.EventInterceptor)
@@ -311,5 +318,39 @@ func EventListenerCELOverlay(key, expression string) EventInterceptorOp {
 				Expression: expression,
 			})
 		}
+	}
+}
+
+// EventListenerResources set specified resources to the EventListener.
+func EventListenerResources(ops ...EventListenerResourceOp) EventListenerSpecOp {
+	return func(spec *v1alpha1.EventListenerSpec) {
+		spec.Resources = v1alpha1.Resources{}
+		for _, op := range ops {
+			op(&spec.Resources)
+		}
+	}
+}
+
+// EventListenerKubernetesResources set specified Kubernetes resource to the EventListener.
+func EventListenerKubernetesResources(ops ...EventListenerKubernetesResourceOp) EventListenerResourceOp {
+	return func(spec *v1alpha1.Resources) {
+		spec.KubernetesResource = &v1alpha1.KubernetesResource{}
+		for _, op := range ops {
+			op(spec.KubernetesResource)
+		}
+	}
+}
+
+// EventListenerPodSpec sets the specified podSpec duck type to the EventListener.
+func EventListenerPodSpec(podSpec duckv1.WithPodSpec) EventListenerKubernetesResourceOp {
+	return func(spec *v1alpha1.KubernetesResource) {
+		spec.WithPodSpec = podSpec
+	}
+}
+
+// EventListenerServiceType sets the specified service type to the EventListener.
+func EventListenerServiceType(svcType string) EventListenerKubernetesResourceOp {
+	return func(spec *v1alpha1.KubernetesResource) {
+		spec.ServiceType = corev1.ServiceType(svcType)
 	}
 }

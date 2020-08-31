@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/ptr"
@@ -362,6 +363,33 @@ func TestReconcile(t *testing.T) {
 		})
 	})
 
+	elWithKubernetesResource := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+			ServiceType: corev1.ServiceTypeNodePort,
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						NodeSelector:       map[string]string{"key": "value"},
+						ServiceAccountName: "k8sresource",
+					},
+				},
+			},
+		}
+	})
+
+	elWithKubernetesResourceForObjectMeta := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      map[string]string{"labelkey": "labelvalue"},
+						Annotations: map[string]string{"annotationkey": "annotationvalue"},
+					},
+				},
+			},
+		}
+	})
+
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
 		d.Labels = mergeMaps(updateLabel, generatedLabels)
@@ -396,6 +424,20 @@ func TestReconcile(t *testing.T) {
 	deploymentMissingVolumes := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.Volumes = nil
 		d.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+	})
+
+	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.ServiceAccountName = "k8sresource"
+		d.Spec.Template.Spec.NodeSelector = map[string]string{"key": "value"}
+	})
+
+	deploymentForKubernetesResourceObjectMeta := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.ObjectMeta.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "EventListener",
+			"app.kubernetes.io/part-of":    "Triggers",
+			"eventlistener":                "my-eventlistener",
+			"labelkey":                     "labelvalue"}
+		d.Spec.Template.ObjectMeta.Annotations = map[string]string{"annotationkey": "annotationvalue"}
 	})
 
 	elService := makeService()
@@ -692,6 +734,36 @@ func TestReconcile(t *testing.T) {
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicasNotConsidered},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		name: "eventlistener with kubernetes resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResource},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResource},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResource},
+			Services:       []*corev1.Service{elServiceTypeNodePort},
+		},
+	}, {
+		name: "eventlistener with kubernetes resource for podtemplate objectmeta",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResourceObjectMeta},
+			Services:       []*corev1.Service{elService},
 		},
 	}}
 	for _, tt := range tests {

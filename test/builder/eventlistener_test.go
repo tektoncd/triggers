@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -530,6 +531,92 @@ func TestEventListenerBuilder(t *testing.T) {
 					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
 					EventListenerTriggerName("foo-trig"),
 					EventListenerCELInterceptor("body.value == 'test'", EventListenerCELOverlay("value", "'testing'")),
+				),
+			),
+		),
+	}, {
+		name: "Eventlistener with kubernetes resource",
+		normal: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Name: "foo-trig",
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Name:       "tb1",
+						Kind:       v1alpha1.NamespacedTriggerBindingKind,
+						Ref:        "tb1",
+						APIVersion: "v1alpha1",
+					}},
+					Template: &v1alpha1.EventListenerTemplate{
+						Name:       "tt1",
+						APIVersion: "v1alpha1",
+					},
+				}},
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						ServiceType: "NodePort",
+						WithPodSpec: duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels:      map[string]string{"key": "value"},
+									Annotations: map[string]string{"key": "value"},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{{
+										Env: []corev1.EnvVar{{
+											Name: "HTTP",
+										}},
+									}},
+									NodeSelector:       map[string]string{"beta.kubernetes.io/os": "linux"},
+									ServiceAccountName: "resource",
+									Tolerations: []corev1.Toleration{{
+										Key:      "key",
+										Operator: "Equal",
+										Value:    "value",
+										Effect:   "NoSchedule",
+									}},
+								},
+							},
+						},
+					}},
+			},
+		},
+		builder: EventListener("name", "namespace",
+			EventListenerSpec(
+				EventListenerResources(
+					EventListenerKubernetesResources(
+						EventListenerServiceType("NodePort"),
+						EventListenerPodSpec(duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels:      map[string]string{"key": "value"},
+									Annotations: map[string]string{"key": "value"},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{{
+										Env: []corev1.EnvVar{{
+											Name: "HTTP",
+										}},
+									}},
+									NodeSelector:       map[string]string{"beta.kubernetes.io/os": "linux"},
+									ServiceAccountName: "resource",
+									Tolerations: []corev1.Toleration{{
+										Key:      "key",
+										Operator: "Equal",
+										Value:    "value",
+										Effect:   "NoSchedule",
+									}},
+								},
+							},
+						}),
+					),
+				),
+				EventListenerTrigger("tt1", "v1alpha1",
+					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerName("foo-trig"),
 				),
 			),
 		),
