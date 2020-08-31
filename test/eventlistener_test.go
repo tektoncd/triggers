@@ -49,6 +49,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -283,21 +284,25 @@ func TestEventListenerCreate(t *testing.T) {
 				bldr.Label("triggers", "eventlistener"),
 			),
 			bldr.EventListenerSpec(
-				bldr.EventListenerServiceAccount(sa.Name),
-				bldr.EventListenerReplicas(3),
-				bldr.EventListenerPodTemplate(
-					bldr.EventListenerPodTemplateSpec(
-						bldr.EventListenerPodTemplateNodeSelector(map[string]string{"beta.kubernetes.io/os": "linux"}),
-						bldr.EventListenerPodTemplateTolerations([]corev1.Toleration{
-							{
-								Key:      "key",
-								Operator: "Equal",
-								Value:    "value",
-								Effect:   "NoSchedule",
+				bldr.EventListenerResources(
+					bldr.EventListenerKubernetesResources(
+						bldr.EventListenerPodSpec(duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								Spec: corev1.PodSpec{
+									ServiceAccountName: sa.Name,
+									NodeSelector:       map[string]string{"beta.kubernetes.io/os": "linux"},
+									Tolerations: []corev1.Toleration{{
+										Key:      "key",
+										Operator: "Equal",
+										Value:    "value",
+										Effect:   "NoSchedule",
+									}},
+								},
 							},
 						}),
 					),
 				),
+				bldr.EventListenerReplicas(3),
 				bldr.EventListenerTrigger(tt.Name, "",
 					bldr.EventListenerTriggerBinding(tb.Name, "", tb.Name, "v1alpha1"),
 					bldr.EventListenerTriggerBinding(ctb.Name, "ClusterTriggerBinding", ctb.Name, "v1alpha1"),

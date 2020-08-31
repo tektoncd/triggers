@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -58,6 +59,16 @@ type EventListenerSpec struct {
 	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
 	Replicas           *int32                 `json:"replicas,omitempty"`
 	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
+	Resources          Resources              `json:"resources,omitempty"`
+}
+
+type Resources struct {
+	KubernetesResource *KubernetesResource `json:"kubernetesResource,omitempty"`
+}
+
+type KubernetesResource struct {
+	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
+	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
 
 type PodTemplate struct {
