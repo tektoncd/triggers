@@ -14,26 +14,20 @@ Use this page to add the component to an existing Kubernetes cluster.
 
 ## Pre-requisites
 
-1.  A Kubernetes cluster version 1.15 or later (_if you don't have an existing
-    cluster_):
+1.  A Kubernetes cluster version 1.15 or later
 
-    ```bash
-    # Example cluster creation command on GKE
-    gcloud container clusters create $CLUSTER_NAME \
-      --zone=$CLUSTER_ZONE
-    ```
+    If you don't already have a cluster, you can create one for testing with
+    `kind`.  [Install
+    `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and
+    create a cluster by running [`kind create
+    cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster).
+    This will create a cluster running locally, with RBAC enabled.
 
-1.  Grant cluster-admin permissions to the current user:
-
-    ```bash
-    kubectl create clusterrolebinding cluster-admin-binding \
-    --clusterrole=cluster-admin \
-    --user=$(gcloud config get-value core/account)
-    ```
+1.  Grant current user `cluster-admin` privileges.
 
     _See
     [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
-    for more information_.
+    for more information._
 
 1.  Install Tekton Pipelines. You can install the latest version using the
     command below or follow the
@@ -42,6 +36,7 @@ Use this page to add the component to an existing Kubernetes cluster.
     ```bash
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
     ```
+
 
 ## Versions
 
