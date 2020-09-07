@@ -140,6 +140,21 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	if t == nil {
 		return errors.New("EventListenerTrigger not defined")
 	}
+
+	if t.Template == nil && t.TriggerRef != "" {
+		trigger, err := r.TriggersClient.TriggersV1alpha1().Triggers(r.EventListenerNamespace).Get(t.TriggerRef, metav1.GetOptions{})
+		if err != nil {
+			r.Logger.Fatalf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
+			return err
+		}
+		trig, err := triggersv1.ToEventListenerTrigger(trigger.Spec)
+		if err != nil {
+			r.Logger.Fatalf("Error changing Trigger to EventListenerTrigger: %s", err)
+			return err
+		}
+		t = &trig
+	}
+
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
 	finalPayload, header, err := r.ExecuteInterceptors(t, request, event, log)

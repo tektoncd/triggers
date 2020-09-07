@@ -32,6 +32,7 @@ import (
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
+	faketriggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger/fake"
 	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding/fake"
 	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate/fake"
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,6 +58,7 @@ type Resources struct {
 	EventListeners         []*v1alpha1.EventListener
 	TriggerBindings        []*v1alpha1.TriggerBinding
 	TriggerTemplates       []*v1alpha1.TriggerTemplate
+	Triggers               []*v1alpha1.Trigger
 	Deployments            []*appsv1.Deployment
 	Services               []*corev1.Service
 	ConfigMaps             []*corev1.ConfigMap
@@ -97,6 +99,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	elInformer := fakeeventlistenerinformer.Get(ctx)
 	ttInformer := faketriggertemplateinformer.Get(ctx)
 	tbInformer := faketriggerbindinginformer.Get(ctx)
+	trInformer := faketriggerinformer.Get(ctx)
 	deployInformer := fakedeployinformer.Get(ctx)
 	serviceInformer := fakeserviceinformer.Get(ctx)
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
@@ -139,6 +142,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(tt.Namespace).Create(tt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tr := range r.Triggers {
+		if err := trInformer.Informer().GetIndexer().Add(tr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Triggers.TriggersV1alpha1().Triggers(tr.Namespace).Create(tr); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -267,7 +278,14 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		for _, s := range secretsList.Items {
 			testResources.Secrets = append(testResources.Secrets, s.DeepCopy())
 		}
-
+		// Get Triggers
+		trList, err := c.Triggers.TriggersV1alpha1().Triggers(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, tr := range trList.Items {
+			testResources.Triggers = append(testResources.Triggers, tr.DeepCopy())
+		}
 	}
 	return testResources, nil
 }

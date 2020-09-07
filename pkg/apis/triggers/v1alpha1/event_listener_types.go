@@ -74,10 +74,12 @@ type PodTemplate struct {
 
 // EventListenerTrigger represents a connection between TriggerBinding, Params,
 // and TriggerTemplate; TriggerBinding provides extracted values for
-// TriggerTemplate to then create resources from.
+// TriggerTemplate to then create resources from. TriggerRef can also be
+// provided instead of TriggerBinding, Interceptors and TriggerTemplate
 type EventListenerTrigger struct {
-	Bindings []*EventListenerBinding `json:"bindings"`
-	Template EventListenerTemplate   `json:"template"`
+	Bindings   []*EventListenerBinding `json:"bindings,omitempty"`
+	Template   *EventListenerTemplate  `json:"template,omitempty"`
+	TriggerRef string                  `json:"triggerRef,omitempty"`
 	// +optional
 	Name         string              `json:"name,omitempty"`
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`

@@ -50,6 +50,10 @@ func (s *EventListenerSpec) validate(ctx context.Context) *apis.FieldError {
 }
 
 func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
+	if t.Template == nil && t.TriggerRef == "" {
+		return apis.ErrMissingOneOf("template", "triggerRef")
+	}
+
 	// Validate optional Bindings
 	for i, b := range t.Bindings {
 		// Either Ref or Spec should be present
@@ -68,14 +72,17 @@ func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
 	}
 	// Validate required TriggerTemplate
 	// Optional explicit match
-	if t.Template.APIVersion != "" {
-		if t.Template.APIVersion != "v1alpha1" {
-			return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "template.apiVersion")
+	if t.Template != nil {
+		if t.Template.APIVersion != "" {
+			if t.Template.APIVersion != "v1alpha1" {
+				return apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "template.apiVersion")
+			}
+		}
+		if t.Template.Name == "" {
+			return apis.ErrMissingField("template.name")
 		}
 	}
-	if t.Template.Name == "" {
-		return apis.ErrMissingField("template.name")
-	}
+
 	for i, interceptor := range t.Interceptors {
 		if err := interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)); err != nil {
 			return err

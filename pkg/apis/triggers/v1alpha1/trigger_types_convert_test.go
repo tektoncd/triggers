@@ -31,7 +31,7 @@ func TestToEventListenerTrigger(t *testing.T) {
 		{
 			name: "Convert Empty Object",
 			in:   TriggerSpec{},
-			out:  EventListenerTrigger{},
+			out:  EventListenerTrigger{Template: &EventListenerTemplate{}},
 		},
 		{
 			name: "Convert Partial Object",
@@ -43,7 +43,7 @@ func TestToEventListenerTrigger(t *testing.T) {
 			},
 			out: EventListenerTrigger{
 				Name: "foo",
-				Template: EventListenerTemplate{
+				Template: &EventListenerTemplate{
 					Name: "baz",
 				},
 			},
@@ -91,7 +91,7 @@ func TestToEventListenerTrigger(t *testing.T) {
 						}},
 					},
 				}},
-				Template: EventListenerTemplate{
+				Template: &EventListenerTemplate{
 					Name:       "a",
 					APIVersion: "b",
 				},

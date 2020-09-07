@@ -84,6 +84,18 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Name:      "my-triggerTemplate2",
 		},
 	}
+	trigger1 := &v1alpha1.Trigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-trigger1",
+		},
+	}
+	trigger2 := &v1alpha1.Trigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-trigger2",
+		},
+	}
 	deployment1 := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -137,6 +149,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				EventListeners:         []*v1alpha1.EventListener{eventListener1},
 				TriggerBindings:        []*v1alpha1.TriggerBinding{triggerBinding1},
 				TriggerTemplates:       []*v1alpha1.TriggerTemplate{triggerTemplate1},
+				Triggers:               []*v1alpha1.Trigger{trigger1},
 				Deployments:            []*appsv1.Deployment{deployment1},
 				Services:               []*corev1.Service{service1},
 			},
@@ -149,6 +162,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				EventListeners:         []*v1alpha1.EventListener{eventListener1, eventListener2},
 				TriggerBindings:        []*v1alpha1.TriggerBinding{triggerBinding1, triggerBinding2},
 				TriggerTemplates:       []*v1alpha1.TriggerTemplate{triggerTemplate1, triggerTemplate2},
+				Triggers:               []*v1alpha1.Trigger{trigger1, trigger2},
 				Deployments:            []*appsv1.Deployment{deployment1, deployment2},
 				Services:               []*corev1.Service{service1, service2},
 			},
