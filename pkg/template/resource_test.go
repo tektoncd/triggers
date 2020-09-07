@@ -327,7 +327,7 @@ func Test_ResolveTrigger(t *testing.T) {
 					Ref:  "my-triggerbinding",
 					Kind: triggersv1.NamespacedTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -345,7 +345,7 @@ func Test_ResolveTrigger(t *testing.T) {
 					Ref:  "my-clustertriggerbinding",
 					Kind: triggersv1.ClusterTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -368,7 +368,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						}},
 					},
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -392,7 +392,7 @@ func Test_ResolveTrigger(t *testing.T) {
 		{
 			name: "no binding",
 			trigger: triggersv1.EventListenerTrigger{
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -428,7 +428,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						APIVersion: "v1alpha1",
 					},
 				},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -453,7 +453,7 @@ func Test_ResolveTrigger(t *testing.T) {
 					APIVersion: "v1alpha1",
 					Ref:        "my-triggerbinding",
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -493,7 +493,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 					Ref:  "invalid-tb-name",
 					Kind: triggersv1.NamespacedTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -509,7 +509,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 					Ref:  "invalid-ctb-name",
 					Kind: triggersv1.ClusterTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "my-triggertemplate",
 					APIVersion: "v1alpha1",
 				},
@@ -525,7 +525,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 					Ref:  "my-triggerbinding",
 					Kind: triggersv1.NamespacedTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "invalid-tt-name",
 					APIVersion: "v1alpha1",
 				},
@@ -541,7 +541,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 					Ref:  "invalid-tb-name",
 					Kind: triggersv1.NamespacedTriggerBindingKind,
 				}},
-				Template: triggersv1.EventListenerTemplate{
+				Template: &triggersv1.EventListenerTemplate{
 					Name:       "invalid-tt-name",
 					APIVersion: "v1alpha1",
 				},

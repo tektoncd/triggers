@@ -257,6 +257,113 @@ func TestHandleEvent(t *testing.T) {
 	}
 }
 
+func TestHandleEventTriggerRef(t *testing.T) {
+	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+
+	pipelineResource := pipelinev1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "$(tt.params.name)",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":  "$(tt.params.foo)",
+				"type": "$(tt.params.type)",
+			},
+		},
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
+				{Name: "url", Value: "$(tt.params.url)"},
+				{Name: "revision", Value: "$(tt.params.revision)"},
+			},
+		},
+	}
+	pipelineResourceBytes, err := json.Marshal(pipelineResource)
+	if err != nil {
+		t.Fatalf("Error unmarshalling pipelineResource: %s", err)
+	}
+
+	tt := bldr.TriggerTemplate("my-triggertemplate", namespace,
+		bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("name", "", ""),
+			bldr.TriggerTemplateParam("url", "", ""),
+			bldr.TriggerTemplateParam("revision", "", ""),
+			bldr.TriggerTemplateParam("foo", "", ""),
+			bldr.TriggerTemplateParam("type", "", ""),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
+		))
+	// Create TriggerBinding
+	tbs := []*triggersv1.TriggerBinding{bldr.TriggerBinding("my-triggerbinding", namespace,
+		bldr.TriggerBindingSpec(
+			bldr.TriggerBindingParam("name", "my-pipelineresource"),
+			bldr.TriggerBindingParam("url", "$(body.repository.url)"),
+			bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
+			bldr.TriggerBindingParam("foo", "$(body.foo)"),
+			bldr.TriggerBindingParam("type", "$(header.Content-Type)"),
+		))}
+	// Add TriggerBinding to Trigger
+	triggers := []*triggersv1.Trigger{bldr.Trigger("my-trigger", namespace, bldr.TriggerSpec(
+		bldr.TriggerSpecBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
+		bldr.TriggerSpecTemplate("my-triggertemplate", "v1alpha1"),
+	))}
+	// Add TriggerRef to EventListener
+	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(bldr.EventListenerTriggerRef("my-trigger")))
+
+	resources := test.Resources{
+		TriggerBindings:  tbs,
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
+		Triggers:         triggers,
+	}
+
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
+
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
+	if err != nil {
+		t.Fatalf("Error creating Post request: %s", err)
+	}
+
+	checkSinkResponse(t, resp, el.Name)
+	// Check right resources were created.
+	var wantPrs []pipelinev1alpha1.PipelineResource
+	wantResource := pipelinev1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pipelineresource",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":         "bar\t\r\nbaz昨",
+				"type":        "application/json",
+				resourceLabel: "my-eventlistener",
+				triggerLabel:  el.Spec.Triggers[0].Name,
+				eventIDLabel:  eventID,
+			},
+		},
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
+				{Name: "url", Value: "testurl"},
+				{Name: "revision", Value: "testrevision"},
+			},
+		},
+	}
+	wantPrs = append(wantPrs, wantResource)
+	// Sort actions (we do not know what order they executed in)
+	gotPrs := getCreatedPipelineResources(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantPrs, gotPrs, cmpopts.SortSlices(comparePR)); diff != "" {
+		t.Errorf("Created resources mismatch (-want + got): %s", diff)
+	}
+}
+
 func TestHandleEventWithInterceptors(t *testing.T) {
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 
@@ -300,7 +407,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
 				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-				Template: triggersv1.EventListenerTemplate{Name: "tt"},
+				Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					GitHub: &triggersv1.GitHubInterceptor{
 						SecretRef: &triggersv1.SecretRef{
@@ -427,7 +534,7 @@ func TestHandleEventPassesURLThrough(t *testing.T) {
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
 				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-				Template: triggersv1.EventListenerTemplate{Name: "tt"},
+				Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					CEL: &triggersv1.CELInterceptor{
 						Overlays: []triggersv1.CELOverlay{
@@ -541,7 +648,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	for i := 0; i < numTriggers; i++ {
 		trigger := triggersv1.EventListenerTrigger{
 			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-			Template: triggersv1.EventListenerTemplate{Name: "tt"},
+			Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: interceptorObjectRef,
@@ -884,7 +991,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 				Triggers: []triggersv1.EventListenerTrigger{{
 					ServiceAccountName: testCase.userVal,
 					Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-					Template:           triggersv1.EventListenerTemplate{Name: "tt"},
+					Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*triggersv1.EventInterceptor{{
 						GitHub: &triggersv1.GitHubInterceptor{
 							SecretRef: &triggersv1.SecretRef{
@@ -972,7 +1079,7 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 			Triggers: []triggersv1.EventListenerTrigger{{
 				ServiceAccountName: userWithPermissions,
 				Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
-				Template:           triggersv1.EventListenerTemplate{Name: "tt"},
+				Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					Bitbucket: &triggersv1.BitbucketInterceptor{
 						SecretRef: &triggersv1.SecretRef{

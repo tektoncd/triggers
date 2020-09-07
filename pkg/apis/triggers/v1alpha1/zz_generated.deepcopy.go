@@ -289,7 +289,11 @@ func (in *EventListenerTrigger) DeepCopyInto(out *EventListenerTrigger) {
 			}
 		}
 	}
-	out.Template = in.Template
+	if in.Template != nil {
+		in, out := &in.Template, &out.Template
+		*out = new(TriggerSpecTemplate)
+		**out = **in
+	}
 	if in.Interceptors != nil {
 		in, out := &in.Interceptors, &out.Interceptors
 		*out = make([]*TriggerInterceptor, len(*in))

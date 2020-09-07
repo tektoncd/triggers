@@ -136,7 +136,7 @@ func EventListenerPodTemplateNodeSelector(nodeSelector map[string]string) EventL
 func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
 		t := v1alpha1.EventListenerTrigger{
-			Template: v1alpha1.EventListenerTemplate{
+			Template: &v1alpha1.EventListenerTemplate{
 				Name:       ttName,
 				APIVersion: apiVersion,
 			},
@@ -147,6 +147,15 @@ func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTrigger
 		}
 
 		spec.Triggers = append(spec.Triggers, t)
+	}
+}
+
+// EventListenerTriggerRef adds an EventListenerTrigger with TriggerRef
+// to the EventListenerSpec Triggers.
+func EventListenerTriggerRef(trName string) EventListenerSpecOp {
+	return func(spec *v1alpha1.EventListenerSpec) {
+		spec.Triggers = append(spec.Triggers,
+			v1alpha1.EventListenerTrigger{TriggerRef: trName})
 	}
 }
 

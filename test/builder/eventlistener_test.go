@@ -169,7 +169,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -184,6 +184,24 @@ func TestEventListenerBuilder(t *testing.T) {
 				),
 			),
 		),
+	}, {
+		name: "One Trigger with one TriggerRef",
+		normal: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				ServiceAccountName: "serviceAccount",
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					TriggerRef: "my-trigger",
+				}},
+			},
+		},
+		builder: EventListener("name", "namespace",
+			EventListenerSpec(
+				EventListenerServiceAccount("serviceAccount"),
+				EventListenerTriggerRef("my-trigger"))),
 	}, {
 		name: "One Trigger with one Binding",
 		normal: &v1alpha1.EventListener{
@@ -200,7 +218,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -231,7 +249,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -262,7 +280,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -302,7 +320,7 @@ func TestEventListenerBuilder(t *testing.T) {
 							APIVersion: "v1alpha1",
 						},
 					},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -341,7 +359,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -352,7 +370,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb2",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt2",
 						APIVersion: "v1alpha1",
 					},
@@ -402,7 +420,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -455,7 +473,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
@@ -498,7 +516,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
 					}},
-					Template: v1alpha1.EventListenerTemplate{
+					Template: &v1alpha1.EventListenerTemplate{
 						Name:       "tt1",
 						APIVersion: "v1alpha1",
 					},
