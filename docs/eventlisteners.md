@@ -70,7 +70,7 @@ metadata:
 rules:
 # Permissions for every EventListener deployment to function
 - apiGroups: ["triggers.tekton.dev"]
-  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
   verbs: ["get"]
 - apiGroups: [""]
   # secrets are only needed for Github/Gitlab interceptors
@@ -99,8 +99,11 @@ The `triggers` field is required. Each EventListener can consist of one or more
 - `name` - (Optional) a valid
   [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 - [`interceptors`](#interceptors) - (Optional) list of interceptors to use
-- `bindings` - A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use.
-- `template` - The name of `TriggerTemplate` to use
+- `bindings` - (Optional) A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use.
+- `template` - (Optional) The name of `TriggerTemplate` to use
+- `triggerRef` - (Optional) Reference to the [`Trigger`](./triggers.md).
+
+A `trigger` field must have `template` (along with needed `bindings` and `interceptors`) or `triggerRef`.
 
 ```yaml
 triggers:
@@ -117,6 +120,12 @@ triggers:
                 value: Hello from the Triggers EventListener!
     template:
       name: pipeline-template
+```
+
+Or with only `triggerRef`:
+```yaml
+triggers:
+    - triggerRef: trigger
 ```
 
 Also, to support multi-tenant styled scenarios, where an administrator may not want all triggers to have
