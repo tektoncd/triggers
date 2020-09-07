@@ -372,6 +372,22 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
+		name: "CEL interceptor with bad filter expression",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
+					bldr.EventListenerCELInterceptor("body.value == 'test')"),
+				))),
+	}, {
+		name: "CEL interceptor with bad overlay expression",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "", "tb", "v1alpha1"),
+					bldr.EventListenerCELInterceptor("", bldr.EventListenerCELOverlay("body.value", "'testing')")),
+				))),
+	}, {
 		name: "Triggers name has invalid label characters",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
