@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/cel-go/cel"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -157,6 +158,20 @@ func (i *EventInterceptor) validate(ctx context.Context) *apis.FieldError {
 	if i.CEL != nil {
 		if i.CEL.Filter == "" && len(i.CEL.Overlays) == 0 {
 			return apis.ErrMultipleOneOf("cel.filter", "cel.overlays")
+		}
+		env, err := cel.NewEnv()
+		if err != nil {
+			return apis.ErrInvalidValue(fmt.Errorf("failed to create a CEL env: %s", err), "cel.filter")
+		}
+		if i.CEL.Filter != "" {
+			if _, issues := env.Parse(i.CEL.Filter); issues != nil && issues.Err() != nil {
+				return apis.ErrInvalidValue(fmt.Errorf("failed to parse the CEL filter: %s", issues.Err()), "cel.filter")
+			}
+		}
+		for _, v := range i.CEL.Overlays {
+			if _, issues := env.Parse(v.Expression); issues != nil && issues.Err() != nil {
+				return apis.ErrInvalidValue(fmt.Errorf("failed to parse the CEL overlay: %s", issues.Err()), "cel.overlay")
+			}
 		}
 	}
 	return nil
