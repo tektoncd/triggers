@@ -63,7 +63,7 @@ func getCache(req *http.Request) map[string]interface{} {
 func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, eventListenerNamespace string) ([]byte, error) {
 	var cache map[string]interface{}
 
-	cacheKey := path.Join("secret", sr.Namespace, sr.SecretName, sr.SecretKey)
+	cacheKey := path.Join("secret", eventListenerNamespace, sr.SecretName, sr.SecretKey)
 	if req != nil {
 		cache = getCache(req)
 		if secretValue, ok := cache[cacheKey]; ok {
@@ -71,11 +71,7 @@ func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.S
 		}
 	}
 
-	ns := sr.Namespace
-	if ns == "" {
-		ns = eventListenerNamespace
-	}
-	secret, err := cs.CoreV1().Secrets(ns).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
+	secret, err := cs.CoreV1().Secrets(eventListenerNamespace).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

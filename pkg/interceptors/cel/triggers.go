@@ -291,17 +291,8 @@ func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Int
 		if !ok {
 			return types.ValOrErr(compareString, "unexpected type '%v' passed to compareSecret", vals[0].Type())
 		}
-		paramCount := len(vals)
 
-		var secretNS types.String
-		if paramCount == 4 {
-			secretNS, ok = vals[3].(types.String)
-			if !ok {
-				return types.ValOrErr(secretNS, "unexpected type '%v' passed to compareSecret", vals[1].Type())
-			}
-		} else {
-			secretNS = types.String(defaultNS)
-		}
+		secretNS := types.String(defaultNS)
 
 		secretName, ok := vals[2].(types.String)
 		if !ok {
@@ -316,7 +307,6 @@ func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Int
 		secretRef := &triggersv1.SecretRef{
 			SecretKey:  string(secretKey),
 			SecretName: string(secretName),
-			Namespace:  string(secretNS),
 		}
 		secretToken, err := interceptors.GetSecretToken(request, k, secretRef, string(secretNS))
 		if err != nil {

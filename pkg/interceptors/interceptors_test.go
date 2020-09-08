@@ -93,7 +93,6 @@ func makeSecretRef() triggersv1.SecretRef {
 	return triggersv1.SecretRef{
 		SecretKey:  "token",
 		SecretName: "test-secret",
-		Namespace:  testNS,
 	}
 }
 
