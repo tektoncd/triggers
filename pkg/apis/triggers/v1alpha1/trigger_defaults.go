@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,13 +20,23 @@ import (
 	"context"
 )
 
+type triggerSpecBindingArray []*TriggerSpecBinding
+
 // SetDefaults sets the defaults on the object.
-func (el *EventListener) SetDefaults(ctx context.Context) {
+func (t *Trigger) SetDefaults(ctx context.Context) {
 	if IsUpgradeViaDefaulting(ctx) {
 		// set defaults
-		for i := range el.Spec.Triggers {
-			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).
-				defaultBindings()
+		triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
+	}
+}
+
+// set default TriggerBinding kind for Bindings in TriggerSpec
+func (t triggerSpecBindingArray) defaultBindings() {
+	if len(t) > 0 {
+		for _, b := range t {
+			if b.Kind == "" {
+				b.Kind = NamespacedTriggerBindingKind
+			}
 		}
 	}
 }
