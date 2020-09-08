@@ -579,12 +579,6 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			want: "failed to find secret.*testing.*",
 		},
 		{
-			name:     "secret not in default ns",
-			expr:     "'testing'.compareSecret('testSecret', 'mytoken')",
-			secretNS: "another-ns",
-			want:     "failed to find secret.*another-ns.*",
-		},
-		{
 			name: "invalid parseJSON body",
 			expr: "body.value.parseJSON().test == 'test'",
 			want: "invalid character 'e' in literal",

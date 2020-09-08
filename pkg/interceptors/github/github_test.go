@@ -231,11 +231,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				request.Header.Add("X-Hub-Signature", tt.args.signature)
 			}
 			if tt.args.secret != nil {
-				ns := tt.GitHub.SecretRef.Namespace
-				if ns == "" {
-					ns = metav1.NamespaceDefault
-				}
-				if _, err := kubeClient.CoreV1().Secrets(ns).Create(ctx, tt.args.secret, metav1.CreateOptions{}); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(ctx, tt.args.secret, metav1.CreateOptions{}); err != nil {
 					t.Error(err)
 				}
 			}

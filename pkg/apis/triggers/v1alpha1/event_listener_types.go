@@ -112,7 +112,6 @@ type EventInterceptor = TriggerInterceptor
 type SecretRef struct {
 	SecretKey  string `json:"secretKey,omitempty"`
 	SecretName string `json:"secretName,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
 }
 
 // EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBindingresource.

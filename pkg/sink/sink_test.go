@@ -413,7 +413,6 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 						SecretRef: &triggersv1.SecretRef{
 							SecretKey:  "secretKey",
 							SecretName: "secret",
-							Namespace:  namespace,
 						},
 						EventTypes: []string{"pull_request"},
 					},
@@ -997,7 +996,6 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 							SecretRef: &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
-								Namespace:  namespace,
 							},
 							EventTypes: []string{"pull_request"},
 						},
@@ -1085,7 +1083,6 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 						SecretRef: &triggersv1.SecretRef{
 							SecretKey:  "secretKey",
 							SecretName: "secret",
-							Namespace:  namespace,
 						},
 						EventTypes: []string{"repo:refs_changed"},
 					},

@@ -215,11 +215,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				request.Header.Add("X-GitLab-Event", tt.args.eventType)
 			}
 			if tt.args.secret != nil {
-				ns := tt.GitLab.SecretRef.Namespace
-				if ns == "" {
-					ns = metav1.NamespaceDefault
-				}
-				if _, err := kubeClient.CoreV1().Secrets(ns).Create(context.Background(), tt.args.secret, metav1.CreateOptions{}); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.args.secret, metav1.CreateOptions{}); err != nil {
 					t.Error(err)
 				}
 			}
