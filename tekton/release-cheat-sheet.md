@@ -37,9 +37,9 @@ the triggers repo, a terminal window and a text editor.
 5. Create environment variables for bash scripts in later steps.
 
     ```bash
-    VERSION_TAG=# UPDATE THIS. Example: v0.11.2
-    PREVIOUS_VERSION_TAG=# UPDATE THIS. Example v0.11.1. Used to calculate release notes 
-    GIT_RESOURCE_NAME=# UPDATE THIS. Example: tekton-triggers-git-v0-11-2
+    VERSION_TAG=# UPDATE THIS. Example: v0.6.2
+    PREVIOUS_VERSION_TAG=# UPDATE THIS. Example v0.6.0. Used to calculate release notes
+    GIT_RESOURCE_NAME=# UPDATE THIS. Example: tekton-triggers-git-v0-6-2
     IMAGE_REGISTRY=gcr.io/tekton-releases
     ```
 
