@@ -153,18 +153,21 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1alpha1.EventListene
 	return nil
 }
 
-func reconcileObjectMeta(oldMeta *metav1.ObjectMeta, newMeta metav1.ObjectMeta) (updated bool) {
-	if !reflect.DeepEqual(oldMeta.Labels, newMeta.Labels) {
+func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta) (updated bool) {
+	if !reflect.DeepEqual(existing.Labels, desired.Labels) {
 		updated = true
-		oldMeta.Labels = newMeta.Labels
+		existing.Labels = desired.Labels
 	}
-	if !reflect.DeepEqual(oldMeta.Annotations, newMeta.Annotations) {
+
+	// TODO(dibyom): We should exclude propagation of some annotations such as `kubernetes.io/last-applied-revision`
+	if !reflect.DeepEqual(existing.Annotations, mergeMaps(existing.Annotations, desired.Annotations)) {
 		updated = true
-		oldMeta.Annotations = newMeta.Annotations
+		existing.Annotations = desired.Annotations
 	}
-	if !reflect.DeepEqual(oldMeta.OwnerReferences, newMeta.OwnerReferences) {
+
+	if !reflect.DeepEqual(existing.OwnerReferences, desired.OwnerReferences) {
 		updated = true
-		oldMeta.OwnerReferences = newMeta.OwnerReferences
+		existing.OwnerReferences = desired.OwnerReferences
 	}
 	return
 }
@@ -252,7 +255,7 @@ func (r *Reconciler) reconcileDeployment(logger *zap.SugaredLogger, el *v1alpha1
 		return err
 	}
 
-	labels := mergeLabels(el.Labels, GenerateResourceLabels(el.Name))
+	labels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
 	var replicas = ptr.Int32(1)
 	if el.Spec.Replicas != nil {
 		replicas = el.Spec.Replicas
@@ -445,14 +448,14 @@ func generateObjectMeta(el *v1alpha1.EventListener) metav1.ObjectMeta {
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,
 		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
-		Labels:          mergeLabels(el.Labels, GenerateResourceLabels(el.Name)),
+		Labels:          mergeMaps(el.Labels, GenerateResourceLabels(el.Name)),
 		Annotations:     el.Annotations,
 	}
 }
 
-// mergeLabels merges the values in the passed maps into a new map.
+// mergeMaps merges the values in the passed maps into a new map.
 // Values within m2 potentially clobber m1 values.
-func mergeLabels(m1, m2 map[string]string) map[string]string {
+func mergeMaps(m1, m2 map[string]string) map[string]string {
 	merged := make(map[string]string, len(m1)+len(m2))
 	for k, v := range m1 {
 		merged[k] = v

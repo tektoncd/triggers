@@ -129,7 +129,6 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, co
 // If no ops are specified, it generates a base EventListener with no triggers and no Status
 func makeEL(ops ...func(el *v1alpha1.EventListener)) *v1alpha1.EventListener {
 	e := bldr.EventListener(eventListenerName, namespace,
-
 		bldr.EventListenerSpec(
 			bldr.EventListenerServiceAccount("sa"),
 		),
@@ -335,10 +334,7 @@ func TestReconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	elPreReoncile := makeEL()
 	elWithStatus := makeEL(withStatus)
-	elWithLabels := makeEL(withStatus, withAddedLabels)
-	elWithAnnotations := makeEL(withStatus, withAddedAnnotations)
 
 	elWithUpdatedSA := makeEL(withStatus, func(el *v1alpha1.EventListener) {
 		el.Spec.ServiceAccountName = updatedSa
@@ -368,9 +364,9 @@ func TestReconcile(t *testing.T) {
 
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
-		d.Labels = mergeLabels(updateLabel, generatedLabels)
+		d.Labels = mergeMaps(updateLabel, generatedLabels)
 		d.Spec.Selector.MatchLabels = generatedLabels
-		d.Spec.Template.Labels = mergeLabels(updateLabel, generatedLabels)
+		d.Spec.Template.Labels = mergeMaps(updateLabel, generatedLabels)
 	})
 
 	elDeploymentWithAnnotations := makeDeployment(func(d *appsv1.Deployment) {
@@ -405,7 +401,7 @@ func TestReconcile(t *testing.T) {
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
-		s.Labels = mergeLabels(updateLabel, generatedLabels)
+		s.Labels = mergeMaps(updateLabel, generatedLabels)
 		s.Spec.Selector = generatedLabels
 	})
 
@@ -437,13 +433,13 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elPreReoncile},
+			EventListeners: []*v1alpha1.EventListener{makeEL()},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeployment},
-			Services:       []*corev1.Service{elService},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus)},
+			Deployments:    []*appsv1.Deployment{makeDeployment()},
+			Services:       []*corev1.Service{makeService()},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
@@ -452,16 +448,16 @@ func TestReconcile(t *testing.T) {
 		// Resources before reconcile starts: EL has extra label that deployment/svc does not
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithLabels},
-			Deployments:    []*appsv1.Deployment{elDeployment},
-			Services:       []*corev1.Service{elService},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedLabels)},
+			Deployments:    []*appsv1.Deployment{makeDeployment()},
+			Services:       []*corev1.Service{makeService()},
 		},
 		// We expect the deployment and services to propagate the extra label
 		// but the selectors in both Service and deployment should have the same
 		// label
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithLabels},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedLabels)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elServiceWithLabels},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
@@ -472,14 +468,14 @@ func TestReconcile(t *testing.T) {
 		// Resources before reconcile starts: EL has annotation that deployment/svc does not
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithAnnotations},
-			Deployments:    []*appsv1.Deployment{elDeployment},
-			Services:       []*corev1.Service{elService},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedAnnotations)},
+			Deployments:    []*appsv1.Deployment{makeDeployment()},
+			Services:       []*corev1.Service{makeService()},
 		},
 		// We expect the deployment and services to propagate the annotations
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithAnnotations},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedAnnotations)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elServiceWithAnnotation},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
@@ -566,7 +562,7 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
-		// Check that if a user manually updates the annotations for a service, we revert the change.
+		// Check that if a user manually updates the annotations for a service, we do not revert the change.
 		name: "update-el-service-annotations",
 		key:  reconcileKey,
 		startResources: test.Resources{
@@ -578,7 +574,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added annotations
+			Services:       []*corev1.Service{elServiceWithAnnotation},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
@@ -616,6 +612,7 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
+		// Check that if a user manually updates the annotations for a deployment, we do not revert the change.
 		name: "deployment-annotation-update",
 		key:  reconcileKey,
 		startResources: test.Resources{
@@ -627,7 +624,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeployment},
+			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
@@ -669,27 +666,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeployment},
-			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-		},
-	}, {
-		name: "eventlistener-config-volume-mount-update",
-		key:  reconcileKey,
-		startResources: test.Resources{
-			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
-		},
-		endResources: test.Resources{
-			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
@@ -867,7 +849,7 @@ func Test_wrapError(t *testing.T) {
 	}
 }
 
-func Test_mergeLabels(t *testing.T) {
+func Test_mergeMaps(t *testing.T) {
 	tests := []struct {
 		name           string
 		l1, l2         map[string]string
@@ -900,7 +882,7 @@ func Test_mergeLabels(t *testing.T) {
 	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
-			actualLabels := mergeLabels(tests[i].l1, tests[i].l2)
+			actualLabels := mergeMaps(tests[i].l1, tests[i].l2)
 			if diff := cmp.Diff(tests[i].expectedLabels, actualLabels); diff != "" {
 				t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
 			}
@@ -909,7 +891,7 @@ func Test_mergeLabels(t *testing.T) {
 }
 
 func TestGenerateResourceLabels(t *testing.T) {
-	expectedLabels := mergeLabels(StaticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	expectedLabels := mergeMaps(StaticResourceLabels, map[string]string{"eventlistener": eventListenerName})
 	actualLabels := GenerateResourceLabels(eventListenerName)
 	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
 		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
@@ -977,7 +959,7 @@ func Test_generateObjectMeta(t *testing.T) {
 				Controller:         &isController,
 				BlockOwnerDeletion: &blockOwnerDeletion,
 			}},
-			Labels: mergeLabels(map[string]string{"k": "v"}, generatedLabels),
+			Labels: mergeMaps(map[string]string{"k": "v"}, generatedLabels),
 		},
 	}, {
 		name: "EventListener with Annotation",
