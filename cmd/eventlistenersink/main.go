@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -95,11 +96,23 @@ func main() {
 
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
-	http.HandleFunc("/", r.HandleEvent)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", r.HandleEvent)
+
 	// For handling Liveness Probe
-	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+	// TODO(dibyom): Livness, metrics etc. should be on a separate port
+	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		fmt.Fprint(w, "ok")
 	})
-	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", sinkArgs.Port), nil))
+
+	srv := &http.Server{
+		Addr:        fmt.Sprintf(":%s", sinkArgs.Port),
+		IdleTimeout: 120 * time.Second,
+		Handler:     mux,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		logger.Fatalf("faiiled to start eventlistener sink: %v", err)
+	}
 }
