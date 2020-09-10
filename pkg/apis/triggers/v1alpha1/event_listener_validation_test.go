@@ -425,10 +425,10 @@ func TestEventListenerValidate_error(t *testing.T) {
 					bldr.EventListenerTriggerName("1234567890123456789012345678901234567890123456789012345678901234"),
 				))),
 	}, {
-		name: "user specify invalid replicas which are 0 and negative values",
+		name: "user specify invalid replicas",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
-				bldr.EventListenerReplicas(0),
+				bldr.EventListenerReplicas(-1),
 				bldr.EventListenerTrigger("tt", "v1alpha1",
 					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "tb", "v1alpha1"),
 				))),

@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestEventListenerSetDefaults(t *testing.T) {
@@ -70,6 +71,32 @@ func TestEventListenerSetDefaults(t *testing.T) {
 						},
 					},
 				}},
+			},
+		},
+	}, {
+		name: "set replicas to 1 if provided replicas is 0 as part of eventlistener spec",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Replicas: ptr.Int32(0),
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Replicas: ptr.Int32(1),
+			},
+		},
+	}, {
+		name: "different value for replicas other than 0",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Replicas: ptr.Int32(2),
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Replicas: ptr.Int32(2),
 			},
 		},
 	}}
