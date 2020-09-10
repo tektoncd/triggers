@@ -24,6 +24,9 @@ import (
 func (el *EventListener) SetDefaults(ctx context.Context) {
 	if IsUpgradeViaDefaulting(ctx) {
 		// set defaults
+		if el.Spec.Replicas != nil && *el.Spec.Replicas == 0 {
+			*el.Spec.Replicas = 1
+		}
 		for i := range el.Spec.Triggers {
 			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).
 				defaultBindings()

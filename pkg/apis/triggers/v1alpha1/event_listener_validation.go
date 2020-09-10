@@ -31,7 +31,7 @@ func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 
 func (s *EventListenerSpec) validate(ctx context.Context) *apis.FieldError {
 	if s.Replicas != nil {
-		if *s.Replicas <= 0 {
+		if *s.Replicas < 0 {
 			return apis.ErrInvalidValue(*s.Replicas, "spec.replicas")
 		}
 	}

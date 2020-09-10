@@ -39,6 +39,7 @@ import (
 	"knative.dev/pkg/apis"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -355,6 +356,10 @@ func TestReconcile(t *testing.T) {
 		el.Spec.PodTemplate.NodeSelector = updateNodeSelector
 	})
 
+	elWithReplicas := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Replicas = ptr.Int32(2)
+	})
+
 	elWithDeploymentReplicaFailure := makeEL(withStatus, func(el *v1alpha1.EventListener) {
 		el.Status.SetCondition(&apis.Condition{
 			Type: apis.ConditionType(appsv1.DeploymentReplicaFailure),
@@ -385,8 +390,11 @@ func TestReconcile(t *testing.T) {
 	})
 
 	deploymentWithUpdatedReplicas := makeDeployment(func(d *appsv1.Deployment) {
-		var updateReplicas int32 = 5
-		d.Spec.Replicas = &updateReplicas
+		d.Spec.Replicas = ptr.Int32(5)
+	})
+
+	deploymentWithUpdatedReplicasNotConsidered := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Replicas = ptr.Int32(2)
 	})
 
 	deploymentMissingVolumes := makeDeployment(func(d *appsv1.Deployment) {
@@ -624,8 +632,8 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	}, {
-		// Checks that we do not overwrite replicas changed on the deployment itself
-		name: "deployment-replica-update",
+		// Updating replicas on deployment itself is success because no replicas provided as part of eventlistener spec
+		name: "deployment-replica-update-success",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -636,7 +644,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeployment},
+			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
@@ -683,6 +691,23 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	}, {
+		// Checks that we do not overwrite replicas changed on the deployment itself when replicas provided as part of eventlistener spec
+		name: "deployment-replica-update-unsuccessful",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithReplicas},
+			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
+			Services:       []*corev1.Service{elService},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithReplicas},
+			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicasNotConsidered},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},

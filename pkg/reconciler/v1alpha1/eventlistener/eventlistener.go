@@ -343,9 +343,12 @@ func (r *Reconciler) reconcileDeployment(logger *zap.SugaredLogger, el *v1alpha1
 
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
-		if existingDeployment.Spec.Replicas != deployment.Spec.Replicas {
-			existingDeployment.Spec.Replicas = replicas
-			updated = true
+		if *existingDeployment.Spec.Replicas != *deployment.Spec.Replicas {
+			if el.Spec.Replicas != nil {
+				existingDeployment.Spec.Replicas = replicas
+				updated = true
+			}
+			// if no replicas found as part of el.Spec then replicas from existingDeployment will be considered
 		}
 		if existingDeployment.Spec.Selector != deployment.Spec.Selector {
 			existingDeployment.Spec.Selector = deployment.Spec.Selector
