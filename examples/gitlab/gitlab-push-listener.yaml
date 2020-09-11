@@ -34,17 +34,6 @@ spec:
                     value: $(tt.params.gitrepositoryurl)
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
-kind: TriggerBinding
-metadata:
-  name: gitlab-push-binding
-spec:
-  params:
-    - name: gitrevision
-      value: $(body.checkout_sha)
-    - name: gitrepositoryurl
-      value: $(body.repository.git_http_url)
----
-apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
   name: gitlab-listener
@@ -60,6 +49,9 @@ spec:
             eventTypes:
               - Push Hook  # Only push events
       bindings:
-        - ref: gitlab-push-binding
+        - name: gitrevision
+          value: $(body.checkout_sha)
+        - name: gitrepositoryurl
+          value: $(body.repository.git_http_url)
       template:
         name: gitlab-echo-template

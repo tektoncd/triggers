@@ -38,6 +38,7 @@ type ResolvedTrigger struct {
 	TriggerBindings        []*triggersv1.TriggerBinding
 	ClusterTriggerBindings []*triggersv1.ClusterTriggerBinding
 	TriggerTemplate        *triggersv1.TriggerTemplate
+	BindingParams          []triggersv1.Param
 }
 
 type getTriggerBinding func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
@@ -47,40 +48,58 @@ type getClusterTriggerBinding func(ctx context.Context, name string, options met
 // ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
 func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getCTB getClusterTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
-	tb := make([]*triggersv1.TriggerBinding, 0, len(trigger.Bindings))
-	ctb := make([]*triggersv1.ClusterTriggerBinding, 0, len(trigger.Bindings))
-	for _, b := range trigger.Bindings {
-		if b.Spec != nil {
-			tb = append(tb, &triggersv1.TriggerBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: b.Name,
-				},
-				Spec: *b.Spec,
-			})
-			continue
-		}
-
-		if b.Kind == triggersv1.ClusterTriggerBindingKind {
-			ctb2, err := getCTB(context.Background(), b.Ref, metav1.GetOptions{})
-			if err != nil {
-				return ResolvedTrigger{}, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
-			}
-			ctb = append(ctb, ctb2)
-		} else {
-			tb2, err := getTB(context.Background(), b.Ref, metav1.GetOptions{})
-			if err != nil {
-				return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
-			}
-			tb = append(tb, tb2)
-		}
-	}
-
-	ttName := trigger.Template.Name
-	tt, err := getTT(context.Background(), ttName, metav1.GetOptions{})
+	bp, err := resolveBindingsToParams(trigger.Bindings, getTB, getCTB)
 	if err != nil {
-		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
+		return ResolvedTrigger{}, fmt.Errorf("failed to resolve bindings: %w", err)
 	}
-	return ResolvedTrigger{TriggerBindings: tb, ClusterTriggerBindings: ctb, TriggerTemplate: tt}, nil
+	tt, err := getTT(context.Background(), trigger.Template.Name, metav1.GetOptions{})
+	if err != nil {
+		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", trigger.Template.Name, err)
+	}
+	return ResolvedTrigger{TriggerTemplate: tt, BindingParams: bp}, nil
+}
+
+// resolveBindingsToParams takes in both embedded bindings and references and returns a list of resolved Param values.ResolveBindingsToParams
+func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB getTriggerBinding, getCTB getClusterTriggerBinding) ([]triggersv1.Param, error) {
+	bindingParams := []triggersv1.Param{}
+	for _, b := range bindings {
+		switch {
+		case b.Spec != nil: // Could also call SetDefaults and not rely on this?
+			bindingParams = append(bindingParams, b.Spec.Params...)
+
+		case b.Name != "" && b.Value != nil:
+			bindingParams = append(bindingParams, triggersv1.Param{
+				Name:  b.Name,
+				Value: *b.Value,
+			})
+
+		case b.Ref != "" && b.Kind == triggersv1.ClusterTriggerBindingKind:
+			ctb, err := getCTB(context.Background(), b.Ref, metav1.GetOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
+			}
+			bindingParams = append(bindingParams, ctb.Spec.Params...)
+
+		case b.Ref != "": // if no kind is set, assume NamespacedTriggerBinding
+			tb, err := getTB(context.Background(), b.Ref, metav1.GetOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
+			}
+			bindingParams = append(bindingParams, tb.Spec.Params...)
+		default:
+			return nil, fmt.Errorf("invalid binding: %v", b)
+		}
+	}
+
+	// Check for duplicate params
+	seen := make(map[string]bool, len(bindingParams))
+	for _, p := range bindingParams {
+		if seen[p.Name] {
+			return nil, fmt.Errorf("duplicate param name: %s", p.Name)
+		}
+		seen[p.Name] = true
+	}
+	return bindingParams, nil
 }
 
 // mergeInDefaultParams returns the params with the addition of all

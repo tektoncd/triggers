@@ -28,12 +28,7 @@ import (
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
 func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]triggersv1.Param, error) {
-	out, err := mergeBindingParams(rt.TriggerBindings, rt.ClusterTriggerBindings)
-	if err != nil {
-		return nil, fmt.Errorf("error merging trigger params: %w", err)
-	}
-
-	out, err = applyEventValuesToParams(out, body, header)
+	out, err := applyEventValuesToParams(rt.BindingParams, body, header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}

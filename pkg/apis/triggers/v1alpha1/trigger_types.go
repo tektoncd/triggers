@@ -44,11 +44,27 @@ type TriggerSpecTemplate struct {
 }
 
 type TriggerSpecBinding struct {
-	Name       string              `json:"name,omitempty"`
-	Kind       TriggerBindingKind  `json:"kind,omitempty"`
-	Ref        string              `json:"ref,omitempty"`
-	Spec       *TriggerBindingSpec `json:"spec,omitempty"`
-	APIVersion string              `json:"apiversion,omitempty"`
+	// Name is the name of the binding param
+	// Mutually exclusive with Ref
+	Name string `json:"name,omitempty"`
+	// Value is the value of the binding param. Can contain JSONPath
+	// Has to be pointer since "" is a valid value
+	// Required if Name is also specified.
+	Value *string `json:"value,omitempty"`
+
+	// Ref is a reference to a TriggerBinding kind.
+	// Mutually exclusive with Name
+	Ref string `json:"ref,omitempty"`
+
+	// Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
+	Kind TriggerBindingKind `json:"kind,omitempty"`
+
+	// Spec is the deprecated  way of embedding TriggerBindings.
+	// TODO(#782): Remove deprecated syntax.
+	Spec *TriggerBindingSpec `json:"spec,omitempty"`
+
+	// APIVersion of the binding ref
+	APIVersion string `json:"apiversion,omitempty"`
 }
 
 // +genclient

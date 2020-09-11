@@ -14,19 +14,32 @@ and apply them to [TriggerTemplates](./triggertemplates.md) in order to create
 Tekton resources. In addition, EventListeners allow lightweight event processing
 using [Event Interceptors](#Interceptors).
 
-- [Syntax](#syntax)
-  - [ServiceAccountName](#serviceAccountName)
-  - [Replicas](#replicas)
-  - [PodTemplate](#podTemplate)
-  - [Triggers](#triggers)
-    - [Interceptors](#interceptors)
-- [Logging](#logging)
-- [Labels](#labels)
-- [Annotations](#annotations)
-- [EventListener Response](#eventlistener-response)
-- [How does the EventListener work?](#how-does-the-eventlistener-work)
-- [Examples](#examples)
-- [Multi-Tenant Concerns](#multi-tenant-concerns)
+- [EventListener](#eventlistener)
+  - [Syntax](#syntax)
+    - [ServiceAccountName](#serviceaccountname)
+    - [Triggers](#triggers)
+    - [ServiceType](#servicetype)
+    - [Replicas](#replicas)
+    - [PodTemplate](#podtemplate)
+    - [Resources](#resources)
+    - [Logging](#logging)
+  - [Labels](#labels)
+  - [Annotations](#annotations)
+  - [Interceptors](#interceptors)
+    - [Webhook Interceptors](#webhook-interceptors)
+      - [Event Interceptor Services](#event-interceptor-services)
+    - [GitHub Interceptors](#github-interceptors)
+    - [GitLab Interceptors](#gitlab-interceptors)
+    - [Bitbucket Interceptors](#bitbucket-interceptors)
+    - [CEL Interceptors](#cel-interceptors)
+      - [Overlays](#overlays)
+  - [EventListener Response](#eventlistener-response)
+  - [How does the EventListener work?](#how-does-the-eventlistener-work)
+  - [Examples](#examples)
+  - [Multi-Tenant Concerns](#multi-tenant-concerns)
+    - [Multiple EventListeners (One EventListener Per Namespace)](#multiple-eventlisteners-one-eventlistener-per-namespace)
+    - [Multiple EventListeners (Multiple EventListeners per Namespace)](#multiple-eventlisteners-multiple-eventlisteners-per-namespace)
+    - [ServiceAccount per EventListenerTrigger](#serviceaccount-per-eventlistenertrigger)
 
 ## Syntax
 
@@ -102,7 +115,7 @@ The `triggers` field is required. Each EventListener can consist of one or more
 - `name` - (Optional) a valid
   [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 - [`interceptors`](#interceptors) - (Optional) list of interceptors to use
-- `bindings` - (Optional) A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use.
+- `bindings` - (Optional) A list of bindings to use. Can either be a reference to existing `TriggerBinding` resources or embedded name/value pairs.
 - `template` - (Optional) The name of `TriggerTemplate` to use
 - `triggerRef` - (Optional) Reference to the [`Trigger`](./triggers.md).
 
@@ -115,12 +128,9 @@ triggers:
       - github:
           eventTypes: ["pull_request"]
     bindings:
-      - ref: pipeline-binding
-      - name: message-binding
-        spec:
-            params:
-              - name: message
-                value: Hello from the Triggers EventListener!
+      - ref: pipeline-binding # Reference to a TriggerBinding object
+      - name: message # Embedded Binding
+        value: Hello from the Triggers EventListener!
     template:
       name: pipeline-template
 ```

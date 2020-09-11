@@ -8,7 +8,8 @@ weight: 9
 
 A `Trigger` is resource that combines `TriggerTemplate`, `TriggerBindings` and `interceptors`. The `Trigger` is processed by EventListener which referenced it when it receives an incoming.
 
-- [Syntax](#syntax)
+- [Triggers](#triggers)
+  - [Syntax](#syntax)
 
 ## Syntax
 
@@ -24,7 +25,7 @@ the following fields:
     `Trigger` resource object, for example a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your Trigger resource object. The spec include:
-    - [`bindings`] -  A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use
+    - [`bindings`] - (Optional) A list of bindings to use. Can either be a reference to existing `TriggerBinding` resources or embedded name/value pairs.
     - [`template`] -  The name of `TriggerTemplate` to use
     - [`interceptors`](./eventlisteners.md#interceptors) - (Optional) list of interceptors to use
     - [`serviceAccountName`] - (Optional) Specifies the ServiceAccount provided to EventListener by Trigger to create resources
