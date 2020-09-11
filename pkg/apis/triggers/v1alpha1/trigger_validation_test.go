@@ -40,30 +40,30 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "TriggerBinding", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "TriggerBinding", "", "v1alpha1"),
 			)),
 	}, {
 		name: "Valid Trigger with ClusterTriggerBinding",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "", "v1alpha1"),
 			)),
 	}, {
 		name: "Valid Trigger with multiple TriggerBindings",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "tb", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "TriggerBinding", "tb", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb3", "", "tb3", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "TriggerBinding", "", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb3", "", "", "v1alpha1"),
 			)),
 	}, {
 		name: "Valid Trigger Interceptor",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace"),
 			)),
 	}, {
@@ -71,7 +71,7 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace",
 					bldr.TriggerSpecInterceptorParam("Valid-Header-Key", "valid value"),
 				),
@@ -81,7 +81,7 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace",
 					bldr.TriggerSpecInterceptorParam("Valid-Header-Key1", "valid value1"),
 					bldr.TriggerSpecInterceptorParam("Valid-Header-Key1", "valid value2"),
@@ -89,11 +89,11 @@ func Test_TriggerValidate(t *testing.T) {
 				),
 			)),
 	}, {
-		name: "Valid Trigger with CTR interceptor",
+		name: "Valid Trigger with CEL interceptor",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecCELInterceptor("body.value == 'test'"),
 			)),
 	}, {
@@ -101,10 +101,10 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 			)),
 	}, {
-		name: "Valid Trigger with embedded bindings",
+		name: "Valid Trigger with old embedded bindings",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
@@ -115,7 +115,7 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
+				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing'")),
 			)),
 	}}
