@@ -77,9 +77,14 @@ func evalBinding(w io.Writer, bindingPath, httpPath string) error {
 		return fmt.Errorf("error reading bindings: %w", err)
 	}
 
-	t := template.ResolvedTrigger{
-		TriggerBindings: bindings,
+	bindingParams := []v1alpha1.Param{}
+	for _, b := range bindings {
+		bindingParams = append(bindingParams, b.Spec.Params...)
 	}
+	t := template.ResolvedTrigger{
+		BindingParams: bindingParams,
+	}
+
 	params, err := template.ResolveParams(t, body, r.Header)
 	if err != nil {
 		return fmt.Errorf("error resolving params: %w", err)

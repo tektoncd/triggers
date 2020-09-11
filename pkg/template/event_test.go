@@ -214,84 +214,45 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 
 func TestResolveParams(t *testing.T) {
 	tests := []struct {
-		name            string
-		bindings        []*triggersv1.TriggerBinding
-		clusterBindings []*triggersv1.ClusterTriggerBinding
-		body            []byte
-		template        *triggersv1.TriggerTemplate
-		want            []triggersv1.Param
+		name          string
+		bindingParams []triggersv1.Param
+		body          []byte
+		template      *triggersv1.TriggerTemplate
+		want          []triggersv1.Param
 	}{{
-		name: "multiple bindings get merged",
-		// Two bindings each with a single param
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
-			bldr.TriggerBinding("b2", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p2", "val2"))),
-		},
-		template:        bldr.TriggerTemplate("tt", ns),
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		want: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "val2"),
-		},
-	}, {
-		name: "multiple type bindings get merged",
-		// Two bindings each with a single param
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
-		},
-		template: bldr.TriggerTemplate("tt", ns),
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{
-			bldr.ClusterTriggerBinding("b2", bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("p2", "val2"))),
-		},
-		want: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "val2"),
-		},
-	}, {
 		name: "add default values for params with missing values",
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "val1"),
 		},
 		template: bldr.TriggerTemplate("tt-name", ns,
 			bldr.TriggerTemplateSpec(
 				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
 			),
 		),
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
 		want: []triggersv1.Param{
 			bldr.Param("p1", "val1"),
 			bldr.Param("p2", "defaultVal"),
 		},
 	}, {
 		name: "default values do not override event values",
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "val1"),
 		},
 		template: bldr.TriggerTemplate("tt-name", ns,
 			bldr.TriggerTemplateSpec(
 				bldr.TriggerTemplateParam("p1", "", "defaultVal"),
 			),
 		),
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
 		want: []triggersv1.Param{
 			bldr.Param("p1", "val1"),
 		},
 	}, {
 		name: "combination of static values and JSONPath expressions",
 		body: json.RawMessage(`{"foo": "fooValue", "bar": "barValue"}`),
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("tb", "ns", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "Event values are - foo: $(body.foo); bar: $(body.bar)"),
-			)),
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "Event values are - foo: $(body.foo); bar: $(body.bar)"),
 		},
-		template:        bldr.TriggerTemplate("tt", ns),
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
+		template: bldr.TriggerTemplate("tt", ns),
 		want: []triggersv1.Param{
 			bldr.Param("p1", "Event values are - foo: fooValue; bar: barValue"),
 		},
@@ -304,15 +265,10 @@ func TestResolveParams(t *testing.T) {
 				bldr.TriggerTemplateParam("param2", "", ""),
 			),
 		),
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("tb", "namespace",
-				bldr.TriggerBindingSpec(
-					bldr.TriggerBindingParam("param1", "qux"),
-					bldr.TriggerBindingParam("param2", "$(body.foo)"),
-				),
-			),
+		bindingParams: []triggersv1.Param{
+			bldr.Param("param1", "qux"),
+			bldr.Param("param2", "$(body.foo)"),
 		},
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
 		want: []triggersv1.Param{
 			bldr.Param("param1", "qux"),
 			bldr.Param("param2", "bar\\r\\nbaz"),
@@ -322,9 +278,8 @@ func TestResolveParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rt := ResolvedTrigger{
-				TriggerBindings:        tt.bindings,
-				ClusterTriggerBindings: tt.clusterBindings,
-				TriggerTemplate:        tt.template,
+				BindingParams:   tt.bindingParams,
+				TriggerTemplate: tt.template,
 			}
 			params, err := ResolveParams(rt, tt.body, map[string][]string{})
 			if err != nil {
@@ -339,44 +294,25 @@ func TestResolveParams(t *testing.T) {
 
 func TestResolveParams_Error(t *testing.T) {
 	tests := []struct {
-		name            string
-		body            []byte
-		params          []triggersv1.ParamSpec
-		bindings        []*triggersv1.TriggerBinding
-		clusterBindings []*triggersv1.ClusterTriggerBinding
+		name          string
+		body          []byte
+		bindingParams []triggersv1.Param
 	}{{
-		name:            "multiple bindings with same name",
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
-			bldr.TriggerBinding("b2", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val2"))),
-		},
-	}, {
-		name:            "invalid body",
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "val1"))),
+		name: "invalid body",
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "val1"),
 		},
 		body: json.RawMessage(`{`),
 	}, {
-		name:            "invalid expression",
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("b1", ns, bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("p1", "$(header.[)"))),
+		name: "invalid expression",
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "$(header.[)"),
 		},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rt := ResolvedTrigger{
-				TriggerBindings:        tt.bindings,
-				ClusterTriggerBindings: tt.clusterBindings,
-			}
-			params, err := ResolveParams(rt, tt.body, map[string][]string{})
+			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{})
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", params)
 			}

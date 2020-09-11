@@ -24,6 +24,7 @@ import (
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func Test_TriggerValidate(t *testing.T) {
@@ -58,6 +59,27 @@ func Test_TriggerValidate(t *testing.T) {
 				bldr.TriggerSpecBinding("tb", "TriggerBinding", "", "v1alpha1"),
 				bldr.TriggerSpecBinding("tb3", "", "", "v1alpha1"),
 			)),
+	}, {
+		name: "Trigger with new embedded TriggerBindings",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-trigger",
+				Namespace: "ns",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Name:  "param1",
+					Value: ptr.String("val1"),
+				}, {
+					Name:  "param2",
+					Value: ptr.String("val2"),
+				}, {
+					Ref:  "ref-to-another-binding",
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+				}},
+				Template: v1alpha1.TriggerSpecTemplate{Name: "my-tt"},
+			},
+		},
 	}, {
 		name: "Valid Trigger Interceptor",
 		tr: bldr.Trigger("name", "namespace",
@@ -104,12 +126,24 @@ func Test_TriggerValidate(t *testing.T) {
 				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 			)),
 	}, {
-		name: "Valid Trigger with old embedded bindings",
+		name: "Deprecated: old embedded bindings with empty name",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(
 				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
 				bldr.TriggerSpecBinding("", "", "", "v1alpha1", bldr.TriggerBindingParam("key", "value")),
 			)),
+	}, {
+		name: "Deprecated: old embedded bindings",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Spec: &v1alpha1.TriggerBindingSpec{}, Name: "foo"}},
+				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+			},
+		},
 	}, {
 		name: "Valid Trigger with CEL overlays",
 		tr: bldr.Trigger("name", "namespace",
@@ -150,7 +184,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "Bindings missing kind",
+		name: "Bindings with ref missing kind",
 		tr: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -158,6 +192,30 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: "", Ref: "tb", APIVersion: "v1alpha1"}},
+				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+			},
+		},
+	}, {
+		name: "Bindings with ref wrong kind",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Kind: "BadKind", Ref: "tb", APIVersion: "v1alpha1"}},
+				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+			},
+		},
+	}, {
+		name: "Bindings with name but no value",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "ns",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "foo"}},
 				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
 			},
 		},

@@ -1,5 +1,3 @@
-// +build e2e
-
 /*
 Copyright 2020 The Tekton Authors
 
@@ -215,22 +213,14 @@ func Test_processTriggerSpec(t *testing.T) {
 		name: "testing-name",
 		args: args{
 			t: &v1alpha1.Trigger{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "TriggerRun",
-					APIVersion: "tekton.dev/v1alpha1"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "my-triggerRun",
 				},
 				Spec: v1alpha1.TriggerSpec{
-					Bindings: []*v1alpha1.TriggerSpecBinding{
-						{Ref: "git-event-binding"}, // These should be references to TriggerBindings defined below
-					},
-					Template: v1alpha1.TriggerSpecTemplate{
-						Name: "simple-pipeline-template", // This should be a reference to a TriggerTemplate defined below
-					},
+					Bindings: []*v1alpha1.TriggerSpecBinding{{Ref: "git-event-binding"}},     // These should be references to TriggerBindings defined below
+					Template: v1alpha1.TriggerSpecTemplate{Name: "simple-pipeline-template"}, // This should be a reference to a TriggerTemplate defined below
 				},
 			},
-
 			request: r,
 			event:   eventBody,
 			resources: test.Resources{

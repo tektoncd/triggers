@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func Test_MergeInDefaultParams(t *testing.T) {
@@ -276,7 +277,6 @@ var (
 			},
 		},
 	}
-	tb = triggerBindings["my-triggerbinding"]
 	tt = triggersv1.TriggerTemplate{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-triggertemplate"},
 	}
@@ -294,7 +294,6 @@ var (
 			},
 		},
 	}
-	ctb   = clusterTriggerBindings["my-clustertriggerbinding"]
 	getTB = func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error) {
 		if v, ok := triggerBindings[name]; ok {
 			return v, nil
@@ -320,151 +319,156 @@ func Test_ResolveTrigger(t *testing.T) {
 		name    string
 		trigger triggersv1.EventListenerTrigger
 		want    ResolvedTrigger
-	}{
-		{
-			name: "1 binding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "my-triggerbinding",
-					Kind: triggersv1.NamespacedTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
-			},
-			want: ResolvedTrigger{
-				TriggerBindings:        []*triggersv1.TriggerBinding{tb},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{},
-				TriggerTemplate:        &tt,
+	}{{
+		name: "1 binding",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "my-triggerbinding",
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
 		},
-		{
-			name: "1 clustertype binding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "my-clustertriggerbinding",
-					Kind: triggersv1.ClusterTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
-			},
-			want: ResolvedTrigger{
-				TriggerBindings:        []*triggersv1.TriggerBinding{},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{ctb},
-				TriggerTemplate:        &tt,
+		want: ResolvedTrigger{
+			TriggerTemplate: &tt,
+			BindingParams:   []triggersv1.Param{},
+		},
+	}, {
+		name: "1 clustertype binding",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "my-clustertriggerbinding",
+				Kind: triggersv1.ClusterTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
 		},
-		{
-			name: "1 embed binding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Name: "my-embed-binding",
-					Spec: &triggersv1.TriggerBindingSpec{
-						Params: []triggersv1.Param{{
-							Name:  "key",
-							Value: "value",
-						}},
-					},
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
+		want: ResolvedTrigger{
+			TriggerTemplate: &tt,
+			BindingParams:   []triggersv1.Param{},
+		},
+	}, {
+		name: "1 embed binding",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Name: "my-embed-binding",
+				Spec: &triggersv1.TriggerBindingSpec{
+					Params: []triggersv1.Param{{
+						Name:  "key",
+						Value: "value",
+					}},
 				},
-			},
-			want: ResolvedTrigger{
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: "my-embed-binding"},
-						Spec: triggersv1.TriggerBindingSpec{
-							Params: []triggersv1.Param{{
-								Name:  "key",
-								Value: "value",
-							}},
-						},
-					},
-				},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{},
-				TriggerTemplate:        &tt,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
 		},
-		{
-			name: "no binding",
-			trigger: triggersv1.EventListenerTrigger{
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
-			},
-			want: ResolvedTrigger{TriggerBindings: []*triggersv1.TriggerBinding{}, ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{}, TriggerTemplate: &tt},
+		want: ResolvedTrigger{
+			BindingParams: []triggersv1.Param{{
+				Name:  "key",
+				Value: "value",
+			}},
+			TriggerTemplate: &tt,
 		},
-		{
-			name: "multiple bindings",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{
-					{
-						Name:       "my-triggerbinding",
-						Kind:       triggersv1.NamespacedTriggerBindingKind,
-						Ref:        "my-triggerbinding",
-						APIVersion: "v1alpha1",
-					},
-					{
-						Name:       "tb-params",
-						Kind:       triggersv1.NamespacedTriggerBindingKind,
-						Ref:        "tb-params",
-						APIVersion: "v1alpha1",
-					},
-					{
-						Name:       "my-clustertriggerbinding",
-						Kind:       triggersv1.ClusterTriggerBindingKind,
-						Ref:        "my-clustertriggerbinding",
-						APIVersion: "v1alpha1",
-					},
-					{
-						Name:       "ctb-params",
-						Kind:       triggersv1.ClusterTriggerBindingKind,
-						Ref:        "ctb-params",
-						APIVersion: "v1alpha1",
-					},
-				},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
-			},
-			want: ResolvedTrigger{
-				TriggerBindings: []*triggersv1.TriggerBinding{
-					tb,
-					triggerBindings["tb-params"],
-				},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{
-					ctb,
-					clusterTriggerBindings["ctb-params"],
-				},
-				TriggerTemplate: &tt,
+	}, {
+		name: "no binding",
+		trigger: triggersv1.EventListenerTrigger{
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
 		},
-		{
-			name: "missing kind implies namespacedTriggerBinding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Name:       "my-triggerbinding",
-					APIVersion: "v1alpha1",
-					Ref:        "my-triggerbinding",
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
+		want: ResolvedTrigger{BindingParams: []triggersv1.Param{}, TriggerTemplate: &tt},
+	}, {
+		name: "concise bindings",
+		trigger: triggersv1.EventListenerTrigger{
+			Template: &triggersv1.EventListenerTemplate{
+				Name: "my-triggertemplate",
 			},
-			want: ResolvedTrigger{
-				TriggerBindings:        []*triggersv1.TriggerBinding{tb},
-				ClusterTriggerBindings: []*triggersv1.ClusterTriggerBinding{},
-				TriggerTemplate:        &tt,
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Name:  "p1",
+				Value: ptr.String("v1"),
+			}, {
+				Name:  "p2",
+				Value: ptr.String("v2"),
+			}},
+		},
+		want: ResolvedTrigger{
+			TriggerTemplate: &tt,
+			BindingParams: []triggersv1.Param{{
+				Name:  "p1",
+				Value: "v1",
+			}, {
+				Name:  "p2",
+				Value: "v2",
+			}},
+		},
+	}, {
+		name: "multiple binding params are merged",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+				Ref:  "my-triggerbinding",
+			}, {
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+				Ref:  "tb-params",
+			}, {
+				Kind: triggersv1.ClusterTriggerBindingKind,
+				Ref:  "my-clustertriggerbinding",
+			}, {
+				Kind: triggersv1.ClusterTriggerBindingKind,
+				Ref:  "ctb-params",
+			}, {
+				Name:  "p1",
+				Value: ptr.String("v1"),
+			}, {
+				Name:  "p2",
+				Value: ptr.String("v2"),
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
 		},
+		want: ResolvedTrigger{
+			TriggerTemplate: &tt,
+			BindingParams: []triggersv1.Param{{
+				Name:  "foo",
+				Value: "bar",
+			}, {
+				Name:  "foo-ctb",
+				Value: "bar-ctb",
+			}, {
+				Name:  "p1",
+				Value: "v1",
+			}, {
+				Name:  "p2",
+				Value: "v2",
+			}},
+		},
+	}, {
+		name: "missing kind implies namespacedTriggerBinding",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Name:       "my-triggerbinding",
+				APIVersion: "v1alpha1",
+				Ref:        "my-triggerbinding",
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
+			},
+		},
+		want: ResolvedTrigger{
+			BindingParams:   []triggersv1.Param{},
+			TriggerTemplate: &tt,
+		},
+	},
 	}
 
 	for _, tc := range tests {
@@ -486,76 +490,101 @@ func Test_ResolveTrigger_error(t *testing.T) {
 		getTB   getTriggerBinding
 		getTT   getTriggerTemplate
 		getCTB  getClusterTriggerBinding
-	}{
-		{
-			name: "error triggerbinding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "invalid-tb-name",
-					Kind: triggersv1.NamespacedTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
+	}{{
+		name: "triggerbinding not found",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "invalid-tb-name",
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
-			getTB:  getTB,
-			getCTB: getCTB,
-			getTT:  getTT,
 		},
-		{
-			name: "error clustertriggerbinding",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "invalid-ctb-name",
-					Kind: triggersv1.ClusterTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "my-triggertemplate",
-					APIVersion: "v1alpha1",
-				},
+		getTB:  getTB,
+		getCTB: getCTB,
+		getTT:  getTT,
+	}, {
+		name: "clustertriggerbinding not found",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "invalid-ctb-name",
+				Kind: triggersv1.ClusterTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "my-triggertemplate",
+				APIVersion: "v1alpha1",
 			},
-			getTB:  getTB,
-			getCTB: getCTB,
-			getTT:  getTT,
 		},
-		{
-			name: "error triggertemplate",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "my-triggerbinding",
-					Kind: triggersv1.NamespacedTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "invalid-tt-name",
-					APIVersion: "v1alpha1",
-				},
+		getTB:  getTB,
+		getCTB: getCTB,
+		getTT:  getTT,
+	}, {
+		name: "triggertemplate not found",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "my-triggerbinding",
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "invalid-tt-name",
+				APIVersion: "v1alpha1",
 			},
-			getTB:  getTB,
-			getCTB: getCTB,
-			getTT:  getTT,
 		},
-		{
-			name: "error triggerbinding and triggertemplate",
-			trigger: triggersv1.EventListenerTrigger{
-				Bindings: []*triggersv1.EventListenerBinding{{
-					Ref:  "invalid-tb-name",
-					Kind: triggersv1.NamespacedTriggerBindingKind,
-				}},
-				Template: &triggersv1.EventListenerTemplate{
-					Name:       "invalid-tt-name",
-					APIVersion: "v1alpha1",
-				},
+		getTB:  getTB,
+		getCTB: getCTB,
+		getTT:  getTT,
+	}, {
+		name: "triggerbinding and triggertemplate not found",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "invalid-tb-name",
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+			}},
+			Template: &triggersv1.EventListenerTemplate{
+				Name:       "invalid-tt-name",
+				APIVersion: "v1alpha1",
 			},
-			getTB:  getTB,
-			getCTB: getCTB,
-			getTT:  getTT,
 		},
-	}
+		getTB:  getTB,
+		getCTB: getCTB,
+		getTT:  getTT,
+	}, {
+		name: "trigger template missing name",
+		trigger: triggersv1.EventListenerTrigger{
+			Template: &triggersv1.EventListenerTemplate{
+				Name: "",
+			},
+		},
+		getTT: getTT,
+	}, {
+		name: "invalid trigger binding",
+		trigger: triggersv1.EventListenerTrigger{
+			Template: &triggersv1.EventListenerTemplate{
+				Name: "my-triggertemplate",
+			},
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Value: ptr.String("only-val"),
+			}},
+		},
+		getTT: getTT,
+	}, {
+		name: "same param name across multiple bindings",
+		trigger: triggersv1.EventListenerTrigger{
+			Bindings: []*triggersv1.EventListenerBinding{{
+				Ref:  "tb-params",
+				Kind: triggersv1.NamespacedTriggerBindingKind,
+			}, {
+				Name:  "foo",
+				Value: ptr.String("bar"),
+			}},
+		},
+		getTB: getTB,
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ResolveTrigger(tt.trigger, tt.getTB, tt.getCTB, tt.getTT)
-			if err == nil {
+			if _, err := ResolveTrigger(tt.trigger, tt.getTB, tt.getCTB, tt.getTT); err == nil {
 				t.Error("ResolveTrigger() did not return error when expected")
 			}
 		})
@@ -594,7 +623,6 @@ func Test_ApplyUIDToResourceTemplate(t *testing.T) {
 		})
 	}
 }
-
 func TestMergeBindingParams(t *testing.T) {
 	tests := []struct {
 		name            string

@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTriggerSetDefaults(t *testing.T) {
@@ -31,41 +32,85 @@ func TestTriggerSetDefaults(t *testing.T) {
 		want *v1alpha1.Trigger
 		wc   func(context.Context) context.Context
 	}{{
-		name: "default binding",
+		name: "default binding kind",
 		in: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{
-					{
-						Ref: "binding",
-					},
-					{
-						Kind: v1alpha1.NamespacedTriggerBindingKind,
-						Ref:  "namespace-binding",
-					},
-					{
-						Kind: v1alpha1.ClusterTriggerBindingKind,
-						Ref:  "cluster-binding",
-					},
-				},
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Ref: "binding",
+				}, {
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Ref:  "namespace-binding",
+				}, {
+					Kind: v1alpha1.ClusterTriggerBindingKind,
+					Ref:  "cluster-binding",
+				}},
 			},
 		},
 		wc: v1alpha1.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{
-					{
-						Kind: v1alpha1.NamespacedTriggerBindingKind,
-						Ref:  "binding",
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Ref:  "binding",
+				}, {
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Ref:  "namespace-binding",
+				}, {
+					Kind: v1alpha1.ClusterTriggerBindingKind,
+					Ref:  "cluster-binding",
+				}},
+			},
+		},
+	}, {
+		name: "default old embed binding to new",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Ref:  "binding",
+				}, {
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Spec: &v1alpha1.TriggerBindingSpec{
+						Params: []v1alpha1.Param{{
+							Name:  "p1",
+							Value: "v1",
+						}, {
+							Name:  "p2",
+							Value: "v2",
+						}},
 					},
-					{
-						Kind: v1alpha1.NamespacedTriggerBindingKind,
-						Ref:  "namespace-binding",
-					},
-					{
-						Kind: v1alpha1.ClusterTriggerBindingKind,
-						Ref:  "cluster-binding",
-					},
-				},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Kind: v1alpha1.NamespacedTriggerBindingKind,
+					Ref:  "binding",
+				}, {
+					Name:  "p1",
+					Value: ptr.String("v1"),
+				}, {
+					Name:  "p2",
+					Value: ptr.String("v2"),
+				}},
+			},
+		},
+	}, {
+		name: "upgrade context not set",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Ref: "binding",
+				}},
+			},
+		},
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Ref: "binding", // If upgrade context was set, Kind should have been added
+				}},
 			},
 		},
 	}}

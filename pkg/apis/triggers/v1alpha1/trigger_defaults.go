@@ -18,16 +18,34 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/ptr"
 )
 
 type triggerSpecBindingArray []*TriggerSpecBinding
 
 // SetDefaults sets the defaults on the object.
 func (t *Trigger) SetDefaults(ctx context.Context) {
-	if IsUpgradeViaDefaulting(ctx) {
-		// set defaults
-		triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
+	if !IsUpgradeViaDefaulting(ctx) {
+		return
 	}
+	triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
+
+	// Upgrade old style embedded bindings to new concise syntax
+	bindings := []*TriggerSpecBinding{}
+	for _, b := range t.Spec.Bindings {
+		if b.Spec == nil {
+			bindings = append(bindings, b)
+		} else {
+			for _, p := range b.Spec.Params {
+				bindings = append(bindings, &TriggerSpecBinding{
+					Name:  p.Name,
+					Value: ptr.String(p.Value),
+				})
+			}
+		}
+	}
+	t.Spec.Bindings = bindings
 }
 
 // set default TriggerBinding kind for Bindings in TriggerSpec
