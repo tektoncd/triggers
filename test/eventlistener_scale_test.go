@@ -67,7 +67,6 @@ func TestEventListenerScale(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		trigger := triggersv1.EventListenerTrigger{
 			Bindings: []*triggersv1.EventListenerBinding{{
-				Name:       "my-triggerbinding",
 				Kind:       triggersv1.NamespacedTriggerBindingKind,
 				Ref:        "tb1",
 				APIVersion: "v1alpha1",

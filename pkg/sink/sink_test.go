@@ -406,7 +406,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 		},
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
-				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+				Bindings: []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
 				Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					GitHub: &triggersv1.GitHubInterceptor{
@@ -533,7 +533,7 @@ func TestHandleEventPassesURLThrough(t *testing.T) {
 		},
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
-				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+				Bindings: []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
 				Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					CEL: &triggersv1.CELInterceptor{
@@ -647,7 +647,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	var triggers []triggersv1.EventListenerTrigger
 	for i := 0; i < numTriggers; i++ {
 		trigger := triggersv1.EventListenerTrigger{
-			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+			Bindings: []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
 			Template: &triggersv1.EventListenerTemplate{Name: "tt"},
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
@@ -990,7 +990,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 			Spec: triggersv1.EventListenerSpec{
 				Triggers: []triggersv1.EventListenerTrigger{{
 					ServiceAccountName: testCase.userVal,
-					Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+					Bindings:           []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
 					Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
 					Interceptors: []*triggersv1.EventInterceptor{{
 						GitHub: &triggersv1.GitHubInterceptor{
@@ -1078,7 +1078,7 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
 				ServiceAccountName: userWithPermissions,
-				Bindings:           []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
+				Bindings:           []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
 				Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					Bitbucket: &triggersv1.BitbucketInterceptor{
