@@ -64,7 +64,13 @@ type Response struct {
 	Namespace string `json:"namespace,omitempty"`
 	// EventID is a uniqueID that gets assigned to each incoming request
 	EventID string `json:"eventID,omitempty"`
+	// Error message contains any error that occur during processing event
+	Error string `json:"error,omitempty"`
 }
+
+const (
+	marshalErr = "failure to marshal event body correctly"
+)
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
@@ -100,6 +106,9 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 					result <- http.StatusForbidden
 					return
 				}
+				if template.IsParseErr(err) {
+					result <- http.StatusBadRequest
+				}
 				result <- http.StatusAccepted
 				return
 			}
@@ -110,6 +119,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
 	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
+	errMsg := ""
 	for i := 0; i < len(el.Spec.Triggers); i++ {
 		thiscode := <-result
 		// current take - if someone is doing unauthorized stuff, we abort immediately;
@@ -117,10 +127,16 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		// below around accepted vs. created
 		if thiscode == http.StatusUnauthorized || thiscode == http.StatusForbidden {
 			code = thiscode
+			errMsg = ""
 			break
+		}
+		if thiscode == http.StatusBadRequest && code != http.StatusCreated {
+			code = http.StatusBadRequest
+			errMsg = marshalErr
 		}
 		if thiscode < code {
 			code = thiscode
+			errMsg = ""
 		}
 	}
 
@@ -130,6 +146,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		EventListener: r.EventListenerName,
 		Namespace:     r.EventListenerNamespace,
 		EventID:       eventID,
+		Error:         errMsg,
 	}
 	if err := json.NewEncoder(response).Encode(body); err != nil {
 		eventLog.Errorf("failed to write back sink response: %w", err)
