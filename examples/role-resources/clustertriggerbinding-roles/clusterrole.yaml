@@ -9,7 +9,7 @@ rules:
   verbs: ["get"]
 - apiGroups: [""]
   # secrets are only needed for Github/Gitlab interceptors
-  resources: ["configmaps", "secrets"]
+  resources: ["configmaps"]
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
