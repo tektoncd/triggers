@@ -279,7 +279,6 @@ github.com/tektoncd/pipeline/pkg/client/resource/injection/client
 github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake
 github.com/tektoncd/pipeline/pkg/contexts
 github.com/tektoncd/pipeline/pkg/list
-github.com/tektoncd/pipeline/pkg/logging
 github.com/tektoncd/pipeline/pkg/names
 github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/substitution
