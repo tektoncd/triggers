@@ -67,6 +67,18 @@ var (
 	// ElPort defines the port for the EventListener to listen on
 	ElPort = flag.Int("el-port", 8080,
 		"The container port for the EventListener to listen on.")
+	// ELReadTimeOut defines the read timeout for EventListener Server
+	ELReadTimeOut = flag.Int64("el-readtimeout", 5,
+		"The read timeout for EventListener Server.")
+	// ELWriteTimeOut defines the write timeout for EventListener Server
+	ELWriteTimeOut = flag.Int64("el-writetimeout", 40,
+		"The write timeout for EventListener Server.")
+	// ELIdleTimeOut defines the read timeout for EventListener Server
+	ELIdleTimeOut = flag.Int64("el-idletimeout", 30,
+		"The idle timeout for EventListener Server.")
+	// ELTimeOutHandler defines the timeout for Timeout Handler of EventListener Server
+	ELTimeOutHandler = flag.Int64("el-timeouthandler", 5,
+		"The timeout for Timeout Handler of EventListener Server.")
 	// PeriodSeconds defines Period Seconds for the EventListener Liveness and Readiness Probes
 	PeriodSeconds = flag.Int("period-seconds", 10,
 		"The Period Seconds for the EventListener Liveness and Readiness Probes.")
@@ -328,6 +340,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			"-el-name", el.Name,
 			"-el-namespace", el.Namespace,
 			"-port", strconv.Itoa(*ElPort),
+			"-readtimeout", strconv.FormatInt(*ELReadTimeOut, 10),
+			"-writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
+			"-idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
+			"-timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "config-logging",

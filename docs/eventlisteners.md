@@ -36,6 +36,7 @@ using [Event Interceptors](#Interceptors).
   - [EventListener Response](#eventlistener-response)
   - [How does the EventListener work?](#how-does-the-eventlistener-work)
   - [Examples](#examples)
+  - [Response Timeout](#response-timeout)
   - [Multi-Tenant Concerns](#multi-tenant-concerns)
     - [Multiple EventListeners (One EventListener Per Namespace)](#multiple-eventlisteners-one-eventlistener-per-namespace)
     - [Multiple EventListeners (Multiple EventListeners per Namespace)](#multiple-eventlisteners-multiple-eventlisteners-per-namespace)
@@ -877,6 +878,14 @@ Follow [GitHub example](https://github.com/tektoncd/triggers/blob/master/example
 
 For complete examples, see
 [the examples folder](https://github.com/tektoncd/triggers/tree/master/examples).
+
+## Response Timeout
+Eventlistener sink timeout if EventListener isn't able to process the request within certain duration. The response timeout configuration is defined in [controller.yaml](../config/controller.yaml).
+- `-el-readtimeout`: This define ReadTimeOut for sink server. Default value is 5 s.
+- `-el-writetimeout`: This define WriteTimeout for sink server. Default value is 40s.
+- `-el-idletimeout`: This define the IdleTimeout for sink server. Default value is 120s.
+- `-el-timeouthandler`: This define the Timeout for Handler for sink server's route. Default value is 30s.
+
 
 ## Multi-Tenant Concerns
 

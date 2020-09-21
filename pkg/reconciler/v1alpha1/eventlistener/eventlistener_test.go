@@ -205,6 +205,10 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							"-el-name", eventListenerName,
 							"-el-namespace", namespace,
 							"-port", strconv.Itoa(*ElPort),
+							"readtimeout", strconv.FormatInt(*ELReadTimeOut, 10),
+							"writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
+							"idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
+							"timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
 						},
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "config-logging",
