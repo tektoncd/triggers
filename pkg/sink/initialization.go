@@ -18,6 +18,7 @@ package sink
 
 import (
 	"flag"
+	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"golang.org/x/xerrors"
@@ -41,6 +42,14 @@ var (
 		"The namespace of the EventListener resource for this sink.")
 	portFlag = flag.String("port", "",
 		"The port for the EventListener sink to listen on.")
+	elReadTimeOut = flag.Int64("readtimeout", 5,
+		"The read timeout for EventListener Server.")
+	elWriteTimeOut = flag.Int64("writetimeout", 40,
+		"The write timeout for EventListener Server.")
+	elIdleTimeOut = flag.Int64("idletimeout", 30,
+		"The idle timeout for EventListener Server.")
+	elTimeOutHandler = flag.Int64("timeouthandler", 5,
+		"The timeout for Timeout Handler of EventListener Server.")
 )
 
 // Args define the arguments for Sink.
@@ -51,6 +60,14 @@ type Args struct {
 	ElNamespace string
 	// Port is the port the Sink should listen on.
 	Port string
+	// ELReadTimeOut defines the read timeout for EventListener Server
+	ELReadTimeOut time.Duration
+	// ELWriteTimeOut defines the write timeout for EventListener Server
+	ELWriteTimeOut time.Duration
+	// ELIdleTimeOut defines the read timeout for EventListener Server
+	ELIdleTimeOut time.Duration
+	// ELTimeOutHandler defines the timeout for Timeout Handler of EventListener Server
+	ELTimeOutHandler time.Duration
 }
 
 // Clients define the set of client dependencies Sink requires.
@@ -73,9 +90,13 @@ func GetArgs() (Args, error) {
 		return Args{}, xerrors.Errorf("-%s arg not found", port)
 	}
 	return Args{
-		ElName:      *nameFlag,
-		ElNamespace: *namespaceFlag,
-		Port:        *portFlag,
+		ElName:           *nameFlag,
+		ElNamespace:      *namespaceFlag,
+		Port:             *portFlag,
+		ELReadTimeOut:    time.Duration(*elReadTimeOut),
+		ELWriteTimeOut:   time.Duration(*elWriteTimeOut),
+		ELIdleTimeOut:    time.Duration(*elIdleTimeOut),
+		ELTimeOutHandler: time.Duration(*elTimeOutHandler),
 	}, nil
 }
 

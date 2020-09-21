@@ -123,9 +123,12 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:        fmt.Sprintf(":%s", sinkArgs.Port),
-		IdleTimeout: 120 * time.Second,
-		Handler:     mux,
+		Addr:         fmt.Sprintf(":%s", sinkArgs.Port),
+		ReadTimeout:  sinkArgs.ELReadTimeOut * time.Second,
+		WriteTimeout: sinkArgs.ELWriteTimeOut * time.Second,
+		IdleTimeout:  sinkArgs.ELIdleTimeOut * time.Second,
+		Handler: http.TimeoutHandler(mux,
+			sinkArgs.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"),
 	}
 
 	if err := srv.ListenAndServe(); err != nil {
