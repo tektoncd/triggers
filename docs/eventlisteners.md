@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Event Listeners" weight: 5
+
 ---
-linkTitle: "Event Listeners"
-weight: 5
----
+
 -->
+
 # EventListener
 
 EventListener is a Kubernetes custom resource that allows users a declarative
@@ -50,8 +52,8 @@ the following fields:
   - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
     is exposed as
   - [`replicas`](#replicas) - Specifies the number of EventListener pods
-  - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
-    for your EventListener pod
+  - [`podTemplate`](#podTemplate) - Specifies the PodTemplate for your
+    EventListener pod
   - [`resources`](#resources) - Specifies the Kubernetes Resource information
     for your EventListener pod
 
@@ -65,6 +67,7 @@ EventListener sink uses to create the Tekton resources. The ServiceAccount needs
 a role with the following rules:
 
 <!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
+
 ```YAML
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -88,7 +91,6 @@ rules:
   verbs: ["impersonate"]
 ```
 
-
 If your EventListener is using
 [`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
 ServiceAccount with a
@@ -102,11 +104,13 @@ The `triggers` field is required. Each EventListener can consist of one or more
 - `name` - (Optional) a valid
   [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 - [`interceptors`](#interceptors) - (Optional) list of interceptors to use
-- `bindings` - (Optional) A list of `TriggerBindings` reference to use or embedded TriggerBindingsSpecs to use.
+- `bindings` - (Optional) A list of `TriggerBindings` reference to use or
+  embedded TriggerBindingsSpecs to use.
 - `template` - (Optional) The name of `TriggerTemplate` to use
 - `triggerRef` - (Optional) Reference to the [`Trigger`](./triggers.md).
 
-A `trigger` field must have `template` (along with needed `bindings` and `interceptors`) or `triggerRef`.
+A `trigger` field must have `template` (along with needed `bindings` and
+`interceptors`) or `triggerRef`.
 
 ```yaml
 triggers:
@@ -118,27 +122,29 @@ triggers:
       - ref: pipeline-binding
       - name: message-binding
         spec:
-            params:
-              - name: message
-                value: Hello from the Triggers EventListener!
+          params:
+            - name: message
+              value: Hello from the Triggers EventListener!
     template:
       name: pipeline-template
 ```
 
 Or with only `triggerRef`:
+
 ```yaml
 triggers:
-    - triggerRef: trigger
+  - triggerRef: trigger
 ```
 
-Also, to support multi-tenant styled scenarios, where an administrator may not want all triggers to have
-the same permissions as the `EventListener`, a service account can optionally be set at the trigger level
-and used if present in place of the `EventListener` service account when creating resources:
+Also, to support multi-tenant styled scenarios, where an administrator may not
+want all triggers to have the same permissions as the `EventListener`, a service
+account can optionally be set at the trigger level and used if present in place
+of the `EventListener` service account when creating resources:
 
 ```yaml
 triggers:
   - name: trigger-1
-    serviceAccount: 
+    serviceAccount:
       name: trigger-1-sa
       namespace: event-listener-namespace
     interceptors:
@@ -149,16 +155,16 @@ triggers:
       - ref: message-binding
     template:
       name: pipeline-template
-``` 
+```
 
-An update to the `Role` assigned to the EventListener's SeviceAccount is needed to allow it to impersonate
-the ServiceAccount specified for the trigger.
+An update to the `Role` assigned to the EventListener's SeviceAccount is needed
+to allow it to impersonate the ServiceAccount specified for the trigger.
 
 ```yaml
 rules:
-- apiGroups: [""]
-  resources: ["serviceaccounts"]
-  verbs: ["impersonate"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["impersonate"]
 ```
 
 ### ServiceType
@@ -176,18 +182,24 @@ check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
 
 ### Replicas
 
-The `replicas` field is optional. By default, the number of replicas of EventListener is 1.
-If you want to deploy more than one pod, you can specify the number to `replicas` field.
+The `replicas` field is optional. By default, the number of replicas of
+EventListener is 1. If you want to deploy more than one pod, you can specify the
+number to `replicas` field.
 
-**Note:** If user sets `replicas` field while creating/updating eventlistener yaml then it won't respects replicas values edited by user manually on deployment or through any other mechanism (ex: HPA).
+**Note:** If user sets `replicas` field while creating/updating eventlistener
+yaml then it won't respects replicas values edited by user manually on
+deployment or through any other mechanism (ex: HPA).
 
 ### PodTemplate
 
-The `podTemplate` field is optional. A PodTemplate is specifications for 
+The `podTemplate` field is optional. A PodTemplate is specifications for
 creating EventListener pod. A PodTemplate consists of:
-- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
-This is needed only if you want to schedule EventListener pod to a tainted node.
-- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on. 
+
+- `tolerations` - list of toleration which allows pods to schedule onto the
+  nodes with matching taints. This is needed only if you want to schedule
+  EventListener pod to a tainted node.
+- `nodeSelector` - key-value labels the node has which an EventListener pod
+  should be scheduled on.
 
 ```yaml
 spec:
@@ -195,23 +207,28 @@ spec:
     nodeSelector:
       app: test
     tolerations:
-    - key: key
-      value: value
-      operator: Equal
-      effect: NoSchedule
+      - key: key
+        value: value
+        operator: Equal
+        effect: NoSchedule
 ```
 
 ### Resources
 
-The `resources` field is optional.
-Resource field helps to provide Kubernetes or custom resource information.
+The `resources` field is optional. Resource field helps to provide Kubernetes or
+custom resource information.
 
-For more info on the design refer [TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md)
+For more info on the design refer
+[TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md)
 
-Right now the `resources` field is optional in order to support backward compatibility with original behavior of `podTemplate`, `serviceType` and `serviceAccountName` fieds.
-In the future, we plan to deprecate `serviceAccountName`, `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
+Right now the `resources` field is optional in order to support backward
+compatibility with original behavior of `podTemplate`, `serviceType` and
+`serviceAccountName` fieds. In the future, we plan to deprecate
+`serviceAccountName`, `serviceType` and `podTemplate` from the EventListener
+spec in favor of the `resources` field.
 
-For now `resources` has support for `kubernetesResource` but later it will have a support for Custom CRD`(ex: Knative Service)` as `customResource`
+For now `resources` has support for `kubernetesResource` but later it will have
+a support for Custom CRD`(ex: Knative Service)` as `customResource`
 
 ```yaml
 spec:
@@ -230,15 +247,17 @@ spec:
             nodeSelector:
               app: test
             tolerations:
-            - key: key
-              value: value
-              operator: Equal
-              effect: NoSchedule
+              - key: key
+                value: value
+                operator: Equal
+                effect: NoSchedule
 ```
 
-With the help of `kubernetesResource` user can specify [PodTemplateSpec](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704).
+With the help of `kubernetesResource` user can specify
+[PodTemplateSpec](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704).
 
 Right now the allowed values as part of `podSpec` are
+
 ```text
 ServiceAccountName
 NodeSelector
@@ -266,8 +285,8 @@ kubectl get pods --selector eventlistener=my-eventlistener
 By default, EventListeners will attach the following labels automatically to all
 resources it creates:
 
-| Name                     | Description                                            |
-| ------------------------ | ------------------------------------------------------ |
+| Name                              | Description                                            |
+| --------------------------------- | ------------------------------------------------------ |
 | triggers.tekton.dev/eventlistener | Name of the EventListener that generated the resource. |
 | triggers.tekton.dev/trigger       | Name of the Trigger that generated the resource.       |
 | triggers.tekton.dev/eventid       | UID of the incoming event.                             |
@@ -279,12 +298,13 @@ for label values.
 
 ## Annotations
 
-All the annotations provided in Eventlistener will be further propagated to the service
-and deployment created by that Eventlistener.
+All the annotations provided in Eventlistener will be further propagated to the
+service and deployment created by that Eventlistener.
 
-Example: You may need to add some annotation to the service like you need to annotation
-for TLS support to a LoadBalancer service on AWS, you can specify that annotation in 
-Eventlistener and it will be available to the service created by EventListener.
+Example: You may need to add some annotation to the service like you need to
+annotation for TLS support to a LoadBalancer service on AWS, you can specify
+that annotation in Eventlistener and it will be available to the service created
+by EventListener.
 
 ```
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -295,8 +315,9 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: https
 ```
 
-**Note**: If there are any annotations attached to the service or the deployment, they will get overwritten 
-by the annotations available in the eventlistener.
+**Note**: If there are any annotations attached to the service or the
+deployment, they will get overwritten by the annotations available in the
+eventlistener.
 
 ## Interceptors
 
@@ -360,6 +381,7 @@ if desired. The response body and headers of the last Interceptor is used for
 resource binding/templating.
 
 <!-- FILE: examples/eventlisteners/eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -390,7 +412,6 @@ spec:
         name: pipeline-template
 ```
 
-
 ### GitHub Interceptors
 
 GitHub Interceptors contain logic to validate and filter webhooks that come from
@@ -412,6 +433,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/github/github-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -489,7 +511,6 @@ spec:
                     value: $(tt.params.gitrepositoryurl)
 ```
 
-
 ### GitLab Interceptors
 
 GitLab Interceptors contain logic to validate and filter requests that come from
@@ -535,8 +556,12 @@ spec:
 
 ### Bitbucket Interceptors
 
-The Bitbucket interceptor provides support for hooks originating in [Bitbucket server](https://confluence.atlassian.com/bitbucketserver), providing server hook signature validation and event-filtering.
-[Bitbucket cloud](https://support.atlassian.com/bitbucket-cloud/) is not currently supported by this interceptor, as it has no secret validation, so you could match on the incoming requests using the CEL interceptor.
+The Bitbucket interceptor provides support for hooks originating in
+[Bitbucket server](https://confluence.atlassian.com/bitbucketserver), providing
+server hook signature validation and event-filtering.
+[Bitbucket cloud](https://support.atlassian.com/bitbucket-cloud/) is not
+currently supported by this interceptor, as it has no secret validation, so you
+could match on the incoming requests using the CEL interceptor.
 
 To use this Interceptor as a validator, create a secret string using the method
 of your choice, and configure the Bitbucket webhook to use that secret value.
@@ -551,6 +576,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/bitbucket/bitbucket-eventlistener-interceptor.yaml -->
+
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -590,6 +616,7 @@ It also modifies the incoming request, adding an extra key to the JSON body,
 with a truncated string coming from the hook body.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -618,7 +645,6 @@ spec:
       template:
         name: pipeline-template
 ```
-
 
 In addition to the standard expressions provided by CEL, Triggers supports some
 useful functions for dealing with event data
@@ -628,6 +654,7 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -657,13 +684,14 @@ spec:
         name: pipeline-template
 ```
 
-
 The `filter` expression must return a `true` value if this trigger is to be
 processed, and the `overlays` applied.
 
 Optionally, no `filter` expression can be provided, and the `overlays` will be
 applied to the incoming body.
+
 <!-- FILE: examples/eventlisteners/cel-eventlistener-no-filter.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -684,13 +712,13 @@ spec:
         name: pipeline-template
 ```
 
-
 #### Overlays
 
 The CEL interceptor supports "overlays", these are CEL expressions that are
 applied to the body before it's returned to the event-listener.
 
 <!-- FILE: examples/eventlisteners/cel-eventlistener-multiple-overlays.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
@@ -712,7 +740,6 @@ spec:
       template:
         name: pipeline-template
 ```
-
 
 In this example, the bindings will see two additional fields:
 
@@ -776,6 +803,7 @@ the path to an existing value.
 Anything that is applied as an overlay can be extracted using a binding e.g.
 
 <!-- FILE: examples/triggerbindings/cel-example-trigger-binding.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -791,11 +819,15 @@ spec:
 
 ## EventListener Response
 
-The EventListener responds with 201 Created status code when at least one of the trigger is executed successfully. Otherwise, it returns 202 Accepted status code.
-The EventListener responds with following message after receiving the event:
+The EventListener responds with 201 Created status code when at least one of the
+trigger is executed successfully. Otherwise, it returns 202 Accepted status
+code. The EventListener responds with following message after receiving the
+event:
+
 ```JSON
 {"eventListener":"listener","namespace":"default","eventID":"h2bb7"}
 ```
+
 - `eventListener` - Refers to the EventListener Name.
 - `namespace` - Refers to the namespace of the EventListener
 - `eventID` - Refers to the uniqueID that gets assigned to each incoming request
@@ -804,12 +836,16 @@ The EventListener responds with following message after receiving the event:
 
 Lets understand how an EventListener works with an example using GitHub
 
-* Create a sample GitHub example
+- Create a sample GitHub example
+
 ```bash
 kubectl create -f https://github.com/tektoncd/triggers/tree/master/examples/github
 ```
 
-* Once the EventListener is created,  the Triggers controller will create a new `Deployment` and `Service` for the EventListener. We can use `kubectl` to see them running:
+- Once the EventListener is created, the Triggers controller will create a new
+  `Deployment` and `Service` for the EventListener. We can use `kubectl` to see
+  them running:
+
 ```bash
 kubectl get deployment
 NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
@@ -819,19 +855,31 @@ kubectl get svc
 NAME                             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 el-github-listener-interceptor   ClusterIP   10.99.188.140   <none>        8080/TCP   52s
 ```
-The Triggers controller uses fields from the EventListener's `spec` (which is described in the [Syntax](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#syntax) section, as well as [`metadata.labels`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#labels)
-in addition to some pre-configured information like (container `Image`, `Name`, `Port`) to create the **Deployment** and **Service**.
 
-We follow a naming convention while creating these resources. An EventListener named `foo` will create a deployment and a service both named `el-foo`.
+The Triggers controller uses fields from the EventListener's `spec` (which is
+described in the
+[Syntax](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#syntax)
+section, as well as
+[`metadata.labels`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#labels)
+in addition to some pre-configured information like (container `Image`, `Name`,
+`Port`) to create the **Deployment** and **Service**.
 
-Once all the resources are up and running user can get a URL to send webhook events. This URL points to the service created above and points to the deployment.
+We follow a naming convention while creating these resources. An EventListener
+named `foo` will create a deployment and a service both named `el-foo`.
+
+Once all the resources are up and running user can get a URL to send webhook
+events. This URL points to the service created above and points to the
+deployment.
+
 ```bash
 kubectl get eventlistener
 NAME                          ADDRESS                                                              AVAILABLE   REASON
 github-listener-interceptor   http://el-github-listener-interceptor.ptest.svc.cluster.local:8080   True        MinimumReplicasAvailable
 ```
 
-Follow [GitHub example](https://github.com/tektoncd/triggers/blob/master/examples/github/README.md) to try out locally.
+Follow
+[GitHub example](https://github.com/tektoncd/triggers/blob/master/examples/github/README.md)
+to try out locally.
 
 ## Examples
 
@@ -840,64 +888,77 @@ For complete examples, see
 
 ## Multi-Tenant Concerns
 
-The EventListener is effectively an additional form of client into Tekton, versus what 
-example usage via `kubectl` or `tkn` which you have seen elsewhere.  In particular, the HTTP based
-events bypass the normal Kubernetes authentication path you get via `kubeconfig` files 
-and the `kubectl config` family of commands.
+The EventListener is effectively an additional form of client into Tekton,
+versus what example usage via `kubectl` or `tkn` which you have seen elsewhere.
+In particular, the HTTP based events bypass the normal Kubernetes authentication
+path you get via `kubeconfig` files and the `kubectl config` family of commands.
 
-As such, there are set of items to consider when deciding how to 
+As such, there are set of items to consider when deciding how to
 
 - best expose (each) EventListener in your cluster to the outside world.
-- best control how (each) EventListener and the underlying API Objects described below access, create,
-and update Tekton related API Objects in your cluster.
+- best control how (each) EventListener and the underlying API Objects described
+  below access, create, and update Tekton related API Objects in your cluster.
 
-Minimally, each EventListener has its [ServiceAccountName](#serviceAccountName) as noted below and all
-events coming over the "Sink" result in any Tekton resource interactions being done with the permissions 
-assigned to that ServiceAccount.
+Minimally, each EventListener has its [ServiceAccountName](#serviceAccountName)
+as noted below and all events coming over the "Sink" result in any Tekton
+resource interactions being done with the permissions assigned to that
+ServiceAccount.
 
-However, if you need differing levels of permissions over a set of Tekton resources across the various
-[Triggers](#triggers) and [Interceptors](#Interceptors), where not all Triggers or Interceptors can 
-manipulate certain Tekton Resources in the same way, a simple, single EventListener will not suffice.
+However, if you need differing levels of permissions over a set of Tekton
+resources across the various [Triggers](#triggers) and
+[Interceptors](#Interceptors), where not all Triggers or Interceptors can
+manipulate certain Tekton Resources in the same way, a simple, single
+EventListener will not suffice.
 
 Your options at that point are as follows:
 
 ### Multiple EventListeners (One EventListener Per Namespace)
 
-You can create multiple EventListener objects, where your set of Triggers and Interceptors are spread out across the 
-EventListeners.
+You can create multiple EventListener objects, where your set of Triggers and
+Interceptors are spread out across the EventListeners.
 
-If you create each of those EventListeners in their own namespace, it becomes easy to assign 
-varying permissions to the ServiceAccount of each one to serve your needs.  And often times namespace
-creation is coupled with a default set of ServiceAccounts and Secrets that are also defined.
-So conceivably some administration steps are taken care of.  You just update the permissions
-of the automatically created ServiceAccounts.
+If you create each of those EventListeners in their own namespace, it becomes
+easy to assign varying permissions to the ServiceAccount of each one to serve
+your needs. And often times namespace creation is coupled with a default set of
+ServiceAccounts and Secrets that are also defined. So conceivably some
+administration steps are taken care of. You just update the permissions of the
+automatically created ServiceAccounts.
 
 Possible drawbacks:
-- Namespaces with associated Secrets and ServiceAccounts in an aggregate sense prove to be the most expensive
-items in Kubernetes underlying `etcd` store.  In larger clusters `etcd` storage capacity can become a concern.
-- Multiple EventListeners means multiple HTTP ports that must be exposed to the external entities accessing 
-the "Sink".  If you happen to have a HTTP Firewall between your Cluster and external entities, that means more
-administrative cost, opening ports in the firewall for each Service, unless you can employ Kubernetes `Ingress` to
-serve as a routing abstraction layer for your set of EventListeners. 
+
+- Namespaces with associated Secrets and ServiceAccounts in an aggregate sense
+  prove to be the most expensive items in Kubernetes underlying `etcd` store. In
+  larger clusters `etcd` storage capacity can become a concern.
+- Multiple EventListeners means multiple HTTP ports that must be exposed to the
+  external entities accessing the "Sink". If you happen to have a HTTP Firewall
+  between your Cluster and external entities, that means more administrative
+  cost, opening ports in the firewall for each Service, unless you can employ
+  Kubernetes `Ingress` to serve as a routing abstraction layer for your set of
+  EventListeners.
 
 ### Multiple EventListeners (Multiple EventListeners per Namespace)
 
-Multiple EventListeners per namespace will most likely mean more ServiceAccount/Secret/RBAC manipulation for
-the administrator, as some of the built in generation of those artifacts as part of namespace creation are not
+Multiple EventListeners per namespace will most likely mean more
+ServiceAccount/Secret/RBAC manipulation for the administrator, as some of the
+built in generation of those artifacts as part of namespace creation are not
 applicable.
 
-However you will save some on the `etcd` storage costs by reducing the number of namespaces.
+However you will save some on the `etcd` storage costs by reducing the number of
+namespaces.
 
-Multiple EventListeners and potential Firewall concerns still apply (again unless you employ `Ingress`).
+Multiple EventListeners and potential Firewall concerns still apply (again
+unless you employ `Ingress`).
 
 ### ServiceAccount per EventListenerTrigger
 
-Being able to set a ServiceAccount on an EventListenerTrigger allows for finer grained permissions as well.
+Being able to set a ServiceAccount on an EventListenerTrigger allows for finer
+grained permissions as well.
 
 You still have to create the additional ServiceAccounts.
 
-But staying within 1 namespace and minimizing the number of EventListeners with their associated "Sinks" minimizes 
-concerns around `etcd` storage and port considerations with Firewalls if `Ingress` is not utilized.
+But staying within 1 namespace and minimizing the number of EventListeners with
+their associated "Sinks" minimizes concerns around `etcd` storage and port
+considerations with Firewalls if `Ingress` is not utilized.
 
 ---
 
