@@ -361,6 +361,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		"pull_request": map[string]interface{}{
 			"commits": 2,
 		},
+		"upperMsg":  "THIS IS LOWER CASE",
 		"b64value":  "ZXhhbXBsZQ==",
 		"json_body": `{"testing": "value"}`,
 		"yaml_body": "key1: value1\nkey2: value2\nkey3: value3\n",
@@ -486,6 +487,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "parse request url",
 			expr: "requestURL.parseURL().path",
 			want: types.String("/testing"),
+		},
+		{
+			name: "lower casing a string",
+			expr: "body.upperMsg.lowerAscii()",
+			want: types.String("this is lower case"),
 		},
 	}
 	for _, tt := range tests {

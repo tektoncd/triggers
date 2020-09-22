@@ -20,6 +20,7 @@ package ext
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -86,9 +87,22 @@ import (
 //     'hello mellow'.lastIndexOf('ello', 6)  // returns 1
 //     'hello mellow'.lastIndexOf('ello', -1) // error
 //
+// LowerAscii
+//
+// Returns a new string where all ASCII characters are lower-cased.
+//
+// This function does not perform Unicode case-mapping for characters outside the ASCII range.
+//
+//     <string>.lowerAscii() -> <string>
+//
+// Examples:
+//
+//     'TacoCat'.lowerAscii()      // returns 'tacocat'
+//     'TacoCÆt Xii'.lowerAscii()  // returns 'tacocÆt xii'
+//
 // Replace
 //
-// Produces a new string based on the target, which replaces the occurrences of a search string
+// Returns a new string based on the target, which replaces the occurrences of a search string
 // with a replacement string if present. The function accepts an optional limit on the number of
 // substring replacements to be made.
 //
@@ -107,7 +121,7 @@ import (
 //
 // Split
 //
-// Produces a list of strings split from the input by the given separator. The function accepts
+// Returns a list of strings split from the input by the given separator. The function accepts
 // an optional argument specifying a limit on the number of substrings produced by the split.
 //
 // When the split limit is 0, the result is an empty list. When the limit is 1, the result is the
@@ -156,6 +170,19 @@ import (
 // Examples:
 //
 //     '  \ttrim\n    '.trim() // returns 'trim'
+//
+// UpperAscii
+//
+// Returns a new string where all ASCII characters are upper-cased.
+//
+// This function does not perform Unicode case-mapping for characters outside the ASCII range.
+//
+//    <string>.upperAscii() -> <string>
+//
+// Examples:
+//
+//     'TacoCat'.upperAscii()      // returns 'TACOCAT'
+//     'TacoCÆt Xii'.upperAscii()  // returns 'TACOCÆT XII'
 func Strings() cel.EnvOption {
 	return cel.Lib(stringLib{})
 }
@@ -183,6 +210,10 @@ func (stringLib) CompileOptions() []cel.EnvOption {
 				decls.NewInstanceOverload("string_last_index_of_string_int",
 					[]*exprpb.Type{decls.String, decls.String, decls.Int},
 					decls.Int)),
+			decls.NewFunction("lowerAscii",
+				decls.NewInstanceOverload("string_lower_ascii",
+					[]*exprpb.Type{decls.String},
+					decls.String)),
 			decls.NewFunction("replace",
 				decls.NewInstanceOverload("string_replace_string_string",
 					[]*exprpb.Type{decls.String, decls.String, decls.String},
@@ -206,6 +237,10 @@ func (stringLib) CompileOptions() []cel.EnvOption {
 					decls.String)),
 			decls.NewFunction("trim",
 				decls.NewInstanceOverload("string_trim",
+					[]*exprpb.Type{decls.String},
+					decls.String)),
+			decls.NewFunction("upperAscii",
+				decls.NewInstanceOverload("string_upper_ascii",
 					[]*exprpb.Type{decls.String},
 					decls.String)),
 		),
@@ -250,6 +285,14 @@ func (stringLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "string_last_index_of_string_int",
 				Function: callInStrStrIntOutInt(lastIndexOfOffset),
+			},
+			&functions.Overload{
+				Operator: "lowerAscii",
+				Unary:    callInStrOutStr(lowerASCII),
+			},
+			&functions.Overload{
+				Operator: "string_lower_ascii",
+				Unary:    callInStrOutStr(lowerASCII),
 			},
 			&functions.Overload{
 				Operator: "replace",
@@ -299,11 +342,19 @@ func (stringLib) ProgramOptions() []cel.ProgramOption {
 			},
 			&functions.Overload{
 				Operator: "trim",
-				Unary:    callInStrOutStr(strings.TrimSpace),
+				Unary:    callInStrOutStr(trimSpace),
 			},
 			&functions.Overload{
 				Operator: "string_trim",
-				Unary:    callInStrOutStr(strings.TrimSpace),
+				Unary:    callInStrOutStr(trimSpace),
+			},
+			&functions.Overload{
+				Operator: "upperAscii",
+				Unary:    callInStrOutStr(upperASCII),
+			},
+			&functions.Overload{
+				Operator: "string_upper_ascii",
+				Unary:    callInStrOutStr(upperASCII),
 			},
 		),
 	}
@@ -386,6 +437,17 @@ func lastIndexOfOffset(str, substr string, offset int64) (int64, error) {
 	return -1, nil
 }
 
+func lowerASCII(str string) (string, error) {
+	runes := []rune(str)
+	for i, r := range runes {
+		if r <= unicode.MaxASCII {
+			r = unicode.ToLower(r)
+			runes[i] = r
+		}
+	}
+	return string(runes), nil
+}
+
 func replace(str, old, new string) (string, error) {
 	return strings.ReplaceAll(str, old, new), nil
 }
@@ -425,195 +487,17 @@ func substrRange(str string, start, end int64) (string, error) {
 	return string(runes[int(start):int(end)]), nil
 }
 
-func callInStrOutStr(fn func(string) string) functions.UnaryOp {
-	return func(val ref.Val) ref.Val {
-		vVal, ok := val.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(val)
-		}
-		return types.String(fn(string(vVal)))
-	}
+func trimSpace(str string) (string, error) {
+	return strings.TrimSpace(str), nil
 }
 
-func callInStrIntOutStr(fn func(string, int64) (string, error)) functions.BinaryOp {
-	return func(val, arg ref.Val) ref.Val {
-		vVal, ok := val.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(val)
+func upperASCII(str string) (string, error) {
+	runes := []rune(str)
+	for i, r := range runes {
+		if r <= unicode.MaxASCII {
+			r = unicode.ToUpper(r)
+			runes[i] = r
 		}
-		argVal, ok := arg.(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(arg)
-		}
-		out, err := fn(string(vVal), int64(argVal))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.String(out)
 	}
-}
-
-func callInStrStrOutInt(fn func(string, string) (int64, error)) functions.BinaryOp {
-	return func(val, arg ref.Val) ref.Val {
-		vVal, ok := val.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(val)
-		}
-		argVal, ok := arg.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(arg)
-		}
-		out, err := fn(string(vVal), string(argVal))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.Int(out)
-	}
-}
-
-func callInStrStrOutListStr(fn func(string, string) ([]string, error)) functions.BinaryOp {
-	return func(val, arg ref.Val) ref.Val {
-		vVal, ok := val.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(val)
-		}
-		argVal, ok := arg.(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(arg)
-		}
-		out, err := fn(string(vVal), string(argVal))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.DefaultTypeAdapter.NativeToValue(out)
-	}
-}
-
-func callInStrIntIntOutStr(fn func(string, int64, int64) (string, error)) functions.FunctionOp {
-	return func(args ...ref.Val) ref.Val {
-		if len(args) != 3 {
-			return types.NoSuchOverloadErr()
-		}
-		vVal, ok := args[0].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[0])
-		}
-		arg1Val, ok := args[1].(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[1])
-		}
-		arg2Val, ok := args[2].(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[2])
-		}
-		out, err := fn(string(vVal), int64(arg1Val), int64(arg2Val))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.String(out)
-	}
-}
-
-func callInStrStrStrOutStr(fn func(string, string, string) (string, error)) functions.FunctionOp {
-	return func(args ...ref.Val) ref.Val {
-		if len(args) != 3 {
-			return types.NoSuchOverloadErr()
-		}
-		vVal, ok := args[0].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[0])
-		}
-		arg1Val, ok := args[1].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[1])
-		}
-		arg2Val, ok := args[2].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[2])
-		}
-		out, err := fn(string(vVal), string(arg1Val), string(arg2Val))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.String(out)
-	}
-}
-
-func callInStrStrIntOutInt(fn func(string, string, int64) (int64, error)) functions.FunctionOp {
-	return func(args ...ref.Val) ref.Val {
-		if len(args) != 3 {
-			return types.NoSuchOverloadErr()
-		}
-		vVal, ok := args[0].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[0])
-		}
-		arg1Val, ok := args[1].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[1])
-		}
-		arg2Val, ok := args[2].(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[2])
-		}
-		out, err := fn(string(vVal), string(arg1Val), int64(arg2Val))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.Int(out)
-	}
-}
-
-func callInStrStrIntOutListStr(fn func(string, string, int64) ([]string, error)) functions.FunctionOp {
-	return func(args ...ref.Val) ref.Val {
-		if len(args) != 3 {
-			return types.NoSuchOverloadErr()
-		}
-		vVal, ok := args[0].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[0])
-		}
-		arg1Val, ok := args[1].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[1])
-		}
-		arg2Val, ok := args[2].(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[2])
-		}
-		out, err := fn(string(vVal), string(arg1Val), int64(arg2Val))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.DefaultTypeAdapter.NativeToValue(out)
-	}
-}
-
-func callInStrStrStrIntOutStr(fn func(string, string, string, int64) (string, error)) functions.FunctionOp {
-	return func(args ...ref.Val) ref.Val {
-		if len(args) != 4 {
-			return types.NoSuchOverloadErr()
-		}
-		vVal, ok := args[0].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[0])
-		}
-		arg1Val, ok := args[1].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[1])
-		}
-		arg2Val, ok := args[2].(types.String)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[2])
-		}
-		arg3Val, ok := args[3].(types.Int)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(args[3])
-		}
-		out, err := fn(string(vVal), string(arg1Val), string(arg2Val), int64(arg3Val))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.String(out)
-	}
+	return string(runes), nil
 }

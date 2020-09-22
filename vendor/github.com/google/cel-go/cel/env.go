@@ -21,7 +21,7 @@ import (
 	"github.com/google/cel-go/checker"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/packages"
+	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
@@ -78,9 +78,9 @@ func (ast *Ast) Source() Source {
 // Env encapsulates the context necessary to perform parsing, type checking, or generation of
 // evaluable programs for different expressions.
 type Env struct {
+	Container    *containers.Container
 	declarations []*exprpb.Decl
 	macros       []parser.Macro
-	pkg          packages.Packager
 	adapter      ref.TypeAdapter
 	provider     ref.TypeProvider
 	features     map[int]bool
@@ -119,7 +119,7 @@ func NewCustomEnv(opts ...EnvOption) (*Env, error) {
 	return (&Env{
 		declarations: []*exprpb.Decl{},
 		macros:       []parser.Macro{},
-		pkg:          packages.DefaultPackage,
+		Container:    containers.DefaultContainer,
 		adapter:      registry,
 		provider:     registry,
 		features:     map[int]bool{},
@@ -140,7 +140,7 @@ func (e *Env) Check(ast *Ast) (*Ast, *Issues) {
 
 	// Construct the internal checker env, erroring if there is an issue adding the declarations.
 	e.once.Do(func() {
-		ce := checker.NewEnv(e.pkg, e.provider)
+		ce := checker.NewEnv(e.Container, e.provider)
 		ce.EnableDynamicAggregateLiterals(true)
 		if e.HasFeature(FeatureDisableDynamicAggregateLiterals) {
 			ce.EnableDynamicAggregateLiterals(false)
@@ -156,12 +156,12 @@ func (e *Env) Check(ast *Ast) (*Ast, *Issues) {
 	if e.chkErr != nil {
 		errs := common.NewErrors(ast.Source())
 		errs.ReportError(common.NoLocation, e.chkErr.Error())
-		return nil, &Issues{errs: errs}
+		return nil, NewIssues(errs)
 	}
 
 	res, errs := checker.Check(pe, ast.Source(), e.chk)
 	if len(errs.GetErrors()) > 0 {
-		return nil, &Issues{errs: errs}
+		return nil, NewIssues(errs)
 	}
 	// Manually create the Ast to ensure that the Ast source information (which may be more
 	// detailed than the information provided by Check), is returned to the caller.
@@ -258,12 +258,12 @@ func (e *Env) Extend(opts ...EnvOption) (*Env, error) {
 	}
 
 	ext := &Env{
+		Container:    e.Container,
 		declarations: decsCopy,
 		macros:       macsCopy,
 		progOpts:     progOptsCopy,
 		adapter:      adapter,
 		features:     featuresCopy,
-		pkg:          e.pkg,
 		provider:     provider,
 	}
 	return ext.configure(opts)
@@ -427,8 +427,8 @@ func (i *Issues) Err() error {
 	if i == nil {
 		return nil
 	}
-	if len(i.errs.GetErrors()) > 0 {
-		return errors.New(i.errs.ToDisplayString())
+	if len(i.Errors()) > 0 {
+		return errors.New(i.String())
 	}
 	return nil
 }
@@ -446,9 +446,7 @@ func (i *Issues) Append(other *Issues) *Issues {
 	if i == nil {
 		return other
 	}
-	return &Issues{
-		errs: i.errs.Append(other.errs.GetErrors()),
-	}
+	return NewIssues(i.errs.Append(other.errs.GetErrors()))
 }
 
 // String converts the issues to a suitable display string.
