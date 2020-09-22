@@ -48,7 +48,7 @@ const (
 
 func Test_FindAPIResource_error(t *testing.T) {
 	dc := fakekubeclientset.NewSimpleClientset().Discovery()
-	if _, err := FindAPIResource("v1", "Pod", dc); err == nil {
+	if _, err := findAPIResource("v1", "Pod", dc); err == nil {
 		t.Error("findAPIResource() did not return error when expected")
 	}
 }
@@ -117,7 +117,7 @@ func TestFindAPIResource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%s", tt.apiVersion, tt.kind), func(t *testing.T) {
-			got, err := FindAPIResource(tt.apiVersion, tt.kind, dc)
+			got, err := findAPIResource(tt.apiVersion, tt.kind, dc)
 			if err != nil {
 				t.Errorf("findAPIResource() returned error: %s", err)
 			} else if diff := cmp.Diff(tt.want, got); diff != "" {
@@ -298,9 +298,9 @@ func Test_AddLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := AddLabels(tt.us, tt.labelsToAdd)
+			got := addLabels(tt.us, tt.labelsToAdd)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("AddLabels(): -want +got: %s", diff)
+				t.Errorf("addLabels(): -want +got: %s", diff)
 			}
 		})
 	}

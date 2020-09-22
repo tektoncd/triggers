@@ -112,12 +112,12 @@ func TestParseJSONPath(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Could not unmarshall body : %q", err)
 			}
-			got, err := ParseJSONPath(data, tt.expr)
+			got, err := parseJSONPath(data, tt.expr)
 			if err != nil {
-				t.Fatalf("ParseJSONPath() error = %v", err)
+				t.Fatalf("parseJSONPath() error = %v", err)
 			}
 			if diff := cmp.Diff(strings.Replace(tt.want, " ", "", -1), got); diff != "" {
-				t.Errorf("ParseJSONPath() -want,+got: %s", diff)
+				t.Errorf("parseJSONPath() -want,+got: %s", diff)
 			}
 		})
 	}
@@ -143,9 +143,9 @@ func TestParseJSONPath_Error(t *testing.T) {
 
 	for _, expr := range invalidExprs {
 		t.Run(expr, func(t *testing.T) {
-			got, err := ParseJSONPath(data, expr)
+			got, err := parseJSONPath(data, expr)
 			if err == nil {
-				t.Errorf("ParseJSONPath() did not return expected error; got = %v", got)
+				t.Errorf("parseJSONPath() did not return expected error; got = %v", got)
 			}
 		})
 	}
@@ -163,12 +163,12 @@ func TestTektonJSONPathExpression(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
-			got, err := TektonJSONPathExpression(tt.expr)
+			got, err := tektonJSONPathExpression(tt.expr)
 			if err != nil {
-				t.Errorf("TektonJSONPathExpression() unexpected error = %v,  got = %v", err, got)
+				t.Errorf("tektonJSONPathExpression() unexpected error = %v,  got = %v", err, got)
 			}
 			if got != tt.want {
-				t.Errorf("TektonJSONPathExpression() got = %v, want %v", got, tt.want)
+				t.Errorf("tektonJSONPathExpression() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -187,9 +187,9 @@ func TestTektonJSONPathExpression_Error(t *testing.T) {
 	}
 	for _, expr := range tests {
 		t.Run(expr, func(t *testing.T) {
-			_, err := TektonJSONPathExpression(expr)
+			_, err := tektonJSONPathExpression(expr)
 			if err == nil {
-				t.Errorf("TektonJSONPathExpression() did not get expected error for expression = %s", expr)
+				t.Errorf("tektonJSONPathExpression() did not get expected error for expression = %s", expr)
 			}
 		})
 	}
@@ -209,10 +209,10 @@ func TestRelaxedJSONPathExpression(t *testing.T) {
 		t.Run(tt.expr, func(t *testing.T) {
 			got, err := relaxedJSONPathExpression(tt.expr)
 			if err != nil {
-				t.Errorf("TektonJSONPathExpression() unexpected error = %v,  got = %v", err, got)
+				t.Errorf("relaxedJSONPathExpression() unexpected error = %v,  got = %v", err, got)
 			}
 			if got != tt.want {
-				t.Errorf("TektonJSONPathExpression() got = %v, want %v", got, tt.want)
+				t.Errorf("relaxedJSONPathExpression() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -229,7 +229,7 @@ func TestRelaxedJSONPathExpression_Error(t *testing.T) {
 		t.Run(expr, func(t *testing.T) {
 			got, err := relaxedJSONPathExpression(expr)
 			if err == nil {
-				t.Errorf("TektonJSONPathExpression() did not get expected error = %v,  got = %v", err, got)
+				t.Errorf("relaxedJSONPathExpression() did not get expected error = %v,  got = %v", err, got)
 			}
 		})
 	}
