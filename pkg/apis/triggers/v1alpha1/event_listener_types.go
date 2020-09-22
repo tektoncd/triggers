@@ -26,7 +26,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -135,7 +134,7 @@ type EventListenerList struct {
 // EventListenerStatus holds the status of the EventListener
 // +k8s:deepcopy-gen=true
 type EventListenerStatus struct {
-	duckv1beta1.Status `json:",inline"`
+	duckv1.Status `json:",inline"`
 
 	// EventListener is Addressable. It currently exposes the service DNS
 	// address of the the EventListener sink
@@ -189,6 +188,14 @@ func (els *EventListenerStatus) SetCondition(newCond *apis.Condition) {
 		eventListenerCondSet.Manage(els).SetCondition(*newCond)
 	}
 }
+
+// GetConditionSet retrieves the condition set for this resource. Implements
+// the KRShaped interface.
+func (r *EventListener) GetConditionSet() apis.ConditionSet { return eventListenerCondSet }
+
+// GetStatus retrieves the status of the Parallel. Implements the KRShaped
+// interface.
+func (r *EventListener) GetStatus() *duckv1.Status { return &r.Status.Status }
 
 // SetDeploymentConditions sets the Deployment conditions on the EventListener,
 // which is a reflection of the actual Deployment status.

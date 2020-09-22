@@ -28,7 +28,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestEventListenerBuilder(t *testing.T) {
@@ -95,7 +94,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				Namespace: "namespace",
 			},
 			Status: v1alpha1.EventListenerStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:    v1alpha1.ServiceExists,
 						Status:  corev1.ConditionTrue,
@@ -121,7 +120,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				Namespace: "namespace",
 			},
 			Status: v1alpha1.EventListenerStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:    v1alpha1.DeploymentExists,
 						Status:  corev1.ConditionTrue,
