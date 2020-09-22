@@ -110,9 +110,9 @@ func Test_MergeInDefaultParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MergeInDefaultParams(tt.args.params, tt.args.paramSpecs)
+			got := mergeInDefaultParams(tt.args.params, tt.args.paramSpecs)
 			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
-				t.Errorf("MergeInDefaultParams(): -want +got: %s", diff)
+				t.Errorf("mergeInDefaultParams(): -want +got: %s", diff)
 			}
 		})
 	}
@@ -252,9 +252,9 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyParamsToResourceTemplate(tt.args.params, tt.args.rt)
+			got := applyParamsToResourceTemplate(tt.args.params, tt.args.rt)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("ApplyParamsToResourceTemplate(): -want +got: %s", diff)
+				t.Errorf("applyParamsToResourceTemplate(): -want +got: %s", diff)
 			}
 		})
 	}
@@ -586,9 +586,9 @@ func Test_ApplyUIDToResourceTemplate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Always resolve uid to abcde for easier testing
-			actualRt := ApplyUIDToResourceTemplate(tt.rt, "abcde")
+			actualRt := applyUIDToResourceTemplate(tt.rt, "abcde")
 			if diff := cmp.Diff(string(tt.expectedRt), string(actualRt)); diff != "" {
-				t.Errorf("ApplyUIDToResourceTemplate(): -want +got: %s", diff)
+				t.Errorf("applyUIDToResourceTemplate(): -want +got: %s", diff)
 			}
 		})
 	}
@@ -705,7 +705,7 @@ func TestMergeBindingParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MergeBindingParams(tt.bindings, tt.clusterBindings)
+			got, err := mergeBindingParams(tt.bindings, tt.clusterBindings)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Unexpected error : %q", err)
 			}

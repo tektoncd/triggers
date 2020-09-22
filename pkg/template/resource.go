@@ -82,9 +82,9 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	return ResolvedTrigger{TriggerBindings: tb, ClusterTriggerBindings: ctb, TriggerTemplate: tt}, nil
 }
 
-// MergeInDefaultParams returns the params with the addition of all
+// mergeInDefaultParams returns the params with the addition of all
 // paramSpecs that have default values and are already in the params list
-func MergeInDefaultParams(params []triggersv1.Param, paramSpecs []triggersv1.ParamSpec) []triggersv1.Param {
+func mergeInDefaultParams(params []triggersv1.Param, paramSpecs []triggersv1.ParamSpec) []triggersv1.Param {
 	allParamsMap := map[string]string{}
 	for _, paramSpec := range paramSpecs {
 		if paramSpec.Default != nil {
@@ -97,9 +97,9 @@ func MergeInDefaultParams(params []triggersv1.Param, paramSpecs []triggersv1.Par
 	return convertParamMapToArray(allParamsMap)
 }
 
-// ApplyParamsToResourceTemplate returns the TriggerResourceTemplate with the
+// applyParamsToResourceTemplate returns the TriggerResourceTemplate with the
 // param values substituted for all matching param variables in the template
-func ApplyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage) json.RawMessage {
+func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage) json.RawMessage {
 	// Assume the params are valid
 	for _, param := range params {
 		rt = applyParamToResourceTemplate(param, rt)
@@ -122,9 +122,9 @@ func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage) js
 // UID generates a random string like the Kubernetes apiserver generateName metafield postfix.
 var UID = func() string { return rand.String(5) }
 
-// ApplyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
+// applyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.
-func ApplyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage {
+func applyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage {
 	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
 }
 
@@ -136,8 +136,8 @@ func convertParamMapToArray(paramMap map[string]string) []triggersv1.Param {
 	return params
 }
 
-// MergeBindingParams merges params across multiple bindings.
-func MergeBindingParams(bindings []*triggersv1.TriggerBinding, clusterbindings []*triggersv1.ClusterTriggerBinding) ([]triggersv1.Param, error) {
+// mergeBindingParams merges params across multiple bindings.
+func mergeBindingParams(bindings []*triggersv1.TriggerBinding, clusterbindings []*triggersv1.ClusterTriggerBinding) ([]triggersv1.Param, error) {
 	params := []triggersv1.Param{}
 	for _, b := range bindings {
 		params = append(params, b.Spec.Params...)

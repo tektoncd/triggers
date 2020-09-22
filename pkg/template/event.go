@@ -28,7 +28,7 @@ import (
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
 func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]triggersv1.Param, error) {
-	out, err := MergeBindingParams(rt.TriggerBindings, rt.ClusterTriggerBindings)
+	out, err := mergeBindingParams(rt.TriggerBindings, rt.ClusterTriggerBindings)
 	if err != nil {
 		return nil, fmt.Errorf("error merging trigger params: %w", err)
 	}
@@ -43,7 +43,7 @@ func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]trigg
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	return MergeInDefaultParams(out, ttParams), nil
+	return mergeInDefaultParams(out, ttParams), nil
 }
 
 // ResolveResources resolves a templated resource by replacing params with their values.
@@ -51,8 +51,8 @@ func ResolveResources(template *triggersv1.TriggerTemplate, params []triggersv1.
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
 	uid := UID()
 	for i := range template.Spec.ResourceTemplates {
-		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw)
-		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
+		resources[i] = applyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw)
+		resources[i] = applyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources
 }
@@ -95,7 +95,7 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 		// Find all expressions wrapped in $() from the value
 		expressions, originals := findTektonExpressions(pValue)
 		for i, expr := range expressions {
-			val, err := ParseJSONPath(event, expr)
+			val, err := parseJSONPath(event, expr)
 			if err != nil {
 				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}

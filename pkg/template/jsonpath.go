@@ -40,14 +40,14 @@ var (
 	jsonRegexp = regexp.MustCompile(`^\{\.?([^{}]+)\}$|^\.?([^{}]+)$`)
 )
 
-// ParseJSONPath extracts a subset of the given JSON input
+// parseJSONPath extracts a subset of the given JSON input
 // using the provided JSONPath expression.
-func ParseJSONPath(input interface{}, expr string) (string, error) {
+func parseJSONPath(input interface{}, expr string) (string, error) {
 	j := jsonpath.New("").AllowMissingKeys(false)
 	buf := new(bytes.Buffer)
 
 	//First turn the expression into fully valid JSONPath
-	expr, err := TektonJSONPathExpression(expr)
+	expr, err := tektonJSONPathExpression(expr)
 	if err != nil {
 		return "", err
 	}
@@ -118,11 +118,11 @@ func getResults(values []reflect.Value) ([]byte, error) {
 	return json.Marshal(results)
 }
 
-// TektonJSONPathExpression returns a valid JSONPath expression. It accepts
+// tektonJSONPathExpression returns a valid JSONPath expression. It accepts
 // a "RelaxedJSONPath" expression that is wrapped in the Tekton variable
 // interpolation syntax i.e. $(). RelaxedJSONPath expressions can optionally
 // omit the leading curly braces '{}' and '.'
-func TektonJSONPathExpression(expr string) (string, error) {
+func tektonJSONPathExpression(expr string) (string, error) {
 	if !isTektonExpr(expr) {
 		return "", errors.New("expression not wrapped in $()")
 	}
