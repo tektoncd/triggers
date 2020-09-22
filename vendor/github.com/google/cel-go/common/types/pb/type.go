@@ -357,7 +357,12 @@ func (fd *FieldDescription) GetFrom(target interface{}) (interface{}, error) {
 		t = reflect.ValueOf(target)
 	}
 	var fieldVal reflect.Value
-	if fd.isProto3 && fd.field != nil && !fd.IsOneof() {
+	// For proto3, prefer direct field access as the primitive types are simple values.
+	// For proto2, prefer the getter method to ensure that the primitive types are dereferenced
+	// to a value.
+	// If the getter method does not exist (as may be the case for gogo protogen sources), then
+	// prefer the direct field access.
+	if !fd.getter.IsValid() || (fd.isProto3 && fd.field != nil && !fd.IsOneof()) {
 		// The target object should always be a struct.
 		t = reflect.Indirect(t)
 		if t.Kind() != reflect.Struct {

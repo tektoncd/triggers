@@ -7,6 +7,8 @@ package(
 go_library(
     name = "go_strings_library",
     srcs = [
+        "encoders.go",
+        "guards.go",
         "strings.go",
     ],
     importpath = "github.com/google/cel-go/ext",
@@ -26,6 +28,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "encoders_test.go",
         "strings_test.go",
     ],
     embed = [

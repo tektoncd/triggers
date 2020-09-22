@@ -16,6 +16,7 @@ package cel
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
@@ -93,6 +94,7 @@ func (ed *EvalDetails) State() interpreter.EvalState {
 type prog struct {
 	*Env
 	evalOpts      EvalOption
+	decorators    []interpreter.InterpretableDecorator
 	defaultVars   interpreter.Activation
 	dispatcher    interpreter.Dispatcher
 	interpreter   interpreter.Interpreter
@@ -118,7 +120,11 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 
 	// Ensure the default attribute factory is set after the adapter and provider are
 	// configured.
-	p := &prog{Env: e, dispatcher: disp}
+	p := &prog{
+		Env:        e,
+		decorators: []interpreter.InterpretableDecorator{},
+		dispatcher: disp,
+	}
 
 	// Configure the program via the ProgramOption values.
 	var err error
@@ -134,16 +140,18 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 
 	// Set the attribute factory after the options have been set.
 	if p.evalOpts&OptPartialEval == OptPartialEval {
-		p.attrFactory = interpreter.NewPartialAttributeFactory(e.pkg, e.adapter, e.provider)
+		p.attrFactory = interpreter.NewPartialAttributeFactory(e.Container, e.adapter, e.provider)
 	} else {
-		p.attrFactory = interpreter.NewAttributeFactory(e.pkg, e.adapter, e.provider)
+		p.attrFactory = interpreter.NewAttributeFactory(e.Container, e.adapter, e.provider)
 	}
 
-	interp := interpreter.NewInterpreter(disp, e.pkg, e.provider, e.adapter, p.attrFactory)
+	interp := interpreter.NewInterpreter(disp, e.Container, e.provider, e.adapter, p.attrFactory)
 	p.interpreter = interp
 
 	// Translate the EvalOption flags into InterpretableDecorator instances.
-	decorators := []interpreter.InterpretableDecorator{}
+	decorators := make([]interpreter.InterpretableDecorator, len(p.decorators))
+	copy(decorators, p.decorators)
+
 	// Enable constant folding first.
 	if p.evalOpts&OptOptimize == OptOptimize {
 		decorators = append(decorators, interpreter.Optimize())
@@ -253,6 +261,11 @@ func (p *prog) Eval(input interface{}) (v ref.Val, det *EvalDetails, err error) 
 	return
 }
 
+// Cost implements the Coster interface method.
+func (p *prog) Cost() (min, max int64) {
+	return estimateCost(p.interpretable)
+}
+
 // Eval implements the Program interface method.
 func (gen *progGen) Eval(input interface{}) (ref.Val, *EvalDetails, error) {
 	// The factory based Eval() differs from the standard evaluation model in that it generates a
@@ -275,4 +288,31 @@ func (gen *progGen) Eval(input interface{}) (ref.Val, *EvalDetails, error) {
 		return v, det, err
 	}
 	return v, det, nil
+}
+
+// Cost implements the Coster interface method.
+func (gen *progGen) Cost() (min, max int64) {
+	// Use an empty state value since no evaluation is performed.
+	p, err := gen.factory(emptyEvalState)
+	if err != nil {
+		return 0, math.MaxInt64
+	}
+	return estimateCost(p)
+}
+
+var (
+	emptyEvalState = interpreter.NewEvalState()
+)
+
+// EstimateCost returns the heuristic cost interval for the program.
+func EstimateCost(p Program) (min, max int64) {
+	return estimateCost(p)
+}
+
+func estimateCost(i interface{}) (min, max int64) {
+	c, ok := i.(interpreter.Coster)
+	if !ok {
+		return 0, math.MaxInt64
+	}
+	return c.Cost()
 }

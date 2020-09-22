@@ -271,3 +271,23 @@ const (
 	HasNext  = "@hasNext"
 	Next     = "@next"
 )
+
+// IsTypeConversionFunction returns whether the input function is a standard library type
+// conversion function.
+func IsTypeConversionFunction(function string) bool {
+	switch function {
+	case TypeConvertBool,
+		TypeConvertBytes,
+		TypeConvertDouble,
+		TypeConvertDuration,
+		TypeConvertDyn,
+		TypeConvertInt,
+		TypeConvertString,
+		TypeConvertTimestamp,
+		TypeConvertType,
+		TypeConvertUint:
+		return true
+	default:
+		return false
+	}
+}

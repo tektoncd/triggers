@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/packages"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
@@ -34,14 +34,14 @@ type interpretablePlanner interface {
 }
 
 // newPlanner creates an interpretablePlanner which references a Dispatcher, TypeProvider,
-// TypeAdapter, Packager, and CheckedExpr value. These pieces of data are used to resolve
+// TypeAdapter, Container, and CheckedExpr value. These pieces of data are used to resolve
 // functions, types, and namespaced identifiers at plan time rather than at runtime since
 // it only needs to be done once and may be semi-expensive to compute.
 func newPlanner(disp Dispatcher,
 	provider ref.TypeProvider,
 	adapter ref.TypeAdapter,
 	attrFactory AttributeFactory,
-	pkg packages.Packager,
+	cont *containers.Container,
 	checked *exprpb.CheckedExpr,
 	decorators ...InterpretableDecorator) interpretablePlanner {
 	return &planner{
@@ -49,7 +49,7 @@ func newPlanner(disp Dispatcher,
 		provider:    provider,
 		adapter:     adapter,
 		attrFactory: attrFactory,
-		pkg:         pkg,
+		container:   cont,
 		refMap:      checked.GetReferenceMap(),
 		typeMap:     checked.GetTypeMap(),
 		decorators:  decorators,
@@ -57,20 +57,20 @@ func newPlanner(disp Dispatcher,
 }
 
 // newUncheckedPlanner creates an interpretablePlanner which references a Dispatcher, TypeProvider,
-// TypeAdapter, and Packager to resolve functions and types at plan time. Namespaces present in
+// TypeAdapter, and Container to resolve functions and types at plan time. Namespaces present in
 // Select expressions are resolved lazily at evaluation time.
 func newUncheckedPlanner(disp Dispatcher,
 	provider ref.TypeProvider,
 	adapter ref.TypeAdapter,
 	attrFactory AttributeFactory,
-	pkg packages.Packager,
+	cont *containers.Container,
 	decorators ...InterpretableDecorator) interpretablePlanner {
 	return &planner{
 		disp:        disp,
 		provider:    provider,
 		adapter:     adapter,
 		attrFactory: attrFactory,
-		pkg:         pkg,
+		container:   cont,
 		refMap:      make(map[int64]*exprpb.Reference),
 		typeMap:     make(map[int64]*exprpb.Type),
 		decorators:  decorators,
@@ -83,7 +83,7 @@ type planner struct {
 	provider    ref.TypeProvider
 	adapter     ref.TypeAdapter
 	attrFactory AttributeFactory
-	pkg         packages.Packager
+	container   *containers.Container
 	refMap      map[int64]*exprpb.Reference
 	typeMap     map[int64]*exprpb.Type
 	decorators  []InterpretableDecorator
@@ -133,14 +133,14 @@ func (p *planner) decorate(i Interpretable, err error) (Interpretable, error) {
 // planIdent creates an Interpretable that resolves an identifier from an Activation.
 func (p *planner) planIdent(expr *exprpb.Expr) (Interpretable, error) {
 	// Establish whether the identifier is in the reference map.
-	if identRef, found := p.refMap[expr.Id]; found {
-		return p.planCheckedIdent(expr.Id, identRef)
+	if identRef, found := p.refMap[expr.GetId()]; found {
+		return p.planCheckedIdent(expr.GetId(), identRef)
 	}
 	// Create the possible attribute list for the unresolved reference.
 	ident := expr.GetIdentExpr()
 	return &evalAttr{
 		adapter: p.adapter,
-		attr:    p.attrFactory.MaybeAttribute(expr.Id, ident.Name),
+		attr:    p.attrFactory.MaybeAttribute(expr.GetId(), ident.Name),
 	}, nil
 }
 
@@ -161,10 +161,7 @@ func (p *planner) planCheckedIdent(id int64, identRef *exprpb.Reference) (Interp
 		if !found {
 			return nil, fmt.Errorf("reference to undefined type: %s", identRef.Name)
 		}
-		return &evalConst{
-			id:  id,
-			val: cVal,
-		}, nil
+		return NewConstValue(id, cVal), nil
 	}
 
 	// Otherwise, return the attribute for the resolved identifier name.
@@ -181,8 +178,8 @@ func (p *planner) planCheckedIdent(id int64, identRef *exprpb.Reference) (Interp
 func (p *planner) planSelect(expr *exprpb.Expr) (Interpretable, error) {
 	// If the Select id appears in the reference map from the CheckedExpr proto then it is either
 	// a namespaced identifier or enum value.
-	if identRef, found := p.refMap[expr.Id]; found {
-		return p.planCheckedIdent(expr.Id, identRef)
+	if identRef, found := p.refMap[expr.GetId()]; found {
+		return p.planCheckedIdent(expr.GetId(), identRef)
 	}
 
 	sel := expr.GetSelectExpr()
@@ -194,7 +191,7 @@ func (p *planner) planSelect(expr *exprpb.Expr) (Interpretable, error) {
 
 	// Determine the field type if this is a proto message type.
 	var fieldType *ref.FieldType
-	opType := p.typeMap[op.ID()]
+	opType := p.typeMap[sel.GetOperand().GetId()]
 	if opType.GetMessageType() != "" {
 		ft, found := p.provider.FindFieldType(opType.GetMessageType(), sel.Field)
 		if found && ft.IsSet != nil && ft.GetFrom != nil {
@@ -229,20 +226,21 @@ func (p *planner) planSelect(expr *exprpb.Expr) (Interpretable, error) {
 		return nil, err
 	}
 	// Lastly, create a field selection Interpretable.
-	attr, isAttr := op.(instAttr)
+	attr, isAttr := op.(InterpretableAttribute)
 	if isAttr {
-		return attr.AddQualifier(qual)
+		_, err = attr.AddQualifier(qual)
+		return attr, err
 	}
 
-	relAttr := p.attrFactory.RelativeAttribute(op.ID(), op)
+	relAttr, err := p.relativeAttr(op.ID(), op)
+	if err != nil {
+		return nil, err
+	}
 	_, err = relAttr.AddQualifier(qual)
 	if err != nil {
 		return nil, err
 	}
-	return &evalAttr{
-		adapter: p.adapter,
-		attr:    relAttr,
-	}, nil
+	return relAttr, nil
 }
 
 // planCall creates a callable Interpretable while specializing for common functions and invocation
@@ -321,8 +319,10 @@ func (p *planner) planCallZero(expr *exprpb.Expr,
 		return nil, fmt.Errorf("no such overload: %s()", function)
 	}
 	return &evalZeroArity{
-		id:   expr.Id,
-		impl: impl.Function,
+		id:       expr.Id,
+		function: function,
+		overload: overload,
+		impl:     impl.Function,
 	}, nil
 }
 
@@ -449,7 +449,7 @@ func (p *planner) planCallConditional(expr *exprpb.Expr,
 
 	t := args[1]
 	var tAttr Attribute
-	truthyAttr, isTruthyAttr := t.(instAttr)
+	truthyAttr, isTruthyAttr := t.(InterpretableAttribute)
 	if isTruthyAttr {
 		tAttr = truthyAttr.Attr()
 	} else {
@@ -458,7 +458,7 @@ func (p *planner) planCallConditional(expr *exprpb.Expr,
 
 	f := args[2]
 	var fAttr Attribute
-	falsyAttr, isFalsyAttr := f.(instAttr)
+	falsyAttr, isFalsyAttr := f.(InterpretableAttribute)
 	if isFalsyAttr {
 		fAttr = falsyAttr.Attr()
 	} else {
@@ -477,28 +477,37 @@ func (p *planner) planCallIndex(expr *exprpb.Expr,
 	args []Interpretable) (Interpretable, error) {
 	op := args[0]
 	ind := args[1]
-	opAttr, isOpAttr := op.(instAttr)
-	if !isOpAttr {
-		opAttr = &evalAttr{
-			adapter: p.adapter,
-			attr:    p.attrFactory.RelativeAttribute(expr.Id, op),
-		}
+	opAttr, err := p.relativeAttr(op.ID(), op)
+	if err != nil {
+		return nil, err
 	}
-	indConst, isIndConst := ind.(instConst)
+	opType := p.typeMap[expr.GetCallExpr().GetTarget().GetId()]
+	indConst, isIndConst := ind.(InterpretableConst)
 	if isIndConst {
-		opType := p.typeMap[op.ID()]
 		qual, err := p.attrFactory.NewQualifier(
-			opType, indConst.ID(), indConst.Value())
+			opType, expr.GetId(), indConst.Value())
 		if err != nil {
 			return nil, err
 		}
-		return opAttr.AddQualifier(qual)
+		_, err = opAttr.AddQualifier(qual)
+		return opAttr, err
 	}
-	indAttr, isIndAttr := ind.(instAttr)
+	indAttr, isIndAttr := ind.(InterpretableAttribute)
 	if isIndAttr {
-		return opAttr.AddQualifier(indAttr.Attr())
+		qual, err := p.attrFactory.NewQualifier(
+			opType, expr.GetId(), indAttr)
+		if err != nil {
+			return nil, err
+		}
+		_, err = opAttr.AddQualifier(qual)
+		return opAttr, err
 	}
-	return opAttr.AddQualifier(p.attrFactory.RelativeAttribute(ind.ID(), ind))
+	indQual, err := p.relativeAttr(expr.GetId(), ind)
+	if err != nil {
+		return nil, err
+	}
+	_, err = opAttr.AddQualifier(indQual)
+	return opAttr, err
 }
 
 // planCreateList generates a list construction Interpretable.
@@ -617,10 +626,7 @@ func (p *planner) planConst(expr *exprpb.Expr) (Interpretable, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &evalConst{
-		id:  expr.Id,
-		val: val,
-	}, nil
+	return NewConstValue(expr.Id, val), nil
 }
 
 // constValue converts a proto Constant value to a ref.Val.
@@ -632,12 +638,16 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 		return types.Bytes(c.GetBytesValue()), nil
 	case *exprpb.Constant_DoubleValue:
 		return types.Double(c.GetDoubleValue()), nil
+	case *exprpb.Constant_DurationValue:
+		return types.Duration{Duration: c.GetDurationValue()}, nil
 	case *exprpb.Constant_Int64Value:
 		return types.Int(c.GetInt64Value()), nil
 	case *exprpb.Constant_NullValue:
 		return types.Null(c.GetNullValue()), nil
 	case *exprpb.Constant_StringValue:
 		return types.String(c.GetStringValue()), nil
+	case *exprpb.Constant_TimestampValue:
+		return types.Timestamp{Timestamp: c.GetTimestampValue()}, nil
 	case *exprpb.Constant_Uint64Value:
 		return types.Uint(c.GetUint64Value()), nil
 	}
@@ -647,7 +657,7 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 // resolveTypeName takes a qualified string constructed at parse time, applies the proto
 // namespace resolution rules to it in a scan over possible matching types in the TypeProvider.
 func (p *planner) resolveTypeName(typeName string) (string, bool) {
-	for _, qualifiedTypeName := range p.pkg.ResolveCandidateNames(typeName) {
+	for _, qualifiedTypeName := range p.container.ResolveCandidateNames(typeName) {
 		if _, found := p.provider.FindType(qualifiedTypeName); found {
 			return qualifiedTypeName, true
 		}
@@ -673,7 +683,7 @@ func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, stri
 
 	// Checked expressions always have a reference map entry, and _should_ have the fully qualified
 	// function name as the fnName value.
-	oRef, hasOverload := p.refMap[expr.Id]
+	oRef, hasOverload := p.refMap[expr.GetId()]
 	if hasOverload {
 		if len(oRef.GetOverloadId()) == 1 {
 			return target, fnName, oRef.GetOverloadId()[0]
@@ -690,7 +700,7 @@ func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, stri
 	if target == nil {
 		// If the user has a parse-only expression, then it should have been configured as such in
 		// the interpreter dispatcher as it may have been omitted from the checker environment.
-		for _, qualifiedName := range p.pkg.ResolveCandidateNames(fnName) {
+		for _, qualifiedName := range p.container.ResolveCandidateNames(fnName) {
 			_, found := p.disp.FindOverload(qualifiedName)
 			if found {
 				return nil, qualifiedName, ""
@@ -708,7 +718,7 @@ func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, stri
 	qualifiedPrefix, maybeQualified := p.toQualifiedName(target)
 	if maybeQualified {
 		maybeQualifiedName := qualifiedPrefix + "." + fnName
-		for _, qualifiedName := range p.pkg.ResolveCandidateNames(maybeQualifiedName) {
+		for _, qualifiedName := range p.container.ResolveCandidateNames(maybeQualifiedName) {
 			_, found := p.disp.FindOverload(qualifiedName)
 			if found {
 				// Clear the target to ensure the proper arity is used for finding the
@@ -722,18 +732,37 @@ func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, stri
 	return target, fnName, ""
 }
 
+func (p *planner) relativeAttr(id int64, eval Interpretable) (InterpretableAttribute, error) {
+	eAttr, ok := eval.(InterpretableAttribute)
+	if !ok {
+		eAttr = &evalAttr{
+			adapter: p.adapter,
+			attr:    p.attrFactory.RelativeAttribute(id, eval),
+		}
+	}
+	decAttr, err := p.decorate(eAttr, nil)
+	if err != nil {
+		return nil, err
+	}
+	eAttr, ok = decAttr.(InterpretableAttribute)
+	if !ok {
+		return nil, fmt.Errorf("invalid attribute decoration: %v(%T)", decAttr, decAttr)
+	}
+	return eAttr, nil
+}
+
 // toQualifiedName converts an expression AST into a qualified name if possible, with a boolean
 // 'found' value that indicates if the conversion is successful.
 func (p *planner) toQualifiedName(operand *exprpb.Expr) (string, bool) {
 	// If the checker identified the expression as an attribute by the type-checker, then it can't
 	// possibly be part of qualified name in a namespace.
-	_, isAttr := p.refMap[operand.Id]
+	_, isAttr := p.refMap[operand.GetId()]
 	if isAttr {
 		return "", false
 	}
 	// Since functions cannot be both namespaced and receiver functions, if the operand is not an
 	// qualified variable name, return the (possibly) qualified name given the expressions.
-	return packages.ToQualifiedName(operand)
+	return containers.ToQualifiedName(operand)
 }
 
 func stripLeadingDot(name string) string {

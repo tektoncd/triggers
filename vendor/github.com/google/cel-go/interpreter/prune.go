@@ -18,15 +18,18 @@ import (
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
+	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 type astPruner struct {
-	expr  *exprpb.Expr
-	state EvalState
+	expr       *exprpb.Expr
+	state      EvalState
+	nextExprID int64
 }
 
 // TODO Consider having a separate walk of the AST that finds common
@@ -60,16 +63,114 @@ type astPruner struct {
 // the overloads accordingly.
 func PruneAst(expr *exprpb.Expr, state EvalState) *exprpb.Expr {
 	pruner := &astPruner{
-		expr:  expr,
-		state: state}
+		expr:       expr,
+		state:      state,
+		nextExprID: 1}
 	newExpr, _ := pruner.prune(expr)
 	return newExpr
 }
 
-func (p *astPruner) createLiteral(node *exprpb.Expr, val *exprpb.Constant) *exprpb.Expr {
-	newExpr := *node
-	newExpr.ExprKind = &exprpb.Expr_ConstExpr{ConstExpr: val}
-	return &newExpr
+func (p *astPruner) createLiteral(id int64, val *exprpb.Constant) *exprpb.Expr {
+	return &exprpb.Expr{
+		Id: id,
+		ExprKind: &exprpb.Expr_ConstExpr{
+			ConstExpr: val,
+		},
+	}
+}
+
+func (p *astPruner) maybeCreateLiteral(id int64, val ref.Val) (*exprpb.Expr, bool) {
+	switch val.Type() {
+	case types.BoolType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_BoolValue{BoolValue: val.Value().(bool)}}), true
+	case types.IntType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_Int64Value{Int64Value: val.Value().(int64)}}), true
+	case types.UintType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_Uint64Value{Uint64Value: val.Value().(uint64)}}), true
+	case types.StringType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_StringValue{StringValue: val.Value().(string)}}), true
+	case types.DoubleType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_DoubleValue{DoubleValue: val.Value().(float64)}}), true
+	case types.BytesType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_BytesValue{BytesValue: val.Value().([]byte)}}), true
+	case types.NullType:
+		return p.createLiteral(id,
+			&exprpb.Constant{ConstantKind: &exprpb.Constant_NullValue{NullValue: val.Value().(structpb.NullValue)}}), true
+	}
+
+	// Attempt to build a list literal.
+	if list, isList := val.(traits.Lister); isList {
+		sz := list.Size().(types.Int)
+		elemExprs := make([]*exprpb.Expr, sz)
+		for i := types.Int(0); i < sz; i++ {
+			elem := list.Get(i)
+			if types.IsUnknownOrError(elem) {
+				return nil, false
+			}
+			elemExpr, ok := p.maybeCreateLiteral(p.nextID(), elem)
+			if !ok {
+				return nil, false
+			}
+			elemExprs[i] = elemExpr
+		}
+		return &exprpb.Expr{
+			Id: id,
+			ExprKind: &exprpb.Expr_ListExpr{
+				ListExpr: &expr.Expr_CreateList{
+					Elements: elemExprs,
+				},
+			},
+		}, true
+	}
+
+	// Create a map literal if possible.
+	if mp, isMap := val.(traits.Mapper); isMap {
+		it := mp.Iterator()
+		entries := make([]*exprpb.Expr_CreateStruct_Entry, mp.Size().(types.Int))
+		i := 0
+		for it.HasNext() != types.False {
+			key := it.Next()
+			val := mp.Get(key)
+			if types.IsUnknownOrError(key) || types.IsUnknownOrError(val) {
+				return nil, false
+			}
+			keyExpr, ok := p.maybeCreateLiteral(p.nextID(), key)
+			if !ok {
+				return nil, false
+			}
+			valExpr, ok := p.maybeCreateLiteral(p.nextID(), val)
+			if !ok {
+				return nil, false
+			}
+			entry := &exprpb.Expr_CreateStruct_Entry{
+				Id: p.nextID(),
+				KeyKind: &exprpb.Expr_CreateStruct_Entry_MapKey{
+					MapKey: keyExpr,
+				},
+				Value: valExpr,
+			}
+			entries[i] = entry
+			i++
+		}
+		return &exprpb.Expr{
+			Id: id,
+			ExprKind: &exprpb.Expr_StructExpr{
+				StructExpr: &exprpb.Expr_CreateStruct{
+					Entries: entries,
+				},
+			},
+		}, true
+	}
+
+	// TODO(issues/377) To construct message literals, the type provider will need to support
+	// the enumeration the fields for a given message.
+	return nil, false
 }
 
 func (p *astPruner) maybePruneAndOr(node *exprpb.Expr) (*exprpb.Expr, bool) {
@@ -78,13 +179,11 @@ func (p *astPruner) maybePruneAndOr(node *exprpb.Expr) (*exprpb.Expr, bool) {
 	}
 
 	call := node.GetCallExpr()
-
 	// We know result is unknown, so we have at least one unknown arg
 	// and if one side is a known value, we know we can ignore it.
 	if p.existsWithKnownValue(call.Args[0].GetId()) {
 		return call.Args[1], true
 	}
-
 	if p.existsWithKnownValue(call.Args[1].GetId()) {
 		return call.Args[0], true
 	}
@@ -124,34 +223,10 @@ func (p *astPruner) prune(node *exprpb.Expr) (*exprpb.Expr, bool) {
 	if node == nil {
 		return node, false
 	}
-	if val, valueExists := p.value(node.GetId()); valueExists && !types.IsUnknownOrError(val) {
-
-		// TODO if we have a list or struct, create a list/struct
-		// expression. This is useful especially if these expressions
-		// are result of a function call.
-
-		switch val.Type() {
-		case types.BoolType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_BoolValue{BoolValue: val.Value().(bool)}}), true
-		case types.IntType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_Int64Value{Int64Value: val.Value().(int64)}}), true
-		case types.UintType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_Uint64Value{Uint64Value: val.Value().(uint64)}}), true
-		case types.StringType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_StringValue{StringValue: val.Value().(string)}}), true
-		case types.DoubleType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_DoubleValue{DoubleValue: val.Value().(float64)}}), true
-		case types.BytesType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_BytesValue{BytesValue: val.Value().([]byte)}}), true
-		case types.NullType:
-			return p.createLiteral(node,
-				&exprpb.Constant{ConstantKind: &exprpb.Constant_NullValue{NullValue: val.Value().(structpb.NullValue)}}), true
+	val, valueExists := p.value(node.GetId())
+	if valueExists && !types.IsUnknownOrError(val) {
+		if newNode, ok := p.maybeCreateLiteral(node.GetId(), val); ok {
+			return newNode, true
 		}
 	}
 
@@ -162,79 +237,129 @@ func (p *astPruner) prune(node *exprpb.Expr) (*exprpb.Expr, bool) {
 	switch node.ExprKind.(type) {
 	case *exprpb.Expr_SelectExpr:
 		if operand, pruned := p.prune(node.GetSelectExpr().Operand); pruned {
-			newExpr := *node
-			newSelect := *newExpr.GetSelectExpr()
-			newSelect.Operand = operand
-			newExpr.GetExprKind().(*exprpb.Expr_SelectExpr).SelectExpr = &newSelect
-			return &newExpr, true
+			return &exprpb.Expr{
+				Id: node.GetId(),
+				ExprKind: &exprpb.Expr_SelectExpr{
+					SelectExpr: &exprpb.Expr_Select{
+						Operand:  operand,
+						Field:    node.GetSelectExpr().GetField(),
+						TestOnly: node.GetSelectExpr().GetTestOnly(),
+					},
+				},
+			}, true
 		}
 	case *exprpb.Expr_CallExpr:
 		if newExpr, pruned := p.maybePruneFunction(node); pruned {
 			newExpr, _ = p.prune(newExpr)
 			return newExpr, true
 		}
-		newCall := *node.GetCallExpr()
 		var prunedCall bool
-		var prunedArg bool
-		for i, arg := range node.GetCallExpr().Args {
-			if newCall.Args[i], prunedArg = p.prune(arg); prunedArg {
+		call := node.GetCallExpr()
+		args := call.GetArgs()
+		newArgs := make([]*exprpb.Expr, len(args))
+		newCall := &exprpb.Expr_Call{
+			Function: call.GetFunction(),
+			Target:   call.GetTarget(),
+			Args:     newArgs,
+		}
+		for i, arg := range args {
+			newArgs[i] = arg
+			if newArg, prunedArg := p.prune(arg); prunedArg {
 				prunedCall = true
+				newArgs[i] = newArg
 			}
 		}
-		if newTarget, prunedTarget := p.prune(node.GetCallExpr().Target); prunedTarget {
+		if newTarget, prunedTarget := p.prune(call.GetTarget()); prunedTarget {
 			prunedCall = true
 			newCall.Target = newTarget
 		}
 		if prunedCall {
-			newExpr := *node
-			newExpr.GetExprKind().(*exprpb.Expr_CallExpr).CallExpr = &newCall
-			return &newExpr, true
+			return &exprpb.Expr{
+				Id: node.GetId(),
+				ExprKind: &exprpb.Expr_CallExpr{
+					CallExpr: newCall,
+				},
+			}, true
 		}
 	case *exprpb.Expr_ListExpr:
-		newList := *node.GetListExpr()
+		elems := node.GetListExpr().GetElements()
+		newElems := make([]*exprpb.Expr, len(elems))
 		var prunedList bool
-		var prunedElem bool
-		for i, elem := range node.GetListExpr().Elements {
-			if newList.Elements[i], prunedElem = p.prune(elem); prunedElem {
+		for i, elem := range elems {
+			newElems[i] = elem
+			if newElem, prunedElem := p.prune(elem); prunedElem {
+				newElems[i] = newElem
 				prunedList = true
 			}
 		}
 		if prunedList {
-			newExpr := *node
-			newExpr.GetExprKind().(*exprpb.Expr_ListExpr).ListExpr = &newList
-			return &newExpr, true
+			return &exprpb.Expr{
+				Id: node.GetId(),
+				ExprKind: &exprpb.Expr_ListExpr{
+					ListExpr: &exprpb.Expr_CreateList{
+						Elements: newElems,
+					},
+				},
+			}, true
 		}
 	case *exprpb.Expr_StructExpr:
-		newStruct := *node.GetStructExpr()
 		var prunedStruct bool
-		var prunedEntry bool
-		for i, entry := range node.GetStructExpr().Entries {
-			newEntry := *entry
-			if newKey, pruned := p.prune(entry.GetMapKey()); pruned {
-				prunedEntry = true
-				newEntry.GetKeyKind().(*exprpb.Expr_CreateStruct_Entry_MapKey).MapKey = newKey
+		entries := node.GetStructExpr().GetEntries()
+		messageType := node.GetStructExpr().GetMessageName()
+		newEntries := make([]*exprpb.Expr_CreateStruct_Entry, len(entries))
+		for i, entry := range entries {
+			newEntries[i] = entry
+			newKey, prunedKey := p.prune(entry.GetMapKey())
+			newValue, prunedValue := p.prune(entry.GetValue())
+			if !prunedKey && !prunedValue {
+				continue
 			}
-			if newValue, pruned := p.prune(entry.Value); pruned {
-				prunedEntry = true
-				newEntry.Value = newValue
+			prunedStruct = true
+			newEntry := &exprpb.Expr_CreateStruct_Entry{
+				Value: newValue,
 			}
-			if prunedEntry {
-				prunedStruct = true
-				newStruct.Entries[i] = &newEntry
+			if messageType != "" {
+				newEntry.KeyKind = &exprpb.Expr_CreateStruct_Entry_FieldKey{
+					FieldKey: entry.GetFieldKey(),
+				}
+			} else {
+				newEntry.KeyKind = &exprpb.Expr_CreateStruct_Entry_MapKey{
+					MapKey: newKey,
+				}
 			}
+			newEntries[i] = newEntry
 		}
 		if prunedStruct {
-			newExpr := *node
-			newExpr.GetExprKind().(*exprpb.Expr_StructExpr).StructExpr = &newStruct
-			return &newExpr, true
+			return &exprpb.Expr{
+				Id: node.GetId(),
+				ExprKind: &exprpb.Expr_StructExpr{
+					StructExpr: &exprpb.Expr_CreateStruct{
+						MessageName: messageType,
+						Entries:     newEntries,
+					},
+				},
+			}, true
 		}
 	case *exprpb.Expr_ComprehensionExpr:
-		if newIterRange, pruned := p.prune(node.GetComprehensionExpr().IterRange); pruned {
-			newExpr := *node
-			newCompre := *newExpr.GetComprehensionExpr()
-			newCompre.IterRange = newIterRange
-			newExpr.GetExprKind().(*exprpb.Expr_ComprehensionExpr).ComprehensionExpr = &newCompre
-			return &newExpr, true
+		compre := node.GetComprehensionExpr()
+		// Only the range of the comprehension is pruned since the state tracking only records
+		// the last iteration of the comprehension and not each step in the evaluation which
+		// means that the any residuals computed in between might be inaccurate.
+		if newRange, pruned := p.prune(compre.GetIterRange()); pruned {
+			return &exprpb.Expr{
+				Id: node.GetId(),
+				ExprKind: &exprpb.Expr_ComprehensionExpr{
+					ComprehensionExpr: &exprpb.Expr_Comprehension{
+						IterVar:       compre.GetIterVar(),
+						IterRange:     newRange,
+						AccuVar:       compre.GetAccuVar(),
+						AccuInit:      compre.GetAccuInit(),
+						LoopCondition: compre.GetLoopCondition(),
+						LoopStep:      compre.GetLoopStep(),
+						Result:        compre.GetResult(),
+					},
+				},
+			}, true
 		}
 	}
 	return node, false
@@ -253,4 +378,17 @@ func (p *astPruner) existsWithUnknownValue(id int64) bool {
 func (p *astPruner) existsWithKnownValue(id int64) bool {
 	val, valueExists := p.value(id)
 	return valueExists && !types.IsUnknown(val)
+}
+
+func (p *astPruner) nextID() int64 {
+	for true {
+		_, found := p.state.Value(p.nextExprID)
+		if found {
+			break
+		}
+		p.nextExprID++
+	}
+	next := p.nextExprID
+	p.nextExprID++
+	return next
 }

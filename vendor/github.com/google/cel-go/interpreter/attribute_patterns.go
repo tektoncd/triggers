@@ -17,7 +17,7 @@ package interpreter
 import (
 	"fmt"
 
-	"github.com/google/cel-go/common/packages"
+	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 )
@@ -169,13 +169,13 @@ func (q *uintQualifier) QualifierValueEquals(value interface{}) bool {
 
 // NewPartialAttributeFactory returns an AttributeFactory implementation capable of performing
 // AttributePattern matches with PartialActivation inputs.
-func NewPartialAttributeFactory(pkg packages.Packager,
+func NewPartialAttributeFactory(container *containers.Container,
 	adapter ref.TypeAdapter,
 	provider ref.TypeProvider) AttributeFactory {
-	fac := NewAttributeFactory(pkg, adapter, provider)
+	fac := NewAttributeFactory(container, adapter, provider)
 	return &partialAttributeFactory{
 		AttributeFactory: fac,
-		pkg:              pkg,
+		container:        container,
 		adapter:          adapter,
 		provider:         provider,
 	}
@@ -183,9 +183,9 @@ func NewPartialAttributeFactory(pkg packages.Packager,
 
 type partialAttributeFactory struct {
 	AttributeFactory
-	pkg      packages.Packager
-	adapter  ref.TypeAdapter
-	provider ref.TypeProvider
+	container *containers.Container
+	adapter   ref.TypeAdapter
+	provider  ref.TypeProvider
 }
 
 // AbsoluteAttribute implementation of the AttributeFactory interface which wraps the
@@ -203,7 +203,7 @@ func (fac *partialAttributeFactory) MaybeAttribute(id int64, name string) Attrib
 	return &maybeAttribute{
 		id: id,
 		attrs: []NamespacedAttribute{
-			fac.AbsoluteAttribute(id, fac.pkg.ResolveCandidateNames(name)...),
+			fac.AbsoluteAttribute(id, fac.container.ResolveCandidateNames(name)...),
 		},
 		adapter:  fac.adapter,
 		provider: fac.provider,

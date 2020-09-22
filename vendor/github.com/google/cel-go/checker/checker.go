@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/packages"
+	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types/ref"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
@@ -156,13 +156,13 @@ func (c *checker) checkIdent(e *exprpb.Expr) {
 
 	c.setType(e, decls.Error)
 	c.errors.undeclaredReference(
-		c.location(e), c.env.packager.Package(), identExpr.GetName())
+		c.location(e), c.env.container.Name(), identExpr.GetName())
 }
 
 func (c *checker) checkSelect(e *exprpb.Expr) {
 	sel := e.GetSelectExpr()
 	// Before traversing down the tree, try to interpret as qualified name.
-	qname, found := packages.ToQualifiedName(e)
+	qname, found := containers.ToQualifiedName(e)
 	if found {
 		ident := c.env.LookupIdent(qname)
 		if ident != nil {
@@ -247,7 +247,7 @@ func (c *checker) checkCall(e *exprpb.Expr) {
 		fn := c.env.LookupFunction(fnName)
 		if fn == nil {
 			c.errors.undeclaredReference(
-				c.location(e), c.env.packager.Package(), fnName)
+				c.location(e), c.env.container.Name(), fnName)
 			c.setType(e, decls.Error)
 			return
 		}
@@ -263,7 +263,7 @@ func (c *checker) checkCall(e *exprpb.Expr) {
 	// target a.b.
 	//
 	// Check whether the target is a namespaced function name.
-	qualifiedPrefix, maybeQualified := packages.ToQualifiedName(target)
+	qualifiedPrefix, maybeQualified := containers.ToQualifiedName(target)
 	if maybeQualified {
 		maybeQualifiedName := qualifiedPrefix + "." + fnName
 		fn := c.env.LookupFunction(maybeQualifiedName)
@@ -287,7 +287,7 @@ func (c *checker) checkCall(e *exprpb.Expr) {
 		return
 	}
 	// Function name not declared, record error.
-	c.errors.undeclaredReference(c.location(e), c.env.packager.Package(), fnName)
+	c.errors.undeclaredReference(c.location(e), c.env.container.Name(), fnName)
 }
 
 func (c *checker) resolveOverloadOrError(
@@ -416,7 +416,7 @@ func (c *checker) checkCreateMessage(e *exprpb.Expr) {
 	decl := c.env.LookupIdent(msgVal.MessageName)
 	if decl == nil {
 		c.errors.undeclaredReference(
-			c.location(e), c.env.packager.Package(), msgVal.MessageName)
+			c.location(e), c.env.container.Name(), msgVal.MessageName)
 		return
 	}
 	// Ensure the type name is fully qualified in the AST.

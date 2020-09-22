@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/checker/decls"
-	"github.com/google/cel-go/common/packages"
+	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
@@ -36,30 +36,31 @@ const (
 )
 
 // Env is the environment for type checking.
-// It consists of a Packager, a Type Provider, declarations, and collection of errors encountered
-// during checking.
+//
+// The Env is comprised of a container, type provider, declarations, and other related objects
+// which can be used to assist with type-checking.
 type Env struct {
-	packager       packages.Packager
+	container      *containers.Container
 	provider       ref.TypeProvider
 	declarations   *decls.Scopes
 	aggLitElemType aggregateLiteralElementType
 }
 
 // NewEnv returns a new *Env with the given parameters.
-func NewEnv(packager packages.Packager, provider ref.TypeProvider) *Env {
+func NewEnv(container *containers.Container, provider ref.TypeProvider) *Env {
 	declarations := decls.NewScopes()
 	declarations.Push()
 
 	return &Env{
-		packager:     packager,
+		container:    container,
 		provider:     provider,
 		declarations: declarations,
 	}
 }
 
 // NewStandardEnv returns a new *Env with the given params plus standard declarations.
-func NewStandardEnv(packager packages.Packager, provider ref.TypeProvider) *Env {
-	e := NewEnv(packager, provider)
+func NewStandardEnv(container *containers.Container, provider ref.TypeProvider) *Env {
+	e := NewEnv(container, provider)
 	if err := e.Add(StandardDeclarations()...); err != nil {
 		// The standard declaration set should never have duplicate declarations.
 		panic(err)
@@ -97,7 +98,7 @@ func (e *Env) Add(decls ...*exprpb.Decl) error {
 // LookupIdent returns a Decl proto for typeName as an identifier in the Env.
 // Returns nil if no such identifier is found in the Env.
 func (e *Env) LookupIdent(name string) *exprpb.Decl {
-	for _, candidate := range e.packager.ResolveCandidateNames(name) {
+	for _, candidate := range e.container.ResolveCandidateNames(name) {
 		if ident := e.declarations.FindIdent(candidate); ident != nil {
 			return ident
 		}
@@ -129,7 +130,7 @@ func (e *Env) LookupIdent(name string) *exprpb.Decl {
 // LookupFunction returns a Decl proto for typeName as a function in env.
 // Returns nil if no such function is found in env.
 func (e *Env) LookupFunction(name string) *exprpb.Decl {
-	for _, candidate := range e.packager.ResolveCandidateNames(name) {
+	for _, candidate := range e.container.ResolveCandidateNames(name) {
 		if fn := e.declarations.FindFunction(candidate); fn != nil {
 			return fn
 		}
@@ -294,7 +295,7 @@ func (e *Env) enterScope() *Env {
 	childDecls := e.declarations.Push()
 	return &Env{
 		declarations:   childDecls,
-		packager:       e.packager,
+		container:      e.container,
 		provider:       e.provider,
 		aggLitElemType: e.aggLitElemType,
 	}
@@ -305,7 +306,7 @@ func (e *Env) exitScope() *Env {
 	parentDecls := e.declarations.Pop()
 	return &Env{
 		declarations:   parentDecls,
-		packager:       e.packager,
+		container:      e.container,
 		provider:       e.provider,
 		aggLitElemType: e.aggLitElemType,
 	}

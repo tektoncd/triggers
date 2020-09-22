@@ -15,6 +15,10 @@
 package interpreter
 
 import (
+	"math"
+
+	"github.com/google/cel-go/common/operators"
+	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
@@ -30,6 +34,58 @@ type Interpretable interface {
 
 	// Eval an Activation to produce an output.
 	Eval(activation Activation) ref.Val
+}
+
+// InterpretableConst interface for tracking whether the Interpretable is a constant value.
+type InterpretableConst interface {
+	Interpretable
+
+	// Value returns the constant value of the instruction.
+	Value() ref.Val
+}
+
+// InterpretableAttribute interface for tracking whether the Interpretable is an attribute.
+type InterpretableAttribute interface {
+	Interpretable
+
+	// Attr returns the Attribute value.
+	Attr() Attribute
+
+	// Adapter returns the type adapter to be used for adapting resolved Attribute values.
+	Adapter() ref.TypeAdapter
+
+	// AddQualifier proxies the Attribute.AddQualifier method.
+	//
+	// Note, this method may mutate the current attribute state. If the desire is to clone the
+	// Attribute, the Attribute should first be copied before adding the qualifier. Attributes
+	// are not copyable by default, so this is a capable that would need to be added to the
+	// AttributeFactory or specifically to the underlying Attribute implementation.
+	AddQualifier(Qualifier) (Attribute, error)
+
+	// Qualify replicates the Attribute.Qualify method to permit extension and interception
+	// of object qualification.
+	Qualify(vars Activation, obj interface{}) (interface{}, error)
+
+	// Resolve returns the value of the Attribute given the current Activation.
+	Resolve(Activation) (interface{}, error)
+}
+
+// InterpretableCall interface for inspecting Interpretable instructions related to function calls.
+type InterpretableCall interface {
+	Interpretable
+
+	// Function returns the function name as it appears in text or mangled operator name as it
+	// appears in the operators.go file.
+	Function() string
+
+	// OverloadID returns the overload id associated with the function specialization.
+	// Overload ids are stable across language boundaries and can be treated as synonymous with a
+	// unique function signature.
+	OverloadID() string
+
+	// Args returns the normalized arguments to the function overload.
+	// For receiver-style functions, the receiver target is arg 0.
+	Args() []Interpretable
 }
 
 // Core Interpretable implementations used during the program planning phase.
@@ -50,9 +106,9 @@ func (test *evalTestOnly) ID() int64 {
 func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
 	// Handle field selection on a proto in the most efficient way possible.
 	if test.fieldType != nil {
-		opAttr, ok := test.op.(instAttr)
+		opAttr, ok := test.op.(InterpretableAttribute)
 		if ok {
-			opVal, err := opAttr.Attr().Resolve(ctx)
+			opVal, err := opAttr.Resolve(ctx)
 			if err != nil {
 				return types.NewErr(err.Error())
 			}
@@ -77,7 +133,23 @@ func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
 		return container.Contains(test.field)
 	}
 	return types.ValOrErr(obj, "invalid type for field selection.")
+}
 
+// Cost provides the heuristic cost of a `has(field)` macro. The cost has at least 1 for determining
+// if the field exists, apart from the cost of accessing the field.
+func (test *evalTestOnly) Cost() (min, max int64) {
+	min, max = estimateCost(test.op)
+	min++
+	max++
+	return
+}
+
+// NewConstValue creates a new constant valued Interpretable.
+func NewConstValue(id int64, val ref.Val) InterpretableConst {
+	return &evalConst{
+		id:  id,
+		val: val,
+	}
 }
 
 type evalConst struct {
@@ -95,6 +167,12 @@ func (cons *evalConst) Eval(ctx Activation) ref.Val {
 	return cons.val
 }
 
+// Cost returns zero for a constant valued Interpretable.
+func (cons *evalConst) Cost() (min, max int64) {
+	return 0, 0
+}
+
+// Value implements the InterpretableConst interface method.
 func (cons *evalConst) Value() ref.Val {
 	return cons.val
 }
@@ -143,6 +221,12 @@ func (or *evalOr) Eval(ctx Activation) ref.Val {
 	return types.ValOrErr(rVal, "no such overload")
 }
 
+// Cost implements the Coster interface method. The minimum possible cost incurs when the left-hand
+// side expr is sufficient in determining the evaluation result.
+func (or *evalOr) Cost() (min, max int64) {
+	return calShortCircuitBinaryOpsCost(or.lhs, or.rhs)
+}
+
 type evalAnd struct {
 	id  int64
 	lhs Interpretable
@@ -187,6 +271,18 @@ func (and *evalAnd) Eval(ctx Activation) ref.Val {
 	return types.ValOrErr(rVal, "no such overload")
 }
 
+// Cost implements the Coster interface method. The minimum possible cost incurs when the left-hand
+// side expr is sufficient in determining the evaluation result.
+func (and *evalAnd) Cost() (min, max int64) {
+	return calShortCircuitBinaryOpsCost(and.lhs, and.rhs)
+}
+
+func calShortCircuitBinaryOpsCost(lhs, rhs Interpretable) (min, max int64) {
+	lMin, lMax := estimateCost(lhs)
+	_, rMax := estimateCost(rhs)
+	return lMin, lMax + rMax + 1
+}
+
 type evalEq struct {
 	id  int64
 	lhs Interpretable
@@ -203,6 +299,26 @@ func (eq *evalEq) Eval(ctx Activation) ref.Val {
 	lVal := eq.lhs.Eval(ctx)
 	rVal := eq.rhs.Eval(ctx)
 	return lVal.Equal(rVal)
+}
+
+// Cost implements the Coster interface method.
+func (eq *evalEq) Cost() (min, max int64) {
+	return calExhaustiveBinaryOpsCost(eq.lhs, eq.rhs)
+}
+
+// Function implements the InterpretableCall interface method.
+func (*evalEq) Function() string {
+	return operators.Equals
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (*evalEq) OverloadID() string {
+	return overloads.Equals
+}
+
+// Args implements the InterpretableCall interface method.
+func (eq *evalEq) Args() []Interpretable {
+	return []Interpretable{eq.lhs, eq.rhs}
 }
 
 type evalNe struct {
@@ -228,9 +344,31 @@ func (ne *evalNe) Eval(ctx Activation) ref.Val {
 	return !eqBool
 }
 
+// Cost implements the Coster interface method.
+func (ne *evalNe) Cost() (min, max int64) {
+	return calExhaustiveBinaryOpsCost(ne.lhs, ne.rhs)
+}
+
+// Function implements the InterpretableCall interface method.
+func (*evalNe) Function() string {
+	return operators.NotEquals
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (*evalNe) OverloadID() string {
+	return overloads.NotEquals
+}
+
+// Args implements the InterpretableCall interface method.
+func (ne *evalNe) Args() []Interpretable {
+	return []Interpretable{ne.lhs, ne.rhs}
+}
+
 type evalZeroArity struct {
-	id   int64
-	impl functions.FunctionOp
+	id       int64
+	function string
+	overload string
+	impl     functions.FunctionOp
 }
 
 // ID implements the Interpretable interface method.
@@ -241,6 +379,26 @@ func (zero *evalZeroArity) ID() int64 {
 // Eval implements the Interpretable interface method.
 func (zero *evalZeroArity) Eval(ctx Activation) ref.Val {
 	return zero.impl()
+}
+
+// Cost returns 1 representing the heuristic cost of the function.
+func (zero *evalZeroArity) Cost() (min, max int64) {
+	return 1, 1
+}
+
+// Function implements the InterpretableCall interface method.
+func (zero *evalZeroArity) Function() string {
+	return zero.function
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (zero *evalZeroArity) OverloadID() string {
+	return zero.overload
+}
+
+// Args returns the argument to the unary function.
+func (zero *evalZeroArity) Args() []Interpretable {
+	return []Interpretable{}
 }
 
 type evalUnary struct {
@@ -275,6 +433,29 @@ func (un *evalUnary) Eval(ctx Activation) ref.Val {
 		return argVal.(traits.Receiver).Receive(un.function, un.overload, []ref.Val{})
 	}
 	return types.NewErr("no such overload: %s", un.function)
+}
+
+// Cost implements the Coster interface method.
+func (un *evalUnary) Cost() (min, max int64) {
+	min, max = estimateCost(un.arg)
+	min++ // add cost for function
+	max++
+	return
+}
+
+// Function implements the InterpretableCall interface method.
+func (un *evalUnary) Function() string {
+	return un.function
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (un *evalUnary) OverloadID() string {
+	return un.overload
+}
+
+// Args returns the argument to the unary function.
+func (un *evalUnary) Args() []Interpretable {
+	return []Interpretable{un.arg}
 }
 
 type evalBinary struct {
@@ -316,6 +497,26 @@ func (bin *evalBinary) Eval(ctx Activation) ref.Val {
 	return types.NewErr("no such overload: %s", bin.function)
 }
 
+// Cost implements the Coster interface method.
+func (bin *evalBinary) Cost() (min, max int64) {
+	return calExhaustiveBinaryOpsCost(bin.lhs, bin.rhs)
+}
+
+// Function implements the InterpretableCall interface method.
+func (bin *evalBinary) Function() string {
+	return bin.function
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (bin *evalBinary) OverloadID() string {
+	return bin.overload
+}
+
+// Args returns the argument to the unary function.
+func (bin *evalBinary) Args() []Interpretable {
+	return []Interpretable{bin.lhs, bin.rhs}
+}
+
 type evalVarArgs struct {
 	id       int64
 	function string
@@ -354,6 +555,29 @@ func (fn *evalVarArgs) Eval(ctx Activation) ref.Val {
 	return types.NewErr("no such overload: %s", fn.function)
 }
 
+// Cost implements the Coster interface method.
+func (fn *evalVarArgs) Cost() (min, max int64) {
+	min, max = sumOfCost(fn.args)
+	min++ // add cost for function
+	max++
+	return
+}
+
+// Function implements the InterpretableCall interface method.
+func (fn *evalVarArgs) Function() string {
+	return fn.function
+}
+
+// OverloadID implements the InterpretableCall interface method.
+func (fn *evalVarArgs) OverloadID() string {
+	return fn.overload
+}
+
+// Args returns the argument to the unary function.
+func (fn *evalVarArgs) Args() []Interpretable {
+	return fn.args
+}
+
 type evalList struct {
 	id      int64
 	elems   []Interpretable
@@ -377,6 +601,11 @@ func (l *evalList) Eval(ctx Activation) ref.Val {
 		elemVals[i] = elemVal
 	}
 	return types.NewDynamicList(l.adapter, elemVals)
+}
+
+// Cost implements the Coster interface method.
+func (l *evalList) Cost() (min, max int64) {
+	return sumOfCost(l.elems)
 }
 
 type evalMap struct {
@@ -409,6 +638,13 @@ func (m *evalMap) Eval(ctx Activation) ref.Val {
 	return types.NewDynamicMap(m.adapter, entries)
 }
 
+// Cost implements the Coster interface method.
+func (m *evalMap) Cost() (min, max int64) {
+	kMin, kMax := sumOfCost(m.keys)
+	vMin, vMax := sumOfCost(m.vals)
+	return kMin + vMin, kMax + vMax
+}
+
 type evalObj struct {
 	id       int64
 	typeName string
@@ -434,6 +670,21 @@ func (o *evalObj) Eval(ctx Activation) ref.Val {
 		fieldVals[field] = val
 	}
 	return o.provider.NewValue(o.typeName, fieldVals)
+}
+
+// Cost implements the Coster interface method.
+func (o *evalObj) Cost() (min, max int64) {
+	return sumOfCost(o.vals)
+}
+
+func sumOfCost(interps []Interpretable) (min, max int64) {
+	min, max = 0, 0
+	for _, in := range interps {
+		minT, maxT := estimateCost(in)
+		min += minT
+		max += maxT
+	}
+	return
 }
 
 type evalFold struct {
@@ -488,6 +739,34 @@ func (fold *evalFold) Eval(ctx Activation) ref.Val {
 	return res
 }
 
+// Cost implements the Coster interface method.
+func (fold *evalFold) Cost() (min, max int64) {
+	// Compute the cost for evaluating iterRange.
+	iMin, iMax := estimateCost(fold.iterRange)
+
+	// Compute the size of iterRange. If the size depends on the input, return the maximum possible
+	// cost range.
+	foldRange := fold.iterRange.Eval(EmptyActivation())
+	if !foldRange.Type().HasTrait(traits.IterableType) {
+		return 0, math.MaxInt64
+	}
+	var rangeCnt int64
+	it := foldRange.(traits.Iterable).Iterator()
+	for it.HasNext() == types.True {
+		it.Next()
+		rangeCnt++
+	}
+	aMin, aMax := estimateCost(fold.accu)
+	cMin, cMax := estimateCost(fold.cond)
+	sMin, sMax := estimateCost(fold.step)
+	rMin, rMax := estimateCost(fold.result)
+
+	// The cond and step costs are multiplied by size(iterRange). The minimum possible cost incurs
+	// when the evaluation result can be determined by the first iteration.
+	return iMin + aMin + cMin + sMin + rMin,
+		iMax + aMax + cMax*rangeCnt + sMax*rangeCnt + rMax
+}
+
 // Optional Intepretable implementations that specialize, subsume, or extend the core evaluation
 // plan via decorators.
 
@@ -517,23 +796,28 @@ func (e *evalSetMembership) Eval(ctx Activation) ref.Val {
 	return types.False
 }
 
+// Cost implements the Coster interface method.
+func (e *evalSetMembership) Cost() (min, max int64) {
+	return estimateCost(e.arg)
+}
+
 // evalWatch is an Interpretable implementation that wraps the execution of a given
 // expression so that it may observe the computed value and send it to an observer.
 type evalWatch struct {
-	inst     Interpretable
+	Interpretable
 	observer evalObserver
-}
-
-// ID implements the Interpretable interface method.
-func (e *evalWatch) ID() int64 {
-	return e.inst.ID()
 }
 
 // Eval implements the Interpretable interface method.
 func (e *evalWatch) Eval(ctx Activation) ref.Val {
-	val := e.inst.Eval(ctx)
-	e.observer(e.inst.ID(), val)
+	val := e.Interpretable.Eval(ctx)
+	e.observer(e.ID(), val)
 	return val
+}
+
+// Cost implements the Coster interface method.
+func (e *evalWatch) Cost() (min, max int64) {
+	return estimateCost(e.Interpretable)
 }
 
 // evalWatchAttr describes a watcher of an instAttr Interpretable.
@@ -541,28 +825,116 @@ func (e *evalWatch) Eval(ctx Activation) ref.Val {
 // Since the watcher may be selected against at a later stage in program planning, the watcher
 // must implement the instAttr interface by proxy.
 type evalWatchAttr struct {
-	instAttr
+	InterpretableAttribute
 	observer evalObserver
+}
+
+// AddQualifier creates a wrapper over the incoming qualifier which observes the qualification
+// result.
+func (e *evalWatchAttr) AddQualifier(q Qualifier) (Attribute, error) {
+	cq, isConst := q.(ConstantQualifier)
+	if isConst {
+		q = &evalWatchConstQual{
+			ConstantQualifier: cq,
+			observer:          e.observer,
+			adapter:           e.InterpretableAttribute.Adapter(),
+		}
+	} else {
+		q = &evalWatchQual{
+			Qualifier: q,
+			observer:  e.observer,
+			adapter:   e.InterpretableAttribute.Adapter(),
+		}
+	}
+	_, err := e.InterpretableAttribute.AddQualifier(q)
+	return e, err
+}
+
+// evalWatchConstQual observes the qualification of an object using a constant boolean, int,
+// string, or uint.
+type evalWatchConstQual struct {
+	ConstantQualifier
+	observer evalObserver
+	adapter  ref.TypeAdapter
+}
+
+// Cost implements the Coster interface method.
+func (e *evalWatchConstQual) Cost() (min, max int64) {
+	return estimateCost(e.ConstantQualifier)
+}
+
+// Qualify observes the qualification of a object via a constant boolean, int, string, or uint.
+func (e *evalWatchConstQual) Qualify(vars Activation, obj interface{}) (interface{}, error) {
+	out, err := e.ConstantQualifier.Qualify(vars, obj)
+	var val ref.Val
+	if err != nil {
+		val = types.NewErr(err.Error())
+	} else {
+		val = e.adapter.NativeToValue(out)
+	}
+	e.observer(e.ID(), val)
+	return out, err
+}
+
+// QualifierValueEquals tests whether the incoming value is equal to the qualificying constant.
+func (e *evalWatchConstQual) QualifierValueEquals(value interface{}) bool {
+	qve, ok := e.ConstantQualifier.(qualifierValueEquator)
+	return ok && qve.QualifierValueEquals(value)
+}
+
+// evalWatchQual observes the qualification of an object by a value computed at runtime.
+type evalWatchQual struct {
+	Qualifier
+	observer evalObserver
+	adapter  ref.TypeAdapter
+}
+
+// Cost implements the Coster interface method.
+func (e *evalWatchQual) Cost() (min, max int64) {
+	return estimateCost(e.Qualifier)
+}
+
+// Qualify observes the qualification of a object via a value computed at runtime.
+func (e *evalWatchQual) Qualify(vars Activation, obj interface{}) (interface{}, error) {
+	out, err := e.Qualifier.Qualify(vars, obj)
+	var val ref.Val
+	if err != nil {
+		val = types.NewErr(err.Error())
+	} else {
+		val = e.adapter.NativeToValue(out)
+	}
+	e.observer(e.ID(), val)
+	return out, err
+}
+
+// Cost implements the Coster interface method.
+func (e *evalWatchAttr) Cost() (min, max int64) {
+	return estimateCost(e.InterpretableAttribute)
 }
 
 // Eval implements the Interpretable interface method.
 func (e *evalWatchAttr) Eval(vars Activation) ref.Val {
-	val := e.instAttr.Eval(vars)
-	e.observer(e.instAttr.ID(), val)
+	val := e.InterpretableAttribute.Eval(vars)
+	e.observer(e.ID(), val)
 	return val
 }
 
 // evalWatchConst describes a watcher of an instConst Interpretable.
 type evalWatchConst struct {
-	instConst
+	InterpretableConst
 	observer evalObserver
 }
 
 // Eval implements the Interpretable interface method.
 func (e *evalWatchConst) Eval(vars Activation) ref.Val {
-	val := e.instConst.Value()
-	e.observer(e.instConst.ID(), val)
+	val := e.Value()
+	e.observer(e.ID(), val)
 	return val
+}
+
+// Cost implements the Coster interface method.
+func (e *evalWatchConst) Cost() (min, max int64) {
+	return estimateCost(e.InterpretableConst)
 }
 
 // evalExhaustiveOr is just like evalOr, but does not short-circuit argument evaluation.
@@ -606,6 +978,11 @@ func (or *evalExhaustiveOr) Eval(ctx Activation) ref.Val {
 	return types.ValOrErr(rVal, "no such overload")
 }
 
+// Cost implements the Coster interface method.
+func (or *evalExhaustiveOr) Cost() (min, max int64) {
+	return calExhaustiveBinaryOpsCost(or.lhs, or.rhs)
+}
+
 // evalExhaustiveAnd is just like evalAnd, but does not short-circuit argument evaluation.
 type evalExhaustiveAnd struct {
 	id  int64
@@ -647,6 +1024,17 @@ func (and *evalExhaustiveAnd) Eval(ctx Activation) ref.Val {
 	return types.ValOrErr(rVal, "no such overload")
 }
 
+// Cost implements the Coster interface method.
+func (and *evalExhaustiveAnd) Cost() (min, max int64) {
+	return calExhaustiveBinaryOpsCost(and.lhs, and.rhs)
+}
+
+func calExhaustiveBinaryOpsCost(lhs, rhs Interpretable) (min, max int64) {
+	lMin, lMax := estimateCost(lhs)
+	rMin, rMax := estimateCost(rhs)
+	return lMin + rMin + 1, lMax + rMax + 1
+}
+
 // evalExhaustiveConditional is like evalConditional, but does not short-circuit argument
 // evaluation.
 type evalExhaustiveConditional struct {
@@ -679,6 +1067,11 @@ func (cond *evalExhaustiveConditional) Eval(ctx Activation) ref.Val {
 		return cond.adapter.NativeToValue(tVal)
 	}
 	return cond.adapter.NativeToValue(fVal)
+}
+
+// Cost implements the Coster interface method.
+func (cond *evalExhaustiveConditional) Cost() (min, max int64) {
+	return cond.attr.Cost()
 }
 
 // evalExhaustiveFold is like evalFold, but does not short-circuit argument evaluation.
@@ -730,28 +1123,35 @@ func (fold *evalExhaustiveFold) Eval(ctx Activation) ref.Val {
 	return res
 }
 
-// instConst interface for tracking whether the Interpretable is a constant value.
-type instConst interface {
-	Interpretable
+// Cost implements the Coster interface method.
+func (fold *evalExhaustiveFold) Cost() (min, max int64) {
+	// Compute the cost for evaluating iterRange.
+	iMin, iMax := estimateCost(fold.iterRange)
 
-	// Value returns the constant value of the instruction.
-	Value() ref.Val
+	// Compute the size of iterRange. If the size depends on the input, return the maximum possible
+	// cost range.
+	foldRange := fold.iterRange.Eval(EmptyActivation())
+	if !foldRange.Type().HasTrait(traits.IterableType) {
+		return 0, math.MaxInt64
+	}
+	var rangeCnt int64
+	it := foldRange.(traits.Iterable).Iterator()
+	for it.HasNext() == types.True {
+		it.Next()
+		rangeCnt++
+	}
+
+	aMin, aMax := estimateCost(fold.accu)
+	cMin, cMax := estimateCost(fold.cond)
+	sMin, sMax := estimateCost(fold.step)
+	rMin, rMax := estimateCost(fold.result)
+
+	// The cond and step costs are multiplied by size(iterRange).
+	return iMin + aMin + cMin*rangeCnt + sMin*rangeCnt + rMin,
+		iMax + aMax + cMax*rangeCnt + sMax*rangeCnt + rMax
 }
 
-// instAttr interface for tracking whether the Interpretable is an attribute.
-type instAttr interface {
-	Interpretable
-
-	// Attr returns the Attribute value.
-	Attr() Attribute
-
-	// Adapter returns the type adapter to be used for adapting resolved Attribute values.
-	Adapter() ref.TypeAdapter
-
-	// AddQualifier proxies the Attribute.AddQualifier method.
-	AddQualifier(Qualifier) (instAttr, error)
-}
-
+// evalAttr evaluates an Attribute value.
 type evalAttr struct {
 	adapter ref.TypeAdapter
 	attr    Attribute
@@ -760,6 +1160,13 @@ type evalAttr struct {
 // ID of the attribute instruction.
 func (a *evalAttr) ID() int64 {
 	return a.attr.ID()
+}
+
+// AddQualifier implements the instAttr interface method.
+func (a *evalAttr) AddQualifier(qual Qualifier) (Attribute, error) {
+	attr, err := a.attr.AddQualifier(qual)
+	a.attr = attr
+	return attr, err
 }
 
 // Attr implements the instAttr interface method.
@@ -772,6 +1179,11 @@ func (a *evalAttr) Adapter() ref.TypeAdapter {
 	return a.adapter
 }
 
+// Cost implements the Coster interface method.
+func (a *evalAttr) Cost() (min, max int64) {
+	return estimateCost(a.attr)
+}
+
 // Eval implements the Interpretable interface method.
 func (a *evalAttr) Eval(ctx Activation) ref.Val {
 	v, err := a.attr.Resolve(ctx)
@@ -781,8 +1193,12 @@ func (a *evalAttr) Eval(ctx Activation) ref.Val {
 	return a.adapter.NativeToValue(v)
 }
 
-// AddQualifier implements the instAttr interface method.
-func (a *evalAttr) AddQualifier(qual Qualifier) (instAttr, error) {
-	_, err := a.attr.AddQualifier(qual)
-	return a, err
+// Qualify proxies to the Attribute's Qualify method.
+func (a *evalAttr) Qualify(ctx Activation, obj interface{}) (interface{}, error) {
+	return a.attr.Qualify(ctx, obj)
+}
+
+// Resolve proxies to the Attribute's Resolve method.
+func (a *evalAttr) Resolve(ctx Activation) (interface{}, error) {
+	return a.attr.Resolve(ctx)
 }
