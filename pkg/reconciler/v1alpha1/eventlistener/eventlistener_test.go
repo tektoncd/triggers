@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
@@ -41,6 +42,7 @@ import (
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -119,10 +121,14 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, co
 		})
 	clients := test.SeedResources(t, ctx, r)
 	cmw := configmap.NewInformedWatcher(clients.Kube, system.GetNamespace())
-	return test.Assets{
+	testAssets := test.Assets{
 		Controller: NewController(ctx, cmw),
 		Clients:    clients,
-	}, cancel
+	}
+	if la, ok := testAssets.Controller.Reconciler.(pkgreconciler.LeaderAware); ok {
+		_ = la.Promote(pkgreconciler.UniversalBucket(), func(pkgreconciler.Bucket, types.NamespacedName) {})
+	}
+	return testAssets, cancel
 }
 
 // makeEL is a helper to build an EventListener for tests.

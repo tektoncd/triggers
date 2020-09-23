@@ -211,38 +211,36 @@ func Test_processTriggerSpec(t *testing.T) {
 		args    args
 		want    []json.RawMessage
 		wantErr bool
-	}{
-		{
-			name: "testing-name",
-			args: args{
-				t: &v1alpha1.Trigger{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "TriggerRun",
-						APIVersion: "tekton.dev/v1alpha1"},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "my-triggerRun",
-					},
-					Spec: v1alpha1.TriggerSpec{
-						Bindings: []*v1alpha1.TriggerSpecBinding{
-							{Name: "git-event-binding"}, // These should be references to TriggerBindings defined below
-						},
-						Template: v1alpha1.TriggerSpecTemplate{
-							Name: "simple-pipeline-template", // This should be a reference to a TriggerTemplate defined below
-						},
-					},
+	}{{
+		name: "testing-name",
+		args: args{
+			t: &v1alpha1.Trigger{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "TriggerRun",
+					APIVersion: "tekton.dev/v1alpha1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-triggerRun",
 				},
-
-				request: r,
-				event:   eventBody,
-				resources: test.Resources{
-					// Add any resources that we need to create with a fake client
-					TriggerBindings:  []*v1alpha1.TriggerBinding{&triggerBinding},
-					TriggerTemplates: []*triggersv1.TriggerTemplate{&triggerTemplate},
+				Spec: v1alpha1.TriggerSpec{
+					Bindings: []*v1alpha1.TriggerSpecBinding{
+						{Ref: "git-event-binding"}, // These should be references to TriggerBindings defined below
+					},
+					Template: v1alpha1.TriggerSpecTemplate{
+						Name: "simple-pipeline-template", // This should be a reference to a TriggerTemplate defined below
+					},
 				},
 			},
-			want: []json.RawMessage{wantTrBytes},
+
+			request: r,
+			event:   eventBody,
+			resources: test.Resources{
+				// Add any resources that we need to create with a fake client
+				TriggerBindings:  []*v1alpha1.TriggerBinding{&triggerBinding},
+				TriggerTemplates: []*triggersv1.TriggerTemplate{&triggerTemplate},
+			},
 		},
-	}
+		want: []json.RawMessage{wantTrBytes},
+	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
