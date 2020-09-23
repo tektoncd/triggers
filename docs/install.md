@@ -14,7 +14,7 @@ Use this page to add the component to an existing Kubernetes cluster.
 
 ## Pre-requisites
 
-1.  A Kubernetes cluster version 1.15 or later
+1.  A Kubernetes cluster version 1.16 or later
 
     If you don't already have a cluster, you can create one for testing with
     `kind`.  [Install

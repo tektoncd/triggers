@@ -240,9 +240,10 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet: kubeClient,
-				GitHub:        tt.GitHub,
-				Logger:        logger,
+				KubeClientSet:          kubeClient,
+				GitHub:                 tt.GitHub,
+				Logger:                 logger,
+				EventListenerNamespace: metav1.NamespaceDefault,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {

@@ -214,7 +214,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		client.TriggersV1alpha1().ClusterTriggerBindings().Get,
 		client.TriggersV1alpha1().TriggerTemplates(tri.Namespace).Get)
 	if err != nil {
-		log.Error("Failed to resolve Trigger", err)
+		log.Error("Failed to resolve Trigger: ", err)
 		return nil, err
 	}
 
