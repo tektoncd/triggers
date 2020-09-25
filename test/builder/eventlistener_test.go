@@ -149,43 +149,6 @@ func TestEventListenerBuilder(t *testing.T) {
 			),
 		),
 	}, {
-		name: "One Trigger with one embedded Binding",
-		normal: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				ServiceAccountName: "serviceAccount",
-				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name: "tb1",
-						Spec: &v1alpha1.TriggerBindingSpec{
-							Params: []v1alpha1.Param{
-								{
-									Name:  "key",
-									Value: "value",
-								},
-							},
-						},
-						APIVersion: "v1alpha1",
-					}},
-					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
-						APIVersion: "v1alpha1",
-					},
-				}},
-			},
-		},
-		builder: EventListener("name", "namespace",
-			EventListenerSpec(
-				EventListenerServiceAccount("serviceAccount"),
-				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("", "", "tb1", "v1alpha1", TriggerBindingParam("key", "value")),
-				),
-			),
-		),
-	}, {
 		name: "One Trigger with one TriggerRef",
 		normal: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -214,7 +177,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -230,7 +192,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 				),
 			),
 		),
@@ -245,7 +207,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -261,7 +222,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "TriggerBinding", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "TriggerBinding", "v1alpha1"),
 				),
 			),
 		),
@@ -276,7 +237,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.ClusterTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -292,7 +252,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "ClusterTriggerBinding", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "ClusterTriggerBinding", "v1alpha1"),
 				),
 			),
 		),
@@ -308,14 +268,11 @@ func TestEventListenerBuilder(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{
 						{
-							Name: "tb1",
-							Kind: v1alpha1.NamespacedTriggerBindingKind,
-							Ref:  "tb1",
-
+							Kind:       v1alpha1.NamespacedTriggerBindingKind,
+							Ref:        "tb1",
 							APIVersion: "v1alpha1",
 						},
 						{
-							Name:       "ctb1",
 							Kind:       v1alpha1.ClusterTriggerBindingKind,
 							Ref:        "ctb1",
 							APIVersion: "v1alpha1",
@@ -332,8 +289,8 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
-					EventListenerTriggerBinding("ctb1", "ClusterTriggerBinding", "ctb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
+					EventListenerTriggerBinding("ctb1", "ClusterTriggerBinding", "v1alpha1"),
 				),
 			),
 		),
@@ -355,7 +312,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -366,7 +322,6 @@ func TestEventListenerBuilder(t *testing.T) {
 					},
 				}, {
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb2",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb2",
 						APIVersion: "v1alpha1",
@@ -387,10 +342,10 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 				),
 				EventListenerTrigger("tt2", "v1alpha1",
-					EventListenerTriggerBinding("tb2", "", "tb2", "v1alpha1"),
+					EventListenerTriggerBinding("tb2", "", "v1alpha1"),
 				),
 			),
 		),
@@ -416,7 +371,6 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -432,7 +386,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 					EventListenerTriggerName("foo-trig"),
 					EventListenerTriggerInterceptor("foo", "v1", "Service", "namespace"),
 				),
@@ -469,7 +423,6 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -484,7 +437,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 					EventListenerTriggerName("foo-trig"),
 					EventListenerTriggerInterceptor("foo", "v1", "Service", "namespace",
 						EventInterceptorParam("header1", "value1"),
@@ -512,7 +465,6 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 					}},
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -528,7 +480,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			EventListenerSpec(
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 					EventListenerTriggerName("foo-trig"),
 					EventListenerCELInterceptor("body.value == 'test'", EventListenerCELOverlay("value", "'testing'")),
 				),
@@ -545,7 +497,6 @@ func TestEventListenerBuilder(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
 					Bindings: []*v1alpha1.EventListenerBinding{{
-						Name:       "tb1",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
 						Ref:        "tb1",
 						APIVersion: "v1alpha1",
@@ -615,7 +566,7 @@ func TestEventListenerBuilder(t *testing.T) {
 					),
 				),
 				EventListenerTrigger("tt1", "v1alpha1",
-					EventListenerTriggerBinding("tb1", "", "tb1", "v1alpha1"),
+					EventListenerTriggerBinding("tb1", "", "v1alpha1"),
 					EventListenerTriggerName("foo-trig"),
 				),
 			),

@@ -198,7 +198,7 @@ func TestHandleEvent(t *testing.T) {
 		tbs = append(tbs, tb)
 		// Add TriggerBinding to trigger in EventListener
 		trigger := bldr.EventListenerTrigger("my-triggertemplate", "v1alpha1",
-			bldr.EventListenerTriggerBinding(tbName, "", tbName, "v1alpha1"),
+			bldr.EventListenerTriggerBinding(tbName, "", "v1alpha1"),
 		)
 		triggers = append(triggers, trigger)
 	}
