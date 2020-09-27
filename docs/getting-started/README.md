@@ -45,7 +45,8 @@ your cluster, you will need this for your Webhook in later steps.
 you will need to export it, and reimport it to the _getting-started_ namespace.
 The following is a general example of what you'd need to do.
   - ```bash
-	kubectl get secret <name> --namespace=<namespace> --export -o yaml |\
+	kubectl get secret <name> --namespace=<namespace> -o yaml |\
+	   grep -v '^\s*namespace:\s' |\
 	   kubectl apply --namespace=<new namespace> -f -
 	```
 - [Create the create-webhook user, role and rolebinding](./rbac/webhook-role.yaml)
