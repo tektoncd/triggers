@@ -44,6 +44,7 @@ import (
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
+	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
 	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
@@ -64,6 +65,7 @@ type Resources struct {
 	ConfigMaps             []*corev1.ConfigMap
 	Secrets                []*corev1.Secret
 	ServiceAccounts        []*corev1.ServiceAccount
+	Pods                   []*corev1.Pod
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -105,6 +107,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
 	secretInformer := fakesecretinformer.Get(ctx)
 	saInformer := fakeserviceaccountinformer.Get(ctx)
+	podInformer := fakepodinformer.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -192,6 +195,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(sa); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, pod := range r.Pods {
+		if err := podInformer.Informer().GetIndexer().Add(pod); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Kube.CoreV1().Pods(pod.Namespace).Create(pod); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -286,6 +297,15 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		for _, tr := range trList.Items {
 			testResources.Triggers = append(testResources.Triggers, tr.DeepCopy())
 		}
+		// Get Pods
+		podList, err := c.Kube.CoreV1().Pods(ns.Name).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, pod := range podList.Items {
+			testResources.Pods = append(testResources.Pods, pod.DeepCopy())
+		}
+
 	}
 	return testResources, nil
 }
