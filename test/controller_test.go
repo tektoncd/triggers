@@ -132,6 +132,18 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Name:      "such-secret",
 		},
 	}
+	pod1 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-pod-1",
+		},
+	}
+	pod2 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "my-pod-2",
+		},
+	}
 
 	tests := []struct {
 		name      string
@@ -152,6 +164,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				Triggers:               []*v1alpha1.Trigger{trigger1},
 				Deployments:            []*appsv1.Deployment{deployment1},
 				Services:               []*corev1.Service{service1},
+				Pods:                   []*corev1.Pod{pod1},
 			},
 		},
 		{
@@ -165,6 +178,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				Triggers:               []*v1alpha1.Trigger{trigger1, trigger2},
 				Deployments:            []*appsv1.Deployment{deployment1, deployment2},
 				Services:               []*corev1.Service{service1, service2},
+				Pods:                   []*corev1.Pod{pod1, pod2},
 			},
 		},
 		{
@@ -225,6 +239,12 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Resources: Resources{
 				Namespaces: []*corev1.Namespace{nsFoo},
 				Secrets:    []*corev1.Secret{secret},
+			},
+		}, {
+			name: "only pods (and namespaces)",
+			Resources: Resources{
+				Namespaces: []*corev1.Namespace{nsFoo},
+				Pods:       []*corev1.Pod{pod1},
 			},
 		},
 	}
