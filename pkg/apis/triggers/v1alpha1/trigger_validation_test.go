@@ -20,10 +20,13 @@ import (
 	"context"
 	"testing"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"knative.dev/pkg/ptr"
 )
 
@@ -152,6 +155,30 @@ func Test_TriggerValidate(t *testing.T) {
 				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing'")),
 			)),
+	}, {
+		name: "Trigger with embedded Template",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "name",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Spec: &v1alpha1.TriggerTemplateSpec{
+						Params: []v1alpha1.ParamSpec{{
+							Name: "tparam",
+						}},
+						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
+								TypeMeta: metav1.TypeMeta{
+									APIVersion: "tekton.dev/v1beta1",
+									Kind:       "PipelineRun",
+								},
+							}),
+						}},
+					},
+				},
+			},
+		},
 	}}
 
 	for _, test := range tests {
@@ -384,6 +411,46 @@ func TestTriggerValidate_error(t *testing.T) {
 				bldr.TriggerSpecBinding("tb", "", "tb", "v1alpha1"),
 				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing')")),
 			)),
+	}, {
+		name: "Trigger template with both name and spec",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Name: "ttname",
+					Spec: &v1alpha1.TriggerTemplateSpec{
+						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
+								TypeMeta: metav1.TypeMeta{
+									APIVersion: "tekton.dev/v1beta1",
+									Kind:       "PipelineRun",
+								},
+							}),
+						}},
+					},
+				},
+			},
+		},
+	}, {
+		name: "Trigger template missing both name and spec",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{},
+			},
+		},
+	}, {
+		name: "Trigger template with invalid spec",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Spec: &v1alpha1.TriggerTemplateSpec{
+						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{}},
+					},
+				},
+			},
+		},
 	}}
 
 	for _, test := range tests {

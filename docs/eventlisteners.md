@@ -116,10 +116,10 @@ The `triggers` field is required. Each EventListener can consist of one or more
   [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set)
 - [`interceptors`](#interceptors) - (Optional) list of interceptors to use
 - `bindings` - (Optional) A list of bindings to use. Can either be a reference to existing `TriggerBinding` resources or embedded name/value pairs.
-- `template` - (Optional) The name of `TriggerTemplate` to use
+- `template` - (Optional) Either a reference to a TriggerTemplate object or an embedded TriggerTemplate spec.
 - `triggerRef` - (Optional) Reference to the [`Trigger`](./triggers.md).
 
-A `trigger` field must have `template` (along with needed `bindings` and `interceptors`) or `triggerRef`.
+A `trigger` field must either have a `template` (along with needed `bindings` and `interceptors`) or a reference to another Trigger using `triggerRef`.
 
 ```yaml
 triggers:
@@ -139,6 +139,26 @@ Or with only `triggerRef`:
 ```yaml
 triggers:
     - triggerRef: trigger
+```
+
+Or with an embedded `triggerTemplate` spec:
+```yaml
+triggers:
+  - name: "my-trigger"
+    template:
+      spec: 
+        params:
+          - name: "my-param-name"
+        resourceTemplates:
+        - apiVersion: "tekton.dev/v1beta1"
+          kind: TaskRun
+          metadata:
+            generateName: "pr-run-"
+          spec:
+            taskSpec:
+              steps:
+              - image: ubuntu
+                script: echo "hello there"
 ```
 
 Also, to support multi-tenant styled scenarios, where an administrator may not want all triggers to have
