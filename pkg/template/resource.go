@@ -52,11 +52,22 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	if err != nil {
 		return ResolvedTrigger{}, fmt.Errorf("failed to resolve bindings: %w", err)
 	}
-	tt, err := getTT(context.Background(), trigger.Template.Name, metav1.GetOptions{})
-	if err != nil {
-		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", trigger.Template.Name, err)
+
+	var resolvedTT *triggersv1.TriggerTemplate
+	if trigger.Template.Spec != nil {
+		resolvedTT = &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{}, // Unused. TODO: Just return Specs from here.
+			Spec:       *trigger.Template.Spec,
+		}
+	} else {
+		ttName := trigger.Template.Name
+		resolvedTT, err = getTT(context.Background(), ttName, metav1.GetOptions{})
+		if err != nil {
+			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
+		}
 	}
-	return ResolvedTrigger{TriggerTemplate: tt, BindingParams: bp}, nil
+
+	return ResolvedTrigger{TriggerTemplate: resolvedTT, BindingParams: bp}, nil
 }
 
 // resolveBindingsToParams takes in both embedded bindings and references and returns a list of resolved Param values.ResolveBindingsToParams

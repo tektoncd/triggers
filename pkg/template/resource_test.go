@@ -23,7 +23,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -378,6 +381,39 @@ func Test_ResolveTrigger(t *testing.T) {
 			TriggerTemplate: &tt,
 		},
 	},
+		{
+			name: "embedded trigger template",
+			trigger: triggersv1.EventListenerTrigger{
+				Template: &triggersv1.EventListenerTemplate{
+					Spec: &triggersv1.TriggerTemplateSpec{
+						ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
+								TypeMeta: metav1.TypeMeta{
+									APIVersion: "tekton.dev/v1alpha1",
+									Kind:       "PipelineRun",
+								},
+							}),
+						}},
+					},
+				},
+			},
+			want: ResolvedTrigger{
+				BindingParams: []triggersv1.Param{},
+				TriggerTemplate: &triggersv1.TriggerTemplate{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: triggersv1.TriggerTemplateSpec{
+						ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
+								TypeMeta: metav1.TypeMeta{
+									APIVersion: "tekton.dev/v1alpha1",
+									Kind:       "PipelineRun",
+								},
+							}),
+						}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

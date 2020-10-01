@@ -39,8 +39,9 @@ type TriggerSpec struct {
 }
 
 type TriggerSpecTemplate struct {
-	Name       string `json:"name"`
-	APIVersion string `json:"apiversion,omitempty"`
+	Name       string               `json:"name"`
+	APIVersion string               `json:"apiversion,omitempty"`
+	Spec       *TriggerTemplateSpec `json:"spec,omitempty"`
 }
 
 type TriggerSpecBinding struct {

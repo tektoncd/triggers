@@ -54,11 +54,16 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "template.apiVersion"))
 		}
 	}
-	if t.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("template.name"))
+
+	switch {
+	case t.Spec != nil && t.Name != "":
+		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.name"))
+	case t.Spec == nil && t.Name == "":
+		errs = errs.Also(apis.ErrMissingOneOf("template.spec", "template.name"))
+	case t.Spec != nil:
+		errs = errs.Also(t.Spec.validate(ctx))
 	}
 	return errs
-
 }
 
 func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.FieldError) {
