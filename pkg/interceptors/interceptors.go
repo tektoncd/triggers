@@ -75,7 +75,7 @@ func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.S
 	if ns == "" {
 		ns = eventListenerNamespace
 	}
-	secret, err := cs.CoreV1().Secrets(ns).Get(sr.SecretName, metav1.GetOptions{})
+	secret, err := cs.CoreV1().Secrets(ns).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

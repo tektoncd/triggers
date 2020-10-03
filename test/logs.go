@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -28,14 +29,14 @@ import (
 
 // CollectPodLogsWithLabel will get the logs of all the Pods given a labelSelector
 func CollectPodLogsWithLabel(c kubernetes.Interface, namespace, labelSelector string) (string, error) {
-	pods, err := c.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelSelector})
+	pods, err := c.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return "", err
 	}
 	sb := strings.Builder{}
 	for _, pod := range pods.Items {
 		req := c.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
-		rc, err := req.Stream()
+		rc, err := req.Stream(context.Background())
 		if err != nil {
 			return "", err
 		}

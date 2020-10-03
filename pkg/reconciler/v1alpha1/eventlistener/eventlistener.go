@@ -120,8 +120,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 	// and may not have had all of the assumed default specified.
 	el.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
 
-	serviceReconcileError := r.reconcileService(logger, el)
-	deploymentReconcileError := r.reconcileDeployment(logger, el)
+	serviceReconcileError := r.reconcileService(ctx, logger, el)
+	deploymentReconcileError := r.reconcileDeployment(ctx, logger, el)
 
 	return wrapError(serviceReconcileError, deploymentReconcileError)
 }
@@ -143,7 +143,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1alpha1.EventListene
 		logger.Infof("Not deleting logging config map since EventListener is in the same namespace (%s) as the controller", el.Namespace)
 		return nil
 	}
-	if err = r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Delete(eventListenerConfigMapName, &metav1.DeleteOptions{}); err != nil {
+	if err = r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Delete(ctx, eventListenerConfigMapName, metav1.DeleteOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
@@ -172,7 +172,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	return
 }
 
-func (r *Reconciler) reconcileService(logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	// for backward compatibility with original behavior
 	var serviceType = el.Spec.ServiceType
 	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceType != "" {
@@ -217,7 +217,7 @@ func (r *Reconciler) reconcileService(logger *zap.SugaredLogger, el *v1alpha1.Ev
 			updated = true
 		}
 		if updated {
-			if _, err := r.KubeClientSet.CoreV1().Services(el.Namespace).Update(existingService); err != nil {
+			if _, err := r.KubeClientSet.CoreV1().Services(el.Namespace).Update(ctx, existingService, metav1.UpdateOptions{}); err != nil {
 				logger.Errorf("Error updating EventListener Service: %s", err)
 				return err
 			}
@@ -225,7 +225,7 @@ func (r *Reconciler) reconcileService(logger *zap.SugaredLogger, el *v1alpha1.Ev
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Service
-		_, err = r.KubeClientSet.CoreV1().Services(el.Namespace).Create(service)
+		_, err = r.KubeClientSet.CoreV1().Services(el.Namespace).Create(ctx, service, metav1.CreateOptions{})
 		el.Status.SetExistsCondition(v1alpha1.ServiceExists, err)
 		if err != nil {
 			logger.Errorf("Error creating EventListener Service: %s", err)
@@ -240,10 +240,10 @@ func (r *Reconciler) reconcileService(logger *zap.SugaredLogger, el *v1alpha1.Ev
 	return nil
 }
 
-func (r *Reconciler) reconcileLoggingConfig(logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(eventListenerConfigMapName); errors.IsNotFound(err) {
 		// create default config-logging ConfigMap
-		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(defaultLoggingConfigMap()); err != nil {
+		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultLoggingConfigMap(), metav1.CreateOptions{}); err != nil {
 			logger.Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
 			return err
 		}
@@ -254,9 +254,9 @@ func (r *Reconciler) reconcileLoggingConfig(logger *zap.SugaredLogger, el *v1alp
 	return nil
 }
 
-func (r *Reconciler) reconcileDeployment(logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	// check logging config, create if it doesn't exist
-	if err := r.reconcileLoggingConfig(logger, el); err != nil {
+	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
 		logger.Error(err)
 		return err
 	}
@@ -443,7 +443,7 @@ func (r *Reconciler) reconcileDeployment(logger *zap.SugaredLogger, el *v1alpha1
 			}
 		}
 		if updated {
-			if _, err := r.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(existingDeployment); err != nil {
+			if _, err := r.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(ctx, existingDeployment, metav1.UpdateOptions{}); err != nil {
 				logger.Errorf("Error updating EventListener Deployment: %s", err)
 				return err
 			}
@@ -451,7 +451,7 @@ func (r *Reconciler) reconcileDeployment(logger *zap.SugaredLogger, el *v1alpha1
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Deployment
-		deployment, err = r.KubeClientSet.AppsV1().Deployments(el.Namespace).Create(deployment)
+		deployment, err = r.KubeClientSet.AppsV1().Deployments(el.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
 		el.Status.SetExistsCondition(v1alpha1.DeploymentExists, err)
 		if err != nil {
 			logger.Errorf("Error creating EventListener Deployment: %s", err)

@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -100,7 +101,7 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 
 	if os.Getenv("TEST_KEEP_NAMESPACES") == "" {
 		t.Logf("Deleting namespace %s", namespace)
-		if err := cs.KubeClient.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+		if err := cs.KubeClient.CoreV1().Namespaces().Delete(context.Background(), namespace, metav1.DeleteOptions{}); err != nil {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
 	}
@@ -127,11 +128,11 @@ func initializeLogsAndMetrics(t *testing.T) {
 func createNamespace(t *testing.T, namespace string, kubeClient kubernetes.Interface) {
 	t.Helper()
 	t.Logf("Create namespace %s to deploy to", namespace)
-	if _, err := kubeClient.CoreV1().Namespaces().Create(&corev1.Namespace{
+	if _, err := kubeClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
 	}
 }
@@ -142,7 +143,7 @@ func verifyDefaultServiceAccountExists(t *testing.T, namespace string, kubeClien
 	t.Logf("Verify SA %s is created in namespace %s", defaultSA, namespace)
 
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(defaultSA, metav1.GetOptions{})
+		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(context.Background(), defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -163,7 +164,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	ctbs, err := cs.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	ctbs, err := cs.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get ClusterTriggerBindings: %w", err)
 	}
@@ -171,7 +172,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("ClusterTriggerBinding", i.Name, i)
 	}
 
-	els, err := cs.TriggersClient.TriggersV1alpha1().EventListeners(ns).List(metav1.ListOptions{})
+	els, err := cs.TriggersClient.TriggersV1alpha1().EventListeners(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get EventListeners: %w", err)
 	}
@@ -179,7 +180,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("EventListener", i.Name, i)
 	}
 
-	tbs, err := cs.TriggersClient.TriggersV1alpha1().TriggerBindings(ns).List(metav1.ListOptions{})
+	tbs, err := cs.TriggersClient.TriggersV1alpha1().TriggerBindings(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerBindings: %w", err)
 	}
@@ -187,7 +188,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("TriggerBindings", i.Name, i)
 	}
 	// TODO: Update TriggerTemplates Marshalling so it isn't a byte array in debug log
-	tts, err := cs.TriggersClient.TriggersV1alpha1().TriggerTemplates(ns).List(metav1.ListOptions{})
+	tts, err := cs.TriggersClient.TriggersV1alpha1().TriggerTemplates(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get TriggerTemplates: %w", err)
 	}
@@ -195,7 +196,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("TriggerTemplate", i.Name, i)
 	}
 
-	pods, err := cs.KubeClient.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := cs.KubeClient.CoreV1().Pods(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get Pods: %w", err)
 	}
@@ -203,7 +204,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("Pod", i.Name, i)
 	}
 
-	services, err := cs.KubeClient.CoreV1().Services(ns).List(metav1.ListOptions{})
+	services, err := cs.KubeClient.CoreV1().Services(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get Services: %w", err)
 	}
@@ -211,7 +212,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("Service", i.Name, i)
 	}
 
-	roles, err := cs.KubeClient.RbacV1().Roles(ns).List(metav1.ListOptions{})
+	roles, err := cs.KubeClient.RbacV1().Roles(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get Roles: %w", err)
 	}
@@ -219,7 +220,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd("Role", i.Name, i)
 	}
 
-	roleBindings, err := cs.KubeClient.RbacV1().RoleBindings(ns).List(metav1.ListOptions{})
+	roleBindings, err := cs.KubeClient.RbacV1().RoleBindings(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get RoleBindings: %w", err)
 	}

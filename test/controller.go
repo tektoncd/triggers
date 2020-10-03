@@ -111,7 +111,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
-		if _, err := c.Kube.CoreV1().Namespaces().Create(ns); err != nil {
+		if _, err := c.Kube.CoreV1().Namespaces().Create(context.Background(), ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -120,7 +120,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ctbInformer.Informer().GetIndexer().Add(ctb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().Create(ctb); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().Create(context.Background(), ctb, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -128,7 +128,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := elInformer.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().EventListeners(el.Namespace).Create(el); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().EventListeners(el.Namespace).Create(context.Background(), el, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -136,7 +136,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := tbInformer.Informer().GetIndexer().Add(tb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().TriggerBindings(tb.Namespace).Create(tb); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().TriggerBindings(tb.Namespace).Create(context.Background(), tb, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -144,7 +144,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ttInformer.Informer().GetIndexer().Add(tt); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(tt.Namespace).Create(tt); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(tt.Namespace).Create(context.Background(), tt, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -152,7 +152,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := trInformer.Informer().GetIndexer().Add(tr); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().Triggers(tr.Namespace).Create(tr); err != nil {
+		if _, err := c.Triggers.TriggersV1alpha1().Triggers(tr.Namespace).Create(context.Background(), tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -160,7 +160,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := deployInformer.Informer().GetIndexer().Add(d); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.AppsV1().Deployments(d.Namespace).Create(d); err != nil {
+		if _, err := c.Kube.AppsV1().Deployments(d.Namespace).Create(context.Background(), d, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -169,7 +169,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 
-		if _, err := c.Kube.CoreV1().Services(svc.Namespace).Create(svc); err != nil {
+		if _, err := c.Kube.CoreV1().Services(svc.Namespace).Create(context.Background(), svc, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -178,7 +178,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := configMapInformer.Informer().GetIndexer().Add(cfg); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.CoreV1().ConfigMaps(cfg.Namespace).Create(cfg); err != nil {
+		if _, err := c.Kube.CoreV1().ConfigMaps(cfg.Namespace).Create(context.Background(), cfg, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -186,7 +186,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := secretInformer.Informer().GetIndexer().Add(s); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(s); err != nil {
+		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(context.Background(), s, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -194,7 +194,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := saInformer.Informer().GetIndexer().Add(sa); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(sa); err != nil {
+		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(context.Background(), sa, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -202,7 +202,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := podInformer.Informer().GetIndexer().Add(pod); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.CoreV1().Pods(pod.Namespace).Create(pod); err != nil {
+		if _, err := c.Kube.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -219,14 +219,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 func GetResourcesFromClients(c Clients) (*Resources, error) {
 	testResources := &Resources{}
 	// Add ClusterTriggerBindings
-	ctbList, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	ctbList, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	for _, ctb := range ctbList.Items {
 		testResources.ClusterTriggerBindings = append(testResources.ClusterTriggerBindings, ctb.DeepCopy())
 	}
-	nsList, err := c.Kube.CoreV1().Namespaces().List(metav1.ListOptions{})
+	nsList, err := c.Kube.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		// Add Namespace
 		testResources.Namespaces = append(testResources.Namespaces, ns.DeepCopy())
 		// Add EventListeners
-		elList, err := c.Triggers.TriggersV1alpha1().EventListeners(ns.Name).List(metav1.ListOptions{})
+		elList, err := c.Triggers.TriggersV1alpha1().EventListeners(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.EventListeners = append(testResources.EventListeners, el.DeepCopy())
 		}
 		// Add TriggerBindings
-		tbList, err := c.Triggers.TriggersV1alpha1().TriggerBindings(ns.Name).List(metav1.ListOptions{})
+		tbList, err := c.Triggers.TriggersV1alpha1().TriggerBindings(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -250,7 +250,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.TriggerBindings = append(testResources.TriggerBindings, tb.DeepCopy())
 		}
 		// Add TriggerTemplates
-		ttList, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(ns.Name).List(metav1.ListOptions{})
+		ttList, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +258,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.TriggerTemplates = append(testResources.TriggerTemplates, tt.DeepCopy())
 		}
 		// Add Deployments
-		dList, err := c.Kube.AppsV1().Deployments(ns.Name).List(metav1.ListOptions{})
+		dList, err := c.Kube.AppsV1().Deployments(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +266,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.Deployments = append(testResources.Deployments, d.DeepCopy())
 		}
 		// Add Services
-		svcList, err := c.Kube.CoreV1().Services(ns.Name).List(metav1.ListOptions{})
+		svcList, err := c.Kube.CoreV1().Services(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.Services = append(testResources.Services, svc.DeepCopy())
 		}
 		// Add ConfigMaps
-		cfgList, err := c.Kube.CoreV1().ConfigMaps(ns.Name).List(metav1.ListOptions{})
+		cfgList, err := c.Kube.CoreV1().ConfigMaps(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -282,7 +282,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.ConfigMaps = append(testResources.ConfigMaps, cfg.DeepCopy())
 		}
 		// Add Secrets
-		secretsList, err := c.Kube.CoreV1().Secrets(ns.Name).List(metav1.ListOptions{})
+		secretsList, err := c.Kube.CoreV1().Secrets(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -290,7 +290,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.Secrets = append(testResources.Secrets, s.DeepCopy())
 		}
 		// Get Triggers
-		trList, err := c.Triggers.TriggersV1alpha1().Triggers(ns.Name).List(metav1.ListOptions{})
+		trList, err := c.Triggers.TriggersV1alpha1().Triggers(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -298,7 +298,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.Triggers = append(testResources.Triggers, tr.DeepCopy())
 		}
 		// Get Pods
-		podList, err := c.Kube.CoreV1().Pods(ns.Name).List(metav1.ListOptions{})
+		podList, err := c.Kube.CoreV1().Pods(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}

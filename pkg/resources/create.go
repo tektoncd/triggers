@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -101,7 +102,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 
 	logger.Infof("For event ID %q creating resource %v", eventID, gvr)
 
-	if _, err := dc.Resource(gvr).Namespace(namespace).Create(data, metav1.CreateOptions{}); err != nil {
+	if _, err := dc.Resource(gvr).Namespace(namespace).Create(context.Background(), data, metav1.CreateOptions{}); err != nil {
 		if kerrors.IsUnauthorized(err) || kerrors.IsForbidden(err) {
 			return err
 		}

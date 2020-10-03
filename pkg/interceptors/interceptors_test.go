@@ -61,7 +61,7 @@ func Test_GetSecretToken(t *testing.T) {
 			kubeClient := fakekubeclient.Get(ctx)
 			secretRef := makeSecretRef()
 
-			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(makeSecret("secret from API")); err != nil {
+			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(context.Background(), makeSecret("secret from API"), metav1.CreateOptions{}); err != nil {
 				rt.Error(err)
 			}
 

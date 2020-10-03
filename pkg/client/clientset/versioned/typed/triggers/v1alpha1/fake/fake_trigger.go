@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var triggersResource = schema.GroupVersionResource{Group: "triggers.tekton.dev",
 var triggersKind = schema.GroupVersionKind{Group: "triggers.tekton.dev", Version: "v1alpha1", Kind: "Trigger"}
 
 // Get takes name of the trigger, and returns the corresponding trigger object, and an error if there is any.
-func (c *FakeTriggers) Get(name string, options v1.GetOptions) (result *v1alpha1.Trigger, err error) {
+func (c *FakeTriggers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Trigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(triggersResource, c.ns, name), &v1alpha1.Trigger{})
 
@@ -50,7 +52,7 @@ func (c *FakeTriggers) Get(name string, options v1.GetOptions) (result *v1alpha1
 }
 
 // List takes label and field selectors, and returns the list of Triggers that match those selectors.
-func (c *FakeTriggers) List(opts v1.ListOptions) (result *v1alpha1.TriggerList, err error) {
+func (c *FakeTriggers) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TriggerList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(triggersResource, triggersKind, c.ns, opts), &v1alpha1.TriggerList{})
 
@@ -72,14 +74,14 @@ func (c *FakeTriggers) List(opts v1.ListOptions) (result *v1alpha1.TriggerList, 
 }
 
 // Watch returns a watch.Interface that watches the requested triggers.
-func (c *FakeTriggers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTriggers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(triggersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a trigger and creates it.  Returns the server's representation of the trigger, and an error, if there is any.
-func (c *FakeTriggers) Create(trigger *v1alpha1.Trigger) (result *v1alpha1.Trigger, err error) {
+func (c *FakeTriggers) Create(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.CreateOptions) (result *v1alpha1.Trigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(triggersResource, c.ns, trigger), &v1alpha1.Trigger{})
 
@@ -90,7 +92,7 @@ func (c *FakeTriggers) Create(trigger *v1alpha1.Trigger) (result *v1alpha1.Trigg
 }
 
 // Update takes the representation of a trigger and updates it. Returns the server's representation of the trigger, and an error, if there is any.
-func (c *FakeTriggers) Update(trigger *v1alpha1.Trigger) (result *v1alpha1.Trigger, err error) {
+func (c *FakeTriggers) Update(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.UpdateOptions) (result *v1alpha1.Trigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(triggersResource, c.ns, trigger), &v1alpha1.Trigger{})
 
@@ -101,7 +103,7 @@ func (c *FakeTriggers) Update(trigger *v1alpha1.Trigger) (result *v1alpha1.Trigg
 }
 
 // Delete takes name of the trigger and deletes it. Returns an error if one occurs.
-func (c *FakeTriggers) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTriggers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(triggersResource, c.ns, name), &v1alpha1.Trigger{})
 
@@ -109,15 +111,15 @@ func (c *FakeTriggers) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTriggers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(triggersResource, c.ns, listOptions)
+func (c *FakeTriggers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(triggersResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TriggerList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched trigger.
-func (c *FakeTriggers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Trigger, err error) {
+func (c *FakeTriggers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Trigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(triggersResource, c.ns, name, pt, data, subresources...), &v1alpha1.Trigger{})
 

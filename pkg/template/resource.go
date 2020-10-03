@@ -18,6 +18,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -39,9 +40,9 @@ type ResolvedTrigger struct {
 	TriggerTemplate        *triggersv1.TriggerTemplate
 }
 
-type getTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
-type getTriggerTemplate func(name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
-type getClusterTriggerBinding func(name string, options metav1.GetOptions) (*triggersv1.ClusterTriggerBinding, error)
+type getTriggerBinding func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
+type getTriggerTemplate func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
+type getClusterTriggerBinding func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.ClusterTriggerBinding, error)
 
 // ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
@@ -60,13 +61,13 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 		}
 
 		if b.Kind == triggersv1.ClusterTriggerBindingKind {
-			ctb2, err := getCTB(b.Ref, metav1.GetOptions{})
+			ctb2, err := getCTB(context.Background(), b.Ref, metav1.GetOptions{})
 			if err != nil {
 				return ResolvedTrigger{}, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
 			}
 			ctb = append(ctb, ctb2)
 		} else {
-			tb2, err := getTB(b.Ref, metav1.GetOptions{})
+			tb2, err := getTB(context.Background(), b.Ref, metav1.GetOptions{})
 			if err != nil {
 				return ResolvedTrigger{}, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
 			}
@@ -75,7 +76,7 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 	}
 
 	ttName := trigger.Template.Name
-	tt, err := getTT(ttName, metav1.GetOptions{})
+	tt, err := getTT(context.Background(), ttName, metav1.GetOptions{})
 	if err != nil {
 		return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
 	}
