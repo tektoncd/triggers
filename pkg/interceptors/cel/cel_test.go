@@ -233,7 +233,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
-			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(makeSecret()); err != nil {
+			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(ctx, makeSecret(), metav1.CreateOptions{}); err != nil {
 				rt.Error(err)
 			}
 			w := NewInterceptor(tt.CEL, kubeClient, "testing-ns", logger)
@@ -499,7 +499,7 @@ func TestExpressionEvaluation(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(rt)
 			kubeClient := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
-				if _, err := kubeClient.CoreV1().Secrets(tt.secret.ObjectMeta.Namespace).Create(tt.secret); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(tt.secret.ObjectMeta.Namespace).Create(ctx, tt.secret, metav1.CreateOptions{}); err != nil {
 					rt.Error(err)
 				}
 			}
@@ -622,7 +622,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			ns := testNS
 			if tt.secretNS != "" {
 				secret := makeSecret()
-				if _, err := kubeClient.CoreV1().Secrets(secret.ObjectMeta.Namespace).Create(secret); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(secret.ObjectMeta.Namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 					rt.Error(err)
 				}
 				ns = tt.secretNS

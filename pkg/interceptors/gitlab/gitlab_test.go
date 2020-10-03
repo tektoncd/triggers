@@ -18,6 +18,7 @@ package gitlab
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -218,7 +219,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				if ns == "" {
 					ns = metav1.NamespaceDefault
 				}
-				if _, err := kubeClient.CoreV1().Secrets(ns).Create(tt.args.secret); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(ns).Create(context.Background(), tt.args.secret, metav1.CreateOptions{}); err != nil {
 					t.Error(err)
 				}
 			}

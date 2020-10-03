@@ -235,7 +235,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				if ns == "" {
 					ns = metav1.NamespaceDefault
 				}
-				if _, err := kubeClient.CoreV1().Secrets(ns).Create(tt.args.secret); err != nil {
+				if _, err := kubeClient.CoreV1().Secrets(ns).Create(ctx, tt.args.secret, metav1.CreateOptions{}); err != nil {
 					t.Error(err)
 				}
 			}

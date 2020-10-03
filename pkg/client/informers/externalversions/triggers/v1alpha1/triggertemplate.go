@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -61,13 +62,13 @@ func NewFilteredTriggerTemplateInformer(client versioned.Interface, namespace st
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().TriggerTemplates(namespace).List(options)
+				return client.TriggersV1alpha1().TriggerTemplates(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().TriggerTemplates(namespace).Watch(options)
+				return client.TriggersV1alpha1().TriggerTemplates(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&triggersv1alpha1.TriggerTemplate{},

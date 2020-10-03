@@ -17,7 +17,6 @@ package main
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
@@ -31,8 +30,6 @@ const (
 )
 
 func main() {
-	klog.InitFlags(nil)
-
 	sharedmain.MainWithContext(
 		injection.WithNamespaceScope(signals.NewContext(), corev1.NamespaceAll),
 		ControllerLogKey,

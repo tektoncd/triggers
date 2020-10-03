@@ -18,6 +18,7 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,7 +69,7 @@ type Response struct {
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
-	el, err := r.TriggersClient.TriggersV1alpha1().EventListeners(r.EventListenerNamespace).Get(r.EventListenerName, metav1.GetOptions{})
+	el, err := r.TriggersClient.TriggersV1alpha1().EventListeners(r.EventListenerNamespace).Get(context.Background(), r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
 		r.Logger.Fatalf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
@@ -142,7 +143,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 
 	if t.Template == nil && t.TriggerRef != "" {
-		trigger, err := r.TriggersClient.TriggersV1alpha1().Triggers(r.EventListenerNamespace).Get(t.TriggerRef, metav1.GetOptions{})
+		trigger, err := r.TriggersClient.TriggersV1alpha1().Triggers(r.EventListenerNamespace).Get(context.Background(), t.TriggerRef, metav1.GetOptions{})
 		if err != nil {
 			r.Logger.Fatalf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
 			return err

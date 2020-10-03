@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -79,7 +80,7 @@ func TestEventListenerScale(t *testing.T) {
 		trigger.Name = fmt.Sprintf("%d", i)
 		el.Spec.Triggers = append(el.Spec.Triggers, trigger)
 	}
-	el, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(el)
+	el, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(context.Background(), el, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Error creating EventListener: %s", err)
 	}
@@ -93,15 +94,15 @@ func TestEventListenerScale(t *testing.T) {
 
 func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 	t.Helper()
-	sa, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(
+	sa, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(context.Background(),
 		&corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{Name: name},
-		},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating ServiceAccount: %s", err)
 	}
-	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(
+	_, err = c.KubeClient.RbacV1().Roles(namespace).Create(context.Background(),
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-role"},
 			Rules: []rbacv1.PolicyRule{{
@@ -112,14 +113,13 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 				APIGroups: []string{""},
 				Resources: []string{"configmaps"},
 				Verbs:     []string{"get", "list", "watch"},
-			},
-			},
-		},
+			}},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
 	}
-	_, err = c.KubeClient.RbacV1().RoleBindings(namespace).Create(
+	_, err = c.KubeClient.RbacV1().RoleBindings(namespace).Create(context.Background(),
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-rolebinding"},
 			Subjects: []rbacv1.Subject{{
@@ -132,7 +132,7 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 				Kind:     "Role",
 				Name:     "sa-role",
 			},
-		},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating RoleBinding: %s", err)

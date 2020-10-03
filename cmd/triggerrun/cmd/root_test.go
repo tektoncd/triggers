@@ -46,7 +46,7 @@ func TestTrigger_Error(t *testing.T) {
 	buf := new(bytes.Buffer)
 	err := trigger("../testdata/trigger.yaml", "../testdata/http.txt", "show", buf)
 
-	wantError := "fail to get clients: Failed to build config from the flags: invalid configuration: no configuration has been provided"
+	wantError := "fail to get clients: Failed to build config from the flags: invalid configuration: no configuration has been provided, try setting KUBERNETES_MASTER environment variable"
 
 	if err.Error() != wantError {
 		t.Errorf("Error actual = %v, and Expected = %v.", err, wantError)
