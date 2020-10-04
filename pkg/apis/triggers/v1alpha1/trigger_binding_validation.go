@@ -30,10 +30,7 @@ func (tb *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate TriggerBindingSpec.
 func (s *TriggerBindingSpec) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateParams(s.Params); err != nil {
-		return err
-	}
-	return nil
+	return validateParams(s.Params)
 }
 
 func validateParams(params []Param) *apis.FieldError {
