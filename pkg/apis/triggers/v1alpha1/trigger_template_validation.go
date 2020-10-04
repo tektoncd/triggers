@@ -34,37 +34,31 @@ var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-
 
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
-	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
-		return err.ViaField("metadata")
-	}
-	return t.Spec.validate(ctx).ViaField("spec")
+	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
+	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
 // Validate validates a TriggerTemplateSpec.
-func (s *TriggerTemplateSpec) validate(ctx context.Context) *apis.FieldError {
+func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldError) {
 	if equality.Semantic.DeepEqual(s, &TriggerTemplateSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
+		errs = errs.Also(apis.ErrMissingField(apis.CurrentField))
 	}
 	if len(s.ResourceTemplates) == 0 {
-		return apis.ErrMissingField("resourcetemplates")
+		errs = errs.Also(apis.ErrMissingField("resourcetemplates"))
 	}
-	if err := validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"); err != nil {
-		return err
-	}
-	if err := verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"); err != nil {
-		return err
-	}
-	return nil
+	errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"))
+	errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"))
+	return errs
 }
 
-func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldError {
+func validateResourceTemplates(templates []TriggerResourceTemplate) (errs *apis.FieldError) {
 	for i, trt := range templates {
 		if err := trt.IsAllowedType(); err != nil {
 			if runtime.IsMissingVersion(err) {
-				return apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i))
+				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i)))
 			}
 			if runtime.IsMissingKind(err) {
-				return apis.ErrMissingField(fmt.Sprintf("[%d].kind", i))
+				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("[%d].kind", i)))
 			}
 			if runtime.IsNotRegisteredError(err) {
 				errStr := err.Error()
@@ -75,14 +69,14 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) *apis.FieldE
 					// useful for our purposes.
 					errStr = errStr[:strings.Index(errStr, " in scheme")]
 				}
-				return apis.ErrInvalidValue(
+				errs = errs.Also(apis.ErrInvalidValue(
 					errStr,
-					fmt.Sprintf("[%d]", i))
+					fmt.Sprintf("[%d]", i)))
 			}
 			// we allow structural errors because of param substitution
 		}
 	}
-	return nil
+	return errs
 }
 
 // Verify every param in the ResourceTemplates is declared with a ParamSpec

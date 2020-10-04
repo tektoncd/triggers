@@ -30,28 +30,25 @@ func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 	return e.Spec.validate(ctx)
 }
 
-func (s *EventListenerSpec) validate(ctx context.Context) *apis.FieldError {
+func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
 	if s.Replicas != nil {
 		if *s.Replicas < 0 {
-			return apis.ErrInvalidValue(*s.Replicas, "spec.replicas")
+			errs = errs.Also(apis.ErrInvalidValue(*s.Replicas, "spec.replicas"))
 		}
 	}
 	if len(s.Triggers) == 0 {
-		return apis.ErrMissingField("spec.triggers")
+		errs = errs.Also(apis.ErrMissingField("spec.triggers"))
 	}
 	for i, trigger := range s.Triggers {
-		if err := trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)); err != nil {
-			return err
-		}
+		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}
 	if s.Resources.KubernetesResource != nil {
-		return validateKubernetesObject(s.Resources.KubernetesResource)
+		errs = errs.Also(validateKubernetesObject(s.Resources.KubernetesResource))
 	}
-	return nil
+	return errs
 }
 
-func validateKubernetesObject(orig *KubernetesResource) *apis.FieldError {
-	var errs *apis.FieldError
+func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) {
 	if len(orig.Template.Spec.Containers) > 1 {
 		errs = errs.Also(apis.ErrMultipleOneOf("containers").ViaField("spec.template.spec"))
 	}
@@ -141,34 +138,28 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	return out
 }
 
-func (t *EventListenerTrigger) validate(ctx context.Context) *apis.FieldError {
+func (t *EventListenerTrigger) validate(ctx context.Context) (errs *apis.FieldError) {
 	if t.Template == nil && t.TriggerRef == "" {
-		return apis.ErrMissingOneOf("template", "triggerRef")
+		errs = errs.Also(apis.ErrMissingOneOf("template", "triggerRef"))
 	}
 
 	// Validate optional Bindings
-	if err := triggerSpecBindingArray(t.Bindings).validate(ctx); err != nil {
-		return err
-	}
+	errs = errs.Also(triggerSpecBindingArray(t.Bindings).validate(ctx))
 	if t.Template != nil {
 		// Validate required TriggerTemplate
-		if err := t.Template.validate(ctx); err != nil {
-			return err
-		}
+		errs = errs.Also(t.Template.validate(ctx))
 	}
 
 	// Validate optional Interceptors
 	for i, interceptor := range t.Interceptors {
-		if err := interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)); err != nil {
-			return err
-		}
+		errs = errs.Also(interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)))
 	}
 
 	// The trigger name is added as a label value for 'tekton.dev/trigger' so it must follow the k8s label guidelines:
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
-	if errs := validation.IsValidLabelValue(t.Name); len(errs) > 0 {
-		return apis.ErrInvalidValue(fmt.Sprintf("trigger name '%s' must be a valid label value", t.Name), "name")
+	if err := validation.IsValidLabelValue(t.Name); len(err) > 0 {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("trigger name '%s' must be a valid label value", t.Name), "name"))
 	}
 
-	return nil
+	return errs
 }

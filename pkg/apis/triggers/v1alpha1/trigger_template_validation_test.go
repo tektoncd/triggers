@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	b "github.com/tektoncd/triggers/test/builder"
 
@@ -155,13 +154,13 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		}, {
 			name:     "no spec to triggertemplate",
 			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec()),
-			want:     apis.ErrMissingField("spec"),
+			want:     apis.ErrMissingField("spec", "spec.resourcetemplates"),
 		}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.template.Validate(context.Background())
-			if d := cmp.Diff(got, tc.want, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(got.Error(), tc.want.Error()); d != "" {
 				t.Errorf("TriggerTemplate Validation failed: %s", d)
 			}
 		})
