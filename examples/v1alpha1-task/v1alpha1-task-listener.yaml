@@ -26,4 +26,4 @@ spec:
   triggers:
     - name: v1alpha1-task-trigger
       template:
-        name: v1alpha1-task-template
+        ref: v1alpha1-task-template

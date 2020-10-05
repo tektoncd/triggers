@@ -48,7 +48,7 @@ spec:
   bindings:
   - ref: pipeline-binding
   template:
-    name: pipeline-template
+    ref: pipeline-template
 ```
 
 ### template

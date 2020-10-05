@@ -128,7 +128,7 @@ spec:
   - bindings:
     - ref: pipeline-binding
     template:
-      name: pipeline-template
+      ref: pipeline-template
 DONE
 
 INGRESS_TASKRUN_NAME="create-ingress-taskrun"

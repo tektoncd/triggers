@@ -132,7 +132,7 @@ triggers:
       - name: message # Embedded Binding
         value: Hello from the Triggers EventListener!
     template:
-      name: pipeline-template
+      ref: pipeline-template
 ```
 
 Or with only `triggerRef`:
@@ -178,7 +178,7 @@ triggers:
       - ref: pipeline-binding
       - ref: message-binding
     template:
-      name: pipeline-template
+      ref: pipeline-template
 ``` 
 
 An update to the `Role` assigned to the EventListener's SeviceAccount is needed to allow it to impersonate
@@ -417,7 +417,7 @@ spec:
       bindings:
         - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 
@@ -463,7 +463,7 @@ spec:
       bindings:
         - ref: github-pr-binding
       template:
-        name: github-template
+        ref: github-template
   resources:
     kubernetesResource:
       spec:
@@ -560,7 +560,7 @@ spec:
       bindings:
         - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 ### Bitbucket Interceptors
@@ -601,7 +601,7 @@ spec:
       bindings:
         - ref: bitbucket-binding
       template:
-        name: bitbucket-template
+        ref: bitbucket-template
 ```
 
 ### CEL Interceptors
@@ -638,7 +638,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
     - name: cel-trig-with-canonical
       interceptors:
         - cel:
@@ -646,7 +646,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 
@@ -676,7 +676,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
     - name: cel-trig-with-canonical
       interceptors:
         - cel:
@@ -684,7 +684,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 
@@ -711,7 +711,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 
@@ -740,7 +740,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 

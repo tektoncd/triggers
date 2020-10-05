@@ -51,6 +51,6 @@ spec:
         - ref: message-clusterbinding
           kind: ClusterTriggerBinding
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 

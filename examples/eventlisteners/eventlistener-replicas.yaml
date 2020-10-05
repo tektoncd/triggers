@@ -12,4 +12,4 @@ spec:
         - ref: pipeline-binding
         - ref: message-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template

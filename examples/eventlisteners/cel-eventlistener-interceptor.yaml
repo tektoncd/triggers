@@ -15,7 +15,7 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template
     - name: cel-trig-with-canonical
       interceptors:
         - cel:
@@ -23,4 +23,4 @@ spec:
       bindings:
       - ref: pipeline-binding
       template:
-        name: pipeline-template
+        ref: pipeline-template

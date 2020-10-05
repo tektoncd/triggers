@@ -69,4 +69,4 @@ spec:
     - bindings:
       - ref: getting-started-pipelinebinding
       template:
-        name: getting-started-triggertemplate
+        ref: getting-started-triggertemplate
