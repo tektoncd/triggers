@@ -15,4 +15,4 @@ spec:
               - name: message
                 value: Hello from the Triggers EventListener(listener-embed-binding)!
       template:
-        name: pipeline-template
+        ref: pipeline-template

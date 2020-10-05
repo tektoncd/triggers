@@ -159,13 +159,13 @@ spec:
         - ref: event-binding
         - ref: prod-env
       template:
-        name: pipeline-template
+        ref: pipeline-template
     - name: staging-trigger
       bindings:
         - ref: event-binding
         - ref: staging-env
       template:
-        name: pipeline-template
+        ref: pipeline-template
 ```
 
 ## Debugging
