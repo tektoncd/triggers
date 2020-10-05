@@ -37,6 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -71,7 +72,7 @@ func TestReadTrigger(t *testing.T) {
 				{Ref: "git-event-binding"},
 			},
 			Template: v1alpha1.TriggerSpecTemplate{
-				Name: "simple-pipeline-template",
+				Ref: ptr.String("simple-pipeline-template"),
 			},
 		},
 	}}
@@ -212,8 +213,8 @@ func Test_processTriggerSpec(t *testing.T) {
 					Name: "my-triggerRun",
 				},
 				Spec: v1alpha1.TriggerSpec{
-					Bindings: []*v1alpha1.TriggerSpecBinding{{Ref: "git-event-binding"}},     // These should be references to TriggerBindings defined below
-					Template: v1alpha1.TriggerSpecTemplate{Name: "simple-pipeline-template"}, // This should be a reference to a TriggerTemplate defined below
+					Bindings: []*v1alpha1.TriggerSpecBinding{{Ref: "git-event-binding"}},                // These should be references to TriggerBindings defined below
+					Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("simple-pipeline-template")}, // This should be a reference to a TriggerTemplate defined below
 				},
 			},
 			request: r,

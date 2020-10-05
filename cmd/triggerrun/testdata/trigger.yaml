@@ -6,4 +6,4 @@ spec:
   bindings:
     - ref: git-event-binding
   template:
-    name: simple-pipeline-template
+    ref: simple-pipeline-template

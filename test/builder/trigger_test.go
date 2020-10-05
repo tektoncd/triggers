@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTriggerBuilder(t *testing.T) {
@@ -68,7 +69,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -96,7 +97,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -124,7 +125,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -161,7 +162,7 @@ func TestTriggerBuilder(t *testing.T) {
 					},
 				},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -201,7 +202,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -251,7 +252,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},
@@ -291,7 +292,7 @@ func TestTriggerBuilder(t *testing.T) {
 					APIVersion: "v1alpha1",
 				}},
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name:       "tt1",
+					Ref:        ptr.String("tt1"),
 					APIVersion: "v1alpha1",
 				},
 			},

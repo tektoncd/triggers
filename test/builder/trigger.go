@@ -63,7 +63,7 @@ func TriggerSpec(ops ...TriggerSpecOp) TriggerOp {
 func TriggerSpecTemplate(ttName, apiVersion string) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
 		tt := v1alpha1.TriggerSpecTemplate{
-			Name:       ttName,
+			Ref:        &ttName,
 			APIVersion: apiVersion,
 		}
 		spec.Template = tt

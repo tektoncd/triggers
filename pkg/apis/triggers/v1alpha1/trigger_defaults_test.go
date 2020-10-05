@@ -113,6 +113,25 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "sets template name to ref",
+		wc:   v1alpha1.WithUpgradeViaDefaulting,
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Name: "tt-name",
+				},
+			},
+		},
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{},
+				Template: v1alpha1.TriggerSpecTemplate{
+					Ref:  ptr.String("tt-name"),
+					Name: "",
+				},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
