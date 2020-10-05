@@ -18,7 +18,7 @@ spec:
       bindings:
         - ref: github-pr-binding
       template:
-        name: github-template
+        ref: github-template
   resources:
     kubernetesResource:
       spec:

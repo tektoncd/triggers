@@ -55,13 +55,25 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 		}
 	}
 
+	// Validate only one of Name or Ref is set.
+	if t.Name != "" && t.Ref != nil {
+		errs = errs.Also(apis.ErrMultipleOneOf("template.name", "template.ref"))
+	}
+
+	// Set Ref to Name
+	if t.Name != "" {
+		t.Ref = &t.Name
+	}
+
 	switch {
-	case t.Spec != nil && t.Name != "":
-		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.name"))
-	case t.Spec == nil && t.Name == "":
-		errs = errs.Also(apis.ErrMissingOneOf("template.spec", "template.name"))
+	case t.Spec != nil && t.Ref != nil:
+		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.ref"))
+	case t.Spec == nil && t.Ref == nil:
+		errs = errs.Also(apis.ErrMissingOneOf("template.spec", "template.ref"))
 	case t.Spec != nil:
 		errs = errs.Also(t.Spec.validate(ctx))
+	case t.Ref == nil || *t.Ref == "":
+		errs = errs.Also(apis.ErrMissingField("template.ref"))
 	}
 	return errs
 }

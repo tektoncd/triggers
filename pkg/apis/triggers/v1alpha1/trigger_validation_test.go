@@ -179,6 +179,18 @@ func Test_TriggerValidate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "Trigger referenced with deprecated name field", // TODO(#FIXME): Remove when Name is removed.
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "my-trigger",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Name: "ref-to-a-template",
+				},
+			},
+		},
 	}}
 
 	for _, test := range tests {
@@ -259,7 +271,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "Template with missing name",
+		name: "Template with missing Name", // TODO(#791): Remove when Name is removed
 		tr: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -268,6 +280,42 @@ func TestTriggerValidate_error(t *testing.T) {
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
 				Template: v1alpha1.TriggerSpecTemplate{Name: "", APIVersion: "v1alpha1"},
+			},
+		},
+	}, {
+		name: "Template with both Name and Ref", // TODO(#791): Remove when Name is removed
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
+				Template: v1alpha1.TriggerSpecTemplate{Name: "tt", Ref: ptr.String("tt"), APIVersion: "v1alpha1"},
+			},
+		},
+	}, {
+		name: "Template with nil Ref",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: nil, APIVersion: "v1alpha1"},
+			},
+		},
+	}, {
+		name: "Template with empty Ref",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String(""), APIVersion: "v1alpha1"},
 			},
 		},
 	}, {
@@ -412,7 +460,22 @@ func TestTriggerValidate_error(t *testing.T) {
 				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing')")),
 			)),
 	}, {
-		name: "Trigger template with both name and spec",
+		name: "Trigger template with both ref and spec",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"},
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Ref: ptr.String("ttname"),
+					Spec: &v1alpha1.TriggerTemplateSpec{
+						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+							RawExtension: simpleResourceTemplate,
+						}},
+					},
+				},
+			},
+		},
+	}, {
+		name: "Trigger template with both name and spec", // TODO(#FIXME): Remove when name field is removed
 		tr: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{Name: "name"},
 			Spec: v1alpha1.TriggerSpec{
@@ -432,7 +495,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "Trigger template missing both name and spec",
+		name: "Trigger template missing both ref and spec",
 		tr: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{Name: "name"},
 			Spec: v1alpha1.TriggerSpec{

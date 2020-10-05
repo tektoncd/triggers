@@ -60,7 +60,14 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 			Spec:       *trigger.Template.Spec,
 		}
 	} else {
-		ttName := trigger.Template.Name
+		var ttName string
+		if trigger.Template.Ref != nil {
+			ttName = *trigger.Template.Ref
+		} else {
+			// TODO(#FIXME): Remove when Name field is removed.
+			// Existing TriggerTemplates may only contain a name field.
+			ttName = trigger.Template.Name
+		}
 		resolvedTT, err = getTT(context.Background(), ttName, metav1.GetOptions{})
 		if err != nil {
 			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
