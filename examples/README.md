@@ -64,16 +64,15 @@ curl -X POST \
   -H 'Content-Type: application/json' \
   -H 'X-Hub-Signature: sha1=2da37dcb9404ff17b714ee7a505c384758ddeb7b' \
   -d '{
-	"head_commit":
-	{
-		"id": "master"
-	},
 	"repository":
 	{
 		"url": "https://github.com/tektoncd/triggers.git"
 	}
 }'
 ```
+
+NOTE: defaults in `triggertemplates/triggertemplate.yaml` like `master` for `gitrevision` are leveraged here to 
+satisfy missing items in the POST body like `head_commit.id`.
 
 5. Observe created PipelineRun
 

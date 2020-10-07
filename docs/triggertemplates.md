@@ -109,6 +109,10 @@ $(tt.params.<name>)
 `TriggerTemplate`. The purpose of `tt.params` is to make `TriggerTemplates`
 reusable.
 
+The value of the `default` field for each entry of the `params` array defined in a `TriggerTemplate` will
+be applied if a corresponding entry in the `params` array in a `TriggerBinding` is either missing or cannot 
+be satisfied in the cases where the entry's value comes from an HTTP header or body. 
+
 ## Best Practices
 
 As of Tekton Pipelines version

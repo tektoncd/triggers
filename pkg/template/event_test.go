@@ -44,6 +44,98 @@ func toString(rawMessages []json.RawMessage) []string {
 	return stringMessages
 }
 
+func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
+	var (
+		oneDefault   = "onedefault"
+		twoDefault   = "twodefault"
+		threeDefault = "threedefault"
+		oneParam     = triggersv1.Param{
+			Name:  "oneid",
+			Value: "onevalue",
+		}
+		oneParamSpec = triggersv1.ParamSpec{
+			Name:    "oneid",
+			Default: &oneDefault,
+		}
+		wantDefaultOneParam = triggersv1.Param{
+			Name:  "oneid",
+			Value: "onedefault",
+		}
+		twoParamSpec = triggersv1.ParamSpec{
+			Name:    "twoid",
+			Default: &twoDefault,
+		}
+		wantDefaultTwoParam = triggersv1.Param{
+			Name:  "twoid",
+			Value: "twodefault",
+		}
+		threeParamSpec = triggersv1.ParamSpec{
+			Name:    "threeid",
+			Default: &threeDefault,
+		}
+		wantDefaultThreeParam = triggersv1.Param{
+			Name:  "threeid",
+			Value: "threedefault",
+		}
+		noDefaultParamSpec = triggersv1.ParamSpec{
+			Name: "nodefault",
+		}
+	)
+	type args struct {
+		params     []triggersv1.Param
+		paramSpecs []triggersv1.ParamSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want []triggersv1.Param
+	}{
+		{
+			name: "add one default param",
+			args: args{
+				params:     []triggersv1.Param{},
+				paramSpecs: []triggersv1.ParamSpec{oneParamSpec},
+			},
+			want: []triggersv1.Param{wantDefaultOneParam},
+		},
+		{
+			name: "add multiple default params",
+			args: args{
+				params:     []triggersv1.Param{},
+				paramSpecs: []triggersv1.ParamSpec{oneParamSpec, twoParamSpec, threeParamSpec},
+			},
+			want: []triggersv1.Param{wantDefaultOneParam, wantDefaultTwoParam, wantDefaultThreeParam},
+		},
+		{
+			name: "do not override existing value",
+			args: args{
+				params:     []triggersv1.Param{oneParam},
+				paramSpecs: []triggersv1.ParamSpec{oneParamSpec},
+			},
+			want: []triggersv1.Param{oneParam},
+		},
+		{
+			name: "add no default params",
+			args: args{
+				params:     []triggersv1.Param{},
+				paramSpecs: []triggersv1.ParamSpec{noDefaultParamSpec},
+			},
+			want: []triggersv1.Param{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := applyEventValuesToParams(tt.args.params, nil, nil, tt.args.paramSpecs)
+			if err != nil {
+				t.Errorf("applyEventValuesToParams(): unexpected error: %s", err.Error())
+			}
+			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
+				t.Errorf("mergeInDefaultParams(): -want +got: %s", diff)
+			}
+		})
+	}
+}
+
 func TestApplyEventValuesToParams(t *testing.T) {
 	var objects = `{"a":"v","c":{"d":"e"},"empty": "","null": null, "number": 42}`
 	var arrays = `[{"a": "b"}, {"c": "d"}, {"e": "f"}]`
@@ -171,7 +263,7 @@ func TestApplyEventValuesToParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, nil)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -204,7 +296,7 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, nil)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", got)
 			}
@@ -223,6 +315,21 @@ func TestResolveParams(t *testing.T) {
 		name: "add default values for params with missing values",
 		bindingParams: []triggersv1.Param{
 			bldr.Param("p1", "val1"),
+		},
+		template: bldr.TriggerTemplate("tt-name", ns,
+			bldr.TriggerTemplateSpec(
+				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
+			),
+		),
+		want: []triggersv1.Param{
+			bldr.Param("p1", "val1"),
+			bldr.Param("p2", "defaultVal"),
+		},
+	}, {
+		name: "add default values if param missing from body",
+		bindingParams: []triggersv1.Param{
+			bldr.Param("p1", "val1"),
+			bldr.Param("p2", "$(body.p2)"),
 		},
 		template: bldr.TriggerTemplate("tt-name", ns,
 			bldr.TriggerTemplateSpec(

@@ -102,21 +102,6 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 	return bindingParams, nil
 }
 
-// mergeInDefaultParams returns the params with the addition of all
-// paramSpecs that have default values and are already in the params list
-func mergeInDefaultParams(params []triggersv1.Param, paramSpecs []triggersv1.ParamSpec) []triggersv1.Param {
-	allParamsMap := map[string]string{}
-	for _, paramSpec := range paramSpecs {
-		if paramSpec.Default != nil {
-			allParamsMap[paramSpec.Name] = *paramSpec.Default
-		}
-	}
-	for _, param := range params {
-		allParamsMap[param.Name] = param.Value
-	}
-	return convertParamMapToArray(allParamsMap)
-}
-
 // applyParamsToResourceTemplate returns the TriggerResourceTemplate with the
 // param values substituted for all matching param variables in the template
 func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage) json.RawMessage {
