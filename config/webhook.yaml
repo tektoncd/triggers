@@ -74,3 +74,7 @@ spec:
           containerPort: 8008
         - name: https-webhook
           containerPort: 8443
+        securityContext:
+          allowPrivilegeEscalation: false
+          # User 65532 is the distroless nonroot user ID
+          runAsUser: 65532
