@@ -28,17 +28,17 @@ import (
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
 func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]triggersv1.Param, error) {
-	out, err := applyEventValuesToParams(rt.BindingParams, body, header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
-	}
-
 	var ttParams []triggersv1.ParamSpec
 	if rt.TriggerTemplate != nil {
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	return mergeInDefaultParams(out, ttParams), nil
+	out, err := applyEventValuesToParams(rt.BindingParams, body, header, ttParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
+	}
+
+	return out, nil
 }
 
 // ResolveResources resolves a templated resource by replacing params with their values.
@@ -79,24 +79,40 @@ func newEvent(body []byte, headers http.Header) (*event, error) {
 
 // applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
 // with values from the event body and headers.
-func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header) ([]triggersv1.Param, error) {
+func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header,
+	defaults []triggersv1.ParamSpec) ([]triggersv1.Param, error) {
 	event, err := newEvent(body, header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	for idx, p := range params {
+	allParamsMap := map[string]string{}
+	for _, paramSpec := range defaults {
+		if paramSpec.Default != nil {
+			allParamsMap[paramSpec.Name] = *paramSpec.Default
+		}
+	}
+
+	for _, p := range params {
 		pValue := p.Value
 		// Find all expressions wrapped in $() from the value
 		expressions, originals := findTektonExpressions(pValue)
 		for i, expr := range expressions {
 			val, err := parseJSONPath(event, expr)
+			if defaults != nil && err != nil {
+				// if the header or body was not supplied or was malformed, go with a default if it exists
+				v, ok := allParamsMap[p.Name]
+				if ok {
+					val = v
+					err = nil
+				}
+			}
 			if err != nil {
 				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}
 			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
-		params[idx].Value = pValue
+		allParamsMap[p.Name] = pValue
 	}
-	return params, nil
+	return convertParamMapToArray(allParamsMap), nil
 }

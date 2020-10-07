@@ -74,6 +74,11 @@ To access JSON keys that contain `.` character, we need to escape the `.` e.g.
 $(body.tekton\.dev) -> "triggers"
 ```
 
+#### Defaulting
+
+If the HTTP headers and body contents from an event fail to resolve the JSONPath expressions supplied, 
+and attempt will be made to utilize the `default` value, if supplied, from the associated `TriggerTemplate`. 
+
 ### Examples
 
 ```shell

@@ -23,102 +23,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
-
-func Test_MergeInDefaultParams(t *testing.T) {
-	var (
-		oneDefault   = "onedefault"
-		twoDefault   = "twodefault"
-		threeDefault = "threedefault"
-		oneParam     = triggersv1.Param{
-			Name:  "oneid",
-			Value: "onevalue",
-		}
-		oneParamSpec = triggersv1.ParamSpec{
-			Name:    "oneid",
-			Default: &oneDefault,
-		}
-		wantDefaultOneParam = triggersv1.Param{
-			Name:  "oneid",
-			Value: "onedefault",
-		}
-		twoParamSpec = triggersv1.ParamSpec{
-			Name:    "twoid",
-			Default: &twoDefault,
-		}
-		wantDefaultTwoParam = triggersv1.Param{
-			Name:  "twoid",
-			Value: "twodefault",
-		}
-		threeParamSpec = triggersv1.ParamSpec{
-			Name:    "threeid",
-			Default: &threeDefault,
-		}
-		wantDefaultThreeParam = triggersv1.Param{
-			Name:  "threeid",
-			Value: "threedefault",
-		}
-		noDefaultParamSpec = triggersv1.ParamSpec{
-			Name: "nodefault",
-		}
-	)
-	type args struct {
-		params     []triggersv1.Param
-		paramSpecs []triggersv1.ParamSpec
-	}
-	tests := []struct {
-		name string
-		args args
-		want []triggersv1.Param
-	}{
-		{
-			name: "add one default param",
-			args: args{
-				params:     []triggersv1.Param{},
-				paramSpecs: []triggersv1.ParamSpec{oneParamSpec},
-			},
-			want: []triggersv1.Param{wantDefaultOneParam},
-		},
-		{
-			name: "add multiple default params",
-			args: args{
-				params:     []triggersv1.Param{},
-				paramSpecs: []triggersv1.ParamSpec{oneParamSpec, twoParamSpec, threeParamSpec},
-			},
-			want: []triggersv1.Param{wantDefaultOneParam, wantDefaultTwoParam, wantDefaultThreeParam},
-		},
-		{
-			name: "do not override existing value",
-			args: args{
-				params:     []triggersv1.Param{oneParam},
-				paramSpecs: []triggersv1.ParamSpec{oneParamSpec},
-			},
-			want: []triggersv1.Param{oneParam},
-		},
-		{
-			name: "add no default params",
-			args: args{
-				params:     []triggersv1.Param{},
-				paramSpecs: []triggersv1.ParamSpec{noDefaultParamSpec},
-			},
-			want: []triggersv1.Param{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := mergeInDefaultParams(tt.args.params, tt.args.paramSpecs)
-			if diff := cmp.Diff(tt.want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
-				t.Errorf("mergeInDefaultParams(): -want +got: %s", diff)
-			}
-		})
-	}
-}
 
 func Test_applyParamToResourceTemplate(t *testing.T) {
 	var (
