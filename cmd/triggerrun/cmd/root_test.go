@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -42,18 +43,12 @@ import (
 func TestTrigger_Error(t *testing.T) {
 	//error case for show feature
 	buf := new(bytes.Buffer)
-	err := trigger("../testdata/trigger.yaml", "../testdata/http.txt", "show", buf)
+	err := trigger("../testdata/trigger.yaml", "../testdata/http.txt", "show", "BAD_KUBECONFIG", buf)
 
-	wantError := "fail to get clients: Failed to build config from the flags: invalid configuration: no configuration has been provided, try setting KUBERNETES_MASTER environment variable"
+	wantError := "fail to get clients: Failed to build config from the flags:"
 
-	if err.Error() != wantError {
-		t.Errorf("Error actual = %v, and Expected = %v.", err, wantError)
-	}
-
-	gotValue := buf.Bytes()
-	wantValue := []uint8(nil)
-	if diff := cmp.Diff(wantValue, gotValue); diff != "" {
-		t.Errorf("Trigger mismatch -want +got: %s", diff)
+	if !strings.Contains(err.Error(), wantError) {
+		t.Errorf("Expected actual error to contain %s but got: %s", wantError, err.Error())
 	}
 }
 
