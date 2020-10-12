@@ -68,7 +68,7 @@ func init() {
 }
 
 func rootRun(cmd *cobra.Command, args []string) error {
-	err := trigger(triggerFile, httpPath, action, os.Stdout)
+	err := trigger(triggerFile, httpPath, action, kubeconfig, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("fail to call trigger: %v", err)
 	}
@@ -76,7 +76,7 @@ func rootRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func trigger(triggerFile, httpPath, action string, writer io.Writer) error {
+func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer) error {
 	// Read HTTP request.
 	request, body, err := readHTTP(httpPath)
 	if err != nil {
