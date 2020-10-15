@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE:  when multi-tenant EventListener progresses, moving this Role
+# to a ClusterRole is not the advisable path.  Additional Roles that
+# adds access to Secrets to the Namespaces managed by the multi-tenant
+# EventListener is what should be done.  While not as simple, it avoids
+# giving access to K8S system level, cluster admin privileged level Secrets
+
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-admin
+  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-triggers
@@ -24,3 +31,6 @@ rules:
     resources: ["podsecuritypolicies"]
     resourceNames: ["tekton-triggers"]
     verbs: ["use"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
