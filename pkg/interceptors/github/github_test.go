@@ -259,3 +259,26 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		})
 	}
 }
+
+func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	logger, _ := logging.NewLogger("", "")
+	kubeClient := fakekubeclient.Get(ctx)
+	request := &http.Request{
+		Body: ioutil.NopCloser(bytes.NewBufferString("somepayload")),
+		Header: http.Header{
+			"Content-Type":    []string{"application/x-www-form-urlencoded"},
+			"X-Hub-Signature": []string{"foo"},
+		},
+	}
+	w := &Interceptor{
+		KubeClientSet:          kubeClient,
+		GitHub:                 &triggersv1.GitHubInterceptor{},
+		Logger:                 logger,
+		EventListenerNamespace: metav1.NamespaceDefault,
+	}
+	_, err := w.ExecuteTrigger(request)
+	if err != ErrInvalidContentType {
+		t.Fatalf("got error %v, want %v", err, ErrInvalidContentType)
+	}
+}

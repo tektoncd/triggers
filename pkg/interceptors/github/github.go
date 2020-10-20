@@ -30,6 +30,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ErrInvalidContentType is returned when the content-type is not a JSON body.
+var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
+
 type Interceptor struct {
 	KubeClientSet          kubernetes.Interface
 	Logger                 *zap.SugaredLogger
@@ -49,6 +52,9 @@ func NewInterceptor(gh *triggersv1.GitHubInterceptor, k kubernetes.Interface, ns
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
 	payload := []byte{}
 	var err error
+	if v := request.Header.Get("Content-Type"); v == "application/x-www-form-urlencoded" {
+		return nil, ErrInvalidContentType
+	}
 
 	if request.Body != nil {
 		defer request.Body.Close()
