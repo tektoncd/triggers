@@ -121,24 +121,26 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 
 // applyParamsToResourceTemplate returns the TriggerResourceTemplate with the
 // param values substituted for all matching param variables in the template
-func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage) json.RawMessage {
+func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the params are valid
 	for _, param := range params {
-		rt = applyParamToResourceTemplate(param, rt)
+		rt = applyParamToResourceTemplate(param, rt, oldEscape)
 	}
 	return rt
 }
 
 // applyParamToResourceTemplate returns the TriggerResourceTemplate with the
 // param value substituted for all matching param variables in the template
-func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage) json.RawMessage {
+func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(tt.params.%s)", param.Name)
 	// Escape quotes so that that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
-	paramValue := strings.Replace(param.Value, `"`, `\"`, -1)
-	rt = bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
-	return rt
+	if oldEscape {
+		paramValue := strings.Replace(param.Value, `"`, `\"`, -1)
+		return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
+	}
+	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value), -1)
 }
 
 // UID generates a random string like the Kubernetes apiserver generateName metafield postfix.

@@ -120,3 +120,64 @@ As of Tekton Pipelines version
 embed resource specs. It is a best practice to embed each resource specs in the
 PipelineRun or TaskRun that uses the resource spec. Embedding the resource spec
 avoids a race condition between creating and using resources.
+
+## Templating Params
+
+When templating parameters into resources, a simple replacement on the string
+with the parameter name e.g. `$(tt.params.name)` is carried out.
+
+This means that for simple string / number values, replacements in the
+YAML should work fine.
+
+If the string could begin with a number e.g. `012abcd`, it might be misinterpreted by YAML as a
+number, which could cause an error, in which case you can put quotes around the
+templated parameter key, and it should solve the problem.
+
+## Escaping quoted strings.
+
+TriggerTemplate parameter values were previously escaped by simply replacing
+`"` with `\"` this could lead to problems when strings were already escaped, and
+generating invalid resources from the TriggerTemplate.
+
+No escaping is done on the templated variables, if you are inserting a JSON
+object as a template var, then you should not put it within a quoted string.
+
+This behaviour has been deprecated, if this breaks your templates, you can add
+an annotation to the TriggerTemplate.
+
+For example with the following JSON body:
+
+```json
+{
+  "title": "this is \"demo\" body",
+  "object": {
+    "name": "testing"
+  }
+}
+```
+
+If you have a TriggerBinding that extracts `$(body.title)` then when it's
+inserted into a TriggerTemplate it will be embedded as `this is a \"demo\"
+body`.
+
+By annotating the TriggerTemplate.
+
+```yaml
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: escaped-tt
+  annotations:
+    triggers.tekton.dev/old-escape-quotes: "true"
+spec:
+  params:
+  - name: title
+    description: The title from the incoming body
+```
+
+This would pass the same body through as `this is a \""demo\"" body`, which is
+invalid JSON, but, if you were to use a value with `$(body.object)` in a
+template, and want it passed through as a quoted string, then this will work.
+
+This might be useful if you want a string of JSON that you want to parse in a
+command.
