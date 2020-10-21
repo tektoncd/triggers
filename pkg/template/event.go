@@ -22,7 +22,18 @@ import (
 	"net/http"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+)
+
+const (
+	// OldEscapeAnnotation is used to determine whether or not a TriggerTemplate
+	// should retain the old "replace quotes with backslack quote" behaviour
+	// when templating in params.
+	//
+	// This can be removed when this functionality is no-longer needed.
+	OldEscapeAnnotation = "triggers.tekton.dev/old-escape-quotes"
 )
 
 // ResolveParams takes given triggerbindings and produces the resulting
@@ -45,8 +56,11 @@ func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensio
 func ResolveResources(template *triggersv1.TriggerTemplate, params []triggersv1.Param) []json.RawMessage {
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
 	uid := UID()
+
+	oldEscape := metav1.HasAnnotation(template.ObjectMeta, OldEscapeAnnotation)
+
 	for i := range template.Spec.ResourceTemplates {
-		resources[i] = applyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw)
+		resources[i] = applyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw, oldEscape)
 		resources[i] = applyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources

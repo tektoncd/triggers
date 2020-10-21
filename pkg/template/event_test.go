@@ -472,6 +472,13 @@ func TestResolveParams_Error(t *testing.T) {
 	}
 }
 
+func addOldEscape(t *triggersv1.TriggerTemplate) *triggersv1.TriggerTemplate {
+	t.Annotations = map[string]string{
+		OldEscapeAnnotation: "yes",
+	}
+	return t
+}
+
 func TestResolveResources(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -543,7 +550,7 @@ func TestResolveResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Seeded for UID() to return "cbhtc"
 			utilrand.Seed(0)
-			got := ResolveResources(tt.template, tt.params)
+			got := ResolveResources(addOldEscape(tt.template), tt.params)
 			// Use toString so that it is easy to compare the json.RawMessage diffs
 			if diff := cmp.Diff(toString(tt.want), toString(got)); diff != "" {
 				t.Errorf("didn't get expected resource template -want + got: %s", diff)

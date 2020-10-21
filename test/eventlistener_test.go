@@ -62,13 +62,14 @@ const (
 	examplePRJsonFilename = "pr.json"
 )
 
-func loadExamplePREventBytes() ([]byte, error) {
+func loadExamplePREventBytes(t *testing.T) []byte {
+	t.Helper()
 	path := filepath.Join("testdata", examplePRJsonFilename)
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't load testdata example PullRequest event data: %v", err)
+		t.Fatalf("Couldn't load test data example PullREquest event data: %v", err)
 	}
-	return bytes, nil
+	return bytes
 }
 
 func impersonateRBAC(t *testing.T, sa, namespace string, kubeClient kubernetes.Interface) {
@@ -182,6 +183,9 @@ func TestEventListenerCreate(t *testing.T) {
 	// TriggerTemplate
 	tt, err := c.TriggersClient.TriggersV1alpha1().TriggerTemplates(namespace).Create(context.Background(),
 		bldr.TriggerTemplate("my-triggertemplate", "",
+			bldr.TriggerTemplateMeta(
+				bldr.Annotation("triggers.tekton.dev/old-escape-quotes", "true"),
+			),
 			bldr.TriggerTemplateSpec(
 				bldr.TriggerTemplateParam("oneparam", "", ""),
 				bldr.TriggerTemplateParam("twoparamname", "", ""),
@@ -321,10 +325,7 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("EventListener is ready")
 
 	// Load the example pull request event data
-	eventBodyJSON, err := loadExamplePREventBytes()
-	if err != nil {
-		t.Fatalf("Couldn't load test data: %v", err)
-	}
+	eventBodyJSON := loadExamplePREventBytes(t)
 
 	// Event body & Expected ResourceTemplates after instantiation
 	wantPr1 := v1alpha1.PipelineResource{

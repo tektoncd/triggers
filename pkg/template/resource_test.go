@@ -45,15 +45,18 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 		wantRtOneParamVar         = json.RawMessage(`{"foo": "bar-onevalue-bar"}`)
 		rtMultipleParamVars       = json.RawMessage(`{"$(tt.params.oneid)": "bar-$(tt.params.oneid)-$(tt.params.oneid)$(tt.params.oneid)$(tt.params.oneid)-$(tt.params.oneid)-bar"}`)
 		wantRtMultipleParamVars   = json.RawMessage(`{"onevalue": "bar-onevalue-onevalueonevalueonevalue-onevalue-bar"}`)
+		quotedString              = `this is a \"quoted\" string`
+		quotedValue               = `{"a": "this is a \"quoted\" string"}`
 	)
 	type args struct {
 		param triggersv1.Param
 		rt    json.RawMessage
 	}
 	tests := []struct {
-		name string
-		args args
-		want json.RawMessage
+		name      string
+		args      args
+		want      json.RawMessage
+		oldEscape bool
 	}{
 		{
 			name: "replace no param vars",
@@ -87,7 +90,17 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 			},
 			want: wantRtMultipleParamVars,
 		}, {
-			name: "espcae quotes in param val",
+			name: "escape quotes in param val",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: `{"a":"b"}`,
+				},
+				rt: json.RawMessage(`{"foo": $(tt.params.p1)}`),
+			},
+			want: json.RawMessage(`{"foo": {"a":"b"}}`),
+		}, {
+			name: "escape quotes in param val - old escaping",
 			args: args{
 				param: triggersv1.Param{
 					Name:  "p1",
@@ -95,14 +108,54 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 				},
 				rt: json.RawMessage(`{"foo": "$(tt.params.p1)"}`),
 			},
-			want: json.RawMessage(`{"foo": "{\"a\":\"b\"}"}`),
+			want:      json.RawMessage(`{"foo": "{\"a\":\"b\"}"}`),
+			oldEscape: true,
+		}, {
+			name: "escape string with quoted message inside",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: quotedString,
+				},
+				rt: json.RawMessage(`{"foo": "$(tt.params.p1)"}`),
+			},
+			want: json.RawMessage(`{"foo": "this is a \"quoted\" string"}`),
+		}, {
+			name: "join string with quoted message",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: quotedString,
+				},
+				rt: json.RawMessage(`{"foo": "bar-$(tt.params.p1)-bar"}`),
+			},
+			want: json.RawMessage(`{"foo": "bar-this is a \"quoted\" string-bar"}`),
+		}, {
+			name: "escape string with object with quoted string",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: quotedValue,
+				},
+				rt: json.RawMessage(`{"foo": $(tt.params.p1)}`),
+			},
+			want: json.RawMessage(`{"foo": {"a": "this is a \"quoted\" string"}}`),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := applyParamToResourceTemplate(tt.args.param, tt.args.rt)
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			temp := map[string]interface{}{}
+			if err := json.Unmarshal(tt.want, &temp); err != nil {
+				t.Errorf("the wanted value is not valid JSON: %s", err)
+			}
+			got := applyParamToResourceTemplate(tt.args.param, tt.args.rt, tt.oldEscape)
+			if diff := cmp.Diff(string(tt.want), string(got)); diff != "" {
 				t.Errorf("applyParamToResourceTemplate(): -want +got: %s", diff)
+			}
+			if !tt.oldEscape {
+				if err := json.Unmarshal(got, &temp); err != nil {
+					t.Errorf("failed to parse result json %s: %s", got, err)
+				}
 			}
 		})
 	}
@@ -116,9 +169,10 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 		rt     json.RawMessage
 	}
 	tests := []struct {
-		name string
-		args args
-		want json.RawMessage
+		name      string
+		args      args
+		oldEscape bool
+		want      json.RawMessage
 	}{
 		{
 			name: "no params",
@@ -137,6 +191,17 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 				rt: rt,
 			},
 			want: json.RawMessage(`{"oneparam": "onevalue", "twoparam": "$(tt.params.twoid)", "threeparam": "$(tt.params.threeid)"`),
+		},
+		{
+			name: "old escape behaviour",
+			args: args{
+				params: []triggersv1.Param{
+					{Name: "oneid", Value: "this \"is a value\""},
+				},
+				rt: rt,
+			},
+			want:      json.RawMessage(`{"oneparam": "this \"is a value\"", "twoparam": "$(tt.params.twoid)", "threeparam": "$(tt.params.threeid)"`),
+			oldEscape: true,
 		},
 		{
 			name: "multiple params",
@@ -165,9 +230,9 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := applyParamsToResourceTemplate(tt.args.params, tt.args.rt)
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("applyParamsToResourceTemplate(): -want +got: %s", diff)
+			got := applyParamsToResourceTemplate(tt.args.params, tt.args.rt, tt.oldEscape)
+			if diff := cmp.Diff(string(tt.want), string(got)); diff != "" {
+				t.Errorf("applyParamsToResourceTemplate(): -want +got: %s\n%s\n", diff, string(got))
 			}
 		})
 	}
