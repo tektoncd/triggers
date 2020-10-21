@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Trigger Templates" weight: 3
+
 ---
-linkTitle: "Trigger Templates"
-weight: 3
----
+
 -->
+
 # TriggerTemplates
 
 A `TriggerTemplate` is a resource that can template resources.
@@ -11,6 +13,7 @@ A `TriggerTemplate` is a resource that can template resources.
 **anywhere** within the resource template.
 
 <!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
@@ -52,17 +55,18 @@ spec:
             value: $(tt.params.gitrepositoryurl)
 ```
 
-`TriggerTemplates` currently support the following [Tekton Pipelines](https://github.com/tektoncd/pipelines) resources:
+`TriggerTemplates` currently support the following
+[Tekton Pipelines](https://github.com/tektoncd/pipelines) resources:
 
-v1alpha1          | v1beta1
-------------------|---------
-pipelines         | pipelines
-pipelineruns      | pipelineruns
-tasks             | tasks
-taskruns          | taskruns
-clustertasks      | clustertasks
-conditions        |
-pipelineresources |
+| v1alpha1          | v1beta1      |
+| ----------------- | ------------ |
+| pipelines         | pipelines    |
+| pipelineruns      | pipelineruns |
+| tasks             | tasks        |
+| taskruns          | taskruns     |
+| clustertasks      | clustertasks |
+| conditions        |
+| pipelineresources |
 
 Similar to
 [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s
@@ -109,9 +113,10 @@ $(tt.params.<name>)
 `TriggerTemplate`. The purpose of `tt.params` is to make `TriggerTemplates`
 reusable.
 
-The value of the `default` field for each entry of the `params` array defined in a `TriggerTemplate` will
-be applied if a corresponding entry in the `params` array in a `TriggerBinding` is either missing or cannot 
-be satisfied in the cases where the entry's value comes from an HTTP header or body. 
+The value of the `default` field for each entry of the `params` array defined in
+a `TriggerTemplate` will be applied if a corresponding entry in the `params`
+array in a `TriggerBinding` is either missing or cannot be satisfied in the
+cases where the entry's value comes from an HTTP header or body.
 
 ## Best Practices
 

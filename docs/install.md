@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Installation" weight: 2
+
 ---
-linkTitle: "Installation"
-weight: 2
----
+
 -->
+
 # Installing Tekton Triggers
 
 Use this page to add the component to an existing Kubernetes cluster.
@@ -17,10 +19,10 @@ Use this page to add the component to an existing Kubernetes cluster.
 1.  A Kubernetes cluster version 1.16 or later
 
     If you don't already have a cluster, you can create one for testing with
-    `kind`.  [Install
-    `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and
-    create a cluster by running [`kind create
-    cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster).
+    `kind`.
+    [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
+    and create a cluster by running
+    [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster).
     This will create a cluster running locally, with RBAC enabled.
 
 1.  Grant current user `cluster-admin` privileges.
@@ -36,7 +38,6 @@ Use this page to add the component to an existing Kubernetes cluster.
     ```bash
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
     ```
-
 
 ## Versions
 
@@ -65,8 +66,8 @@ To add the Tekton Triggers component to an existing cluster:
 
 1.  Run the
     [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
-    command to monitor the Tekton Triggers components until all of the components
-    show a `STATUS` of `Running`:
+    command to monitor the Tekton Triggers components until all of the
+    components show a `STATUS` of `Running`:
 
     ```bash
     kubectl get pods --namespace tekton-pipelines
@@ -78,7 +79,7 @@ To add the Tekton Triggers component to an existing cluster:
 
 You are now ready to create and run Tekton Triggers:
 
-- See [Tekton Triggers Getting Started Guide](./getting-started/) to
-  get started.
+- See [Tekton Triggers Getting Started Guide](./getting-started/) to get
+  started.
 - Look at the
   [examples](https://github.com/tektoncd/triggers/tree/master/examples)

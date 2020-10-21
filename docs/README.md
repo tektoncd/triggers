@@ -1,14 +1,13 @@
 <!-- prettier-ignore start -->
-<!--
+
+## <!--
+
+title: "Triggers and EventListeners" linkTitle: "Triggers" weight: 3
+description: > Event Triggers cascade: github_project_repo:
+https://github.com/tektoncd/triggers
+
 ---
-title: "Triggers and EventListeners"
-linkTitle: "Triggers"
-weight: 3
-description: >
-  Event Triggers
-cascade:
-  github_project_repo: https://github.com/tektoncd/triggers
----
+
 -->
 
 <!-- prettier-ignore end -->
@@ -31,4 +30,3 @@ See the following links for more on each of the resources involved:
 - [`TriggerBinding`](triggerbindings.md)
 - [`EventListener`](eventlisteners.md)
 - [`ClusterTriggerBinding`](clustertriggerbindings.md)
-

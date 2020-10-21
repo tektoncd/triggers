@@ -33,11 +33,14 @@ Creates an EventListener that listens for Bitbucket webhook events.
    ```
 
    The response status code should be `201 Created`
-   
-   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
-   
-   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload ex:* `{"repository": {"links": {"clone": [{"href": "http://localhost:7990/scm/~test/helloworld.git", "name": "http"}, {"href": "ssh://git@localhost:7999/~test/helloworld.git", "name": "ssh"}]}}, "changes": [{"ref": {"displayId": "master"}}]}`
-   and `secretKey` is the *given secretToken ex:* `1234567`.
+
+   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to
+   create X-Hub-Signature.
+
+   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is
+   the _body payload ex:_
+   `{"repository": {"links": {"clone": [{"href": "http://localhost:7990/scm/~test/helloworld.git", "name": "http"}, {"href": "ssh://git@localhost:7999/~test/helloworld.git", "name": "ssh"}]}}, "changes": [{"ref": {"displayId": "master"}}]}`
+   and `secretKey` is the _given secretToken ex:_ `1234567`.
 
 1. You should see a new TaskRun that got created:
 
