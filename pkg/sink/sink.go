@@ -71,7 +71,7 @@ type Response struct {
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	el, err := r.TriggersClient.TriggersV1alpha1().EventListeners(r.EventListenerNamespace).Get(context.Background(), r.EventListenerName, metav1.GetOptions{})
 	if err != nil {
-		r.Logger.Fatalf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+		r.Logger.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -138,6 +138,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 }
 
 func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+
 	if t == nil {
 		return errors.New("EventListenerTrigger not defined")
 	}
@@ -145,12 +146,12 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	if t.Template == nil && t.TriggerRef != "" {
 		trigger, err := r.TriggersClient.TriggersV1alpha1().Triggers(r.EventListenerNamespace).Get(context.Background(), t.TriggerRef, metav1.GetOptions{})
 		if err != nil {
-			r.Logger.Fatalf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
+			r.Logger.Errorf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
 			return err
 		}
 		trig, err := triggersv1.ToEventListenerTrigger(trigger.Spec)
 		if err != nil {
-			r.Logger.Fatalf("Error changing Trigger to EventListenerTrigger: %s", err)
+			r.Logger.Errorf("Error changing Trigger to EventListenerTrigger: %s", err)
 			return err
 		}
 		t = &trig

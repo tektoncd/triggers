@@ -30,6 +30,9 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap/zaptest/observer"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 
@@ -87,7 +90,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 	clients := test.SeedResources(t, ctx, resources)
 	test.AddTektonResources(clients.Kube)
 
-	logger, _ := zap.NewProduction()
+	logger := zaptest.NewLogger(t)
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
@@ -1140,6 +1143,112 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 	}
 }
 
+func TestHandleEvent_missing_EventListener(t *testing.T) {
+	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+
+	resources := test.Resources{
+		TriggerBindings:  []*triggersv1.TriggerBinding{},
+		TriggerTemplates: []*triggersv1.TriggerTemplate{},
+		EventListeners:   []*triggersv1.EventListener{},
+	}
+
+	sink, _ := getSinkAssets(t, resources, "test-el", DefaultAuthOverride{})
+	logs, logger := makeCapturingLogger(t)
+	sink.Logger = logger
+
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
+	if err != nil {
+		t.Fatalf("Error creating Post request: %s", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("got %v, want %v", resp.StatusCode, http.StatusInternalServerError)
+	}
+	logged := logs.All()
+	if l := len(logged); l != 1 {
+		t.Fatalf("logged entries got %d, want 1", l)
+	}
+	entry := logged[0]
+	if entry.Level != zapcore.ErrorLevel {
+		t.Fatalf("entry logged as %d, want %d", entry.Level, zapcore.ErrorLevel)
+	}
+}
+
+func TestHandleEvent_no_trigger_or_ref(t *testing.T) {
+	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+	pipelineResource := pipelinev1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "$(tt.params.name)",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":  "$(tt.params.foo)",
+				"type": "$(tt.params.type)",
+			},
+		},
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
+				{Name: "url", Value: "$(tt.params.url)"},
+				{Name: "revision", Value: "$(tt.params.revision)"},
+			},
+		},
+	}
+	pipelineResourceBytes, err := json.Marshal(pipelineResource)
+	if err != nil {
+		t.Fatalf("Error unmarshalling pipelineResource: %s", err)
+	}
+
+	tt := bldr.TriggerTemplate("my-triggertemplate", namespace,
+		bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("name", "", ""),
+			bldr.TriggerTemplateParam("url", "", ""),
+			bldr.TriggerTemplateParam("revision", "", ""),
+			bldr.TriggerTemplateParam("foo", "", ""),
+			bldr.TriggerTemplateParam("type", "", ""),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
+		))
+	var tbs []*triggersv1.TriggerBinding
+	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(bldr.EventListenerTriggerRef("unknown")))
+
+	resources := test.Resources{
+		TriggerBindings:  tbs,
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
+	}
+
+	sink, _ := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
+	logs, logger := makeCapturingLogger(t)
+	sink.Logger = logger
+
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
+	if err != nil {
+		t.Fatalf("Error creating Post request: %s", err)
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("got %v, want %v", resp.StatusCode, http.StatusAccepted)
+	}
+	logged := logs.All()
+	if l := len(logged); l != 2 {
+		t.Fatalf("logged entries got %d, want 2", l)
+	}
+	entry := logged[1]
+	if entry.Message != "Error getting Trigger unknown in Namespace foo: triggers.triggers.tekton.dev \"unknown\" not found" {
+		t.Errorf("entry logged %q", entry.Message)
+	}
+	if entry.Level != zapcore.ErrorLevel {
+		t.Fatalf("entry logged as %d, want %d", entry.Level, zapcore.ErrorLevel)
+	}
+}
+
 func getResources(t *testing.T, triggerBindingParam string) (*v1alpha1.TriggerBinding, *v1alpha1.TriggerTemplate) {
 	t.Helper()
 	pipelineResource := pipelinev1alpha1.PipelineResource{
@@ -1175,4 +1284,10 @@ func getResources(t *testing.T, triggerBindingParam string) (*v1alpha1.TriggerBi
 		))
 
 	return tb, tt
+}
+
+func makeCapturingLogger(t *testing.T) (*observer.ObservedLogs, *zap.SugaredLogger) {
+	core, logs := observer.New(zapcore.DebugLevel)
+	l := zaptest.NewLogger(t, zaptest.WrapOptions(zap.WrapCore(func(zapcore.Core) zapcore.Core { return core }))).Sugar()
+	return logs, l
 }
