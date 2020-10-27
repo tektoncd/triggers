@@ -52,7 +52,7 @@ spec:
             value: $(tt.params.gitrepositoryurl)
 ```
 
-`TriggerTemplates` currently support the following [Tekton Pipelines](https://github.com/tektoncd/pipelines) resources:
+`TriggerTemplates` currently support the following [Tekton Pipelines](https://github.com/tektoncd/pipeline) resources:
 
 v1alpha1          | v1beta1
 ------------------|---------
