@@ -273,6 +273,8 @@ Right now the allowed values as part of `podSpec` are
 ServiceAccountName
 NodeSelector
 Tolerations
+Containers
+- Resources
 ```
 
 ### Logging
@@ -470,6 +472,14 @@ spec:
         template:
           spec:
             serviceAccountName: tekton-triggers-github-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding

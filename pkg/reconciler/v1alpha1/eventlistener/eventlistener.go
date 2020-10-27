@@ -265,6 +265,35 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	if el.Spec.Replicas != nil {
 		replicas = el.Spec.Replicas
 	}
+	var (
+		tolerations                          []corev1.Toleration
+		nodeSelector, annotations, podlabels map[string]string
+		serviceAccountName                   string
+		resources                            corev1.ResourceRequirements
+	)
+	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
+
+	// For backward compatibility with podTemplate, serviceAccountName field as part of eventlistener.
+	tolerations = el.Spec.PodTemplate.Tolerations
+	nodeSelector = el.Spec.PodTemplate.NodeSelector
+	serviceAccountName = el.Spec.ServiceAccountName
+
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
+			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
+		}
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
+			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
+		}
+		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
+			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
+		}
+		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
+		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
+		}
+	}
 	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *elImage,
@@ -294,6 +323,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			PeriodSeconds:    int32(*PeriodSeconds),
 			FailureThreshold: int32(*FailureThreshold),
 		},
+		Resources: resources,
 		Args: []string{
 			"-el-name", el.Name,
 			"-el-namespace", el.Namespace,
@@ -312,31 +342,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			},
 		}},
 	}
-	var (
-		tolerations                          []corev1.Toleration
-		nodeSelector, annotations, podlabels map[string]string
-		serviceAccountName                   string
-	)
-	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
 
-	// For backward compatibility with podTemplate, serviceAccountName field as part of eventlistener.
-	tolerations = el.Spec.PodTemplate.Tolerations
-	nodeSelector = el.Spec.PodTemplate.NodeSelector
-	serviceAccountName = el.Spec.ServiceAccountName
-
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
-			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
-		}
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
-			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
-		}
-		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
-			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
-		}
-		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
-	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
 		Spec: appsv1.DeploymentSpec{
@@ -431,6 +437,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			}
 			if existingDeployment.Spec.Template.Spec.Containers[0].Command != nil {
 				existingDeployment.Spec.Template.Spec.Containers[0].Command = nil
+				updated = true
+			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, container.Resources) {
+				existingDeployment.Spec.Template.Spec.Containers[0].Resources = container.Resources
 				updated = true
 			}
 			if len(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) == 0 {

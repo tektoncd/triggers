@@ -32,6 +32,7 @@ import (
 	bldr "github.com/tektoncd/triggers/test/builder"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -377,6 +378,18 @@ func TestReconcile(t *testing.T) {
 					Spec: corev1.PodSpec{
 						NodeSelector:       map[string]string{"key": "value"},
 						ServiceAccountName: "k8sresource",
+						Containers: []corev1.Container{{
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+									corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+									corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+								},
+							},
+						}},
 					},
 				},
 			},
@@ -435,6 +448,16 @@ func TestReconcile(t *testing.T) {
 	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.ServiceAccountName = "k8sresource"
 		d.Spec.Template.Spec.NodeSelector = map[string]string{"key": "value"}
+		d.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+				corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+				corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+			},
+		}
 	})
 
 	deploymentForKubernetesResourceObjectMeta := makeDeployment(func(d *appsv1.Deployment) {

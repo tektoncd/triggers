@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -180,6 +181,18 @@ func Test_EventListenerValidate(t *testing.T) {
 										Effect:   "NoSchedule",
 									}},
 									NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
+									Containers: []corev1.Container{{
+										Resources: corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+												corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+												corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+											},
+										},
+									}},
 								},
 							},
 						}),

@@ -66,6 +66,7 @@ func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) 
 
 func containerFieldMask(in *corev1.Container) *corev1.Container {
 	out := new(corev1.Container)
+	out.Resources = in.Resources
 
 	// Disallowed fields
 	// This list clarifies which all container attributes are not allowed.
@@ -89,7 +90,6 @@ func containerFieldMask(in *corev1.Container) *corev1.Container {
 	out.TTY = false
 	out.VolumeDevices = nil
 	out.EnvFrom = nil
-	out.Resources = corev1.ResourceRequirements{}
 	out.Env = nil
 
 	return out
