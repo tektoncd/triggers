@@ -1,6 +1,6 @@
 ## GitLab Push EventListener
 
-Creates an EventListener that listens for Gitlab webhook events.
+Creates an EventListener that listens for GitLab webhook events.
 
 ### Try it out locally:
 

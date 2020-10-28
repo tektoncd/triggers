@@ -89,7 +89,7 @@ rules:
   resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
   verbs: ["get"]
 - apiGroups: [""]
-  # secrets are only needed for Github/Gitlab interceptors
+  # secrets are only needed for GitHub/GitLab interceptors
   resources: ["configmaps", "secrets"]
   verbs: ["get", "list", "watch"]
 # Permissions to create resources in associated TriggerTemplates

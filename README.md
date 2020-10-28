@@ -29,7 +29,7 @@ continuous integration and delivery (CI/CD) framework that enables you to create
 containerized, composable, and configurable workloads declaratively through
 CRDs. Naturally, CI/CD events contain information that should:
 
-- Identify the kind of event (GitHub Push, Gitlab Issue, Docker Hub Webhook,
+- Identify the kind of event (GitHub Push, GitLab Issue, Docker Hub Webhook,
   etc.)
 - Be accessible from and map to particular pipelines (Take SHA from payload to
   use it in pipeline X)

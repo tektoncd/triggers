@@ -41,13 +41,13 @@ func main() {
 		payload, err := github.ValidatePayload(request, []byte(secretToken))
 		id := github.DeliveryID(request)
 		if err != nil {
-			log.Printf("Error handling Github Event with delivery ID %s : %q", id, err)
+			log.Printf("Error handling GitHub Event with delivery ID %s : %q", id, err)
 			http.Error(writer, fmt.Sprint(err), http.StatusBadRequest)
 		}
-		log.Printf("Handling Github Event with delivery ID: %s; Payload: %s", id, payload)
+		log.Printf("Handling GitHub Event with delivery ID: %s; Payload: %s", id, payload)
 		n, err := writer.Write(payload)
 		if err != nil {
-			log.Printf("Failed to write response for Github event ID: %s. Bytes writted: %d. Error: %q", id, n, err)
+			log.Printf("Failed to write response for GitHub event ID: %s. Bytes writted: %d. Error: %q", id, n, err)
 		}
 	})
 
