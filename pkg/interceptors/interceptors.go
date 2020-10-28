@@ -55,7 +55,7 @@ func getCache(req *http.Request) map[string]interface{} {
 }
 
 // GetSecretToken queries Kubernetes for the given secret reference. We use this function
-// to resolve secret material like Github webhook secrets, and call it once for every
+// to resolve secret material like GitHub webhook secrets, and call it once for every
 // trigger that references it.
 //
 // As we may have many triggers that all use the same secret, we cache the secret values

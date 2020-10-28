@@ -15,7 +15,7 @@ rules:
     resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
     verbs: ["get"]
   - apiGroups: [""]
-    # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
+    # secrets are only needed for GitHub/GitLab interceptors, serviceaccounts only for per trigger authorization
     resources: ["configmaps", "secrets", "serviceaccounts"]
     verbs: ["get", "list", "watch"]
   # Permissions to create resources in associated TriggerTemplates
