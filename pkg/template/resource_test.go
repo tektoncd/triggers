@@ -17,7 +17,6 @@ limitations under the License.
 package template
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -206,19 +205,19 @@ var (
 			},
 		},
 	}
-	getTB = func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error) {
+	getTB = func(name string) (*triggersv1.TriggerBinding, error) {
 		if v, ok := triggerBindings[name]; ok {
 			return v, nil
 		}
 		return nil, fmt.Errorf("error invalid name: %s", name)
 	}
-	getCTB = func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.ClusterTriggerBinding, error) {
+	getCTB = func(name string) (*triggersv1.ClusterTriggerBinding, error) {
 		if v, ok := clusterTriggerBindings[name]; ok {
 			return v, nil
 		}
 		return nil, fmt.Errorf("error invalid name: %s", name)
 	}
-	getTT = func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error) {
+	getTT = func(name string) (*triggersv1.TriggerTemplate, error) {
 		if name == "my-triggertemplate" {
 			return &tt, nil
 		}

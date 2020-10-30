@@ -5,8 +5,8 @@ metadata:
 rules:
   # Permissions for every EventListener deployment to function
   - apiGroups: ["triggers.tekton.dev"]
-    resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
-    verbs: ["get"]
+    resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     # secrets are only needed for GitHub/GitLab interceptors, serviceaccounts only for per trigger authorization
     resources: ["configmaps", "secrets", "serviceaccounts"]
@@ -15,3 +15,16 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "pipelineresources", "taskruns"]
     verbs: ["create"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-cron-minimal
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+  # Permissions for every EventListener deployment to function
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["clustertriggerbindings"]
+    verbs: ["get", "list", "watch"]

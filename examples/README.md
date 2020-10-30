@@ -11,6 +11,7 @@ messages.
 ```sh
 kubectl apply -f role-resources/secret.yaml
 kubectl apply -f role-resources/serviceaccount.yaml
+kubectl apply -f role-resources/clustertriggerbinding-roles
 kubectl apply -f role-resources/triggerbinding-roles
 kubectl apply -f triggertemplates/triggertemplate.yaml
 kubectl apply -f triggerbindings/triggerbinding.yaml

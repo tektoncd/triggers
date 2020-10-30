@@ -19,6 +19,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +38,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 
 	"k8s.io/client-go/dynamic"
@@ -210,9 +212,15 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	}
 
 	rt, err := template.ResolveTrigger(el,
-		client.TriggersV1alpha1().TriggerBindings(tri.Namespace).Get,
-		client.TriggersV1alpha1().ClusterTriggerBindings().Get,
-		client.TriggersV1alpha1().TriggerTemplates(tri.Namespace).Get)
+		func(name string) (*triggersv1.TriggerBinding, error) {
+			return client.TriggersV1alpha1().TriggerBindings(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
+		},
+		func(name string) (*triggersv1.ClusterTriggerBinding, error) {
+			return client.TriggersV1alpha1().ClusterTriggerBindings().Get(context.Background(), name, metav1.GetOptions{})
+		},
+		func(name string) (*triggersv1.TriggerTemplate, error) {
+			return client.TriggersV1alpha1().TriggerTemplates(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
+		})
 	if err != nil {
 		log.Error("Failed to resolve Trigger: ", err)
 		return nil, err

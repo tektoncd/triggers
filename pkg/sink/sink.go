@@ -18,7 +18,6 @@ package sink
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +26,7 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
@@ -37,7 +37,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +54,13 @@ type Sink struct {
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
 	Auth                   AuthOverride
+
+	// listers index properties about resources
+	EventListenerLister         listers.EventListenerLister
+	TriggerLister               listers.TriggerLister
+	TriggerBindingLister        listers.TriggerBindingLister
+	ClusterTriggerBindingLister listers.ClusterTriggerBindingLister
+	TriggerTemplateLister       listers.TriggerTemplateLister
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
@@ -69,7 +75,7 @@ type Response struct {
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
-	el, err := r.TriggersClient.TriggersV1alpha1().EventListeners(r.EventListenerNamespace).Get(context.Background(), r.EventListenerName, metav1.GetOptions{})
+	el, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName)
 	if err != nil {
 		r.Logger.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
@@ -144,7 +150,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 
 	if t.Template == nil && t.TriggerRef != "" {
-		trigger, err := r.TriggersClient.TriggersV1alpha1().Triggers(r.EventListenerNamespace).Get(context.Background(), t.TriggerRef, metav1.GetOptions{})
+		trigger, err := r.TriggerLister.Triggers(r.EventListenerNamespace).Get(t.TriggerRef)
 		if err != nil {
 			r.Logger.Errorf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
 			return err
@@ -166,9 +172,9 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	}
 
 	rt, err := template.ResolveTrigger(*t,
-		r.TriggersClient.TriggersV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
-		r.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Get,
-		r.TriggersClient.TriggersV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
+		r.TriggerBindingLister.TriggerBindings(r.EventListenerNamespace).Get,
+		r.ClusterTriggerBindingLister.Get,
+		r.TriggerTemplateLister.TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
 		log.Error(err)
 		return err

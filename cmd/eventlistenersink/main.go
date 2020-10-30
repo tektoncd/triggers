@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,11 +27,13 @@ import (
 
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
-	"github.com/tektoncd/triggers/pkg/logging"
+	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
+	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
 )
 
@@ -43,7 +46,7 @@ const (
 
 func main() {
 	// set up signals so we handle the first shutdown signal gracefully
-	stopCh := signals.SetupSignalHandler()
+	ctx := signals.NewContext()
 
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
@@ -61,7 +64,8 @@ func main() {
 	}
 	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
 
-	logger := logging.ConfigureLogging(EventListenerLogKey, ConfigName, stopCh, kubeClient)
+	logger := triggerLogging.ConfigureLogging(EventListenerLogKey, ConfigName, ctx.Done(), kubeClient)
+	ctx = logging.WithLogger(ctx, logger)
 	defer func() {
 		err := logger.Sync()
 		if err != nil {
@@ -81,17 +85,29 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	factory := externalversions.NewSharedInformerFactoryWithOptions(sinkClients.TriggersClient,
+		30*time.Second, externalversions.WithNamespace(sinkArgs.ElNamespace))
+	go func(ctx context.Context) {
+		factory.Start(ctx.Done())
+		<-ctx.Done()
+	}(ctx)
+
 	// Create EventListener Sink
 	r := sink.Sink{
-		KubeClientSet:          kubeClient,
-		DiscoveryClient:        sinkClients.DiscoveryClient,
-		DynamicClient:          dynamicCS,
-		TriggersClient:         sinkClients.TriggersClient,
-		HTTPClient:             http.DefaultClient,
-		EventListenerName:      sinkArgs.ElName,
-		EventListenerNamespace: sinkArgs.ElNamespace,
-		Logger:                 logger,
-		Auth:                   sink.DefaultAuthOverride{},
+		KubeClientSet:               kubeClient,
+		DiscoveryClient:             sinkClients.DiscoveryClient,
+		DynamicClient:               dynamicCS,
+		TriggersClient:              sinkClients.TriggersClient,
+		HTTPClient:                  http.DefaultClient,
+		EventListenerName:           sinkArgs.ElName,
+		EventListenerNamespace:      sinkArgs.ElNamespace,
+		Logger:                      logger,
+		Auth:                        sink.DefaultAuthOverride{},
+		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
+		TriggerLister:               factory.Triggers().V1alpha1().Triggers().Lister(),
+		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
+		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
+		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
 	}
 
 	// Listen and serve
@@ -113,6 +129,6 @@ func main() {
 	}
 
 	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("faiiled to start eventlistener sink: %v", err)
+		logger.Fatalf("failed to start eventlistener sink: %v", err)
 	}
 }
