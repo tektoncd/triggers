@@ -48,7 +48,7 @@ spec:
         # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
         version: "devel"
     spec:
-      serviceAccountName: tekton-triggers-controller
+      serviceAccountName: tekton-triggers-webhook
       containers:
       - name: webhook
         # This is the Go import path for the binary that is containerized
