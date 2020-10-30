@@ -6,7 +6,7 @@ rules:
 # Permissions for every EventListener deployment to function
 - apiGroups: ["triggers.tekton.dev"]
   resources: ["clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
-  verbs: ["get"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   # secrets are only needed for GitHub/GitLab interceptors
   resources: ["configmaps", "secrets"]

@@ -47,6 +47,11 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
+	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding"
+	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
+	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger"
+	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding"
+	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -96,14 +101,19 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	r := Sink{
-		EventListenerName:      elName,
-		EventListenerNamespace: namespace,
-		DynamicClient:          dynamicSet,
-		DiscoveryClient:        clients.Kube.Discovery(),
-		KubeClientSet:          clients.Kube,
-		TriggersClient:         clients.Triggers,
-		Logger:                 logger.Sugar(),
-		Auth:                   auth,
+		EventListenerName:           elName,
+		EventListenerNamespace:      namespace,
+		DynamicClient:               dynamicSet,
+		DiscoveryClient:             clients.Kube.Discovery(),
+		KubeClientSet:               clients.Kube,
+		TriggersClient:              clients.Triggers,
+		Logger:                      logger.Sugar(),
+		Auth:                        auth,
+		EventListenerLister:         eventlistenerinformer.Get(ctx).Lister(),
+		TriggerLister:               triggerinformer.Get(ctx).Lister(),
+		TriggerBindingLister:        triggerbindinginformer.Get(ctx).Lister(),
+		ClusterTriggerBindingLister: clustertriggerbindinginformer.Get(ctx).Lister(),
+		TriggerTemplateLister:       triggertemplateinformer.Get(ctx).Lister(),
 	}
 	return r, dynamicClient
 }
@@ -1241,7 +1251,7 @@ func TestHandleEvent_no_trigger_or_ref(t *testing.T) {
 		t.Fatalf("logged entries got %d, want 2", l)
 	}
 	entry := logged[1]
-	if entry.Message != "Error getting Trigger unknown in Namespace foo: triggers.triggers.tekton.dev \"unknown\" not found" {
+	if entry.Message != "Error getting Trigger unknown in Namespace foo: trigger.triggers.tekton.dev \"unknown\" not found" {
 		t.Errorf("entry logged %q", entry.Message)
 	}
 	if entry.Level != zapcore.ErrorLevel {

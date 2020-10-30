@@ -18,7 +18,6 @@ package template
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -41,9 +40,9 @@ type ResolvedTrigger struct {
 	BindingParams          []triggersv1.Param
 }
 
-type getTriggerBinding func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerBinding, error)
-type getTriggerTemplate func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.TriggerTemplate, error)
-type getClusterTriggerBinding func(ctx context.Context, name string, options metav1.GetOptions) (*triggersv1.ClusterTriggerBinding, error)
+type getTriggerBinding func(name string) (*triggersv1.TriggerBinding, error)
+type getTriggerTemplate func(name string) (*triggersv1.TriggerTemplate, error)
+type getClusterTriggerBinding func(name string) (*triggersv1.ClusterTriggerBinding, error)
 
 // ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
@@ -68,7 +67,7 @@ func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBin
 			// Ignore staticcheck linter as it will complain about using deprecated type
 			ttName = trigger.Template.Name //nolint:staticcheck
 		}
-		resolvedTT, err = getTT(context.Background(), ttName, metav1.GetOptions{})
+		resolvedTT, err = getTT(ttName)
 		if err != nil {
 			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
 		}
@@ -92,14 +91,14 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 			})
 
 		case b.Ref != "" && b.Kind == triggersv1.ClusterTriggerBindingKind:
-			ctb, err := getCTB(context.Background(), b.Ref, metav1.GetOptions{})
+			ctb, err := getCTB(b.Ref)
 			if err != nil {
 				return nil, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Name, err)
 			}
 			bindingParams = append(bindingParams, ctb.Spec.Params...)
 
 		case b.Ref != "": // if no kind is set, assume NamespacedTriggerBinding
-			tb, err := getTB(context.Background(), b.Ref, metav1.GetOptions{})
+			tb, err := getTB(b.Ref)
 			if err != nil {
 				return nil, fmt.Errorf("error getting TriggerBinding %s: %w", b.Name, err)
 			}

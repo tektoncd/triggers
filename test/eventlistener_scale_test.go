@@ -38,8 +38,8 @@ import (
 func TestEventListenerScale(t *testing.T) {
 	c, namespace := setup(t)
 
-	defer tearDown(t, c, namespace)
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer cleanupResources(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { cleanupResources(t, c, namespace) }, t.Logf)
 
 	t.Log("Start EventListener Scale e2e test")
 
@@ -107,8 +107,8 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-role"},
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{triggersv1.GroupName},
-				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates"},
-				Verbs:     []string{"get"},
+				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "triggers"},
+				Verbs:     []string{"get", "list", "watch"},
 			}, {
 				APIGroups: []string{""},
 				Resources: []string{"configmaps"},
@@ -138,4 +138,49 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 		t.Fatalf("Error creating RoleBinding: %s", err)
 	}
 
+	_, err = c.KubeClient.RbacV1().ClusterRoles().Create(context.Background(),
+		&rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{Name: "sa-clusterrole"},
+			Rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{triggersv1.GroupName},
+				Resources: []string{"clustertriggerbindings"},
+				Verbs:     []string{"get", "list", "watch"},
+			}},
+		}, metav1.CreateOptions{},
+	)
+	if err != nil {
+		t.Fatalf("Error creating ClusterRole: %s", err)
+	}
+	_, err = c.KubeClient.RbacV1().ClusterRoleBindings().Create(context.Background(),
+		&rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "sa-clusterrolebinding"},
+			Subjects: []rbacv1.Subject{{
+				Kind:      "ServiceAccount",
+				Name:      sa.Name,
+				Namespace: namespace,
+			}},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "ClusterRole",
+				Name:     "sa-clusterrole",
+			},
+		}, metav1.CreateOptions{},
+	)
+	if err != nil {
+		t.Fatalf("Error creating ClusterRoleBinding: %s", err)
+	}
+}
+
+func cleanupResources(t *testing.T, c *clients, namespace string) {
+	t.Helper()
+	tearDown(t, c, namespace)
+
+	// Cleanup cluster-scoped resources
+	t.Logf("Deleting cluster-scoped resources")
+	if err := c.KubeClient.RbacV1().ClusterRoles().Delete(context.Background(), "sa-clusterrole", metav1.DeleteOptions{}); err != nil {
+		t.Errorf("Failed to delete clusterrole sa-clusterrole: %s", err)
+	}
+	if err := c.KubeClient.RbacV1().ClusterRoleBindings().Delete(context.Background(), "sa-clusterrolebinding", metav1.DeleteOptions{}); err != nil {
+		t.Errorf("Failed to delete clusterrolebinding sa-clusterrolebinding: %s", err)
+	}
 }

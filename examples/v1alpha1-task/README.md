@@ -7,6 +7,7 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
 1. Create the service account:
 
    ```shell script
+   kubectl apply -f examples/role-resources/clustertriggerbinding-roles
    kubectl apply -f examples/role-resources/triggerbinding-roles
    kubectl apply -f examples/role-resources/
    ```
