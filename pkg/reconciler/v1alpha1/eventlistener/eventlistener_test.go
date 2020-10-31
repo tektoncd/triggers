@@ -250,6 +250,99 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 	return &d
 }
 
+var withTLSConfig = func(d *appsv1.Deployment) {
+	d.Spec.Template.Spec.Containers = []corev1.Container{{
+		Name:  "event-listener",
+		Image: *elImage,
+		Ports: []corev1.ContainerPort{{
+			ContainerPort: int32(8443),
+			Protocol:      corev1.ProtocolTCP,
+		}},
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/live",
+					Scheme: corev1.URISchemeHTTPS,
+					Port:   intstr.FromInt((8443)),
+				},
+			},
+			PeriodSeconds:    int32(*PeriodSeconds),
+			FailureThreshold: int32(*FailureThreshold),
+		},
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/live",
+					Scheme: corev1.URISchemeHTTPS,
+					Port:   intstr.FromInt((8443)),
+				},
+			},
+			PeriodSeconds:    int32(*PeriodSeconds),
+			FailureThreshold: int32(*FailureThreshold),
+		},
+		Args: []string{
+			"-el-name", eventListenerName,
+			"-el-namespace", namespace,
+			"-port", strconv.Itoa(8443),
+			"-tls-cert", "/etc/triggers/tls/tls.pem",
+			"-tls-key", "/etc/triggers/tls/tls.key",
+		},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "config-logging",
+			MountPath: "/etc/config-logging",
+		}, {
+			Name:      "https-connection",
+			MountPath: "/etc/triggers/tls",
+			ReadOnly:  true,
+		}},
+		Env: []corev1.EnvVar{{
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		}, {
+			Name: "TLS_CERT",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "tls-secret-key",
+					},
+					Key: "tls.crt",
+				},
+			},
+		}, {
+			Name: "TLS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "tls-secret-key",
+					},
+					Key: "tls.key",
+				},
+			},
+		}},
+	}}
+	d.Spec.Template.Spec.Volumes = []corev1.Volume{{
+		Name: "config-logging",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: eventListenerConfigMapName,
+				},
+			},
+		},
+	}, {
+		Name: "https-connection",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "tls-secret-key",
+			},
+		},
+	}}
+}
+
 // makeService is a helper to build a Service that is created by an EventListener.
 // It generates a basic Service for the simplest EventListener and accepts functions for modification.
 func makeService(ops ...func(*corev1.Service)) *corev1.Service {
@@ -288,6 +381,10 @@ func logConfig(ns string) *corev1.ConfigMap {
 	lc.Namespace = ns
 	return lc
 }
+
+var withTLSPort = bldr.EventListenerStatus(
+	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, 8443)),
+)
 
 var withStatus = bldr.EventListenerStatus(
 	bldr.EventListenerConfig(generatedResourceName),
@@ -400,6 +497,40 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
+	elWithTLSConnection := makeEL(withStatus, withTLSPort, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							Env: []corev1.EnvVar{{
+								Name: "TLS_CERT",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret-key",
+										},
+										Key: "tls.crt",
+									},
+								},
+							}, {
+								Name: "TLS_KEY",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret-key",
+										},
+										Key: "tls.key",
+									},
+								},
+							}},
+						}},
+					},
+				},
+			},
+		}
+	})
+
 	elWithKubernetesResourceForObjectMeta := makeEL(withStatus, func(el *v1alpha1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
 			WithPodSpec: duckv1.WithPodSpec{
@@ -464,6 +595,8 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
+	deploymentWithTLSConnection := makeDeployment(withTLSConfig)
+
 	deploymentForKubernetesResourceObjectMeta := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.ObjectMeta.Labels = map[string]string{
 			"app.kubernetes.io/managed-by": "EventListener",
@@ -491,6 +624,13 @@ func TestReconcile(t *testing.T) {
 	elServiceWithUpdatedNodePort := makeService(func(s *corev1.Service) {
 		s.Spec.Type = corev1.ServiceTypeNodePort
 		s.Spec.Ports[0].NodePort = 30000
+	})
+
+	elServiceWithTLSConnection := makeService(func(s *corev1.Service) {
+		s.Spec.Ports[0].Port = int32(8443)
+		s.Spec.Ports[0].TargetPort = intstr.IntOrString{
+			IntVal: int32(8443),
+		}
 	})
 
 	loggingConfigMap := defaultLoggingConfigMap()
@@ -797,6 +937,21 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResourceObjectMeta},
 			Services:       []*corev1.Service{elService},
+		},
+	}, {
+		name: "eventlistener with TLS connection",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			Deployments:    []*appsv1.Deployment{deploymentWithTLSConnection},
+			Services:       []*corev1.Service{elServiceWithTLSConnection},
 		},
 	}}
 	for _, tt := range tests {
