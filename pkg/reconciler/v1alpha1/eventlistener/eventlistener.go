@@ -52,7 +52,7 @@ const (
 	// eventListenerConfigMapName is for the automatically created ConfigMap
 	eventListenerConfigMapName = "config-logging-triggers"
 	// eventListenerServicePortName defines service port name for EventListener Service
-	eventListenerServicePortName = "http-listener"
+	eventListenerServicePortName = "listener"
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -132,8 +132,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 	// and may not have had all of the assumed default specified.
 	el.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
 
-	serviceReconcileError := r.reconcileService(ctx, logger, el)
 	deploymentReconcileError := r.reconcileDeployment(ctx, logger, el)
+	serviceReconcileError := r.reconcileService(ctx, logger, el)
 
 	return wrapError(serviceReconcileError, deploymentReconcileError)
 }
@@ -273,129 +273,9 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		return err
 	}
 
-	var replicas = ptr.Int32(1)
-	if el.Spec.Replicas != nil {
-		replicas = el.Spec.Replicas
-	}
-	var (
-		tolerations                          []corev1.Toleration
-		nodeSelector, annotations, podlabels map[string]string
-		serviceAccountName                   string
-		resources                            corev1.ResourceRequirements
-	)
-	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
+	container := getContainer(el)
+	deployment := getDeployment(el)
 
-	// For backward compatibility with podTemplate, serviceAccountName field as part of eventlistener.
-	tolerations = el.Spec.PodTemplate.Tolerations
-	nodeSelector = el.Spec.PodTemplate.NodeSelector
-	serviceAccountName = el.Spec.ServiceAccountName
-
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
-			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
-		}
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
-			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
-		}
-		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
-			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
-		}
-		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-		}
-	}
-	isMultiNS := true
-	if len(el.Spec.NamespaceSelector.MatchNames) == 0 {
-		isMultiNS = false
-	}
-	container := corev1.Container{
-		Name:  "event-listener",
-		Image: *elImage,
-		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(*ElPort),
-			Protocol:      corev1.ProtocolTCP,
-		}},
-		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: corev1.URISchemeHTTP,
-					Port:   intstr.FromInt((*ElPort)),
-				},
-			},
-			PeriodSeconds:    int32(*PeriodSeconds),
-			FailureThreshold: int32(*FailureThreshold),
-		},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: corev1.URISchemeHTTP,
-					Port:   intstr.FromInt((*ElPort)),
-				},
-			},
-			PeriodSeconds:    int32(*PeriodSeconds),
-			FailureThreshold: int32(*FailureThreshold),
-		},
-		Resources: resources,
-		Args: []string{
-			"-el-name", el.Name,
-			"-el-namespace", el.Namespace,
-			"-port", strconv.Itoa(*ElPort),
-			"-readtimeout", strconv.FormatInt(*ELReadTimeOut, 10),
-			"-writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
-			"-idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
-			"-timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
-			"-is-multi-ns", strconv.FormatBool(isMultiNS),
-		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-		}},
-		Env: []corev1.EnvVar{{
-			Name: "SYSTEM_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		}},
-	}
-
-	deployment := &appsv1.Deployment{
-		ObjectMeta: generateObjectMeta(el),
-		Spec: appsv1.DeploymentSpec{
-			Replicas: replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: GenerateResourceLabels(el.Name),
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podlabels,
-					Annotations: annotations,
-				},
-				Spec: corev1.PodSpec{
-					Tolerations:        tolerations,
-					NodeSelector:       nodeSelector,
-					ServiceAccountName: serviceAccountName,
-					Containers:         []corev1.Container{container},
-
-					Volumes: []corev1.Volume{{
-						Name: "config-logging",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: eventListenerConfigMapName,
-								},
-							},
-						},
-					}},
-				},
-			},
-		},
-	}
 	existingDeployment, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
 	case err == nil:
@@ -406,7 +286,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
 		if *existingDeployment.Spec.Replicas != *deployment.Spec.Replicas {
 			if el.Spec.Replicas != nil {
-				existingDeployment.Spec.Replicas = replicas
+				existingDeployment.Spec.Replicas = deployment.Spec.Replicas
 				updated = true
 			}
 			// if no replicas found as part of el.Spec then replicas from existingDeployment will be considered
@@ -456,6 +336,14 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 				existingDeployment.Spec.Template.Spec.Containers[0].Args = container.Args
 				updated = true
 			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].LivenessProbe, container.LivenessProbe) {
+				existingDeployment.Spec.Template.Spec.Containers[0].LivenessProbe = container.LivenessProbe
+				updated = true
+			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe, container.ReadinessProbe) {
+				existingDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe = container.ReadinessProbe
+				updated = true
+			}
 			if existingDeployment.Spec.Template.Spec.Containers[0].Command != nil {
 				existingDeployment.Spec.Template.Spec.Containers[0].Command = nil
 				updated = true
@@ -464,7 +352,11 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 				existingDeployment.Spec.Template.Spec.Containers[0].Resources = container.Resources
 				updated = true
 			}
-			if len(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) == 0 {
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env, container.Env) {
+				existingDeployment.Spec.Template.Spec.Containers[0].Env = container.Env
+				updated = true
+			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, deployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 				existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = container.VolumeMounts
 				updated = true
 			}
@@ -495,6 +387,195 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		return err
 	}
 	return nil
+}
+
+func getDeployment(el *v1alpha1.EventListener) *appsv1.Deployment {
+	var replicas = ptr.Int32(1)
+	if el.Spec.Replicas != nil {
+		replicas = el.Spec.Replicas
+	}
+	var (
+		tolerations                          []corev1.Toleration
+		nodeSelector, annotations, podlabels map[string]string
+		serviceAccountName                   string
+	)
+	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
+
+	// For backward compatibility with podTemplate, serviceAccountName field as part of eventlistener.
+	tolerations = el.Spec.PodTemplate.Tolerations
+	nodeSelector = el.Spec.PodTemplate.NodeSelector
+	serviceAccountName = el.Spec.ServiceAccountName
+
+	vol := []corev1.Volume{{
+		Name: "config-logging",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: eventListenerConfigMapName,
+				},
+			},
+		},
+	}}
+
+	container := getContainer(el)
+	for _, v := range container.Env {
+		// If TLS related env are set then mount secret volume which will be used while starting the eventlistener.
+		if v.Name == "TLS_CERT" {
+			vol = append(vol, corev1.Volume{
+				Name: "https-connection",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: v.ValueFrom.SecretKeyRef.Name,
+					},
+				},
+			})
+		}
+	}
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
+			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
+		}
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
+			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
+		}
+		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
+			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
+		}
+		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
+		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+	}
+
+	return &appsv1.Deployment{
+		ObjectMeta: generateObjectMeta(el),
+		Spec: appsv1.DeploymentSpec{
+			Replicas: replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: GenerateResourceLabels(el.Name),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      podlabels,
+					Annotations: annotations,
+				},
+				Spec: corev1.PodSpec{
+					Tolerations:        tolerations,
+					NodeSelector:       nodeSelector,
+					ServiceAccountName: serviceAccountName,
+					Containers:         []corev1.Container{container},
+					Volumes:            vol,
+				},
+			},
+		},
+	}
+}
+
+func getContainer(el *v1alpha1.EventListener) corev1.Container {
+	var (
+		elCert, elKey string
+		resources     corev1.ResourceRequirements
+	)
+
+	vMount := []corev1.VolumeMount{{
+		Name:      "config-logging",
+		MountPath: "/etc/config-logging",
+	}}
+
+	env := []corev1.EnvVar{{
+		Name: "SYSTEM_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	}}
+
+	certEnv := map[string]*corev1.EnvVarSource{}
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
+			for i, e := range el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env {
+				env = append(env, e)
+				certEnv[el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].Name] =
+					el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].ValueFrom
+			}
+		}
+	}
+
+	var scheme corev1.URIScheme
+	if v, ok := certEnv["TLS_CERT"]; ok {
+		elCert = "/etc/triggers/tls/" + v.SecretKeyRef.Key
+	} else {
+		elCert = ""
+	}
+	if v, ok := certEnv["TLS_KEY"]; ok {
+		elKey = "/etc/triggers/tls/" + v.SecretKeyRef.Key
+	} else {
+		elKey = ""
+	}
+
+	if elCert != "" && elKey != "" {
+		*ElPort = 8443
+		scheme = corev1.URISchemeHTTPS
+		vMount = append(vMount, corev1.VolumeMount{
+			Name:      "https-connection",
+			ReadOnly:  true,
+			MountPath: "/etc/triggers/tls",
+		})
+	} else {
+		*ElPort = 8080
+		scheme = corev1.URISchemeHTTP
+	}
+
+	isMultiNS := true
+	if len(el.Spec.NamespaceSelector.MatchNames) == 0 {
+		isMultiNS = false
+	}
+
+	return corev1.Container{
+		Name:  "event-listener",
+		Image: *elImage,
+		Ports: []corev1.ContainerPort{{
+			ContainerPort: int32(*ElPort),
+			Protocol:      corev1.ProtocolTCP,
+		}},
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/live",
+					Scheme: scheme,
+					Port:   intstr.FromInt((*ElPort)),
+				},
+			},
+			PeriodSeconds:    int32(*PeriodSeconds),
+			FailureThreshold: int32(*FailureThreshold),
+		},
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/live",
+					Scheme: scheme,
+					Port:   intstr.FromInt((*ElPort)),
+				},
+			},
+			PeriodSeconds:    int32(*PeriodSeconds),
+			FailureThreshold: int32(*FailureThreshold),
+		},
+		Resources: resources,
+		Args: []string{
+			"-el-name", el.Name,
+			"-el-namespace", el.Namespace,
+			"-port", strconv.Itoa(*ElPort),
+			"-readtimeout", strconv.FormatInt(*ELReadTimeOut, 10),
+			"-writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
+			"-idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
+			"-timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
+			"-is-multi-ns", strconv.FormatBool(isMultiNS),
+			"-tls-cert", elCert,
+			"-tls-key", elKey,
+		},
+		VolumeMounts: vMount,
+		Env:          env,
+	}
 }
 
 // GenerateResourceLabels generates the labels to be used on all generated resources.

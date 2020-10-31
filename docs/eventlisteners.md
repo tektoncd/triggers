@@ -42,6 +42,8 @@ using [Event Interceptors](#Interceptors).
     - [Multiple EventListeners (One EventListener Per Namespace)](#multiple-eventlisteners-one-eventlistener-per-namespace)
     - [Multiple EventListeners (Multiple EventListeners per Namespace)](#multiple-eventlisteners-multiple-eventlisteners-per-namespace)
     - [ServiceAccount per EventListenerTrigger](#serviceaccount-per-eventlistenertrigger)
+  - [EventListener Secure Connection](#eventlistener-secure-connection)
+    - [Prerequisites](#prerequisites)
 
 ## Syntax
 
@@ -277,8 +279,11 @@ Right now the allowed values as part of `podSpec` are
 ServiceAccountName
 NodeSelector
 Tolerations
+Volumes
 Containers
 - Resources
+- VolumeMounts
+- Env
 ```
 
 ### Logging
@@ -821,3 +826,12 @@ Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+## EventListener Secure Connection
+
+Triggers now support both `HTTP` and `HTTPS` connection by adding few configuration to eventlistener.
+
+To setup TLS connection add two set of reserved environment variables `TLS_CERT` and `TLS_KEY` using `secretKeyRef` env type 
+where we need to specify the `secret` which contains `cert` and `key` files. See the full [example]((../examples/eventlistener-tls-connection/README.md)) for more details.
+
+Refer [TEP-0027](https://github.com/tektoncd/community/blob/master/teps/0027-https-connection-to-triggers-eventlistener.md) for more information on design and user stories.

@@ -136,7 +136,13 @@ func main() {
 			sinkArgs.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"),
 	}
 
-	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("failed to start eventlistener sink: %v", err)
+	if sinkArgs.Cert == "" && sinkArgs.Key == "" {
+		if err := srv.ListenAndServe(); err != nil {
+			logger.Fatalf("failed to start eventlistener sink: %v", err)
+		}
+	} else {
+		if err := srv.ListenAndServeTLS(sinkArgs.Cert, sinkArgs.Key); err != nil {
+			logger.Fatalf("failed to start eventlistener sink: %v", err)
+		}
 	}
 }

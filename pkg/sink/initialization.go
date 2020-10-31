@@ -53,6 +53,10 @@ var (
 		"The timeout for Timeout Handler of EventListener Server.")
 	isMultiNSFlag = flag.Bool("is-multi-ns", false,
 		"Whether EventListener serve Multiple NS.")
+	tlsCertFlag = flag.String("tls-cert", "",
+		"The filename for the TLS certificate.")
+	tlsKeyFlag = flag.String("tls-key", "",
+		"The filename for the TLS key.")
 )
 
 // Args define the arguments for Sink.
@@ -73,6 +77,10 @@ type Args struct {
 	ELTimeOutHandler time.Duration
 	// IsMultiNS determines whether el functions as namespaced or clustered
 	IsMultiNS bool
+	// Key defines the filename for tls Key.
+	Key string
+	// Cert defines the filename for tls Cert.
+	Cert string
 }
 
 // Clients define the set of client dependencies Sink requires.
@@ -104,6 +112,8 @@ func GetArgs() (Args, error) {
 		ELWriteTimeOut:   time.Duration(*elWriteTimeOut),
 		ELIdleTimeOut:    time.Duration(*elIdleTimeOut),
 		ELTimeOutHandler: time.Duration(*elTimeOutHandler),
+		Cert:             *tlsCertFlag,
+		Key:              *tlsKeyFlag,
 	}, nil
 }
 

@@ -164,7 +164,7 @@ func Test_EventListenerValidate(t *testing.T) {
 					bldr.EventListenerCELInterceptor("", bldr.EventListenerCELOverlay("body.value", "'testing'")),
 				))),
 	}, {
-		name: "Valid EventListener with kubernetes resource for podspec",
+		name: "Valid EventListener with kubernetes env for podspec",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1"),
@@ -192,6 +192,41 @@ func Test_EventListenerValidate(t *testing.T) {
 												corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
 											},
 										},
+									}},
+								},
+							},
+						}),
+					)),
+			)),
+	}, {
+		name: "Valid EventListener with env for TLS connection",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1"),
+				bldr.EventListenerResources(
+					bldr.EventListenerKubernetesResources(
+						bldr.EventListenerPodSpec(duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								Spec: corev1.PodSpec{
+									ServiceAccountName: "k8sresource",
+									Containers: []corev1.Container{{
+										Env: []corev1.EnvVar{{
+											Name: "TLS_CERT",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
+													Key:                  "tls.crt",
+												},
+											},
+										}, {
+											Name: "TLS_KEY",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
+													Key:                  "tls.key",
+												},
+											},
+										}},
 									}},
 								},
 							},
@@ -519,7 +554,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 					)),
 			)),
 	}, {
-		name: "user specifies an unsupported container field",
+		name: "user specifies an unsupported container fields",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerTrigger("tt", "v1alpha1",
@@ -532,6 +567,47 @@ func TestEventListenerValidate_error(t *testing.T) {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{{
 										Name: "containername",
+										Env: []corev1.EnvVar{{
+											Name:  "key",
+											Value: "value",
+										}, {
+											Name: "key1",
+											ValueFrom: &corev1.EnvVarSource{
+												ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+													Key: "key",
+												},
+											},
+										}},
+									}},
+								},
+							},
+						}),
+					)),
+			)),
+	}, {
+		name: "user specifies an invalid env for TLS connection",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "v1alpha1"),
+				),
+				bldr.EventListenerResources(
+					bldr.EventListenerKubernetesResources(
+						bldr.EventListenerPodSpec(duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{{
+										Env: []corev1.EnvVar{{
+											Name: "TLS_CERT",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "secret-name",
+													},
+													Key: "tls.key",
+												},
+											},
+										}},
 									}},
 								},
 							},
