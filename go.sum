@@ -602,6 +602,7 @@ github.com/google/go-containerregistry v0.0.0-20200115214256-379933c9c22b/go.mod
 github.com/google/go-containerregistry v0.0.0-20200123184029-53ce695e4179/go.mod h1:Wtl/v6YdQxv397EREtzwgd9+Ud7Q5D8XMbi3Zazgkrs=
 github.com/google/go-containerregistry v0.0.0-20200331213917-3d03ed9b1ca2/go.mod h1:pD1UFYs7MCAx+ZLShBdttcaOSbyc8F9Na/9IZLNwJeA=
 github.com/google/go-containerregistry v0.1.1/go.mod h1:npTSyywOeILcgWqd+rvtzGWflIPPcBQhYoOONaY4ltM=
+github.com/google/go-containerregistry v0.1.3 h1:vD78UlG9hVJ8DZbUL8uuNco2G1o9eJTA87xR0Y2UX6c=
 github.com/google/go-containerregistry v0.1.3/go.mod h1:3Wg/Hjgn/ZDxrYYhtzZJWdThOd8zeI2zAmn4oVfm1Wg=
 github.com/google/go-github v17.0.0+incompatible h1:N0LgJ1j65A7kfXrZnUDaYCs/Sf4rEjNlfyDHW9dolSY=
 github.com/google/go-github v17.0.0+incompatible/go.mod h1:zLgOLi98H3fifZn+44m+umXrS52loVEgC2AApnigrVQ=
@@ -1184,6 +1185,8 @@ github.com/tektoncd/pipeline v0.11.0/go.mod h1:hlkH32S92+/UODROH0dmxzyuMxfRFp/Nc
 github.com/tektoncd/pipeline v0.13.1-0.20200625065359-44f22a067b75/go.mod h1:R5AlT46x/F8n/pFJFjZ1U1q71GWtVXgG7RZkkoRL554=
 github.com/tektoncd/pipeline v0.17.1-0.20201006183654-1710b688c023 h1:4SRPuln+aQ6OYuvO9eBnBnlgNUcb3wFMF5zuSFiCmyk=
 github.com/tektoncd/pipeline v0.17.1-0.20201006183654-1710b688c023/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
+github.com/tektoncd/pipeline v0.18.0 h1:92ePjxCMJ0Lj/O2UUp6uoq9oUlkyPOKx858L8MKY6pg=
+github.com/tektoncd/pipeline v0.18.0/go.mod h1:PxRWs4faBD15pG0EGQs3f/65hX97sMjjqtiKG3JY2rk=
 github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887 h1:crv70CBAJ2gZFSbf13aRVwdbjR2GYwTms/ZEok/SnFM=
