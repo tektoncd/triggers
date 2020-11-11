@@ -11,7 +11,7 @@ require (
 	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/pipeline v0.17.1-0.20201006183654-1710b688c023
+	github.com/tektoncd/pipeline v0.18.0
 	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 	github.com/tidwall/gjson v1.3.5 // indirect
 	github.com/tidwall/sjson v1.0.4
