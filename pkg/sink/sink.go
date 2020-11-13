@@ -18,6 +18,7 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -165,10 +166,17 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, header, err := r.ExecuteInterceptors(t, request, event, log)
+	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
 	if err != nil {
 		log.Error(err)
 		return err
+	}
+
+	if iresp != nil {
+		if !iresp.Continue {
+			log.Infof("interceptor stopped trigger processing: %w", iresp.Status.Err())
+			return iresp.Status.Err()
+		}
 	}
 
 	rt, err := template.ResolveTrigger(*t,
@@ -179,8 +187,11 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 		log.Error(err)
 		return err
 	}
-
-	params, err := template.ResolveParams(rt, finalPayload, header)
+	extensions := map[string]interface{}{}
+	if iresp != nil && iresp.Extensions != nil {
+		extensions = iresp.Extensions
+	}
+	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -195,26 +206,31 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 	return nil
 }
 
-func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger) ([]byte, http.Header, error) {
+// ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
+// When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
+func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
 	if len(t.Interceptors) == 0 {
-		return event, in.Header, nil
+		return event, in.Header, nil, nil
 	}
 
-	// The request body to the first interceptor in the chain should be the received event body.
-	request := &http.Request{
-		Method: http.MethodPost,
-		Header: in.Header,
-		URL:    in.URL,
-		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
+	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
+	// or add to the Extensions
+	request := triggersv1.InterceptorRequest{
+		Body:       event,
+		Header:     in.Header.Clone(),
+		Extensions: map[string]interface{}{}, // Empty extensions for the first interceptor in chain
+		Context: &triggersv1.TriggerContext{
+			EventURL: in.URL.String(),
+			EventID:  eventID,
+			// t.Name might not be fully accurate until we get rid of triggers inlined within EventListener
+			TriggerID: fmt.Sprintf("namespaces/%s/triggers/%s", r.EventListenerNamespace, t.Name), // TODO: t.Name might be wrong
+		},
 	}
 
-	// We create a cache against each request, so whenever we make network calls like
-	// fetching kubernetes secrets, we can do so only once per request.
-	request = interceptors.WithCache(request)
-
-	var resp *http.Response
+	var interceptorResponse *triggersv1.InterceptorResponse
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
+		// We still need this block till we move the interceptors to their own processes.
 		switch {
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
@@ -227,29 +243,56 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.Bitbucket != nil:
 			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, r.EventListenerNamespace, log)
 		default:
-			return nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
-		}
-		var err error
-		resp, err = interceptor.ExecuteTrigger(request)
-		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
 
-		// Set the next request to be the output of the last response to enable
-		// request chaining.
-		request = &http.Request{
-			Method: http.MethodPost,
-			Header: resp.Header,
-			URL:    in.URL,
-			Body:   ioutil.NopCloser(resp.Body),
+		// Webhook interceptor still follows old interface
+		if interceptorInterface, ok := interceptor.(triggersv1.InterceptorInterface); ok {
+			// Set per interceptor config params to the request
+			request.InterceptorParams = interceptors.GetInterceptorParams(i)
+			// TODO: pipe in context from sink
+			interceptorResponse = interceptorInterface.Process(context.Background(), &request)
+			if !interceptorResponse.Continue {
+				return nil, nil, interceptorResponse, nil
+			}
+
+			if interceptorResponse.Extensions != nil {
+				// Merge any extensions and pass it on to the next request in the chain
+				for k, v := range interceptorResponse.Extensions {
+					request.Extensions[k] = v
+				}
+			}
+			// Clear interceptorParams for the next interceptor in chain
+			request.InterceptorParams = map[string]interface{}{}
+		} else {
+			// Old style interceptor (only Webhook)
+			req := &http.Request{
+				Method: http.MethodPost,
+				Header: request.Header,
+				URL:    in.URL,
+				Body:   ioutil.NopCloser(bytes.NewBuffer(request.Body)),
+			}
+
+			res, err := interceptor.ExecuteTrigger(req)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			payload, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("error reading webhook interceptor response body: %w", err)
+			}
+			defer res.Body.Close()
+			// Set the next request to be the output of the last response to enable
+			// request chaining.
+			request.Header = res.Header.Clone()
+			request.Body = payload
 		}
 	}
-	payload, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading final response body: %w", err)
-	}
-	defer resp.Body.Close()
-	return payload, resp.Header, nil
+	return request.Body, request.Header, &triggersv1.InterceptorResponse{
+		Continue:   true,
+		Extensions: request.Extensions,
+	}, nil
 }
 
 func (r Sink) CreateResources(sa string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {

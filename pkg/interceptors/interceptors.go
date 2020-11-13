@@ -35,17 +35,6 @@ type key string
 
 const requestCacheKey key = "interceptors.RequestCache"
 
-// WithCache clones the given request and sets the request context to include a cache.
-// This allows us to cache results from expensive operations and perform them just once
-// per each trigger.
-//
-// Each request should have its own cache, and those caches should expire once the request
-// is processed. For this reason, it's appropriate to store the cache on the request
-// context.
-func WithCache(req *http.Request) *http.Request {
-	return req.WithContext(context.WithValue(req.Context(), requestCacheKey, make(map[string]interface{})))
-}
-
 func getCache(req *http.Request) map[string]interface{} {
 	if cache, ok := req.Context().Value(requestCacheKey).(map[string]interface{}); ok {
 		return cache
@@ -82,4 +71,50 @@ func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.S
 	}
 
 	return secretValue, nil
+}
+
+// GetInterceptorParams returns InterceptorParams for the current interceptors
+func GetInterceptorParams(i *triggersv1.EventInterceptor) map[string]interface{} {
+	ip := map[string]interface{}{}
+	switch {
+	case i.Webhook != nil:
+		// WebHook headers are of type map[string][]string.
+		// Use old style for now. Upgrade later.
+		if i.Webhook != nil {
+			ip["objectRef"] = i.Webhook.ObjectRef
+			ip["header"] = i.Webhook.Header
+		}
+	case i.GitHub != nil:
+		if i.GitHub.EventTypes != nil {
+			ip["eventTypes"] = i.GitHub.EventTypes
+		}
+		if i.GitHub.SecretRef != nil {
+			ip["secretRef"] = i.GitHub.SecretRef
+		}
+	case i.GitLab != nil:
+		if i.GitLab.EventTypes != nil {
+			ip["eventTypes"] = i.GitLab.EventTypes
+		}
+		if i.GitLab.SecretRef != nil {
+			ip["secretRef"] = i.GitLab.SecretRef
+		}
+	case i.CEL != nil:
+		if i.CEL.Filter != "" {
+			ip["filter"] = i.CEL.Filter
+		}
+
+		if i.CEL.Overlays != nil {
+			ip["overlays"] = i.CEL.Overlays
+		}
+
+	case i.Bitbucket != nil:
+		if i.Bitbucket.EventTypes != nil {
+			ip["eventTypes"] = i.Bitbucket.EventTypes
+		}
+		if i.Bitbucket.SecretRef != nil {
+			ip["secretRef"] = i.Bitbucket.SecretRef
+		}
+	}
+
+	return ip
 }

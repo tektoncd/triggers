@@ -27,13 +27,13 @@ import (
 
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
-func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]triggersv1.Param, error) {
+func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}) ([]triggersv1.Param, error) {
 	var ttParams []triggersv1.ParamSpec
 	if rt.TriggerTemplate != nil {
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	out, err := applyEventValuesToParams(rt.BindingParams, body, header, ttParams)
+	out, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
@@ -54,12 +54,13 @@ func ResolveResources(template *triggersv1.TriggerTemplate, params []triggersv1.
 
 // event represents a HTTP event that Triggers processes
 type event struct {
-	Header map[string]string `json:"header"`
-	Body   interface{}       `json:"body"`
+	Header     map[string]string      `json:"header"`
+	Body       interface{}            `json:"body"`
+	Extensions map[string]interface{} `json:"extensions"`
 }
 
 // newEvent returns a new Event from HTTP headers and body
-func newEvent(body []byte, headers http.Header) (*event, error) {
+func newEvent(body []byte, headers http.Header, extensions map[string]interface{}) (*event, error) {
 	var data interface{}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &data); err != nil {
@@ -72,16 +73,17 @@ func newEvent(body []byte, headers http.Header) (*event, error) {
 	}
 
 	return &event{
-		Header: joinedHeaders,
-		Body:   data,
+		Header:     joinedHeaders,
+		Body:       data,
+		Extensions: extensions,
 	}, nil
 }
 
 // applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
-// with values from the event body and headers.
-func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header,
+// with values from the event body, headers, and extensions.
+func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header, extensions map[string]interface{},
 	defaults []triggersv1.ParamSpec) ([]triggersv1.Param, error) {
-	event, err := newEvent(body, header)
+	event, err := newEvent(body, header, extensions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal event: %w", err)
 	}
