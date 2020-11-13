@@ -85,7 +85,7 @@ func evalBinding(w io.Writer, bindingPath, httpPath string) error {
 		BindingParams: bindingParams,
 	}
 
-	params, err := template.ResolveParams(t, body, r.Header)
+	params, err := template.ResolveParams(t, body, r.Header, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("error resolving params: %w", err)
 	}

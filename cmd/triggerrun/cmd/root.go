@@ -201,10 +201,15 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, el.Name))
 
-	finalPayload, header, err := r.ExecuteInterceptors(&el, request, body, log)
+	finalPayload, header, iresp, err := r.ExecuteInterceptors(&el, request, body, log, eventID)
 	if err != nil {
 		log.Error(err)
 		return nil, err
+	}
+	if iresp != nil {
+		if !iresp.Continue {
+			log.Errorf("interceptor stoppped trigger processing: %w", iresp.Status.Err())
+		}
 	}
 
 	if tri.Namespace == "" {
@@ -225,8 +230,11 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		log.Error("Failed to resolve Trigger: ", err)
 		return nil, err
 	}
-
-	params, err := template.ResolveParams(rt, finalPayload, header)
+	extensions := map[string]interface{}{}
+	if iresp != nil && iresp.Extensions != nil {
+		extensions = iresp.Extensions
+	}
+	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
 	if err != nil {
 		log.Error("Failed to resolve parameters", err)
 		return nil, err

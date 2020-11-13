@@ -125,7 +125,7 @@ func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.args.params, nil, nil, tt.args.paramSpecs)
+			got, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs)
 			if err != nil {
 				t.Errorf("applyEventValuesToParams(): unexpected error: %s", err.Error())
 			}
@@ -142,9 +142,11 @@ func TestApplyEventValuesToParams(t *testing.T) {
 	tests := []struct {
 		name   string
 		params []triggersv1.Param
-		body   []byte
-		header http.Header
-		want   []triggersv1.Param
+		// TODO: Change body to interface{} and call JSON.Marshall in t.Run to make the tests less brittle
+		body       []byte
+		header     http.Header
+		want       []triggersv1.Param
+		extensions map[string]interface{}
 	}{{
 		name:   "header with single values",
 		params: []triggersv1.Param{bldr.Param("foo", "$(header)")},
@@ -259,11 +261,44 @@ func TestApplyEventValuesToParams(t *testing.T) {
 		body:   json.RawMessage(`{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}`),
 		params: []triggersv1.Param{bldr.Param("a", "$(body.child[?(@.a == 'd')].w) : $(body.child[0].a)")},
 		want:   []triggersv1.Param{bldr.Param("a", "3 : b")},
+	}, {
+		name: "extensions",
+		body: []byte{},
+		extensions: map[string]interface{}{
+			"foo": "bar",
+		},
+		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo)")},
+		want:   []triggersv1.Param{bldr.Param("a", "bar")},
+	}, {
+		name: "extensions - extract single value from JSON body",
+		body: []byte{},
+		extensions: map[string]interface{}{
+			"foo": map[string]interface{}{
+				"bar": []interface{}{"a", "b", "c"},
+			},
+		},
+		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo.bar[1])")},
+		want:   []triggersv1.Param{bldr.Param("a", "b")},
+	}, {
+		name: "extensions - extract JSON values",
+		body: []byte{},
+		extensions: map[string]interface{}{
+			"foo": []interface{}{
+				map[string]interface{}{
+					"a": "1",
+				},
+				map[string]interface{}{
+					"b": "2",
+				},
+			},
+		},
+		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo)")},
+		want:   []triggersv1.Param{bldr.Param("a", `[{"a":"1"},{"b":"2"}]`)},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, nil)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -276,10 +311,11 @@ func TestApplyEventValuesToParams(t *testing.T) {
 
 func TestApplyEventValuesToParams_Error(t *testing.T) {
 	tests := []struct {
-		name   string
-		params []triggersv1.Param
-		body   []byte
-		header http.Header
+		name       string
+		params     []triggersv1.Param
+		body       []byte
+		header     http.Header
+		extensions map[string]interface{}
 	}{{
 		name:   "missing key",
 		params: []triggersv1.Param{bldr.Param("foo", "$(body.missing)")},
@@ -292,11 +328,18 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 		name:   "invalid expression(s)",
 		params: []triggersv1.Param{bldr.Param("foo", "$(body.[0])")},
 		body:   json.RawMessage(`["a", "b"]`),
+	}, {
+		name:   "invalid extension",
+		params: []triggersv1.Param{bldr.Param("foo", "$(extensions.missing)")},
+		body:   json.RawMessage(`{}`),
+		extensions: map[string]interface{}{
+			"foo": "bar",
+		},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, nil)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", got)
 			}
@@ -309,6 +352,7 @@ func TestResolveParams(t *testing.T) {
 		name          string
 		bindingParams []triggersv1.Param
 		body          []byte
+		extensions    map[string]interface{}
 		template      *triggersv1.TriggerTemplate
 		want          []triggersv1.Param
 	}{{
@@ -388,7 +432,7 @@ func TestResolveParams(t *testing.T) {
 				BindingParams:   tt.bindingParams,
 				TriggerTemplate: tt.template,
 			}
-			params, err := ResolveParams(rt, tt.body, map[string][]string{})
+			params, err := ResolveParams(rt, tt.body, map[string][]string{}, tt.extensions)
 			if err != nil {
 				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
 			}
@@ -403,6 +447,7 @@ func TestResolveParams_Error(t *testing.T) {
 	tests := []struct {
 		name          string
 		body          []byte
+		extensions    map[string]interface{}
 		bindingParams []triggersv1.Param
 	}{{
 		name: "invalid body",
@@ -419,7 +464,7 @@ func TestResolveParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{})
+			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{}, tt.extensions)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", params)
 			}
