@@ -150,12 +150,11 @@ import (
 // 		body.field.parseYAML().item
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(request *http.Request, ns string, k kubernetes.Interface) cel.EnvOption {
-	return cel.Lib(triggersLib{request: request, defaultNS: ns, client: k})
+func Triggers(ns string, k kubernetes.Interface) cel.EnvOption {
+	return cel.Lib(triggersLib{defaultNS: ns, client: k})
 }
 
 type triggersLib struct {
-	request   *http.Request
 	defaultNS string
 	client    kubernetes.Interface
 }
@@ -219,7 +218,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.request, t.defaultNS, t.client)},
+				Function: makeCompareSecret(t.defaultNS, t.client)},
 		)}
 }
 
@@ -284,7 +283,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Interface) functions.FunctionOp {
+func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -308,7 +307,10 @@ func makeCompareSecret(request *http.Request, defaultNS string, k kubernetes.Int
 			SecretKey:  string(secretKey),
 			SecretName: string(secretName),
 		}
-		secretToken, err := interceptors.GetSecretToken(request, k, secretRef, string(secretNS))
+		// GetSecretToken uses request as a cache key to cache secret lookup. Since multiple
+		// triggers execute concurrently in separate goroutines, this cache is not very effective
+		// for this use case
+		secretToken, err := interceptors.GetSecretToken(nil, k, secretRef, string(secretNS))
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

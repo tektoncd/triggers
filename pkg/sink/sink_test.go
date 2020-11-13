@@ -765,11 +765,11 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// TestExecuteInterceptor tests that two interceptors can be called
+// TestExecuteInterceptor_Sequential tests that two interceptors can be called
 // sequentially. It uses a HTTP server that returns a sequential response
 // and two webhook interceptors pointing at the test server, validating
 // that the last response is as expected.
-func TestExecuteInterceptor(t *testing.T) {
+func TestExecuteInterceptor_Sequential(t *testing.T) {
 	srv := httptest.NewServer(&sequentialInterceptor{})
 	defer srv.Close()
 	client := srv.Client()
@@ -902,6 +902,41 @@ func TestExecuteInterceptor_error(t *testing.T) {
 
 	if si.called {
 		t.Error("expected sequential interceptor to not be called")
+	}
+}
+
+func TestExecuteInterceptor_NotContinue(t *testing.T) {
+	logger, _ := zap.NewProduction()
+	s := Sink{
+		Logger: logger.Sugar(),
+	}
+
+	trigger := &triggersv1.EventListenerTrigger{
+		Interceptors: []*triggersv1.EventInterceptor{{
+			CEL: &triggersv1.CELInterceptor{
+				Filter: `body.head == "abcde"`,
+			},
+		}},
+	}
+	url, _ := url.Parse("http://example.com")
+	_, _, resp, err := s.ExecuteInterceptors(
+		trigger,
+		&http.Request{
+			URL: url,
+		},
+		json.RawMessage(`{"head": "blah"}`),
+		logger.Sugar(),
+		"eventID")
+	if err != nil {
+		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
+	}
+
+	if resp == nil {
+		t.Fatalf("ExecuteInterceptor() interceptor response was nil")
+	}
+
+	if resp.Continue {
+		t.Fatalf("ExecuteInterceptor(). Expected response.conitnue to be false but got true. Response: %v", resp)
 	}
 }
 

@@ -10,12 +10,33 @@ spec:
         - cel:
             filter: "header.match('X-GitHub-Event', 'pull_request')"
             overlays:
-            - key: extensions.truncated_sha
+            - key: truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
-      - ref: pipeline-binding
+      - name: sha
+        value: $(extensions.truncated_sha)
       template:
-        ref: pipeline-template
+        spec:
+          params:
+            - name: sha
+          resourceTemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: TaskRun
+              metadata:
+                generateName: cel-trig-with-matches-
+              spec:
+                params:
+                - name: "git_sha"
+                  value: "$(tt.params.sha)"
+                taskSpec:
+                  params:
+                  - name: git_sha
+                    type: string
+                  steps:
+                  - image: ubuntu
+                    script: |
+                      #!/usr/bin/env bash
+                      echo "$(params.sha)"
     - name: cel-trig-with-canonical
       interceptors:
         - cel:
