@@ -17,11 +17,13 @@ limitations under the License.
 package bitbucket
 
 import (
-	"bytes"
-	"errors"
+	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -30,65 +32,64 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+
 type Interceptor struct {
-	KubeClientSet    kubernetes.Interface
-	Logger           *zap.SugaredLogger
-	Bitbucket        *triggersv1.BitbucketInterceptor
-	TriggerNamespace string
+	KubeClientSet kubernetes.Interface
+	Logger        *zap.SugaredLogger
 }
 
-func NewInterceptor(bh *triggersv1.BitbucketInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:           l,
-		Bitbucket:        bh,
-		KubeClientSet:    k,
-		TriggerNamespace: ns,
+		Logger:        l,
+		KubeClientSet: k,
 	}
 }
 
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	payload := []byte{}
-	var err error
+	return nil, fmt.Errorf("executeTrigger() is deprecated. Call Process() instead")
+}
 
-	if request.Body != nil {
-		defer request.Body.Close()
-		payload, err = ioutil.ReadAll(request.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read request body: %w", err)
-		}
+func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+	p := triggersv1.BitbucketInterceptor{}
+	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
+		return interceptors.Fail(status.Newf(codes.InvalidArgument, "failed to parse interceptor params: %v", err))
 	}
 
+	headers := interceptors.Canonical(r.Header)
 	// Validate secrets first before anything else, if set
-	if w.Bitbucket.SecretRef != nil {
-		header := request.Header.Get("X-Hub-Signature")
+	if p.SecretRef != nil {
+		header := headers.Get("X-Hub-Signature")
 		if header == "" {
-			return nil, errors.New("no X-Hub-Signature header set")
+			return interceptors.Fail(status.New(codes.InvalidArgument, "no X-Hub-Signature header set"))
 		}
-		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.Bitbucket.SecretRef, w.TriggerNamespace)
+		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+		secret, err := w.KubeClientSet.CoreV1().Secrets(ns).Get(ctx, p.SecretRef.SecretName, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return interceptors.Fail(status.New(codes.Internal, fmt.Sprintf("error getting secret: %v", err)))
 		}
-		if err := gh.ValidateSignature(header, payload, secretToken); err != nil {
-			return nil, err
+		secretToken := secret.Data[p.SecretRef.SecretKey]
+
+		if err := gh.ValidateSignature(header, r.Body, secretToken); err != nil {
+			return interceptors.Fail(status.New(codes.FailedPrecondition, err.Error()))
 		}
 	}
 
 	// Next see if the event type is in the allow-list
-	if w.Bitbucket.EventTypes != nil {
-		actualEvent := request.Header.Get("X-Event-Key")
+	if p.EventTypes != nil {
+		actualEvent := http.Header(r.Header).Get("X-Event-Key")
 		isAllowed := false
-		for _, allowedEvent := range w.Bitbucket.EventTypes {
+		for _, allowedEvent := range p.EventTypes {
 			if actualEvent == allowedEvent {
 				isAllowed = true
 				break
 			}
 		}
 		if !isAllowed {
-			return nil, fmt.Errorf("event type %s is not allowed", actualEvent)
+			return interceptors.Fail(status.Newf(codes.FailedPrecondition, "event type %s is not allowed", actualEvent))
 		}
 	}
-	return &http.Response{
-		Header: request.Header,
-		Body:   ioutil.NopCloser(bytes.NewBuffer(payload)),
-	}, nil
+	return &triggersv1.InterceptorResponse{
+		Continue: true,
+	}
 }

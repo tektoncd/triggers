@@ -264,20 +264,19 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 		},
 	}
 
-	var interceptorResponse *triggersv1.InterceptorResponse
 	for _, i := range t.Spec.Interceptors {
 		var interceptor interceptors.Interceptor
 		switch {
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, t.Namespace, log)
 		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(i.GitHub, r.KubeClientSet, t.Namespace, log)
+			interceptor = github.NewInterceptor(r.KubeClientSet, log)
 		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, t.Namespace, log)
+			interceptor = gitlab.NewInterceptor(r.KubeClientSet, log)
 		case i.CEL != nil:
 			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
 		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, t.Namespace, log)
+			interceptor = bitbucket.NewInterceptor(r.KubeClientSet, log)
 		default:
 			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
@@ -286,7 +285,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 		if interceptorInterface, ok := interceptor.(triggersv1.InterceptorInterface); ok {
 			// Set per interceptor config params to the request
 			request.InterceptorParams = interceptors.GetInterceptorParams(i)
-			interceptorResponse = interceptorInterface.Process(context.Background(), &request)
+			interceptorResponse := interceptorInterface.Process(context.Background(), &request)
 			if !interceptorResponse.Continue {
 				return nil, nil, interceptorResponse, nil
 			}

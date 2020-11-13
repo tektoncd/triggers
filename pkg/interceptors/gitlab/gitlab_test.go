@@ -17,15 +17,12 @@ limitations under the License.
 package gitlab
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"go.uber.org/zap/zaptest"
-
-	"github.com/google/go-cmp/cmp"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,215 +31,277 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
-func TestInterceptor_ExecuteTrigger(t *testing.T) {
-	type args struct {
-		payload   []byte
-		secret    *corev1.Secret
-		token     string
-		eventType string
-	}
+func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 	tests := []struct {
-		name    string
-		GitLab  *triggersv1.GitLabInterceptor
-		args    args
-		want    []byte
-		wantErr bool
-	}{
-		{
-			name:   "no secret",
-			GitLab: &triggersv1.GitLabInterceptor{},
-			args: args{
-				payload: []byte("somepayload"),
-				token:   "foo",
+		name              string
+		interceptorParams *triggersv1.GitLabInterceptor
+		payload           []byte
+		secret            *corev1.Secret
+		token             string
+		eventType         string
+	}{{
+		name:              "no secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{},
+
+		payload: []byte("somepayload"),
+		token:   "foo",
+	}, {
+		name: "valid header for secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
 			},
-			want:    []byte("somepayload"),
-			wantErr: false,
 		},
-		{
-			name: "invalid header for secret",
-			GitLab: &triggersv1.GitLabInterceptor{
-				SecretRef: &triggersv1.SecretRef{
-					SecretName: "mysecret",
-					SecretKey:  "token",
-				},
+
+		token: "secret",
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
 			},
-			args: args{
-				token: "foo",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
-				payload: []byte("somepayload"),
+			Data: map[string][]byte{
+				"token": []byte("secret"),
 			},
-			wantErr: true,
 		},
-		{
-			name: "valid header for secret",
-			GitLab: &triggersv1.GitLabInterceptor{
-				SecretRef: &triggersv1.SecretRef{
-					SecretName: "mysecret",
-					SecretKey:  "token",
-				},
-			},
-			args: args{
-				token: "secret",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secret"),
-					},
-				},
-				payload: []byte("somepayload"),
-			},
-			wantErr: false,
-			want:    []byte("somepayload"),
+		payload: []byte("somepayload"),
+	}, {
+		name: "valid event",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			EventTypes: []string{"foo", "bar"},
 		},
-		{
-			name: "valid event",
-			GitLab: &triggersv1.GitLabInterceptor{
-				EventTypes: []string{"foo", "bar"},
+
+		eventType: "foo",
+		payload:   []byte("somepayload"),
+	}, {
+		name: "valid event, valid secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			EventTypes: []string{"foo", "bar"},
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
 			},
-			args: args{
-				eventType: "foo",
-				payload:   []byte("somepayload"),
-			},
-			wantErr: false,
-			want:    []byte("somepayload"),
 		},
-		{
-			name: "invalid event",
-			GitLab: &triggersv1.GitLabInterceptor{
-				EventTypes: []string{"foo", "bar"},
+		eventType: "bar",
+		payload:   []byte("somepayload"),
+		token:     "secrettoken",
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
 			},
-			args: args{
-				eventType: "baz",
-				payload:   []byte("somepayload"),
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
 			},
-			wantErr: true,
 		},
-		{
-			name: "valid event, invalid secret",
-			GitLab: &triggersv1.GitLabInterceptor{
-				EventTypes: []string{"foo", "bar"},
-				SecretRef: &triggersv1.SecretRef{
-					SecretName: "mysecret",
-					SecretKey:  "token",
-				},
-			},
-			args: args{
-				eventType: "bar",
-				payload:   []byte("somepayload"),
-				token:     "foo",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid event, valid secret",
-			GitLab: &triggersv1.GitLabInterceptor{
-				EventTypes: []string{"foo", "bar"},
-				SecretRef: &triggersv1.SecretRef{
-					SecretName: "mysecret",
-					SecretKey:  "token",
-				},
-			},
-			args: args{
-				eventType: "baz",
-				payload:   []byte("somepayload"),
-				token:     "secrettoken",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "valid event, valid secret",
-			GitLab: &triggersv1.GitLabInterceptor{
-				EventTypes: []string{"foo", "bar"},
-				SecretRef: &triggersv1.SecretRef{
-					SecretName: "mysecret",
-					SecretKey:  "token",
-				},
-			},
-			args: args{
-				eventType: "bar",
-				payload:   []byte("somepayload"),
-				token:     "secrettoken",
-				secret: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "mysecret",
-					},
-					Data: map[string][]byte{
-						"token": []byte("secrettoken"),
-					},
-				},
-			},
-			want: []byte("somepayload"),
-		},
-	}
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
-			request := &http.Request{
-				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
+			req := &triggersv1.InterceptorRequest{
+				Body: tt.payload,
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": tt.interceptorParams.EventTypes,
+					"secretRef":  tt.interceptorParams.SecretRef,
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
 			}
-			if tt.args.token != "" {
-				request.Header.Add("X-GitLab-Token", tt.args.token)
+			if tt.token != "" {
+				req.Header["X-GitLab-Token"] = []string{tt.token}
 			}
-			if tt.args.eventType != "" {
-				request.Header.Add("X-GitLab-Event", tt.args.eventType)
+			if tt.eventType != "" {
+				req.Header["X-GitLab-Event"] = []string{tt.eventType}
 			}
-			if tt.args.secret != nil {
-				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.args.secret, metav1.CreateOptions{}); err != nil {
+			if tt.secret != nil {
+				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.secret, metav1.CreateOptions{}); err != nil {
 					t.Error(err)
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet:    kubeClient,
-				GitLab:           tt.GitLab,
-				Logger:           logger.Sugar(),
-				TriggerNamespace: metav1.NamespaceDefault,
+				KubeClientSet: kubeClient,
+				Logger:        logger.Sugar(),
 			}
-			resp, err := w.ExecuteTrigger(request)
-			if err != nil {
-				if !tt.wantErr {
-					t.Errorf("Interceptor.ExecuteTrigger() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				return
+			res := w.Process(ctx, req)
+			if !res.Continue {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be : true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 			}
 
-			got, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				t.Fatalf("error reading response: %v", err)
+		})
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
+	tests := []struct {
+		name              string
+		interceptorParams *triggersv1.GitLabInterceptor
+		payload           []byte
+		secret            *corev1.Secret
+		token             string
+		eventType         string
+	}{{
+		name: "invalid header for secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
+			},
+		},
+
+		token: "foo",
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
+			},
+		},
+		payload: []byte("somepayload"),
+	}, {
+		name: "missing header for secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
+			},
+		},
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
+			},
+		},
+		payload: []byte("somepayload"),
+	}, {
+		name: "invalid event",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			EventTypes: []string{"foo", "bar"},
+		},
+
+		eventType: "baz",
+		payload:   []byte("somepayload"),
+	}, {
+		name: "valid event, invalid secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			EventTypes: []string{"foo", "bar"},
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
+			},
+		},
+
+		eventType: "bar",
+		payload:   []byte("somepayload"),
+		token:     "foo",
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
+			},
+		},
+	}, {
+		name: "invalid event, valid secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			EventTypes: []string{"foo", "bar"},
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
+			},
+		},
+
+		eventType: "baz",
+		payload:   []byte("somepayload"),
+		token:     "secrettoken",
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
+			},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, _ := rtesting.SetupFakeContext(t)
+			logger := zaptest.NewLogger(t)
+			kubeClient := fakekubeclient.Get(ctx)
+			req := &triggersv1.InterceptorRequest{
+				Body: tt.payload,
+				Header: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": tt.interceptorParams.EventTypes,
+					"secretRef":  tt.interceptorParams.SecretRef,
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
 			}
-			defer resp.Body.Close()
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("Interceptor.ExecuteTrigger (-want, +got) = %s", diff)
+			if tt.token != "" {
+				req.Header["X-GitLab-Token"] = []string{tt.token}
+			}
+			if tt.eventType != "" {
+				req.Header["X-interceptorParams-Event"] = []string{tt.eventType}
+			}
+			if tt.secret != nil {
+				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.secret, metav1.CreateOptions{}); err != nil {
+					t.Error(err)
+				}
+			}
+			w := &Interceptor{
+				KubeClientSet: kubeClient,
+				Logger:        logger.Sugar(),
+			}
+			res := w.Process(ctx, req)
+			if res.Continue {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 			}
 		})
+	}
+}
+
+func TestInterceptor_Process_InvalidParams(t *testing.T) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	logger := zaptest.NewLogger(t)
+	kubeClient := fakekubeclient.Get(ctx)
+
+	w := &Interceptor{
+		KubeClientSet: kubeClient,
+		Logger:        logger.Sugar(),
+	}
+
+	req := &triggersv1.InterceptorRequest{
+		Body: json.RawMessage(`{}`),
+		Header: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		InterceptorParams: map[string]interface{}{
+			"blah": func() {},
+		},
+		Context: &triggersv1.TriggerContext{
+			EventURL:  "https://testing.example.com",
+			EventID:   "abcde",
+			TriggerID: "namespaces/default/triggers/example-trigger",
+		},
+	}
+
+	res := w.Process(ctx, req)
+	if res.Continue {
+		t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 	}
 }
