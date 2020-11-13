@@ -443,14 +443,7 @@ accept to the `eventTypes` field. Valid values can be found in GitHub
 The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
-<!-- FILE: examples/github/github-eventlistener-interceptor.yaml -->
-```YAML
----
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: github-listener-interceptor
-spec:
+```yaml
   triggers:
     - name: github-listener
       interceptors:
@@ -459,76 +452,11 @@ spec:
               secretName: github-secret
               secretKey: secretToken
             eventTypes:
-              - pull_request
-        - cel:
-            filter: "body.action in ['opened', 'synchronize', 'reopened']"
-      bindings:
-        - ref: github-pr-binding
-      template:
-        ref: github-template
-  resources:
-    kubernetesResource:
-      spec:
-        template:
-          spec:
-            serviceAccountName: tekton-triggers-github-sa
-            containers:
-              - resources:
-                  requests:
-                    memory: "64Mi"
-                    cpu: "250m"
-                  limits:
-                    memory: "128Mi"
-                    cpu: "500m"
----
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: TriggerBinding
-metadata:
-  name: github-pr-binding
-spec:
-  params:
-    - name: gitrevision
-      value: $(body.pull_request.head.sha)
-    - name: gitrepositoryurl
-      value: $(body.repository.clone_url)
-
----
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: TriggerTemplate
-metadata:
-  name: github-template
-spec:
-  params:
-    - name: gitrevision
-    - name: gitrepositoryurl
-  resourcetemplates:
-    - apiVersion: tekton.dev/v1alpha1
-      kind: TaskRun
-      metadata:
-        generateName: github-run-
-      spec:
-        taskSpec:
-          inputs:
-            resources:
-              - name: source
-                type: git
-          steps:
-            - image: ubuntu
-              script: |
-                #! /bin/bash
-                ls -al $(inputs.resources.source.path)
-        inputs:
-          resources:
-            - name: source
-              resourceSpec:
-                type: git
-                params:
-                  - name: revision
-                    value: $(tt.params.gitrevision)
-                  - name: url
-                    value: $(tt.params.gitrepositoryurl)
+ 
 ```
 
+
+Check out a full example of using GitHub Interceptor in [examples/github](../examples/github)
 
 ### GitLab Interceptors
 
@@ -616,7 +544,7 @@ spec:
 
 ### CEL Interceptors
 
-CEL Interceptors can be used to filter or modify incoming events, using the
+CEL Interceptors can be used to filter or add extra information to incoming events, using the
 [CEL](https://github.com/google/cel-go) expression language.
 
 Please read the
@@ -626,76 +554,26 @@ for more details on the expression language syntax.
 The `cel-trig-with-matches` trigger below filters events that don't have an
 `'X-GitHub-Event'` header matching `'pull_request'`.
 
-It also modifies the incoming request, adding an extra key to the JSON body,
+It also modifies the incoming event, adding an extra key to the JSON body,
 with a truncated string coming from the hook body.
 
-<!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: cel-listener-interceptor
-spec:
-  serviceAccountName: tekton-triggers-example-sa
+```yaml
   triggers:
     - name: cel-trig-with-matches
       interceptors:
         - cel:
             filter: "header.match('X-GitHub-Event', 'pull_request')"
             overlays:
-            - key: extensions.truncated_sha
+            - key: truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
-      - ref: pipeline-binding
-      template:
-        ref: pipeline-template
-    - name: cel-trig-with-canonical
-      interceptors:
-        - cel:
-            filter: "header.canonical('X-GitHub-Event') == 'push'"
-      bindings:
-      - ref: pipeline-binding
-      template:
-        ref: pipeline-template
+      - name: sha
+        value: $(extensions.truncated_sha)
 ```
-
 
 In addition to the standard expressions provided by CEL, Triggers supports some
 useful functions for dealing with event data
 [CEL expressions](./cel_expressions.md).
-
-The body/header of the incoming request will be preserved in this Interceptor's
-response.
-
-<!-- FILE: examples/eventlisteners/cel-eventlistener-interceptor.yaml -->
-```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: cel-listener-interceptor
-spec:
-  serviceAccountName: tekton-triggers-example-sa
-  triggers:
-    - name: cel-trig-with-matches
-      interceptors:
-        - cel:
-            filter: "header.match('X-GitHub-Event', 'pull_request')"
-            overlays:
-            - key: extensions.truncated_sha
-              expression: "body.pull_request.head.sha.truncate(7)"
-      bindings:
-      - ref: pipeline-binding
-      template:
-        ref: pipeline-template
-    - name: cel-trig-with-canonical
-      interceptors:
-        - cel:
-            filter: "header.canonical('X-GitHub-Event') == 'push'"
-      bindings:
-      - ref: pipeline-binding
-      template:
-        ref: pipeline-template
-```
 
 
 The `filter` expression must return a `true` value if this trigger is to be
@@ -723,21 +601,12 @@ spec:
       template:
         ref: pipeline-template
 ```
-
-
 #### Overlays
 
-The CEL interceptor supports "overlays", these are CEL expressions that are
-applied to the body before it's returned to the event-listener.
+The CEL interceptor supports "overlays", these are CEL expressions whose values are added to the incoming event under a 
+top-level `extensions` field  and are accessible by TriggerBindings.
 
-<!-- FILE: examples/eventlisteners/cel-eventlistener-multiple-overlays.yaml -->
-```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: example-with-multiple-overlays
-spec:
-  serviceAccountName: tekton-triggers-example-sa
+```yaml
   triggers:
     - name: cel-trig
       interceptors:
@@ -747,65 +616,37 @@ spec:
               expression: "body.pull_request.head.sha.truncate(7)"
             - key: extensions.branch_name
               expression: "body.ref.split('/')[2]"
-      bindings:
-      - ref: pipeline-binding
-      template:
-        ref: pipeline-template
 ```
 
 
-In this example, the bindings will see two additional fields:
+In this example, the bindings will see two added" fields -- `extensions.truncated_sha` and `extensions.branch_name` in 
+addition to the regular `body` and `header` fields.
 
-Assuming that the input body looked something like this:
-
-```json
-{
-  "ref": "refs/heads/master",
-  "pull_request": {
-    "head": {
-      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246"
-    }
-  }
-}
-```
-
-The output body would look like this:
-
-```json
-{
-  "ref": "refs/heads/master",
-  "pull_request": {
-    "head": {
-      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246"
-    }
-  },
-  "extensions": {
-    "truncated_sha": "6113728",
-    "branch_name": "master"
-  }
-}
-```
-
-The `key` element of the overlay can create new elements in a body, or, overlay
-existing elements.
+The `key` element of the overlay can create new elements or replace existing elements within the extensions field.
+Note that the original incoming body is not modified. Instead, new fields are added to a separate top-level `extensions`
+field that is accessible by TriggerBindings. 
 
 For example, this expression:
 
 ```YAML
-- key: body.pull_request.head.short_sha
+- key: short_sha
   expression: "truncate(body.pull_request.head.sha, 7)"
 ```
 
-Would see the `short_sha` being inserted into the existing body:
+Would see the `short_sha` being created in the `extensions` field:
 
 ```json
 {
-  "ref": "refs/heads/master",
-  "pull_request": {
-    "head": {
-      "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
-      "short_sha": "6113728"
+  "body": {
+    "ref": "refs/heads/master",
+    "pull_request": {
+      "head": {
+        "sha": "6113728f27ae82c7b1a177c8d03f9e96e0adf246"
+      }
     }
+  },
+  "extensions": {
+    "short_sha": "6113728"
   }
 }
 ```
@@ -824,9 +665,9 @@ metadata:
 spec:
   params:
   - name: gitrevision
-    value: $(body.extensions.branch_name)
+    value: $(extensions.branch_name)
   - name: branch
-    value: $(body.pull_request.head.short_sha)
+    value: $(extensions.short_sha)
 ```
 
 ## EventListener Response

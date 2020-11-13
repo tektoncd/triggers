@@ -230,7 +230,6 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	var interceptorResponse *triggersv1.InterceptorResponse
 	for _, i := range t.Interceptors {
 		var interceptor interceptors.Interceptor
-		// We still need this block till we move the interceptors to their own processes.
 		switch {
 		case i.Webhook != nil:
 			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
@@ -239,18 +238,17 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		case i.GitLab != nil:
 			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
 		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(i.CEL, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
 		case i.Bitbucket != nil:
 			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, r.EventListenerNamespace, log)
 		default:
 			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
 
-		// Webhook interceptor still follows old interface
+		// Immutable Interface check
 		if interceptorInterface, ok := interceptor.(triggersv1.InterceptorInterface); ok {
 			// Set per interceptor config params to the request
 			request.InterceptorParams = interceptors.GetInterceptorParams(i)
-			// TODO: pipe in context from sink
 			interceptorResponse = interceptorInterface.Process(context.Background(), &request)
 			if !interceptorResponse.Continue {
 				return nil, nil, interceptorResponse, nil
@@ -265,7 +263,7 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 			// Clear interceptorParams for the next interceptor in chain
 			request.InterceptorParams = map[string]interface{}{}
 		} else {
-			// Old style interceptor (only Webhook)
+			// Old style interceptor (everything but CEL at the moment)
 			req := &http.Request{
 				Method: http.MethodPost,
 				Header: request.Header,
