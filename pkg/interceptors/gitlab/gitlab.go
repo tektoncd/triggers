@@ -17,10 +17,14 @@ limitations under the License.
 package gitlab
 
 import (
+	"context"
 	"crypto/subtle"
-	"errors"
 	"fmt"
 	"net/http"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
@@ -30,56 +34,63 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+
 type Interceptor struct {
-	KubeClientSet    kubernetes.Interface
-	Logger           *zap.SugaredLogger
-	GitLab           *triggersv1.GitLabInterceptor
-	TriggerNamespace string
+	KubeClientSet kubernetes.Interface
+	Logger        *zap.SugaredLogger
 }
 
-func NewInterceptor(gl *triggersv1.GitLabInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:           l,
-		GitLab:           gl,
-		KubeClientSet:    k,
-		TriggerNamespace: ns,
+		Logger:        l,
+		KubeClientSet: k,
 	}
 }
 
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	// Validate the secret first, if set.
-	if w.GitLab.SecretRef != nil {
-		header := request.Header.Get("X-GitLab-Token")
+	return nil, fmt.Errorf("executeTrigger() is deprecated. Call Process() instead")
+}
+
+func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+	p := triggersv1.GitLabInterceptor{}
+	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
+		return interceptors.Fail(status.Newf(codes.InvalidArgument, "failed to parse interceptor params: %v", err))
+	}
+
+	headers := interceptors.Canonical(r.Header)
+	if p.SecretRef != nil {
+		header := headers.Get("X-GitLab-Token")
 		if header == "" {
-			return nil, errors.New("no X-GitLab-Token header set")
+			return interceptors.Fail(status.New(codes.InvalidArgument, "no X-GitLab-Token header set"))
 		}
 
-		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.GitLab.SecretRef, w.TriggerNamespace)
+		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+		secret, err := w.KubeClientSet.CoreV1().Secrets(ns).Get(ctx, p.SecretRef.SecretName, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return interceptors.Fail(status.New(codes.Internal, fmt.Sprintf("error getting secret: %v", err)))
 		}
+		secretToken := secret.Data[p.SecretRef.SecretKey]
 
 		// Make sure to use a constant time comparison here.
 		if subtle.ConstantTimeCompare([]byte(header), secretToken) == 0 {
-			return nil, errors.New("Invalid X-GitLab-Token")
+			return interceptors.Fail(status.New(codes.InvalidArgument, "Invalid X-GitLab-Token"))
 		}
 	}
-	if w.GitLab.EventTypes != nil {
-		actualEvent := request.Header.Get("X-GitLab-Event")
+	if p.EventTypes != nil {
+		actualEvent := headers.Get("X-GitLab-Event")
 		isAllowed := false
-		for _, allowedEvent := range w.GitLab.EventTypes {
+		for _, allowedEvent := range p.EventTypes {
 			if actualEvent == allowedEvent {
 				isAllowed = true
 				break
 			}
 		}
 		if !isAllowed {
-			return nil, fmt.Errorf("event type %s is not allowed", actualEvent)
+			return interceptors.Fail(status.Newf(codes.FailedPrecondition, "event type %s is not allowed", actualEvent))
 		}
 	}
-
-	return &http.Response{
-		Header: request.Header,
-		Body:   request.Body,
-	}, nil
+	return &triggersv1.InterceptorResponse{
+		Continue: true,
+	}
 }

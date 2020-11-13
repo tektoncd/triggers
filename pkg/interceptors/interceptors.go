@@ -18,8 +18,12 @@ package interceptors
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
+
+	"google.golang.org/grpc/status"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,4 +121,35 @@ func GetInterceptorParams(i *triggersv1.EventInterceptor) map[string]interface{}
 	}
 
 	return ip
+}
+
+// Fail constructs a InterceptorResponse that should not continue further processing.
+func Fail(status *status.Status) *triggersv1.InterceptorResponse {
+	return &triggersv1.InterceptorResponse{
+		Continue: false,
+		Status:   status,
+	}
+}
+
+// Canonical updates the map keys to use the Canonical name
+func Canonical(h map[string][]string) http.Header {
+	c := map[string][]string{}
+	for k, v := range h {
+		c[http.CanonicalHeaderKey(k)] = v
+	}
+	return http.Header(c)
+}
+
+// UnmarshalParams unmarshalls the passed in InterceptorParams into the provided param struct
+func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
+	b, err := json.Marshal(ip)
+	if err != nil {
+		return fmt.Errorf("failed to marshal json: %w", err)
+	}
+
+	if err := json.Unmarshal(b, &p); err != nil {
+		// Should never happen since Unmarshall only returns err if json is invalid which we already check above
+		return fmt.Errorf("invalid json: %w", err)
+	}
+	return nil
 }

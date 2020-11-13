@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -156,25 +157,100 @@ func TestGetInterceptorParams(t *testing.T) {
 	}
 }
 
+func TestCanonical(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   map[string][]string
+		want map[string][]string
+	}{{
+		name: "all uppercase",
+		in: map[string][]string{
+			"X-ABC": {"foo"},
+		},
+		want: map[string][]string{
+			"X-Abc": {"foo"},
+		},
+	}, {
+		name: "all lowercase",
+		in: map[string][]string{
+			"x-abc": {"a", "v"},
+		},
+		want: map[string][]string{
+			"X-Abc": {"a", "v"},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Canonical(tc.in)
+			want := http.Header(tc.want)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Fatalf("Canonical() failed. Diff (-want/+got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestUnmarshalParam(t *testing.T) {
+	in := map[string]interface{}{
+		"secretKey":  "key",
+		"secretName": "name",
+	}
+
+	got := triggersv1.SecretRef{}
+	if err := UnmarshalParams(in, &got); err != nil {
+		t.Fatalf("UnmarshalParams() unexpected error: %v", err)
+	}
+
+	want := triggersv1.SecretRef{
+		SecretKey:  "key",
+		SecretName: "name",
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("UnmarshalParams() failed. Diff (-want/+got): %s", diff)
+	}
+}
+
+func TestGetInterceptorParams_Error(t *testing.T) {
+	for _, tc := range []struct {
+		ip         map[string]interface{}
+		p          interface{}
+		wantErrMsg string
+	}{{
+		ip: map[string]interface{}{
+			"secretKey": func() {},
+		},
+		p:          triggersv1.SecretRef{},
+		wantErrMsg: "failed to marshal json",
+	}} {
+		t.Run(tc.wantErrMsg, func(t *testing.T) {
+			err := UnmarshalParams(tc.ip, &tc.p)
+			if err == nil {
+				t.Fatalf("UnmarshalParams() expected error but got nil")
+			}
+
+			if !strings.Contains(err.Error(), tc.wantErrMsg) {
+				t.Fatalf("UnmarshalParams() expected err to contain %s but got %s", tc.wantErrMsg, err.Error())
+			}
+		})
+	}
+}
+
 func Test_GetSecretToken(t *testing.T) {
 	tests := []struct {
 		name   string
 		cache  map[string]interface{}
 		wanted []byte
-	}{
-		{
-			name:   "no matching cache entry exists",
-			cache:  make(map[string]interface{}),
-			wanted: []byte("secret from API"),
+	}{{
+		name:   "no matching cache entry exists",
+		cache:  make(map[string]interface{}),
+		wanted: []byte("secret from API"),
+	}, {
+		name: "a matching cache entry exists",
+		cache: map[string]interface{}{
+			fmt.Sprintf("secret/%s/test-secret/token", testNS): []byte("secret from cache"),
 		},
-		{
-			name: "a matching cache entry exists",
-			cache: map[string]interface{}{
-				fmt.Sprintf("secret/%s/test-secret/token", testNS): []byte("secret from cache"),
-			},
-			wanted: []byte("secret from cache"),
-		},
-	}
+		wanted: []byte("secret from cache"),
+	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
@@ -182,7 +258,10 @@ func Test_GetSecretToken(t *testing.T) {
 
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
-			secretRef := makeSecretRef()
+			secretRef := triggersv1.SecretRef{
+				SecretKey:  "token",
+				SecretName: "test-secret",
+			}
 
 			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(context.Background(), makeSecret("secret from API"), metav1.CreateOptions{}); err != nil {
 				rt.Error(err)
@@ -209,13 +288,6 @@ func makeSecret(secretText string) *corev1.Secret {
 		Data: map[string][]byte{
 			"token": []byte(secretText),
 		},
-	}
-}
-
-func makeSecretRef() triggersv1.SecretRef {
-	return triggersv1.SecretRef{
-		SecretKey:  "token",
-		SecretName: "test-secret",
 	}
 }
 

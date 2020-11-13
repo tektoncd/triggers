@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/tektoncd/triggers/pkg/interceptors"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -59,8 +61,6 @@ var (
 	listType   = reflect.TypeOf(&structpb.ListValue{})
 	mapType    = reflect.TypeOf(&structpb.Struct{})
 )
-
-type params = triggersv1.CELInterceptor
 
 // NewInterceptor creates a prepopulated Interceptor.
 func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
@@ -124,23 +124,12 @@ func makeEvalContext(body []byte, h http.Header, url string) (map[string]interfa
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
-	b, err := json.Marshal(r.InterceptorParams)
-	if err != nil {
-		return &triggersv1.InterceptorResponse{
-			Continue: false,
-			Status:   status.Newf(codes.InvalidArgument, "failed to marshal json: %v", err),
-		}
+	p := triggersv1.CELInterceptor{}
+	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
+		return interceptors.Fail(status.Newf(codes.InvalidArgument, "failed to parse interceptor params: %v", err))
 	}
-	p := params{}
-	if err := json.Unmarshal(b, &p); err != nil {
-		// Should never happen since Unmarshal only returns err if json is invalid which we already check above
-		return &triggersv1.InterceptorResponse{
-			Continue: false,
-			Status:   status.Newf(codes.InvalidArgument, "invalid json: %v", err),
-		}
-	}
-	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 
+	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 	env, err := makeCelEnv(ns, w.KubeClientSet)
 	if err != nil {
 		return &triggersv1.InterceptorResponse{
