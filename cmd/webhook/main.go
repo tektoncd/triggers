@@ -118,7 +118,10 @@ func main() {
 		SecretName:  secretName,
 	})
 
-	sharedmain.WebhookMainWithConfig(ctx, "webhook",
+	// NOTE(afrittoli) - we should have the name "webhook-triggers"
+	// configurable. Once the change is done on knative/pkg side
+	// knative/eventing#4530 we can inherit it from it
+	sharedmain.WebhookMainWithConfig(ctx, "webhook-triggers",
 		sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		NewDefaultingAdmissionController,
