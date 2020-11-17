@@ -25,7 +25,7 @@ metadata:
 # The data is populated at install time.
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: validation.webhook.triggers.tekton.dev
@@ -37,6 +37,7 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1beta1
+  - v1
   clientConfig:
     service:
       name: tekton-triggers-webhook
@@ -46,7 +47,7 @@ webhooks:
   name: validation.webhook.triggers.tekton.dev
 ---
 
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: webhook.triggers.tekton.dev
@@ -58,6 +59,7 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1beta1
+  - v1
   clientConfig:
     service:
       name: tekton-triggers-webhook
@@ -66,7 +68,7 @@ webhooks:
   sideEffects: None
   name: webhook.triggers.tekton.dev
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: config.webhook.triggers.tekton.dev
@@ -78,6 +80,7 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1beta1
+  - v1
   clientConfig:
     service:
       name: tekton-triggers-webhook
