@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"github.com/google/go-cmp/cmp"
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -33,7 +35,6 @@ import (
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/test"
-	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -231,14 +232,13 @@ func Test_processTriggerSpec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			eventID := "some-id"
-			logger, _ := zap.NewProduction()
-			eventLog := logger.Sugar()
+			logger := zaptest.NewLogger(t).Sugar()
 			kubeClient, triggerClient := getFakeTriggersClient(t, tt.args.resources)
 			s := sink.Sink{
 				KubeClientSet: kubeClient,
 				HTTPClient:    http.DefaultClient,
 			}
-			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, eventLog, s)
+			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, logger, s)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processTriggerSpec() error = %v. wantErr %v", err, tt.wantErr)
 				return

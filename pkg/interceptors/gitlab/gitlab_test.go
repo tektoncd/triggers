@@ -23,13 +23,14 @@ import (
 	"net/http"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"github.com/google/go-cmp/cmp"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -201,7 +202,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
-			logger, _ := logging.NewLogger("", "")
+			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
 			request := &http.Request{
 				Body: ioutil.NopCloser(bytes.NewReader(tt.args.payload)),
@@ -223,7 +224,7 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 			w := &Interceptor{
 				KubeClientSet:          kubeClient,
 				GitLab:                 tt.GitLab,
-				Logger:                 logger,
+				Logger:                 logger.Sugar(),
 				EventListenerNamespace: metav1.NamespaceDefault,
 			}
 			resp, err := w.ExecuteTrigger(request)

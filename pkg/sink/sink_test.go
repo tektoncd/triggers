@@ -779,7 +779,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	logger, _ := zap.NewProduction()
+	logger := zaptest.NewLogger(t)
 
 	r := Sink{
 		HTTPClient: srv.Client(),
@@ -863,7 +863,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 		Proxy: http.ProxyURL(u),
 	}
 
-	logger, _ := zap.NewProduction()
+	logger := zaptest.NewLogger(t)
 	s := Sink{
 		HTTPClient: client,
 		Logger:     logger.Sugar(),
@@ -906,7 +906,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 }
 
 func TestExecuteInterceptor_NotContinue(t *testing.T) {
-	logger, _ := zap.NewProduction()
+	logger := zaptest.NewLogger(t)
 	s := Sink{
 		Logger: logger.Sugar(),
 	}

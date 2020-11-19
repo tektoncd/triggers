@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/cel-go/common/types"
@@ -35,7 +37,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -232,13 +233,13 @@ func TestInterceptor_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			logger, _ := logging.NewLogger("", "")
+			logger := zaptest.NewLogger(t)
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
 			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(ctx, makeSecret(), metav1.CreateOptions{}); err != nil {
 				rt.Error(err)
 			}
-			w := NewInterceptor(kubeClient, logger)
+			w := NewInterceptor(kubeClient, logger.Sugar())
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
 				Body: tt.body,
 				Header: http.Header{
@@ -332,9 +333,9 @@ func TestInterceptor_Process_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger, _ := logging.NewLogger("", "")
+			logger := zaptest.NewLogger(t)
 			w := &Interceptor{
-				Logger: logger,
+				Logger: logger.Sugar(),
 			}
 			res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
 				Body: tt.body,
@@ -368,9 +369,9 @@ func TestInterceptor_Process_Error(t *testing.T) {
 }
 
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
-	logger, _ := logging.NewLogger("", "")
+	logger := zaptest.NewLogger(t)
 	w := &Interceptor{
-		Logger: logger,
+		Logger: logger.Sugar(),
 	}
 	res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
 		Body:   json.RawMessage(`{}`),
