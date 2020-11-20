@@ -3,7 +3,7 @@ kind: ServiceAccount
 metadata:
   name: tekton-triggers-tls-sa
 secrets:
-  - name: github-secret
+  - name: el-tls-secret
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
