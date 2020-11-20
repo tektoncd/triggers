@@ -242,7 +242,11 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
-	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
+	saName := "default"
+	if len(t.Spec.ServiceAccountName) > 0 {
+		saName = t.Spec.ServiceAccountName
+	}
+	if err := r.CreateResources(t.Namespace, saName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
