@@ -173,6 +173,12 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.Trigger) ([]*triggersv1.Trigger, error) {
 	triggers := trItems
 	for _, t := range et {
+		// if ELT serviceAccountName not set, take that as assuming the user if fine with using the default SA;
+		// but no longer allow the EventListener SA and its permissions to influence what can be created
+		serviceAccountName := "default"
+		if len(t.ServiceAccountName) > 0 {
+			serviceAccountName = t.ServiceAccountName
+		}
 		switch {
 		case t.Template == nil && t.TriggerRef != "":
 			trig, err := r.TriggerLister.Triggers(r.EventListenerNamespace).Get(t.TriggerRef)
@@ -187,7 +193,7 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 					Name:      t.Name,
 					Namespace: r.EventListenerNamespace},
 				Spec: triggersv1.TriggerSpec{
-					ServiceAccountName: t.ServiceAccountName,
+					ServiceAccountName: serviceAccountName,
 					Bindings:           t.Bindings,
 					Template:           *t.Template,
 					Interceptors:       t.Interceptors,
