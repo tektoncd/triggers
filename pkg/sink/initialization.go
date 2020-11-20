@@ -33,6 +33,7 @@ const (
 	name        = "el-name"
 	elNamespace = "el-namespace"
 	port        = "port"
+	isMultiNS   = "is-multi-ns"
 )
 
 var (
@@ -50,6 +51,8 @@ var (
 		"The idle timeout for EventListener Server.")
 	elTimeOutHandler = flag.Int64("timeouthandler", 5,
 		"The timeout for Timeout Handler of EventListener Server.")
+	isMultiNSFlag = flag.Bool("is-multi-ns", false,
+		"Whether EventListener serve Multiple NS.")
 )
 
 // Args define the arguments for Sink.
@@ -68,6 +71,8 @@ type Args struct {
 	ELIdleTimeOut time.Duration
 	// ELTimeOutHandler defines the timeout for Timeout Handler of EventListener Server
 	ELTimeOutHandler time.Duration
+	// IsMultiNS determines whether el functions as namespaced or clustered
+	IsMultiNS bool
 }
 
 // Clients define the set of client dependencies Sink requires.
@@ -89,10 +94,12 @@ func GetArgs() (Args, error) {
 	if *portFlag == "" {
 		return Args{}, xerrors.Errorf("-%s arg not found", port)
 	}
+
 	return Args{
 		ElName:           *nameFlag,
 		ElNamespace:      *namespaceFlag,
 		Port:             *portFlag,
+		IsMultiNS:        *isMultiNSFlag,
 		ELReadTimeOut:    time.Duration(*elReadTimeOut),
 		ELWriteTimeOut:   time.Duration(*elWriteTimeOut),
 		ELIdleTimeOut:    time.Duration(*elIdleTimeOut),

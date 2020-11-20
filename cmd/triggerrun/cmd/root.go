@@ -127,7 +127,7 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 			}
 		case "create":
 			{
-				err := r.CreateResources("", resources, tri.Name, eventID, eventLog)
+				err := r.CreateResources(tri.Namespace, "", resources, tri.Name, eventID, eventLog)
 				if err != nil {
 					return fmt.Errorf("fail to create resources: %w", err)
 				}
@@ -193,15 +193,9 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		return nil, errors.New("trigger is not defined")
 	}
 
-	//convert trigger to eventListener
-	el, err := triggersv1.ToEventListenerTrigger(tri.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("fail to convert Trigger to EvenetListener: %w", err)
-	}
+	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, r.EventListenerName))
 
-	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, el.Name))
-
-	finalPayload, header, iresp, err := r.ExecuteInterceptors(&el, request, body, log, eventID)
+	finalPayload, header, iresp, err := r.ExecuteInterceptors(*tri, request, body, log, eventID)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -216,7 +210,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		tri.Namespace = "default"
 	}
 
-	rt, err := template.ResolveTrigger(el,
+	rt, err := template.ResolveTrigger(*tri,
 		func(name string) (*triggersv1.TriggerBinding, error) {
 			return client.TriggersV1alpha1().TriggerBindings(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
 		},

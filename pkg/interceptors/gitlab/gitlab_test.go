@@ -222,10 +222,10 @@ func TestInterceptor_ExecuteTrigger(t *testing.T) {
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet:          kubeClient,
-				GitLab:                 tt.GitLab,
-				Logger:                 logger.Sugar(),
-				EventListenerNamespace: metav1.NamespaceDefault,
+				KubeClientSet:    kubeClient,
+				GitLab:           tt.GitLab,
+				Logger:           logger.Sugar(),
+				TriggerNamespace: metav1.NamespaceDefault,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {

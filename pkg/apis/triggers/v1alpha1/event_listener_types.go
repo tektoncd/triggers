@@ -58,6 +58,7 @@ type EventListenerSpec struct {
 	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
 	Replicas           *int32                 `json:"replicas,omitempty"`
 	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
+	NamespaceSelector  NamespaceSelector      `json:"namespaceSelector,omitempty"`
 	Resources          Resources              `json:"resources,omitempty"`
 }
 
@@ -149,6 +150,14 @@ type EventListenerConfig struct {
 	// GeneratedResourceName is the name given to all resources reconciled by
 	// the EventListener
 	GeneratedResourceName string `json:"generatedName"`
+}
+
+// NamespaceSelector is a selector for selecting either all namespaces or a
+// list of namespaces.
+// +k8s:openapi-gen=true
+type NamespaceSelector struct {
+	// List of namespace names.
+	MatchNames []string `json:"matchNames,omitempty"`
 }
 
 // The conditions that are internally resolved by the EventListener reconciler

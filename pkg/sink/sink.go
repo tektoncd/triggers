@@ -38,6 +38,8 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -93,13 +95,37 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
-
+	var trItems []*triggersv1.Trigger
+	if len(el.Spec.NamespaceSelector.MatchNames) == 1 &&
+		el.Spec.NamespaceSelector.MatchNames[0] == "*" {
+		trList, err := r.TriggerLister.List(labels.Everything())
+		if err != nil {
+			r.Logger.Errorf("Error getting Triggers: %s", err)
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		trItems = trList
+	} else if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
+		for _, v := range el.Spec.NamespaceSelector.MatchNames {
+			trList, err := r.TriggerLister.Triggers(v).List(labels.Everything())
+			if err != nil {
+				r.Logger.Errorf("Error getting Triggers: %s", err)
+				response.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			trItems = append(trItems, trList...)
+		}
+	}
+	triggers, err := r.merge(el.Spec.Triggers, trItems)
+	if err != nil {
+		r.Logger.Errorf("Error merging Triggers: %s", err)
+	}
 	result := make(chan int, 10)
 	// Execute each Trigger
-	for _, t := range el.Spec.Triggers {
-		go func(t triggersv1.EventListenerTrigger) {
+	for _, t := range triggers {
+		go func(t triggersv1.Trigger) {
 			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(&t, localRequest, event, eventID, eventLog); err != nil {
+			if err := r.processTrigger(t, localRequest, event, eventID, eventLog); err != nil {
 				if kerrors.IsUnauthorized(err) {
 					result <- http.StatusUnauthorized
 					return
@@ -112,13 +138,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 				return
 			}
 			result <- http.StatusCreated
-		}(t)
+		}(*t)
 	}
 
 	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
 	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
-	for i := 0; i < len(el.Spec.Triggers); i++ {
+	for i := 0; i < len(triggers); i++ {
 		thiscode := <-result
 		// current take - if someone is doing unauthorized stuff, we abort immediately;
 		// unauthorized should be the final status code vs. the less than comparison
@@ -144,26 +170,37 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
-
-	if t == nil {
-		return errors.New("EventListenerTrigger not defined")
-	}
-
-	if t.Template == nil && t.TriggerRef != "" {
-		trigger, err := r.TriggerLister.Triggers(r.EventListenerNamespace).Get(t.TriggerRef)
-		if err != nil {
-			r.Logger.Errorf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
-			return err
+func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.Trigger) ([]*triggersv1.Trigger, error) {
+	triggers := trItems
+	for _, t := range et {
+		switch {
+		case t.Template == nil && t.TriggerRef != "":
+			trig, err := r.TriggerLister.Triggers(r.EventListenerNamespace).Get(t.TriggerRef)
+			if err != nil {
+				r.Logger.Errorf("Error getting Trigger %s in Namespace %s: %s", t.TriggerRef, r.EventListenerNamespace, err)
+				continue
+			}
+			triggers = append(triggers, trig)
+		case t.Template != nil:
+			triggers = append(triggers, &triggersv1.Trigger{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      t.Name,
+					Namespace: r.EventListenerNamespace},
+				Spec: triggersv1.TriggerSpec{
+					ServiceAccountName: t.ServiceAccountName,
+					Bindings:           t.Bindings,
+					Template:           *t.Template,
+					Interceptors:       t.Interceptors,
+				},
+			})
+		default:
+			return nil, errors.New("EventListenerTrigger not defined")
 		}
-		trig, err := triggersv1.ToEventListenerTrigger(trigger.Spec)
-		if err != nil {
-			r.Logger.Errorf("Error changing Trigger to EventListenerTrigger: %s", err)
-			return err
-		}
-		t = &trig
 	}
+	return triggers, nil
+}
 
+func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
 	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
@@ -179,10 +216,10 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 		}
 	}
 
-	rt, err := template.ResolveTrigger(*t,
-		r.TriggerBindingLister.TriggerBindings(r.EventListenerNamespace).Get,
+	rt, err := template.ResolveTrigger(t,
+		r.TriggerBindingLister.TriggerBindings(t.Namespace).Get,
 		r.ClusterTriggerBindingLister.Get,
-		r.TriggerTemplateLister.TriggerTemplates(r.EventListenerNamespace).Get)
+		r.TriggerTemplateLister.TriggerTemplates(t.Namespace).Get)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -199,7 +236,7 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
-	if err := r.CreateResources(t.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
+	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -208,8 +245,8 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
 // When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
-func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
-	if len(t.Interceptors) == 0 {
+func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+	if len(t.Spec.Interceptors) == 0 {
 		return event, in.Header, nil, nil
 	}
 
@@ -223,24 +260,24 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 			EventURL: in.URL.String(),
 			EventID:  eventID,
 			// t.Name might not be fully accurate until we get rid of triggers inlined within EventListener
-			TriggerID: fmt.Sprintf("namespaces/%s/triggers/%s", r.EventListenerNamespace, t.Name), // TODO: t.Name might be wrong
+			TriggerID: fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), // TODO: t.Name might be wrong
 		},
 	}
 
 	var interceptorResponse *triggersv1.InterceptorResponse
-	for _, i := range t.Interceptors {
+	for _, i := range t.Spec.Interceptors {
 		var interceptor interceptors.Interceptor
 		switch {
 		case i.Webhook != nil:
-			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, r.EventListenerNamespace, log)
+			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, t.Namespace, log)
 		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(i.GitHub, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = github.NewInterceptor(i.GitHub, r.KubeClientSet, t.Namespace, log)
 		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = gitlab.NewInterceptor(i.GitLab, r.KubeClientSet, t.Namespace, log)
 		case i.CEL != nil:
 			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
 		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, r.EventListenerNamespace, log)
+			interceptor = bitbucket.NewInterceptor(i.Bitbucket, r.KubeClientSet, t.Namespace, log)
 		default:
 			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
 		}
@@ -293,7 +330,7 @@ func (r Sink) ExecuteInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 	}, nil
 }
 
-func (r Sink) CreateResources(sa string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
+func (r Sink) CreateResources(triggerNS, sa string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
 	discoveryClient := r.DiscoveryClient
 	dynamicClient := r.DynamicClient
 	var err error
@@ -303,7 +340,7 @@ func (r Sink) CreateResources(sa string, res []json.RawMessage, triggerName, eve
 
 		// However, we also have a ServiceAccountName reference with each EventListenerTrigger to allow
 		// for more fine grained authorization control around the resources we create below.
-		discoveryClient, dynamicClient, err = r.Auth.OverrideAuthentication(sa, r.EventListenerNamespace, log, r.DiscoveryClient, r.DynamicClient)
+		discoveryClient, dynamicClient, err = r.Auth.OverrideAuthentication(sa, triggerNS, log, r.DiscoveryClient, r.DynamicClient)
 		if err != nil {
 			log.Errorf("problem cloning rest config: %#v", err)
 			return err
@@ -311,7 +348,7 @@ func (r Sink) CreateResources(sa string, res []json.RawMessage, triggerName, eve
 	}
 
 	for _, rr := range res {
-		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, r.EventListenerNamespace, discoveryClient, dynamicClient); err != nil {
+		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, triggerNS, discoveryClient, dynamicClient); err != nil {
 			log.Errorf("problem creating obj: %#v", err)
 			return err
 		}

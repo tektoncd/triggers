@@ -34,18 +34,18 @@ import (
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
 
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
-	Logger                 *zap.SugaredLogger
-	GitHub                 *triggersv1.GitHubInterceptor
-	EventListenerNamespace string
+	KubeClientSet    kubernetes.Interface
+	Logger           *zap.SugaredLogger
+	GitHub           *triggersv1.GitHubInterceptor
+	TriggerNamespace string
 }
 
 func NewInterceptor(gh *triggersv1.GitHubInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:                 l,
-		GitHub:                 gh,
-		KubeClientSet:          k,
-		EventListenerNamespace: ns,
+		Logger:           l,
+		GitHub:           gh,
+		KubeClientSet:    k,
+		TriggerNamespace: ns,
 	}
 }
 
@@ -70,7 +70,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		if header == "" {
 			return nil, errors.New("no X-Hub-Signature header set")
 		}
-		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.GitHub.SecretRef, w.EventListenerNamespace)
+		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.GitHub.SecretRef, w.TriggerNamespace)
 		if err != nil {
 			return nil, err
 		}

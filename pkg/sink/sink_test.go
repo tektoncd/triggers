@@ -270,6 +270,115 @@ func TestHandleEvent(t *testing.T) {
 	}
 }
 
+func TestHandleEventNSSelectorMatchNames(t *testing.T) {
+	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
+
+	triggerNS := "bar"
+
+	pipelineResource := pipelinev1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "$(tt.params.name)",
+			Namespace: triggerNS,
+			Labels: map[string]string{
+				"app":  "$(tt.params.foo)",
+				"type": "$(tt.params.type)",
+			},
+		},
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
+				{Name: "url", Value: "$(tt.params.url)"},
+				{Name: "revision", Value: "$(tt.params.revision)"},
+			},
+		},
+	}
+	pipelineResourceBytes, err := json.Marshal(pipelineResource)
+	if err != nil {
+		t.Fatalf("Error unmarshalling pipelineResource: %s", err)
+	}
+
+	tt := bldr.TriggerTemplate("my-triggertemplate", triggerNS,
+		bldr.TriggerTemplateSpec(
+			bldr.TriggerTemplateParam("name", "", ""),
+			bldr.TriggerTemplateParam("url", "", ""),
+			bldr.TriggerTemplateParam("revision", "", ""),
+			bldr.TriggerTemplateParam("foo", "", ""),
+			bldr.TriggerTemplateParam("type", "", ""),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
+		))
+	// Create TriggerBinding
+	tbs := []*triggersv1.TriggerBinding{bldr.TriggerBinding("my-triggerbinding", triggerNS,
+		bldr.TriggerBindingSpec(
+			bldr.TriggerBindingParam("name", "my-pipelineresource"),
+			bldr.TriggerBindingParam("url", "$(body.repository.url)"),
+			bldr.TriggerBindingParam("revision", "$(body.head_commit.id)"),
+			bldr.TriggerBindingParam("foo", "$(body.foo)"),
+			bldr.TriggerBindingParam("type", "$(header.Content-Type)"),
+		))}
+	// Add TriggerBinding to Trigger
+	triggers := []*triggersv1.Trigger{bldr.Trigger("my-trigger", triggerNS, bldr.TriggerSpec(
+		bldr.TriggerSpecBinding("my-triggerbinding", "", "my-triggerbinding", "v1alpha1"),
+		bldr.TriggerSpecTemplate("my-triggertemplate", "v1alpha1"),
+	))}
+	// Add NamespaceSelector to EventListener
+	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(bldr.EventListenerNamespaceSelectorMatchNames([]string{triggerNS})))
+
+	resources := test.Resources{
+		TriggerBindings:  tbs,
+		TriggerTemplates: []*triggersv1.TriggerTemplate{tt},
+		EventListeners:   []*triggersv1.EventListener{el},
+		Triggers:         triggers,
+	}
+
+	sink, dynamicClient := getSinkAssets(t, resources, el.Name, DefaultAuthOverride{})
+
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(eventBody))
+	if err != nil {
+		t.Fatalf("Error creating Post request: %s", err)
+	}
+
+	checkSinkResponse(t, resp, el.Name)
+	// Check right resources were created.
+	var wantPrs []pipelinev1alpha1.PipelineResource
+	wantResource := pipelinev1alpha1.PipelineResource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "PipelineResource",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pipelineresource",
+			Namespace: triggerNS,
+			Labels: map[string]string{
+				"app":         "bar\t\r\nbaz昨",
+				"type":        "application/json",
+				resourceLabel: "my-eventlistener",
+				triggerLabel:  "my-trigger",
+				eventIDLabel:  eventID,
+			},
+		},
+		Spec: pipelinev1alpha1.PipelineResourceSpec{
+			Type: pipelinev1alpha1.PipelineResourceTypeGit,
+			Params: []pipelinev1alpha1.ResourceParam{
+				{Name: "url", Value: "testurl"},
+				{Name: "revision", Value: "testrevision"},
+			},
+		},
+	}
+	wantPrs = append(wantPrs, wantResource)
+	// Sort actions (we do not know what order they executed in)
+	gotPrs := getCreatedPipelineResources(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantPrs, gotPrs, cmpopts.SortSlices(comparePR)); diff != "" {
+		t.Errorf("Created resources mismatch (-want + got): %s", diff)
+	}
+}
+
 func TestHandleEventTriggerRef(t *testing.T) {
 	eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
 
@@ -357,7 +466,7 @@ func TestHandleEventTriggerRef(t *testing.T) {
 				"app":         "bar\t\r\nbaz昨",
 				"type":        "application/json",
 				resourceLabel: "my-eventlistener",
-				triggerLabel:  el.Spec.Triggers[0].Name,
+				triggerLabel:  "my-trigger",
 				eventIDLabel:  eventID,
 			},
 		},
@@ -795,8 +904,9 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			},
 		},
 	}
-	trigger := &triggersv1.EventListenerTrigger{
-		Interceptors: []*triggersv1.EventInterceptor{a, a},
+	trigger := triggersv1.Trigger{
+		Spec: triggersv1.TriggerSpec{
+			Interceptors: []*triggersv1.EventInterceptor{a, a}},
 	}
 
 	for _, method := range []string{
@@ -869,24 +979,26 @@ func TestExecuteInterceptor_error(t *testing.T) {
 		Logger:     logger.Sugar(),
 	}
 
-	trigger := &triggersv1.EventListenerTrigger{
-		Interceptors: []*triggersv1.EventInterceptor{
-			// Error interceptor needs to come first.
-			{
-				Webhook: &triggersv1.WebhookInterceptor{
-					ObjectRef: &corev1.ObjectReference{
-						APIVersion: "v1",
-						Kind:       "Service",
-						Name:       errHost,
+	trigger := triggersv1.Trigger{
+		Spec: triggersv1.TriggerSpec{
+			Interceptors: []*triggersv1.EventInterceptor{
+				// Error interceptor needs to come first.
+				{
+					Webhook: &triggersv1.WebhookInterceptor{
+						ObjectRef: &corev1.ObjectReference{
+							APIVersion: "v1",
+							Kind:       "Service",
+							Name:       errHost,
+						},
 					},
 				},
-			},
-			{
-				Webhook: &triggersv1.WebhookInterceptor{
-					ObjectRef: &corev1.ObjectReference{
-						APIVersion: "v1",
-						Kind:       "Service",
-						Name:       "foo",
+				{
+					Webhook: &triggersv1.WebhookInterceptor{
+						ObjectRef: &corev1.ObjectReference{
+							APIVersion: "v1",
+							Kind:       "Service",
+							Name:       "foo",
+						},
 					},
 				},
 			},
@@ -911,12 +1023,13 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 		Logger: logger.Sugar(),
 	}
 
-	trigger := &triggersv1.EventListenerTrigger{
-		Interceptors: []*triggersv1.EventInterceptor{{
-			CEL: &triggersv1.CELInterceptor{
-				Filter: `body.head == "abcde"`,
-			},
-		}},
+	trigger := triggersv1.Trigger{
+		Spec: triggersv1.TriggerSpec{
+			Interceptors: []*triggersv1.EventInterceptor{{
+				CEL: &triggersv1.CELInterceptor{
+					Filter: `body.head == "abcde"`,
+				},
+			}}},
 	}
 	url, _ := url.Parse("http://example.com")
 	_, _, resp, err := s.ExecuteInterceptors(

@@ -320,6 +320,13 @@ func EventListenerCELOverlay(key, expression string) EventInterceptorOp {
 	}
 }
 
+// EventListenerNamespaceSelectorMatchNames sets the specified selector for the EventListener.
+func EventListenerNamespaceSelectorMatchNames(ns []string) EventListenerSpecOp {
+	return func(spec *v1alpha1.EventListenerSpec) {
+		spec.NamespaceSelector.MatchNames = ns
+	}
+}
+
 // EventListenerResources set specified resources to the EventListener.
 func EventListenerResources(ops ...EventListenerResourceOp) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {

@@ -41,10 +41,10 @@ const (
 )
 
 type Interceptor struct {
-	HTTPClient             *http.Client
-	EventListenerNamespace string
-	Logger                 *zap.SugaredLogger
-	Webhook                *triggersv1.WebhookInterceptor
+	HTTPClient       *http.Client
+	TriggerNamespace string
+	Logger           *zap.SugaredLogger
+	Webhook          *triggersv1.WebhookInterceptor
 }
 
 func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
@@ -53,15 +53,15 @@ func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string
 		Timeout:   interceptorTimeout,
 	}
 	return &Interceptor{
-		HTTPClient:             timeoutClient,
-		EventListenerNamespace: ns,
-		Logger:                 l,
-		Webhook:                wh,
+		HTTPClient:       timeoutClient,
+		TriggerNamespace: ns,
+		Logger:           l,
+		Webhook:          wh,
 	}
 }
 
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	u, err := getURI(w.Webhook.ObjectRef, w.EventListenerNamespace) // TODO: Cache this result or do this on initialization
+	u, err := getURI(w.Webhook.ObjectRef, w.TriggerNamespace) // TODO: Cache this result or do this on initialization
 	if err != nil {
 		return nil, err
 	}

@@ -46,26 +46,26 @@ type getClusterTriggerBinding func(name string) (*triggersv1.ClusterTriggerBindi
 
 // ResolveTrigger takes in a trigger containing object refs to bindings and
 // templates and resolves them to their underlying values.
-func ResolveTrigger(trigger triggersv1.EventListenerTrigger, getTB getTriggerBinding, getCTB getClusterTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
-	bp, err := resolveBindingsToParams(trigger.Bindings, getTB, getCTB)
+func ResolveTrigger(trigger triggersv1.Trigger, getTB getTriggerBinding, getCTB getClusterTriggerBinding, getTT getTriggerTemplate) (ResolvedTrigger, error) {
+	bp, err := resolveBindingsToParams(trigger.Spec.Bindings, getTB, getCTB)
 	if err != nil {
 		return ResolvedTrigger{}, fmt.Errorf("failed to resolve bindings: %w", err)
 	}
 
 	var resolvedTT *triggersv1.TriggerTemplate
-	if trigger.Template.Spec != nil {
+	if trigger.Spec.Template.Spec != nil {
 		resolvedTT = &triggersv1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{}, // Unused. TODO: Just return Specs from here.
-			Spec:       *trigger.Template.Spec,
+			Spec:       *trigger.Spec.Template.Spec,
 		}
 	} else {
 		var ttName string
-		if trigger.Template.Ref != nil {
-			ttName = *trigger.Template.Ref
+		if trigger.Spec.Template.Ref != nil {
+			ttName = *trigger.Spec.Template.Ref
 		} else {
 			// TODO(#791): Remove Name field
 			// Ignore staticcheck linter as it will complain about using deprecated type
-			ttName = trigger.Template.Name //nolint:staticcheck
+			ttName = trigger.Spec.Template.Name //nolint:staticcheck
 		}
 		resolvedTT, err = getTT(ttName)
 		if err != nil {

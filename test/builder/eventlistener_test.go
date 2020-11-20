@@ -166,6 +166,28 @@ func TestEventListenerBuilder(t *testing.T) {
 				EventListenerServiceAccount("serviceAccount"),
 				EventListenerTriggerRef("my-trigger"))),
 	}, {
+		name: "EventListener with Matchnames NamespaceSelector",
+		normal: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				ServiceAccountName: "serviceAccount",
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					TriggerRef: "my-trigger",
+				}},
+				NamespaceSelector: v1alpha1.NamespaceSelector{
+					MatchNames: []string{"foo", "bar"},
+				},
+			},
+		},
+		builder: EventListener("name", "namespace",
+			EventListenerSpec(
+				EventListenerNamespaceSelectorMatchNames([]string{"foo", "bar"}),
+				EventListenerServiceAccount("serviceAccount"),
+				EventListenerTriggerRef("my-trigger"))),
+	}, {
 		name: "One Trigger with one Binding",
 		normal: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
