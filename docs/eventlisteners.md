@@ -23,6 +23,7 @@ using [Event Interceptors](#Interceptors).
     - [PodTemplate](#podtemplate)
     - [Resources](#resources)
     - [Logging](#logging)
+    - [NamespaceSelector](#namespaceSelector)
   - [Labels](#labels)
   - [Annotations](#annotations)
   - [Interceptors](#interceptors)
@@ -68,6 +69,8 @@ the following fields:
     for your EventListener pod
   - [`resources`](#resources) - Specifies the Kubernetes Resource information
     for your EventListener pod
+  - [`namespaceSelector`](#namespaceSelector) - Specifies the namespaces where
+    EventListener can fetch triggers from and create Tekton resources.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -293,6 +296,29 @@ To access logs for the EventListener sink, you can query for pods with the
 ```shell
 kubectl get pods --selector eventlistener=my-eventlistener
 ```
+
+### NamespaceSelector
+The `namespaceSelector` field is optional.
+This field determines the namespaces where EventListener can search for triggers and
+create Tekton resources. If this field isn't provided, EventListener will only serve Triggers from its
+own namespace.
+
+Snippet below will function in foo and bar namespaces.
+```yaml
+  namespaceSelector:
+    matchNames:
+    - foo
+    - bar
+```
+
+If EventListener is required to listen to serve the whole cluster, then below snippet
+can be used where we only provide single argument for `matchNames` as `*`.
+```yaml
+  namespaceSelector:
+    matchNames:
+    - *
+```
+
 
 ## Labels
 

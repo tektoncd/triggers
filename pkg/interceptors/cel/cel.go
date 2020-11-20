@@ -48,10 +48,10 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
-	Logger                 *zap.SugaredLogger
-	CEL                    *triggersv1.CELInterceptor
-	EventListenerNamespace string
+	KubeClientSet    kubernetes.Interface
+	Logger           *zap.SugaredLogger
+	CEL              *triggersv1.CELInterceptor
+	TriggerNamespace string
 }
 
 var (

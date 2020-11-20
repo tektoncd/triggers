@@ -87,6 +87,11 @@ func main() {
 
 	factory := externalversions.NewSharedInformerFactoryWithOptions(sinkClients.TriggersClient,
 		30*time.Second, externalversions.WithNamespace(sinkArgs.ElNamespace))
+	if sinkArgs.IsMultiNS {
+		factory = externalversions.NewSharedInformerFactory(sinkClients.TriggersClient,
+			30*time.Second)
+	}
+
 	go func(ctx context.Context) {
 		factory.Start(ctx.Done())
 		<-ctx.Done()

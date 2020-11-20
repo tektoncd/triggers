@@ -36,9 +36,6 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 			errs = errs.Also(apis.ErrInvalidValue(*s.Replicas, "spec.replicas"))
 		}
 	}
-	if len(s.Triggers) == 0 {
-		errs = errs.Also(apis.ErrMissingField("spec.triggers"))
-	}
 	for i, trigger := range s.Triggers {
 		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}

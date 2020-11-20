@@ -238,10 +238,10 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet:          kubeClient,
-				GitHub:                 tt.GitHub,
-				Logger:                 logger.Sugar(),
-				EventListenerNamespace: metav1.NamespaceDefault,
+				KubeClientSet:    kubeClient,
+				GitHub:           tt.GitHub,
+				Logger:           logger.Sugar(),
+				TriggerNamespace: metav1.NamespaceDefault,
 			}
 			resp, err := w.ExecuteTrigger(request)
 			if err != nil {
@@ -274,10 +274,10 @@ func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
 		},
 	}
 	w := &Interceptor{
-		KubeClientSet:          kubeClient,
-		GitHub:                 &triggersv1.GitHubInterceptor{},
-		Logger:                 logger.Sugar(),
-		EventListenerNamespace: metav1.NamespaceDefault,
+		KubeClientSet:    kubeClient,
+		GitHub:           &triggersv1.GitHubInterceptor{},
+		Logger:           logger.Sugar(),
+		TriggerNamespace: metav1.NamespaceDefault,
 	}
 	_, err := w.ExecuteTrigger(request)
 	if err != ErrInvalidContentType {

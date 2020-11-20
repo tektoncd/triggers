@@ -31,18 +31,18 @@ import (
 )
 
 type Interceptor struct {
-	KubeClientSet          kubernetes.Interface
-	Logger                 *zap.SugaredLogger
-	Bitbucket              *triggersv1.BitbucketInterceptor
-	EventListenerNamespace string
+	KubeClientSet    kubernetes.Interface
+	Logger           *zap.SugaredLogger
+	Bitbucket        *triggersv1.BitbucketInterceptor
+	TriggerNamespace string
 }
 
 func NewInterceptor(bh *triggersv1.BitbucketInterceptor, k kubernetes.Interface, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
-		Logger:                 l,
-		Bitbucket:              bh,
-		KubeClientSet:          k,
-		EventListenerNamespace: ns,
+		Logger:           l,
+		Bitbucket:        bh,
+		KubeClientSet:    k,
+		TriggerNamespace: ns,
 	}
 }
 
@@ -64,7 +64,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		if header == "" {
 			return nil, errors.New("no X-Hub-Signature header set")
 		}
-		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.Bitbucket.SecretRef, w.EventListenerNamespace)
+		secretToken, err := interceptors.GetSecretToken(request, w.KubeClientSet, w.Bitbucket.SecretRef, w.TriggerNamespace)
 		if err != nil {
 			return nil, err
 		}

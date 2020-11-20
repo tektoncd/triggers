@@ -49,10 +49,10 @@ func getCache(req *http.Request) map[string]interface{} {
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
-func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, eventListenerNamespace string) ([]byte, error) {
+func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, triggerNS string) ([]byte, error) {
 	var cache map[string]interface{}
 
-	cacheKey := path.Join("secret", eventListenerNamespace, sr.SecretName, sr.SecretKey)
+	cacheKey := path.Join("secret", triggerNS, sr.SecretName, sr.SecretKey)
 	if req != nil {
 		cache = getCache(req)
 		if secretValue, ok := cache[cacheKey]; ok {
@@ -60,7 +60,7 @@ func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.S
 		}
 	}
 
-	secret, err := cs.CoreV1().Secrets(eventListenerNamespace).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
+	secret, err := cs.CoreV1().Secrets(triggerNS).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

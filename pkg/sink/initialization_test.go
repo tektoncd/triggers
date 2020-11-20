@@ -18,6 +18,7 @@ package sink
 
 import (
 	"flag"
+	"strconv"
 	"testing"
 )
 
@@ -31,6 +32,10 @@ func Test_GetArgs(t *testing.T) {
 	if err := flag.Set(port, "port"); err != nil {
 		t.Errorf("Error setting flag port: %s", err)
 	}
+	if err := flag.Set(isMultiNS, "true"); err != nil {
+		t.Errorf("Error setting flag isMultiNS: %s", err)
+	}
+
 	sinkArgs, err := GetArgs()
 	if err != nil {
 		t.Fatalf("GetArgs() returned unexpected error: %s", err)
@@ -44,6 +49,9 @@ func Test_GetArgs(t *testing.T) {
 	if sinkArgs.Port != "port" {
 		t.Errorf("Error port want port, got %s", sinkArgs.Port)
 	}
+	if sinkArgs.IsMultiNS != true {
+		t.Errorf("Error EL Type want type, got %t", sinkArgs.IsMultiNS)
+	}
 }
 
 func Test_GetArgs_error(t *testing.T) {
@@ -52,21 +60,25 @@ func Test_GetArgs_error(t *testing.T) {
 		elName      string
 		elNamespace string
 		port        string
+		isMultiNS   bool
 	}{{
 		name:        "no eventlistener name",
 		elName:      "",
 		elNamespace: "elnamespace",
 		port:        "port",
+		isMultiNS:   false,
 	}, {
 		name:        "no eventlistener namespace",
 		elName:      "elname",
 		elNamespace: "",
 		port:        "port",
+		isMultiNS:   false,
 	}, {
 		name:        "no eventlistener namespace",
 		elName:      "elname",
 		elNamespace: "elnamespace",
 		port:        "",
+		isMultiNS:   false,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,6 +90,10 @@ func Test_GetArgs_error(t *testing.T) {
 			}
 			if err := flag.Set("port", tt.port); err != nil {
 				t.Errorf("Error setting flag %s: %s", port, err)
+			}
+			isMulNS := strconv.FormatBool(tt.isMultiNS)
+			if err := flag.Set("is-multi-ns", isMulNS); err != nil {
+				t.Errorf("Error setting flag %s: %s", isMultiNS, err)
 			}
 			if sinkArgs, err := GetArgs(); err == nil {
 				t.Errorf("GetArgs() did not return error when expected; sinkArgs: %v", sinkArgs)

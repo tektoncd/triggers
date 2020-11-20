@@ -306,6 +306,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
 		}
 	}
+	isMultiNS := true
+	if len(el.Spec.NamespaceSelector.MatchNames) == 0 {
+		isMultiNS = false
+	}
 	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *elImage,
@@ -344,6 +348,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			"-writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
 			"-idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
 			"-timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
+			"-is-multi-ns", strconv.FormatBool(isMultiNS),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "config-logging",

@@ -215,28 +215,6 @@ func TestEventListenerValidate_error(t *testing.T) {
 		name string
 		el   *v1alpha1.EventListener
 	}{{
-		name: "no triggers",
-		el: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "n",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{{}},
-			},
-		},
-	}, {
-		name: "EventListener with no Trigger ref or Template",
-		el: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "n",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: nil,
-			},
-		},
-	}, {
 		name: "Valid EventListener with empty TriggerTemplate name",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
