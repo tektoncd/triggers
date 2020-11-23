@@ -11,21 +11,19 @@ Creates an EventListener that serve triggers in multiple namespaces.
    ```
 
 2. Port forward:
-
    ```bash
-       kubectl config set-context --current --namespace=bar
-       kubectl apply -f examples/example-pipeline.yaml
+   kubectl port-forward \
+   -n foo $(kubectl get pod -n foo -o=name \
+   -l eventlistener=listener-sel) 8080
    ```
 
    **Note**: Instead of port forwarding, you can set the
    [`serviceType`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#serviceType)
    to `LoadBalancer` to expose the EventListener with a public IP.
 
-3. Create sample pipelinerun in namespace bar:
+3. Create sample pipeline in namespace bar:
    ```bash
-   kubectl port-forward \
-   -n foo $(kubectl get pod -n foo -o=name \
-   -l eventlistener=listener-sel) 8080
+   kubectl apply -f examples/example-pipeline.yaml -n bar
    ```
 
 3. Test by sending the sample payload.
