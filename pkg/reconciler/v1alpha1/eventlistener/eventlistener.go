@@ -526,9 +526,9 @@ func getContainer(el *v1alpha1.EventListener) corev1.Container {
 		scheme = corev1.URISchemeHTTP
 	}
 
-	isMultiNS := true
-	if len(el.Spec.NamespaceSelector.MatchNames) == 0 {
-		isMultiNS = false
+	isMultiNS := false
+	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
+		isMultiNS = true
 	}
 
 	return corev1.Container{
