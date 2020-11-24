@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Exposing Event Listeners Externally" weight: 6
+
 ---
-linkTitle: "Exposing Event Listeners Externally"
-weight: 6
----
+
 -->
+
 # Exposing EventListeners Externally
 
 By default, `ClusterIP` services such as the EventListener sink are accessible
@@ -13,8 +15,8 @@ services can talk to it:
 ## Using an Ingress
 
 You can use an Ingress resource to expose the EventListener. The
-[`create-ingress`](./getting-started/create-ingress.yaml) Tekton task can help setup an ingress
-resource using self-signed certs.
+[`create-ingress`](./getting-started/create-ingress.yaml) Tekton task can help
+setup an ingress resource using self-signed certs.
 
 **Note**: If you are using a cloud hosted Kubernetes solution such as GKE, the
 built-in ingress will not work with `ClusterIP` services. Instead, you can use
@@ -27,7 +29,9 @@ The following instructions have been tested on GKE cluster running version
 services can be found
 [here](https://kubernetes.github.io/ingress-nginx/deploy/).
 
-1. First, install Nginx ingress controller. One liner below, check the [website](https://kubernetes.github.io/ingress-nginx/deploy/#gce-gke) for more information:
+1. First, install Nginx ingress controller. One liner below, check the
+   [website](https://kubernetes.github.io/ingress-nginx/deploy/#gce-gke) for
+   more information:
    ```sh
       # Check https://kubernetes.github.io/ingress-nginx/deploy for other installation options
       kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.1/deploy/static/provider/cloud/deploy.yaml

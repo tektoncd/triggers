@@ -1,18 +1,21 @@
 ## EventListener Secure Connection
 
-Triggers now support both `HTTP` and `HTTPS` connection by adding some configurations to eventlistener.
+Triggers now support both `HTTP` and `HTTPS` connection by adding some
+configurations to eventlistener.
 
 ### Prerequisites
-* Certificates with Key and Cert
-* Secret which includes those certificates
+
+- Certificates with Key and Cert
+- Secret which includes those certificates
 
 ### Try it out locally:
 
 #### Creating Prerequisites
 
-* #### Certificates with Key and Cert.
+- #### Certificates with Key and Cert.
 
 ##### 1. Steps to generate root key, cert
+
 1. Create Root Key
    ```text
    openssl genrsa -des3 -out rootCA.key 4096
@@ -21,33 +24,42 @@ Triggers now support both `HTTP` and `HTTPS` connection by adding some configura
    ```text
    openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.crt
    ```
+
 ##### 2. Steps to generate certificate (for each server)
+
 1. Create the certificate key
    ```text
    openssl genrsa -out tls.key 2048
    ```
 2. Create the signing (csr)
 
-* The CSR is where you specify the details for the certificate you want to generate. 
-This request will be processed by the owner of the root key to generate the certificate.
+- The CSR is where you specify the details for the certificate you want to
+  generate. This request will be processed by the owner of the root key to
+  generate the certificate.
 
-* **Important:** While creating the csr it is important to specify the `Common Name` providing the IP address or domain name for the service, otherwise the certificate cannot be verified.
-   ```text
-   openssl req -new -key tls.key -out tls.csr
-   ```
+- **Important:** While creating the csr it is important to specify the
+  `Common Name` providing the IP address or domain name for the service,
+  otherwise the certificate cannot be verified.
+  ```text
+  openssl req -new -key tls.key -out tls.csr
+  ```
+
 3. Generate the certificate using the tls csr and key along with the CA Root key
    ```text
    openssl x509 -req -in tls.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out tls.crt -days 500 -sha256
    ```
+
 ##### 3. Follow same steps from 2 to generate certificates for client also
 
-* #### Create secret which includes those certificates
-   ```text
-   kubectl create secret generic tls-secret-key --from-file=tls.crt --from-file=tls.key
-   ```
+- #### Create secret which includes those certificates
+  ```text
+  kubectl create secret generic tls-secret-key --from-file=tls.crt --from-file=tls.key
+  ```
 
 #### Configuring EventListener for TLS connection
-1. To create the TLS connection for EventListener and all related resources, run:
+
+1. To create the TLS connection for EventListener and all related resources,
+   run:
 
    ```bash
    kubectl apply -f examples/eventlistener-tls-connection/
@@ -65,11 +77,14 @@ This request will be processed by the owner of the root key to generate the cert
    ```
 
    The response status code should be `201 Created`
-   
-   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
-   
-   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload ex:* `{"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git"}}`
-   and `secretKey` is the *given secretToken ex:* `1234567`.
+
+   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to
+   create X-Hub-Signature.
+
+   In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is
+   the _body payload ex:_
+   `{"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git"}}`
+   and `secretKey` is the _given secretToken ex:_ `1234567`.
 
 1. You should see a new TaskRun that got created:
 

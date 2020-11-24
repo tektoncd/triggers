@@ -72,8 +72,9 @@ curl -X POST \
 }'
 ```
 
-NOTE: defaults in `triggertemplates/triggertemplate.yaml` like `master` for `gitrevision` are leveraged here to 
-satisfy missing items in the POST body like `head_commit.id`.
+NOTE: defaults in `triggertemplates/triggertemplate.yaml` like `master` for
+`gitrevision` are leveraged here to satisfy missing items in the POST body like
+`head_commit.id`.
 
 5. Observe created PipelineRun
 

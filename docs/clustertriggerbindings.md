@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Cluster Trigger Binding" weight: 7
+
 ---
-linkTitle: "Cluster Trigger Binding"
-weight: 7
----
+
 -->
+
 # ClusterTriggerBindings
 
 `ClusterTriggerBindings` is similar to TriggerBinding which is used to extract
@@ -12,6 +14,7 @@ designed to encourage reusability clusterwide. You can reference a
 ClusterTriggerBinding in any EventListener in any namespace.
 
 <!-- FILE: examples/clustertriggerbindings/clustertriggerbinding.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterTriggerBinding
@@ -27,7 +30,6 @@ spec:
       value: $(header.Content-Type)
 ```
 
-
 You can specify multiple ClusterTriggerBindings in a Trigger. You can use a
 ClusterTriggerBinding in multiple Triggers.
 
@@ -35,6 +37,7 @@ In case of using a ClusterTriggerBinding, the `Binding` kind should be added.
 The default kind is TriggerBinding which represents a namespaced TriggerBinding.
 
 <!-- FILE: examples/eventlisteners/eventlistener-clustertriggerbinding.yaml -->
+
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -53,4 +56,3 @@ spec:
       template:
         ref: pipeline-template
 ```
-

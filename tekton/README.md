@@ -23,7 +23,8 @@ To start from scratch and use these Pipelines and Tasks:
 
 ## Create an official release
 
-To create an official release, follows the steps in the [release-cheat-sheet](./release-cheat-sheet.md)
+To create an official release, follows the steps in the
+[release-cheat-sheet](./release-cheat-sheet.md)
 
 ## Supporting scripts and images
 

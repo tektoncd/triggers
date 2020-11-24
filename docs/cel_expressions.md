@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "CEL Expression Extensions" weight: 8
+
 ---
-linkTitle: "CEL Expression Extensions"
-weight: 8
----
+
 -->
+
 # CEL expression extensions
 
 The CEL expression is configured to expose parts of the request, and some custom
@@ -21,9 +23,9 @@ extensions to the CEL specification for manipulating strings.
 For example:
 
 ```javascript
-'refs/heads/master'.split('/') // result = list ['refs', 'heads', 'master']
-'my place'.replace('my ',' ') // result = string 'place'
-'this that another'.replace('th ',' ', 2) // result = 'is at another'
+"refs/heads/master".split("/"); // result = list ['refs', 'heads', 'master']
+"my place".replace("my ", " "); // result = string 'place'
+"this that another".replace("th ", " ", 2); // result = 'is at another'
 ```
 
 The `replace` overload allows an optional limit on replacements.
@@ -96,8 +98,9 @@ because there's no automatic conversion.
 
 ## cel-go extensions
 
-All the functionality from the cel-go project's [String extension](https://github.com/google/cel-go/tree/master/ext) is available in
-your CEL expressions.
+All the functionality from the cel-go project's
+[String extension](https://github.com/google/cel-go/tree/master/ext) is
+available in your CEL expressions.
 
 ## List of extensions
 

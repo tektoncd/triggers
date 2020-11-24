@@ -11,6 +11,7 @@ Creates an EventListener that serve triggers in multiple namespaces.
    ```
 
 2. Port forward:
+
    ```bash
    kubectl port-forward \
    -n foo $(kubectl get pod -n foo -o=name \
@@ -22,13 +23,14 @@ Creates an EventListener that serve triggers in multiple namespaces.
    to `LoadBalancer` to expose the EventListener with a public IP.
 
 3. Create sample pipeline in namespace bar:
+
    ```bash
    kubectl apply -f examples/example-pipeline.yaml -n bar
    ```
 
-3. Test by sending the sample payload.
+4. Test by sending the sample payload.
 
-   ```bash
+   ````bash
        curl -k -v \
        -H 'X-GitHub-Event: pull_request' \
        -H 'X-Hub-Signature: sha1=8d7c4d33686fd908394208a07d997b8f5bd70aa6' \
@@ -37,7 +39,9 @@ Creates an EventListener that serve triggers in multiple namespaces.
 
    The response status code should be `201 Created`
 
-4. You should see a new Pipelinerun that got created:
+   ````
+
+5. You should see a new Pipelinerun that got created:
 
    ```bash
    tkn pr -n bar list

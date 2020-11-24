@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Trigger Bindings" weight: 4
+
 ---
-linkTitle: "Trigger Bindings"
-weight: 4
----
+
 -->
+
 # TriggerBindings
 
 As per the name, `TriggerBinding`s bind against events/triggers.
@@ -12,6 +14,7 @@ parameters. The separation of `TriggerBinding`s from `TriggerTemplate`s was
 deliberate to encourage reuse between them.
 
 <!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
@@ -26,7 +29,6 @@ spec:
   - name: contenttype
     value: $(header.Content-Type)
 ```
-
 
 `TriggerBinding`s are connected to `TriggerTemplate`s within an
 [`EventListener`](eventlisteners.md), which is where the pod is actually
@@ -76,8 +78,9 @@ $(body.tekton\.dev) -> "triggers"
 
 #### Defaulting
 
-If the HTTP headers and body contents from an event fail to resolve the JSONPath expressions supplied, 
-and attempt will be made to utilize the `default` value, if supplied, from the associated `TriggerTemplate`. 
+If the HTTP headers and body contents from an event fail to resolve the JSONPath
+expressions supplied, and attempt will be made to utilize the `default` value,
+if supplied, from the associated `TriggerTemplate`.
 
 ### Examples
 

@@ -1,9 +1,11 @@
-<!--
+## <!--
+
+linkTitle: "Trigger Templates" weight: 3
+
 ---
-linkTitle: "Trigger Templates"
-weight: 3
----
+
 -->
+
 # TriggerTemplates
 
 A `TriggerTemplate` is a resource that can template resources.
@@ -11,6 +13,7 @@ A `TriggerTemplate` is a resource that can template resources.
 **anywhere** within the resource template.
 
 <!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
+
 ```YAML
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
@@ -52,17 +55,18 @@ spec:
             value: $(tt.params.gitrepositoryurl)
 ```
 
-`TriggerTemplates` currently support the following [Tekton Pipelines](https://github.com/tektoncd/pipeline) resources:
+`TriggerTemplates` currently support the following
+[Tekton Pipelines](https://github.com/tektoncd/pipeline) resources:
 
-v1alpha1          | v1beta1
-------------------|---------
-pipelines         | pipelines
-pipelineruns      | pipelineruns
-tasks             | tasks
-taskruns          | taskruns
-clustertasks      | clustertasks
-conditions        |
-pipelineresources |
+| v1alpha1          | v1beta1      |
+| ----------------- | ------------ |
+| pipelines         | pipelines    |
+| pipelineruns      | pipelineruns |
+| tasks             | tasks        |
+| taskruns          | taskruns     |
+| clustertasks      | clustertasks |
+| conditions        |
+| pipelineresources |
 
 Similar to
 [Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),`TriggerTemplate`s
@@ -109,9 +113,10 @@ $(tt.params.<name>)
 `TriggerTemplate`. The purpose of `tt.params` is to make `TriggerTemplates`
 reusable.
 
-The value of the `default` field for each entry of the `params` array defined in a `TriggerTemplate` will
-be applied if a corresponding entry in the `params` array in a `TriggerBinding` is either missing or cannot 
-be satisfied in the cases where the entry's value comes from an HTTP header or body. 
+The value of the `default` field for each entry of the `params` array defined in
+a `TriggerTemplate` will be applied if a corresponding entry in the `params`
+array in a `TriggerBinding` is either missing or cannot be satisfied in the
+cases where the entry's value comes from an HTTP header or body.
 
 ## Best Practices
 
@@ -126,17 +131,18 @@ avoids a race condition between creating and using resources.
 When templating parameters into resources, a simple replacement on the string
 with the parameter name e.g. `$(tt.params.name)` is carried out.
 
-This means that for simple string / number values, replacements in the
-YAML should work fine.
+This means that for simple string / number values, replacements in the YAML
+should work fine.
 
-If the string could begin with a number e.g. `012abcd`, it might be misinterpreted by YAML as a
-number, which could cause an error, in which case you can put quotes around the
-templated parameter key, and it should solve the problem.
+If the string could begin with a number e.g. `012abcd`, it might be
+misinterpreted by YAML as a number, which could cause an error, in which case
+you can put quotes around the templated parameter key, and it should solve the
+problem.
 
 ## Escaping quoted strings.
 
-TriggerTemplate parameter values were previously escaped by simply replacing
-`"` with `\"` this could lead to problems when strings were already escaped, and
+TriggerTemplate parameter values were previously escaped by simply replacing `"`
+with `\"` this could lead to problems when strings were already escaped, and
 generating invalid resources from the TriggerTemplate.
 
 No escaping is done on the templated variables, if you are inserting a JSON
@@ -157,8 +163,8 @@ For example with the following JSON body:
 ```
 
 If you have a TriggerBinding that extracts `$(body.title)` then when it's
-inserted into a TriggerTemplate it will be embedded as `this is a \"demo\"
-body`.
+inserted into a TriggerTemplate it will be embedded as
+`this is a \"demo\" body`.
 
 By annotating the TriggerTemplate.
 
@@ -171,8 +177,8 @@ metadata:
     triggers.tekton.dev/old-escape-quotes: "true"
 spec:
   params:
-  - name: title
-    description: The title from the incoming body
+    - name: title
+      description: The title from the incoming body
 ```
 
 This would pass the same body through as `this is a \""demo\"" body`, which is
