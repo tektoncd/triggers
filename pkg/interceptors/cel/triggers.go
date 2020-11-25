@@ -148,6 +148,16 @@ import (
 // Examples:
 //
 // 		body.field.parseYAML().item
+//
+// marshalJSON
+//
+// Returns the JSON encoding of 'jsonObjectOrList'.
+//
+// 		<jsonObjectOrList>.marshalJSON() -> <string>
+//
+// Examples:
+//
+// 		body.jsonObjectOrList.marshalJSON()
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
 func Triggers(ns string, k kubernetes.Interface) cel.EnvOption {
@@ -189,7 +199,10 @@ func (triggersLib) CompileOptions() []cel.EnvOption {
 					[]*exprpb.Type{decls.String}, mapStrDyn)),
 			decls.NewFunction("compareSecret",
 				decls.NewInstanceOverload("compareSecret_string_string",
-					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.Bool)))}
+					[]*exprpb.Type{decls.String, decls.String, decls.String}, decls.Bool)),
+			decls.NewFunction("marshalJSON",
+				decls.NewInstanceOverload("marshalJSON_map",
+					[]*exprpb.Type{mapStrDyn}, decls.String)))}
 }
 
 func (t triggersLib) ProgramOptions() []cel.ProgramOption {
@@ -219,6 +232,9 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 			&functions.Overload{
 				Operator: "compareSecret",
 				Function: makeCompareSecret(t.defaultNS, t.client)},
+			&functions.Overload{
+				Operator: "marshalJSON",
+				Unary:    marshalJSON},
 		)}
 }
 
@@ -356,6 +372,31 @@ func parseURLString(val ref.Val) ref.Val {
 	}
 
 	return types.NewDynamicMap(types.NewRegistry(), urlToMap(parsed))
+}
+
+func marshalJSON(val ref.Val) ref.Val {
+	var typeDesc reflect.Type
+
+	switch val.Type() {
+	case types.MapType:
+		typeDesc = mapType
+	case types.ListType:
+		typeDesc = listType
+	default:
+		return types.ValOrErr(val, "unexpected type '%v' passed to marshalJSON", val.Type())
+	}
+
+	nativeVal, err := val.ConvertToNative(typeDesc)
+	if err != nil {
+		return types.NewErr("failed to convert to native: %w", err)
+	}
+
+	marshaledVal, err := json.Marshal(nativeVal)
+	if err != nil {
+		return types.NewErr("failed to marshal to json: %w", err)
+	}
+
+	return types.String(marshaledVal)
 }
 
 func max(x, y types.Int) types.Int {

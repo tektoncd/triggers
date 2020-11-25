@@ -415,6 +415,13 @@ func TestExpressionEvaluation(t *testing.T) {
 		"yaml_body": "key1: value1\nkey2: value2\nkey3: value3\n",
 		"testURL":   "https://user:password@site.example.com/path/to?query=search#first",
 		"multiURL":  "https://user:password@site.example.com/path/to?query=search&query=results",
+		"jsonObject": map[string]interface{}{
+			"string":  "value",
+			"integer": 2,
+		},
+		"jsonArray": []string{
+			"one", "two",
+		},
 	}
 
 	refParts := strings.Split(testRef, "/")
@@ -541,6 +548,16 @@ func TestExpressionEvaluation(t *testing.T) {
 			expr: "body.upperMsg.lowerAscii()",
 			want: types.String("this is lower case"),
 		},
+		{
+			name: "marshal JSON object to string",
+			expr: "body.jsonObject.marshalJSON()",
+			want: types.String(`{"integer":2,"string":"value"}`),
+		},
+		{
+			name: "marshal JSON array to string",
+			expr: "body.jsonArray.marshalJSON()",
+			want: types.String(`["one","two"]`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
@@ -655,6 +672,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "invalid YAML body",
 			expr: "body.invalid_yaml.parseYAML().key1 == 'value1'",
 			want: "failed to decode 'key1: value1key2: value2\n' in parseYAML:",
+		},
+		{
+			name: "marshalJSON marshalling string",
+			expr: "body.value.marshalJSON()",
+			want: "unexpected type 'string' passed to marshalJSON",
 		},
 	}
 	for _, tt := range tests {
