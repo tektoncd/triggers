@@ -335,4 +335,18 @@ which can be accessed by indexing.
      <pre>'https://example.com/test?query=testing'.parseURL().query['query'] == "testing"</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+     marshalJSON()
+    </th>
+    <td>
+     <pre>&lt;jsonObjectOrList&gt;.marshalJSON() -> &lt;string&gt;</pre>
+    </td>
+    <td>
+     Returns the JSON encoding of 'jsonObjectOrList' as a string.
+    </td>
+    <td>
+     <pre>{"testing":"value"}.marshalJSON() == "{\"testing\": \"value\"}"</pre>
+    </td>
+  </tr>
 </table>
