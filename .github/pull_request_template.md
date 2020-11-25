@@ -10,9 +10,9 @@ your descriptive commit message(s)! -->
 These are the criteria that every PR should meet, please check them off as you
 review them:
 
-- [ ] Includes [tests](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if functionality changed/added)
-- [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
-- [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
+- [ ] Includes [tests](https://github.com/tektoncd/community/blob/master/standards.md#tests) (if functionality changed/added)
+- [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#docs) (if user facing)
+- [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commits)
 - [ ] Release notes block has been filled in or deleted (only if no user facing changes)
 
 _See [the contribution guide](https://github.com/tektoncd/triggers/blob/master/CONTRIBUTING.md) for more details._
