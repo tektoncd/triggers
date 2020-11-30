@@ -21,7 +21,6 @@ kind: EventListener
 metadata:
   name: v1alpha1-task-listener
 spec:
-  # from examples/role-resources/servicaccount.yaml
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: v1alpha1-task-trigger
