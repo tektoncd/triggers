@@ -80,38 +80,11 @@ the following fields:
 ### ServiceAccountName
 
 The `serviceAccountName` field is required. The ServiceAccount that the
-EventListener sink uses to create the Tekton resources. The ServiceAccount needs
-a role with the following rules:
+EventListener sink uses to create the Tekton resources. 
+The ServiceAccount needs a Role that with "get", "list", and "watch" verbs for each Triggers resource as well as  a ClusterRole with read access to ClusterTriggerBindings. In addition, it needs to have "create"
+permissions on the Pipeline resources it needs to create. See a working example at [../examples/rbac.yaml](../examples/rbac.yaml).
 
-<!-- FILE: examples/role-resources/triggerbinding-roles/role.yaml -->
-```YAML
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: tekton-triggers-example-minimal
-rules:
-# Permissions for every EventListener deployment to function
-- apiGroups: ["triggers.tekton.dev"]
-  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  # secrets are only needed for GitHub/GitLab interceptors
-  resources: ["configmaps", "secrets"]
-  verbs: ["get", "list", "watch"]
-# Permissions to create resources in associated TriggerTemplates
-- apiGroups: ["tekton.dev"]
-  resources: ["pipelineruns", "pipelineresources", "taskruns"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["serviceaccounts"]
-  verbs: ["impersonate"]
-```
-
-
-If your EventListener is using
-[`ClusterTriggerBindings`](./clustertriggerbindings.md), you'll need a
-ServiceAccount with a
-[ClusterRole instead](../examples/role-resources/clustertriggerbinding-roles/clusterrole.yaml).
+If your EventListener is using `namespaceSelectors`, the ServiceAccount will require a Cluster role to have read permissions for all Triggers resources across the cluster.
 
 ### Triggers
 

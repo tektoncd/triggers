@@ -4,18 +4,10 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
 
 ### Try it out locally:
 
-1. Create the service account:
+1. Create the v1alpha1 EventListener and its ServiceAccount:
 
    ```shell script
-   kubectl apply -f examples/role-resources/clustertriggerbinding-roles
-   kubectl apply -f examples/role-resources/triggerbinding-roles
-   kubectl apply -f examples/role-resources/
-   ```
-
-1. Create the v1alpha1 EventListener:
-
-   ```shell script
-   kubectl apply -f examples/v1alpha1-task/v1alpha1-task-listener.yaml
+   kubectl apply -f examples/v1alpha1-task/
    ```
 
 1. Port forward:
