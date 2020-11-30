@@ -1,4 +1,3 @@
----
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
@@ -34,6 +33,7 @@ spec:
                     memory: "128Mi"
                     cpu: "500m"
 ---
+
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
@@ -46,6 +46,7 @@ spec:
       value: $(body.repository.clone_url)
 
 ---
+
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
