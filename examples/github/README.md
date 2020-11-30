@@ -4,7 +4,7 @@ Creates an EventListener that listens for GitHub webhook events.
 
 ### Try it out locally:
 
-1. To create the GitHub trigger and all related resources, run:
+1. To create the GitHub trigger and all related resources, run
 
    ```bash
    kubectl apply -f examples/github/
