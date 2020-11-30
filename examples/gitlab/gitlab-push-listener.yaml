@@ -3,7 +3,7 @@ kind: EventListener
 metadata:
   name: gitlab-listener
 spec:
-  serviceAccountName: tekton-triggers-gitlab-sa
+  serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: gitlab-push-events-trigger
       interceptors:
