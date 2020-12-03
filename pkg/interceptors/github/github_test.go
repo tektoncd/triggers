@@ -321,7 +321,7 @@ func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
 	if res.Continue {
 		t.Fatalf("Interceptor.Process() expected res.Continue to be : %t but got %t.\n Status.Err(): %v", false, res.Continue, res.Status.Err())
 	}
-	if res.Status.Message() != ErrInvalidContentType.Error() {
+	if res.Status.Message != ErrInvalidContentType.Error() {
 		t.Fatalf("got error %v, want %v", res.Status.Err(), ErrInvalidContentType)
 	}
 }

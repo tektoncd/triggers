@@ -25,9 +25,6 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -37,6 +34,7 @@ import (
 	celext "github.com/google/cel-go/ext"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/client-go/kubernetes"
@@ -126,16 +124,13 @@ func makeEvalContext(body []byte, h http.Header, url string) (map[string]interfa
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
 	p := triggersv1.CELInterceptor{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
-		return interceptors.Fail(status.Newf(codes.InvalidArgument, "failed to parse interceptor params: %v", err))
+		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 	env, err := makeCelEnv(ns, w.KubeClientSet)
 	if err != nil {
-		return &triggersv1.InterceptorResponse{
-			Continue: false,
-			Status:   status.Newf(codes.Internal, "error creating cel environment: %v", err),
-		}
+		return interceptors.Failf(codes.Internal, "error creating cel environment: %v", err)
 	}
 
 	var payload = []byte(`{}`)
@@ -145,27 +140,18 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 
 	evalContext, err := makeEvalContext(payload, r.Header, r.Context.EventURL)
 	if err != nil {
-		return &triggersv1.InterceptorResponse{
-			Continue: false,
-			Status:   status.Newf(codes.InvalidArgument, "error making the evaluation context: %v", err),
-		}
+		return interceptors.Failf(codes.InvalidArgument, "error making the evaluation context: %v", err)
 	}
 
 	if p.Filter != "" {
 		out, err := evaluate(p.Filter, env, evalContext)
 
 		if err != nil {
-			return &triggersv1.InterceptorResponse{
-				Continue: false,
-				Status:   status.Newf(codes.InvalidArgument, "error evaluating cel expression: %v", err),
-			}
+			return interceptors.Failf(codes.InvalidArgument, "error evaluating cel expression: %v", err)
 		}
 
 		if out != types.True {
-			return &triggersv1.InterceptorResponse{
-				Continue: false,
-				Status:   status.Newf(codes.FailedPrecondition, "expression %s did not return true", p.Filter),
-			}
+			return interceptors.Failf(codes.FailedPrecondition, "expression %s did not return true", p.Filter)
 		}
 	}
 
@@ -175,10 +161,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	for _, u := range p.Overlays {
 		val, err := evaluate(u.Expression, env, evalContext)
 		if err != nil {
-			return &triggersv1.InterceptorResponse{
-				Continue: false,
-				Status:   status.Newf(codes.InvalidArgument, "error evaluating cel expression: %v", err),
-			}
+			return interceptors.Failf(codes.InvalidArgument, "error evaluating cel expression: %v", err)
 		}
 
 		var raw interface{}
@@ -224,10 +207,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 
 		if err != nil {
-			return &triggersv1.InterceptorResponse{
-				Continue: false,
-				Status:   status.Newf(codes.Internal, "failed to convert overlay result to type: %v", err),
-			}
+			return interceptors.Failf(codes.Internal, "failed to convert overlay result to type: %v", err)
 		}
 
 		// TODO: For backwards compatibility, consider also merging and returning the body back?
@@ -237,10 +217,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		extensions, err = sjson.SetRawBytes(extensions, u.Key, b)
 
 		if err != nil {
-			return &triggersv1.InterceptorResponse{
-				Continue: false,
-				Status:   status.Newf(codes.Internal, "failed to sjson for key '%s' to '%s': %v", u.Key, val, err),
-			}
+			return interceptors.Failf(codes.Internal, "failed to sjson for key '%s' to '%s': %v", u.Key, val, err)
 		}
 	}
 
@@ -252,10 +229,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 
 	extensionsMap := map[string]interface{}{}
 	if err := json.Unmarshal(extensions, &extensionsMap); err != nil {
-		return &triggersv1.InterceptorResponse{
-			Continue: false,
-			Status:   status.Newf(codes.Internal, "failed to unmarshal extensions into map: %v", err),
-		}
+		return interceptors.Failf(codes.Internal, "failed to unmarshal extensions into map: %v", err)
 	}
 
 	return &triggersv1.InterceptorResponse{

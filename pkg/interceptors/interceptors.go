@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"path"
 
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,11 +124,19 @@ func GetInterceptorParams(i *triggersv1.EventInterceptor) map[string]interface{}
 }
 
 // Fail constructs a InterceptorResponse that should not continue further processing.
-func Fail(status *status.Status) *triggersv1.InterceptorResponse {
+func Fail(c codes.Code, msg string) *triggersv1.InterceptorResponse {
 	return &triggersv1.InterceptorResponse{
 		Continue: false,
-		Status:   status,
+		Status: triggersv1.Status{
+			Code:    c,
+			Message: msg,
+		},
 	}
+}
+
+// Failf constructs a InterceptorResponse that should not continue further processing.
+func Failf(c codes.Code, format string, a ...interface{}) *triggersv1.InterceptorResponse {
+	return Fail(c, fmt.Sprintf(format, a...))
 }
 
 // Canonical updates the map keys to use the Canonical name
