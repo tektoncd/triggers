@@ -5,9 +5,13 @@ metadata:
   name: listener-podtemplate
 spec:
   serviceAccountName: tekton-triggers-example-sa
-  podTemplate:
-    nodeSelector:
-      app: test
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              app: test
   triggers:
     - name: foo-trig
       bindings:

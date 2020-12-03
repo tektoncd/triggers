@@ -18,10 +18,10 @@ using [Event Interceptors](#Interceptors).
   - [Syntax](#syntax)
     - [ServiceAccountName](#serviceaccountname)
     - [Triggers](#triggers)
-    - [ServiceType](#servicetype)
     - [Replicas](#replicas)
-    - [PodTemplate](#podtemplate)
     - [Resources](#resources)
+      - [ServiceType](#servicetype)
+      - [Spec](#spec)
     - [Logging](#logging)
     - [NamespaceSelector](#namespaceSelector)
   - [Labels](#labels)
@@ -64,13 +64,13 @@ the following fields:
     - [`serviceAccountName`](#serviceAccountName) - Specifies the ServiceAccount
       that the EventListener uses to create resources
 - Optional:
-  - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
-    is exposed as
   - [`replicas`](#replicas) - Specifies the number of EventListener pods
-  - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
-    for your EventListener pod
   - [`resources`](#resources) - Specifies the Kubernetes Resource information
     for your EventListener pod
+    - [`serviceType`](#serviceType) - Specifies what type of service the sink pod
+          is exposed as
+    - [`spec`](#spec) - Specifies the PodTemplate
+          for your EventListener pod
   - [`namespaceSelector`](#namespaceSelector) - Specifies the namespaces where
     EventListener can fetch triggers from and create Tekton resources.
 
@@ -170,19 +170,6 @@ rules:
   verbs: ["impersonate"]
 ```
 
-### ServiceType
-
-The `serviceType` field is optional. EventListener sinks are exposed via
-[Kubernetes Services](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
-By default, the serviceType is `ClusterIP` which means any pods running in the
-same Kubernetes cluster can access services' via their cluster DNS. Other valid
-values are `NodePort` and `LoadBalancer`. Check the
-[Kubernetes Service types](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types)
-documentations for details.
-
-For external services to connect to your cluster (e.g. GitHub sending webhooks),
-check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
-
 ### Replicas
 
 The `replicas` field is optional. By default, the number of replicas of EventListener is 1.
@@ -190,35 +177,12 @@ If you want to deploy more than one pod, you can specify the number to `replicas
 
 **Note:** If user sets `replicas` field while creating/updating eventlistener yaml then it won't respects replicas values edited by user manually on deployment or through any other mechanism (ex: HPA).
 
-### PodTemplate
-
-The `podTemplate` field is optional. A PodTemplate is specifications for 
-creating EventListener pod. A PodTemplate consists of:
-- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
-This is needed only if you want to schedule EventListener pod to a tainted node.
-- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on. 
-
-```yaml
-spec:
-  podTemplate:
-    nodeSelector:
-      app: test
-    tolerations:
-    - key: key
-      value: value
-      operator: Equal
-      effect: NoSchedule
-```
-
 ### Resources
 
 The `resources` field is optional.
 Resource field helps to provide Kubernetes or custom resource information.
 
 For more info on the design refer [TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md)
-
-Right now the `resources` field is optional in order to support backward compatibility with original behavior of `podTemplate`, `serviceType` and `serviceAccountName` fieds.
-In the future, we plan to deprecate `serviceAccountName`, `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
 
 For now `resources` has support for `kubernetesResource` but later it will have a support for Custom CRD`(ex: Knative Service)` as `customResource`
 
@@ -257,6 +221,46 @@ Containers
 - Resources
 - VolumeMounts
 - Env
+```
+kubernetesResource have two fields
+* ServiceType
+* Spec(PodTemplateSpec)
+
+#### ServiceType
+
+The `serviceType` field is optional. EventListener sinks are exposed via
+[Kubernetes Services](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
+By default, the serviceType is `ClusterIP` which means any pods running in the
+same Kubernetes cluster can access services' via their cluster DNS. Other valid
+values are `NodePort` and `LoadBalancer`. Check the
+[Kubernetes Service types](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types)
+documentations for details.
+
+For external services to connect to your cluster (e.g. GitHub sending webhooks),
+check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
+
+#### Spec
+
+The `spec` field is optional. A Spec(PodTemplateSpec) is specifications for
+creating EventListener pod. A Spec consists of entire [podTemplate](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704):
+
+```yaml
+spec:
+  template:
+    metadata:
+      labels:
+        key: "value"
+      annotations:
+        key: "value"
+    spec:
+      serviceAccountName: tekton-triggers-github-sa
+      nodeSelector:
+        app: test
+      tolerations:
+      - key: key
+        value: value
+        operator: Equal
+        effect: NoSchedule
 ```
 
 ### Logging
