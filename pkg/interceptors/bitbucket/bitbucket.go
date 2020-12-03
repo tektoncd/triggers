@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	gh "github.com/google/go-github/v31/github"
@@ -53,7 +52,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
 	p := triggersv1.BitbucketInterceptor{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
-		return interceptors.Fail(status.Newf(codes.InvalidArgument, "failed to parse interceptor params: %v", err))
+		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
 	headers := interceptors.Canonical(r.Header)
@@ -61,17 +60,17 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	if p.SecretRef != nil {
 		header := headers.Get("X-Hub-Signature")
 		if header == "" {
-			return interceptors.Fail(status.New(codes.InvalidArgument, "no X-Hub-Signature header set"))
+			return interceptors.Fail(codes.InvalidArgument, "no X-Hub-Signature header set")
 		}
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 		secret, err := w.KubeClientSet.CoreV1().Secrets(ns).Get(ctx, p.SecretRef.SecretName, metav1.GetOptions{})
 		if err != nil {
-			return interceptors.Fail(status.New(codes.Internal, fmt.Sprintf("error getting secret: %v", err)))
+			return interceptors.Failf(codes.Internal, fmt.Sprintf("error getting secret: %v", err))
 		}
 		secretToken := secret.Data[p.SecretRef.SecretKey]
 
 		if err := gh.ValidateSignature(header, r.Body, secretToken); err != nil {
-			return interceptors.Fail(status.New(codes.FailedPrecondition, err.Error()))
+			return interceptors.Failf(codes.FailedPrecondition, err.Error())
 		}
 	}
 
@@ -86,7 +85,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			}
 		}
 		if !isAllowed {
-			return interceptors.Fail(status.Newf(codes.FailedPrecondition, "event type %s is not allowed", actualEvent))
+			return interceptors.Failf(codes.FailedPrecondition, "event type %s is not allowed", actualEvent)
 		}
 	}
 	return &triggersv1.InterceptorResponse{

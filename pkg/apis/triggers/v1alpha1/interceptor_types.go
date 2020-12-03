@@ -2,9 +2,10 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
 )
 
 type InterceptorInterface interface {
@@ -46,7 +47,26 @@ type InterceptorResponse struct {
 	// Continue indicates if the EventListener should continue processing the Trigger or not
 	Continue bool `json:"continue,omitempty"`
 	// Status is an Error status containing details on any interceptor processing errors
-	Status *status.Status `json:"status,omitempty"`
+	Status Status `json:"status"`
+}
+
+type Status struct {
+	// The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+	Code codes.Code `json:"code,omitempty"`
+	// A developer-facing error message, which should be in English.
+	Message string `json:"message,omitempty"`
+}
+
+func (s Status) Err() StatusError {
+	return StatusError{s: s}
+}
+
+type StatusError struct {
+	s Status
+}
+
+func (s StatusError) Error() string {
+	return fmt.Sprintf("rpc error: code = %s desc = %s", s.s.Code, s.s.Message)
 }
 
 func ParseTriggerID(triggerID string) (namespace, name string) {

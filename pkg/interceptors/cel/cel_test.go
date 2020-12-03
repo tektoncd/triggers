@@ -357,10 +357,10 @@ func TestInterceptor_Process_Error(t *testing.T) {
 			if res.Continue {
 				t.Fatalf("cel.Process() uexpectedly returned continue: true. Response: %+v", res)
 			}
-			if tt.wantCode != res.Status.Code() {
-				t.Errorf("cel.Process() unexpected status.Code. wanted: %v, got: %v. Status is: %+v", tt.wantCode, res.Status.Code(), res.Status.Err())
+			if tt.wantCode != res.Status.Code {
+				t.Errorf("cel.Process() unexpected status.Code. wanted: %v, got: %v. Status is: %+v", tt.wantCode, res.Status.Code, res.Status.Err())
 			}
-			if !matchError(t, tt.wantMsg, res.Status.Err()) {
+			if !checkMessageContains(t, tt.wantMsg, res.Status.Message) {
 				t.Fatalf("cel.Process() got %+v, wanted status.message to contain %s", res.Status.Err(), tt.wantMsg)
 
 			}
@@ -388,11 +388,11 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	if res.Continue {
 		t.Fatalf("cel.Process() uexpectedly returned continue: true. Response: %+v", res)
 	}
-	if codes.InvalidArgument != res.Status.Code() {
-		t.Errorf("cel.Process() unexpected status.Code. wanted: %v, got: %v. Status is: %+v", codes.InvalidArgument, res.Status.Code(), res.Status.Err())
+	if codes.InvalidArgument != codes.Code(res.Status.Code) {
+		t.Errorf("cel.Process() unexpected status.Code. wanted: %v, got: %v. Status is: %+v", codes.InvalidArgument, res.Status.Code, res.Status.Err())
 	}
 	wantErrMsg := "failed to marshal json"
-	if !matchError(t, wantErrMsg, res.Status.Err()) {
+	if !checkMessageContains(t, wantErrMsg, res.Status.Message) {
 		t.Fatalf("cel.Process() got %+v, wanted status.message to contain %s", res.Status.Err(), wantErrMsg)
 
 	}
@@ -696,7 +696,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				t.Fatal(err)
 			}
 			_, err = evaluate(tt.expr, env, evalEnv)
-			if !matchError(t, tt.want, err) {
+			if err == nil {
+				t.Fatal("evaluate() expected err but got nil.")
+			}
+
+			if !checkMessageContains(t, tt.want, err.Error()) {
 				rt.Errorf("evaluate() got %s, wanted %s", err, tt.want)
 			}
 		})
@@ -734,14 +738,18 @@ func TestMakeEvalContextWithError(t *testing.T) {
 
 	_, err := makeEvalContext(payload, req.Header, req.URL.String())
 
-	if !matchError(t, "failed to parse the body as JSON: unexpected end of JSON input", err) {
+	if err == nil {
+		t.Fatalf("makeEvalContext(). expected err was nil")
+	}
+
+	if !checkMessageContains(t, "failed to parse the body as JSON: unexpected end of JSON input", err.Error()) {
 		t.Fatalf("failed to match the error: %s", err)
 	}
 }
 
-func matchError(t *testing.T, s string, e error) bool {
+func checkMessageContains(t *testing.T, x, y string) bool {
 	t.Helper()
-	match, err := regexp.MatchString(s, e.Error())
+	match, err := regexp.MatchString(x, y)
 	if err != nil {
 		t.Fatal(err)
 	}
