@@ -254,7 +254,7 @@ func newSink(config *rest.Config, sugerLogger *zap.SugaredLogger) sink.Sink {
 	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
 	kubeClient, _, err := getKubeClient(kubeconfig)
 	if err != nil {
-		log.Fatal("fail to get clients: %w", err)
+		log.Fatalf("fail to get clients: %v", err)
 	}
 
 	s := sink.Sink{

@@ -166,7 +166,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		EventID:       eventID,
 	}
 	if err := json.NewEncoder(response).Encode(body); err != nil {
-		eventLog.Errorf("failed to write back sink response: %w", err)
+		eventLog.Errorf("failed to write back sink response: %v", err)
 	}
 }
 
@@ -211,7 +211,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 	if iresp != nil {
 		if !iresp.Continue {
-			log.Infof("interceptor stopped trigger processing: %w", iresp.Status.Err())
+			log.Infof("interceptor stopped trigger processing: %v", iresp.Status.Err())
 			return iresp.Status.Err()
 		}
 	}
