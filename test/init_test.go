@@ -28,7 +28,6 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -166,7 +165,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	ctbs, err := cs.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get ClusterTriggerBindings: %w", err)
+		return nil, fmt.Errorf("could not get ClusterTriggerBindings: %w", err)
 	}
 	for _, i := range ctbs.Items {
 		printOrAdd("ClusterTriggerBinding", i.Name, i)
@@ -174,7 +173,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	els, err := cs.TriggersClient.TriggersV1alpha1().EventListeners(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get EventListeners: %w", err)
+		return nil, fmt.Errorf("could not get EventListeners: %w", err)
 	}
 	for _, i := range els.Items {
 		printOrAdd("EventListener", i.Name, i)
@@ -182,7 +181,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	tbs, err := cs.TriggersClient.TriggersV1alpha1().TriggerBindings(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get TriggerBindings: %w", err)
+		return nil, fmt.Errorf("could not get TriggerBindings: %w", err)
 	}
 	for _, i := range tbs.Items {
 		printOrAdd("TriggerBindings", i.Name, i)
@@ -190,7 +189,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	// TODO: Update TriggerTemplates Marshalling so it isn't a byte array in debug log
 	tts, err := cs.TriggersClient.TriggersV1alpha1().TriggerTemplates(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get TriggerTemplates: %w", err)
+		return nil, fmt.Errorf("could not get TriggerTemplates: %w", err)
 	}
 	for _, i := range tts.Items {
 		printOrAdd("TriggerTemplate", i.Name, i)
@@ -198,7 +197,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	pods, err := cs.KubeClient.CoreV1().Pods(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get Pods: %w", err)
+		return nil, fmt.Errorf("could not get Pods: %w", err)
 	}
 	for _, i := range pods.Items {
 		printOrAdd("Pod", i.Name, i)
@@ -206,7 +205,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	services, err := cs.KubeClient.CoreV1().Services(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get Services: %w", err)
+		return nil, fmt.Errorf("could not get Services: %w", err)
 	}
 	for _, i := range services.Items {
 		printOrAdd("Service", i.Name, i)
@@ -214,7 +213,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	roles, err := cs.KubeClient.RbacV1().Roles(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get Roles: %w", err)
+		return nil, fmt.Errorf("could not get Roles: %w", err)
 	}
 	for _, i := range roles.Items {
 		printOrAdd("Role", i.Name, i)
@@ -222,7 +221,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	roleBindings, err := cs.KubeClient.RbacV1().RoleBindings(ns).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get RoleBindings: %w", err)
+		return nil, fmt.Errorf("could not get RoleBindings: %w", err)
 	}
 	for _, i := range roleBindings.Items {
 		printOrAdd("Role", i.Name, i)
