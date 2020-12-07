@@ -34,6 +34,7 @@ using [Event Interceptors](#Interceptors).
     - [Bitbucket Interceptors](#bitbucket-interceptors)
     - [CEL Interceptors](#cel-interceptors)
       - [Overlays](#overlays)
+    - [Chaining Interceptors](#chaining-interceptors)
   - [EventListener Response](#eventlistener-response)
   - [How does the EventListener work?](#how-does-the-eventlistener-work)
   - [Examples](#examples)
@@ -674,6 +675,41 @@ spec:
   - name: branch
     value: $(extensions.short_sha)
 ```
+
+### Chaining Interceptors
+
+This section documents the current behavior for passing data between interceptors. This will change as we fully implement #271.
+
+**CEL Interceptor:** Overlays from the CEL interceptor do not modify the event body. Instead they add fields to the top level `extensions` field.
+
+**Webhook Interceptors:** Webhook Interceptors *can* modify the event body currently. However, this will change in a future release when they will have to write to the extensions field like the CEL interceptor. Since the webhook interceptor does not have access to the top level `extensions` field, the EventListener will add the `extensions` field to the body before sending it to the webhook interceptor. As an example, consider the following interceptor chain:
+  
+  ```yaml
+    interceptors:
+      - cel:
+          overlays:
+            - key: "truncated_sha"
+              expression: "body.sha.truncate(5)"
+      - webhook:
+        objectRef:
+          kind: Service
+          name: some-interceptor
+          apiVersion: v1
+      - cel:
+          filter: "body.extensions.truncated_sha == \"abcde\"" # Can also be extensions.truncated_sha == \"abcde\"
+  ```
+
+In the above snipped, the first CEL interceptor adds the `truncated_sha` field. To ensure the following webhook interceptor can use this field, the EventListener will add it to the body. So, the body received by the webhook interceptor will look as follows:
+
+```
+{
+  "sha": "abcdefghi", // Original field
+  "extensions": {
+     "truncated_sha": "abcde" 
+  }
+}
+```
+Assuming the webhook interceptor does not then modify the body, the last CEL interceptor (as well as any bindings) will have access to truncated_sha both via the body as well as via extensions i.e both `$(body.extensions.truncated_sha)` as well as `$(extensions.truncated_sha)`
 
 ## EventListener Response
 

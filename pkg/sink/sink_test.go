@@ -1053,6 +1053,118 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	}
 }
 
+type echoInterceptor struct {
+	body map[string]interface{}
+}
+
+func (f *echoInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var data map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
+	defer r.Body.Close()
+	f.body = data
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+	}
+}
+
+func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
+	echoServer := &echoInterceptor{}
+	srv := httptest.NewServer(echoServer)
+	defer srv.Close()
+	client := srv.Client()
+	// Redirect all requests to the fake server.
+	u, _ := url.Parse(srv.URL)
+	client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+
+	logger := zaptest.NewLogger(t)
+
+	r := Sink{
+		HTTPClient: srv.Client(),
+		Logger:     logger.Sugar(),
+	}
+
+	webhook := &triggersv1.EventInterceptor{
+		Webhook: &triggersv1.WebhookInterceptor{
+			ObjectRef: &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Service",
+				Name:       "foo",
+			},
+		},
+	}
+	sha := "abcdefghi" // Fake "sha" to send via body
+	preWebhookCEL := &triggersv1.EventInterceptor{
+		CEL: &triggersv1.CELInterceptor{
+			Overlays: []triggersv1.CELOverlay{{
+				Key:        "truncated_sha",
+				Expression: "body.sha.truncate(5)",
+			}},
+		},
+	}
+	postWebhookCEL := &triggersv1.EventInterceptor{
+		CEL: &triggersv1.CELInterceptor{
+			Filter: "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\"",
+		},
+	}
+	trigger := triggersv1.Trigger{
+		Spec: triggersv1.TriggerSpec{
+			Interceptors: []*triggersv1.EventInterceptor{preWebhookCEL, webhook, postWebhookCEL}},
+	}
+
+	req, err := http.NewRequest("POST", "/", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest: %v", err)
+	}
+	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
+	resp, _, iresp, err := r.ExecuteInterceptors(trigger, req, []byte(body), logger.Sugar(), eventID)
+	if err != nil {
+		t.Fatalf("executeInterceptors: %v", err)
+	}
+
+	wantBody := map[string]interface{}{
+		"sha": sha,
+		"extensions": map[string]interface{}{
+			"truncated_sha": "abcde",
+		},
+	}
+	var gotBody map[string]interface{}
+	if err := json.Unmarshal(resp, &gotBody); err != nil {
+		t.Fatalf("json.Unmarshal response body : %v\n Interceptor response is: %+v", err, iresp)
+	}
+
+	if diff := cmp.Diff(wantBody, gotBody); diff != "" {
+		t.Errorf("Body: -want +got: %s", diff)
+	}
+
+	// Check Interceptor got the body with extensions
+	if diff := cmp.Diff(wantBody, echoServer.body); diff != "" {
+		t.Errorf("Echo Interceptor did not get correct body: -want +got: %s", diff)
+	}
+
+	// Check that we forward the extension correctly to the last interceptor
+	if !iresp.Continue {
+		t.Errorf("Response.continue expected true but got false. Response: %v", iresp)
+	}
+
+	// Check we maintain the extensions outside the body as well
+	wantExtensions := map[string]interface{}{
+		"truncated_sha": "abcde",
+	}
+
+	if diff := cmp.Diff(iresp.Extensions, wantExtensions); diff != "" {
+		t.Errorf("Extensions: -want +got: %s", diff)
+	}
+
+}
+
 const userWithPermissions = "user-with-permissions"
 const userWithoutPermissions = "user-with-no-permissions"
 const userWithForbiddenAccess = "user-forbidden"
@@ -1448,4 +1560,68 @@ func makeCapturingLogger(t *testing.T) (*observer.ObservedLogs, *zap.SugaredLogg
 	core, logs := observer.New(zapcore.DebugLevel)
 	l := zaptest.NewLogger(t, zaptest.WrapOptions(zap.WrapCore(func(zapcore.Core) zapcore.Core { return core }))).Sugar()
 	return logs, l
+}
+
+func TestExtendBodyWithExtensions(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       []byte
+		extensions map[string]interface{}
+		want       map[string]interface{}
+	}{{
+		name: "merges all extensions to an extension field",
+		body: json.RawMessage(`{"sha": "abcdef"}`),
+		extensions: map[string]interface{}{
+			"added_field": "val1",
+			"nested": map[string]interface{}{
+				"field": "nestedVal",
+			},
+		},
+		want: map[string]interface{}{
+			"sha": "abcdef",
+			"extensions": map[string]interface{}{
+				"added_field": "val1",
+				"nested": map[string]interface{}{
+					"field": "nestedVal",
+				},
+			},
+		},
+	}, {
+		name: "body contains an extension already",
+		body: json.RawMessage(`{"sha": "abcdef", "extensions": {"foo": "bar"}}`),
+		extensions: map[string]interface{}{
+			"added_field": "val1",
+		},
+		want: map[string]interface{}{
+			"sha": "abcdef",
+			"extensions": map[string]interface{}{
+				"foo":         "bar",
+				"added_field": "val1",
+			},
+		},
+	}, {
+		name:       "no extensions",
+		body:       json.RawMessage(`{"sha": "abcdef"}`),
+		extensions: map[string]interface{}{},
+		want: map[string]interface{}{
+			"sha": "abcdef",
+		},
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := extendBodyWithExtensions(tc.body, tc.extensions)
+			if err != nil {
+				t.Fatalf("extendBodyWithExtensions() unexpected error: %v", err)
+			}
+			gotMap := map[string]interface{}{}
+			if err := json.Unmarshal(got, &gotMap); err != nil {
+				t.Fatalf("extendBodyWithExtensions() failed to unmarshal result: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, gotMap); diff != "" {
+				t.Fatalf("extendBodyWithExtensions() diff -want/+got: %s", diff)
+			}
+		})
+	}
+
 }
