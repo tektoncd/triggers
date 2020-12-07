@@ -104,11 +104,12 @@ func makeCelEnv(ns string, k kubernetes.Interface) (*cel.Env, error) {
 		cel.Declarations(
 			decls.NewVar("body", mapStrDyn),
 			decls.NewVar("header", mapStrDyn),
+			decls.NewVar("extensions", mapStrDyn),
 			decls.NewVar("requestURL", decls.String),
 		))
 }
 
-func makeEvalContext(body []byte, h http.Header, url string) (map[string]interface{}, error) {
+func makeEvalContext(body []byte, h http.Header, url string, extensions map[string]interface{}) (map[string]interface{}, error) {
 	var jsonMap map[string]interface{}
 	err := json.Unmarshal(body, &jsonMap)
 	if err != nil {
@@ -118,6 +119,7 @@ func makeEvalContext(body []byte, h http.Header, url string) (map[string]interfa
 		"body":       jsonMap,
 		"header":     h,
 		"requestURL": url,
+		"extensions": extensions,
 	}, nil
 }
 
@@ -138,7 +140,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		payload = r.Body
 	}
 
-	evalContext, err := makeEvalContext(payload, r.Header, r.Context.EventURL)
+	evalContext, err := makeEvalContext(payload, r.Header, r.Context.EventURL, r.Extensions)
 	if err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "error making the evaluation context: %v", err)
 	}
