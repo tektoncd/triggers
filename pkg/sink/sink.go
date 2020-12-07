@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -300,12 +301,17 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			// Clear interceptorParams for the next interceptor in chain
 			request.InterceptorParams = map[string]interface{}{}
 		} else {
-			// Old style interceptor (everything but CEL at the moment)
+			// Old style interceptors (Webhook)
+			// Merge any extensions into body to enable chaining behavior
+			body, err := extendBodyWithExtensions(request.Body, request.Extensions)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("could not merge extensions with body: %w", err)
+			}
 			req := &http.Request{
 				Method: http.MethodPost,
 				Header: request.Header,
 				URL:    in.URL,
-				Body:   ioutil.NopCloser(bytes.NewBuffer(request.Body)),
+				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
 			}
 
 			res, err := interceptor.ExecuteTrigger(req)
@@ -354,4 +360,20 @@ func (r Sink) CreateResources(triggerNS, sa string, res []json.RawMessage, trigg
 		}
 	}
 	return nil
+}
+
+// extendBodyWithExtensions merges the extensions into the given body.
+func extendBodyWithExtensions(body []byte, extensions map[string]interface{}) ([]byte, error) {
+	for k, v := range extensions {
+		vb, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value to JSON: %w", err)
+		}
+		body, err = sjson.SetRawBytes(body, fmt.Sprintf("extensions.%s", k), vb)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sjson extensions to body: %w", err)
+		}
+	}
+
+	return body, nil
 }

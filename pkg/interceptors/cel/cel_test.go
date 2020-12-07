@@ -49,6 +49,7 @@ func TestInterceptor_Process(t *testing.T) {
 		name           string
 		CEL            *triggersv1.CELInterceptor
 		body           []byte
+		extensions     map[string]interface{}
 		wantExtensions map[string]interface{}
 	}{{
 		name: "simple body check with matching body",
@@ -229,6 +230,20 @@ func TestInterceptor_Process(t *testing.T) {
 				"other": "thing",
 			},
 		},
+	}, {
+		name: "filters and overlays can access passed in extensions",
+		CEL: &triggersv1.CELInterceptor{
+			Filter: `extensions.foo == "bar"`,
+			Overlays: []triggersv1.CELOverlay{
+				{Key: "one", Expression: "extensions.foo"},
+			},
+		},
+		extensions: map[string]interface{}{
+			"foo": "bar",
+		},
+		wantExtensions: map[string]interface{}{
+			"one": "bar",
+		},
 	},
 	}
 	for _, tt := range tests {
@@ -247,7 +262,7 @@ func TestInterceptor_Process(t *testing.T) {
 					"X-Test":         []string{"test-value"},
 					"X-Secret-Token": []string{"secrettoken"},
 				},
-				Extensions: nil,
+				Extensions: tt.extensions,
 				InterceptorParams: map[string]interface{}{
 					"filter":   tt.CEL.Filter,
 					"overlays": tt.CEL.Overlays,
@@ -710,7 +725,7 @@ func TestMakeEvalContextWithError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	payload := []byte(`{"tes`)
 
-	_, err := makeEvalContext(payload, req.Header, req.URL.String())
+	_, err := makeEvalContext(payload, req.Header, req.URL.String(), map[string]interface{}{})
 
 	if !matchError(t, "failed to parse the body as JSON: unexpected end of JSON input", err) {
 		t.Fatalf("failed to match the error: %s", err)
