@@ -7,12 +7,8 @@ spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: foo-trig
-    interceptors:
-        - github:
-            eventTypes:
-              - pull_request
       bindings:
         - ref: pipeline-binding
         - ref: message-binding
       template:
-        ref: pipeline-template
+        name: pipeline-template
