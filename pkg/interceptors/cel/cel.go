@@ -61,7 +61,7 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) interceptors.Interceptor {
 	return &Interceptor{
 		Logger:        l,
 		KubeClientSet: k,

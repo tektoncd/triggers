@@ -254,7 +254,10 @@ func TestInterceptor_Process(t *testing.T) {
 			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(ctx, makeSecret(), metav1.CreateOptions{}); err != nil {
 				rt.Error(err)
 			}
-			w := NewInterceptor(kubeClient, logger.Sugar())
+			w := &Interceptor{
+				KubeClientSet: kubeClient,
+				Logger:        logger.Sugar(),
+			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
 				Body: tt.body,
 				Header: http.Header{
