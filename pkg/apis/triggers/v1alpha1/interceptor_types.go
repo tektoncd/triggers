@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,10 @@ import (
 )
 
 type InterceptorInterface interface {
+	// Process executes the given InterceptorRequest. Simply getting a non-nil InterceptorResponse back is not sufficient
+	// to determine if the interceptor processing was successful. Instead use the InterceptorResponse.Status.Continue to
+	// see if processing should continue and InterceptorResponse.Status.Code to distinguish between the kinds of errors
+	// (i.e user errors vs system errors)
 	Process(ctx context.Context, r *InterceptorRequest) *InterceptorResponse
 }
 
@@ -16,7 +21,7 @@ type InterceptorInterface interface {
 // +k8s:deepcopy-gen=false
 type InterceptorRequest struct {
 	// Body is the incoming HTTP event body
-	Body []byte `json:"body,omitempty"`
+	Body json.RawMessage `json:"body,omitempty"`
 	// Header are the headers for the incoming HTTP event
 	Header map[string][]string `json:"header,omitempty"`
 	// Extensions are extra values that are added by previous interceptors in a chain
@@ -26,12 +31,12 @@ type InterceptorRequest struct {
 	InterceptorParams map[string]interface{} `json:"interceptor_params,omitempty"`
 
 	// Context contains additional metadata about the event being processed
-	Context *TriggerContext
+	Context *TriggerContext `json:"context"`
 }
 
 type TriggerContext struct {
 	// EventURL is the URL of the incoming event
-	EventURL string `json:"url,omitempty"`
+	EventURL string `json:"event_url,omitempty"`
 	// EventID is a unique ID assigned by Triggers to each event
 	EventID string `json:"event_id,omitempty"`
 	// TriggerID is of the form namespace/$ns/triggers/$name
@@ -42,10 +47,9 @@ type TriggerContext struct {
 // +k8s:deepcopy-gen=false
 type InterceptorResponse struct {
 	// Extensions are additional fields that is added to the interceptor event.
-	// See TEP-0022. Naming TBD.
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 	// Continue indicates if the EventListener should continue processing the Trigger or not
-	Continue bool `json:"continue,omitempty"`
+	Continue bool `json:"continue"` //Don't add omitempty -- it  will remove the continue field when the value is false.
 	// Status is an Error status containing details on any interceptor processing errors
 	Status Status `json:"status"`
 }
