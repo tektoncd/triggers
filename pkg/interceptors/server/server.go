@@ -26,19 +26,25 @@ type Server struct {
 	interceptors map[string]v1alpha1.InterceptorInterface
 }
 
-func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) *Server {
+func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
 	i := map[string]v1alpha1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(k, l).(v1alpha1.InterceptorInterface),
-		"cel":       cel.NewInterceptor(k, l).(v1alpha1.InterceptorInterface),
-		"github":    github.NewInterceptor(k, l).(v1alpha1.InterceptorInterface),
-		"gitlab":    gitlab.NewInterceptor(k, l).(v1alpha1.InterceptorInterface),
+		"bitbucket": bitbucket.NewInterceptor(k, l),
+		"cel":       cel.NewInterceptor(k, l),
+		"github":    github.NewInterceptor(k, l),
+		"gitlab":    gitlab.NewInterceptor(k, l),
+	}
+
+	for k, v := range i {
+		if v == nil {
+			return nil, fmt.Errorf("interceptor %s failed to initialize", k)
+		}
 	}
 	s := Server{
 		KubeClient:   k,
 		Logger:       l,
 		interceptors: i,
 	}
-	return &s
+	return &s, nil
 }
 
 func (is *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +96,6 @@ func internal(err error) HTTPError {
 	return HTTPError{Code: http.StatusInternalServerError, Err: err}
 }
 
-// Refactor using a service error: https://blog.questionable.services/article/http-handler-error-handling-revisited/
 func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	var ii v1alpha1.InterceptorInterface
 

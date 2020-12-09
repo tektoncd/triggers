@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
-	"net/http"
 
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,15 +39,11 @@ type Interceptor struct {
 	Logger        *zap.SugaredLogger
 }
 
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
 		Logger:        l,
 		KubeClientSet: k,
 	}
-}
-
-func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	return nil, fmt.Errorf("executeTrigger() is deprecated. Call Process() instead")
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
