@@ -65,4 +65,15 @@ func AddTektonResources(clientset *fakekubeclientset.Clientset) {
 		GroupVersion: "tekton.dev/v1alpha1",
 		APIResources: resources,
 	})
+
+	clientset.Resources = append(clientset.Resources, &metav1.APIResourceList{
+		GroupVersion: "tekton.dev/v1beta1",
+		APIResources: []metav1.APIResource{{
+			Group:      "tekton.dev",
+			Version:    "v1beta1",
+			Namespaced: true,
+			Name:       "taskruns",
+			Kind:       "TaskRun",
+		}},
+	})
 }

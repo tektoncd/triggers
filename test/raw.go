@@ -8,7 +8,7 @@ import (
 )
 
 // RawExtenstion is a test helper to generate RawExtension objects for tests
-func RawExtension(t *testing.T, a interface{}) runtime.RawExtension {
+func RawExtension(t testing.TB, a interface{}) runtime.RawExtension {
 	t.Helper()
 	b, err := json.Marshal(a)
 	if err != nil {
