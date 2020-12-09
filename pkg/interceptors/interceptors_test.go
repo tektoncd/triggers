@@ -14,24 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package interceptors
+package interceptors_test
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	"github.com/google/go-cmp/cmp"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
 const testNS = "testing-ns"
@@ -149,7 +153,7 @@ func TestGetInterceptorParams(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := GetInterceptorParams(&tc.in)
+			got := interceptors.GetInterceptorParams(&tc.in)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatalf("GetInterceptorParams() failed. Diff (-want/+got): %s", diff)
 			}
@@ -180,7 +184,7 @@ func TestCanonical(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Canonical(tc.in)
+			got := interceptors.Canonical(tc.in)
 			want := http.Header(tc.want)
 			if diff := cmp.Diff(want, got); diff != "" {
 				t.Fatalf("Canonical() failed. Diff (-want/+got): %s", diff)
@@ -196,7 +200,7 @@ func TestUnmarshalParam(t *testing.T) {
 	}
 
 	got := triggersv1.SecretRef{}
-	if err := UnmarshalParams(in, &got); err != nil {
+	if err := interceptors.UnmarshalParams(in, &got); err != nil {
 		t.Fatalf("UnmarshalParams() unexpected error: %v", err)
 	}
 
@@ -223,7 +227,7 @@ func TestGetInterceptorParams_Error(t *testing.T) {
 		wantErrMsg: "failed to marshal json",
 	}} {
 		t.Run(tc.wantErrMsg, func(t *testing.T) {
-			err := UnmarshalParams(tc.ip, &tc.p)
+			err := interceptors.UnmarshalParams(tc.ip, &tc.p)
 			if err == nil {
 				t.Fatalf("UnmarshalParams() expected error but got nil")
 			}
@@ -254,7 +258,8 @@ func Test_GetSecretToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			req := setCache(&http.Request{}, tt.cache)
+			req := &http.Request{}
+			req = req.WithContext(context.WithValue(req.Context(), interceptors.RequestCacheKey, tt.cache))
 
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
@@ -267,7 +272,7 @@ func Test_GetSecretToken(t *testing.T) {
 				rt.Error(err)
 			}
 
-			secret, err := GetSecretToken(req, kubeClient, &secretRef, testNS)
+			secret, err := interceptors.GetSecretToken(req, kubeClient, &secretRef, testNS)
 			if err != nil {
 				rt.Error(err)
 			}
@@ -291,6 +296,176 @@ func makeSecret(secretText string) *corev1.Secret {
 	}
 }
 
-func setCache(req *http.Request, vals map[string]interface{}) *http.Request {
-	return req.WithContext(context.WithValue(req.Context(), requestCacheKey, vals))
+func TestResolvePath(t *testing.T) {
+	for _, tc := range []struct {
+		in   triggersv1.EventInterceptor
+		want string
+	}{{
+		in: triggersv1.EventInterceptor{
+			CEL: &triggersv1.CELInterceptor{},
+		},
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/cel",
+	}, {
+		in: triggersv1.EventInterceptor{
+			GitLab: &triggersv1.GitLabInterceptor{},
+		},
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/gitlab",
+	}, {
+		in: triggersv1.EventInterceptor{
+			GitHub: &triggersv1.GitHubInterceptor{},
+		},
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/github",
+	}, {
+		in: triggersv1.EventInterceptor{
+			Bitbucket: &triggersv1.BitbucketInterceptor{},
+		},
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/bitbucket",
+	}, {
+		in: triggersv1.EventInterceptor{
+			Webhook: &triggersv1.WebhookInterceptor{},
+		},
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/",
+	}} {
+		t.Run(tc.want, func(t *testing.T) {
+			got := interceptors.ResolveURL(&tc.in)
+			if tc.want != got {
+				t.Fatalf("ResolveURL() want: %s; got: %s", tc.want, got)
+			}
+		})
+	}
+}
+
+// testServer creates a httptest server with the passed in handler and returns a http.Client that
+// can be used to talk to these interceptors
+func testServer(t testing.TB, handler http.Handler) *http.Client {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(func() {
+		srv.Close()
+	})
+	httpClient := srv.Client()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("testServer() url parse err: %v", err)
+	}
+	httpClient.Transport = &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+	return httpClient
+}
+
+func TestExecute(t *testing.T) {
+	defaultHeader := http.Header(map[string][]string{
+		"Content-Type": {"application/json"},
+	})
+	defaultTriggerContext := &triggersv1.TriggerContext{
+		EventURL:  "http://someurl.com",
+		EventID:   "abcde",
+		TriggerID: "namespaces/default/triggers/test-trigger",
+	}
+	for _, tc := range []struct {
+		name string
+		req  *triggersv1.InterceptorRequest
+		url  string
+		want *triggersv1.InterceptorResponse
+	}{{
+		name: "cel filter pass",
+		req: &triggersv1.InterceptorRequest{
+			Header: defaultHeader,
+			InterceptorParams: map[string]interface{}{
+				"filter": `header.match("Content-Type", "application/json")`,
+			},
+			Context: defaultTriggerContext,
+		},
+		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
+		want: &triggersv1.InterceptorResponse{
+			Continue: true,
+		},
+	}, {
+		name: "cel filter fail",
+		req: &triggersv1.InterceptorRequest{
+			Header: defaultHeader,
+			InterceptorParams: map[string]interface{}{
+				"filter": `header.match("Content-Type", "application/xml")`,
+			},
+			Context: defaultTriggerContext,
+		},
+		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
+		want: &triggersv1.InterceptorResponse{
+			Continue: false,
+			Status: triggersv1.Status{
+				Code:    codes.FailedPrecondition,
+				Message: `expression header.match("Content-Type", "application/xml") did not return true`,
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+			if err != nil {
+				t.Fatalf("failed to initialize core interceptors: %v", err)
+			}
+			httpClient := testServer(t, coreInterceptors)
+			got, err := interceptors.Execute(context.Background(), httpClient, tc.req, tc.url)
+			if err != nil {
+				t.Fatalf("Execute() unexpected error: %s", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Fatalf("Execute() diff -want/+got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestExecute_Error(t *testing.T) {
+	defaultReq := &triggersv1.InterceptorRequest{
+		Body: `{}`,
+		Header: http.Header(map[string][]string{
+			"Content-Type": {"application/json"},
+		}),
+		Context: &triggersv1.TriggerContext{
+			EventURL:  "http://someurl.com",
+			EventID:   "abcde",
+			TriggerID: "namespaces/default/triggers/test-trigger",
+		},
+		InterceptorParams: map[string]interface{}{
+			"filter": `header.match("Content-Type", "application/json")`,
+		},
+	}
+	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+	if err != nil {
+		t.Fatalf("failed to initialize core interceptors: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		req  *triggersv1.InterceptorRequest
+		url  string
+		svr  http.Handler
+	}{{
+		name: "bad URL",
+		req:  defaultReq,
+		url:  "not_a_url",
+		svr:  coreInterceptors,
+	}, {
+		name: "non 200 response",
+		req:  defaultReq,
+		url:  "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
+		svr: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}),
+	}, {
+		name: "incorrect response format",
+		req:  defaultReq,
+		url:  "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
+		svr: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`not_json`))
+		}),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := testServer(t, tc.svr)
+			got, err := interceptors.Execute(context.Background(), client, tc.req, tc.url)
+			if err == nil {
+				t.Fatalf("Execute() did not get expected error. Response was %+v", got)
+			}
+		})
+	}
 }

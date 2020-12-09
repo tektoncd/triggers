@@ -29,10 +29,6 @@ import (
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
-	"github.com/tektoncd/triggers/pkg/interceptors/cel"
-	"github.com/tektoncd/triggers/pkg/interceptors/github"
-	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
@@ -294,27 +290,13 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			request.Body = string(payload)
 			continue
 		}
-
-		var interceptor triggersv1.InterceptorInterface
-		switch {
-		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(r.KubeClientSet, log)
-		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(r.KubeClientSet, log)
-		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
-		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(r.KubeClientSet, log)
-		default:
-			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
-		}
-		if interceptor == nil {
-			return nil, nil, nil, fmt.Errorf("could not initialize interceptor type: %v", i)
-		}
-
-		// Set per interceptor config params to the request
+		// TODO: Plumb through context from EL
 		request.InterceptorParams = interceptors.GetInterceptorParams(i)
-		interceptorResponse := interceptor.Process(context.Background(), &request)
+		url := interceptors.ResolveURL(i)
+		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		if !interceptorResponse.Continue {
 			return nil, nil, interceptorResponse, nil
 		}
