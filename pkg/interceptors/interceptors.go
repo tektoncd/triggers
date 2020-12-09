@@ -17,17 +17,25 @@ limitations under the License.
 package interceptors
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path"
+
+	"github.com/tektoncd/triggers/pkg/system"
 
 	"google.golang.org/grpc/codes"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	CoreInterceptorsHost = "tekton-triggers-core-interceptors"
 )
 
 // Interceptor is the interface that all interceptors implement.
@@ -37,10 +45,10 @@ type Interceptor interface {
 
 type key string
 
-const requestCacheKey key = "interceptors.RequestCache"
+const RequestCacheKey key = "interceptors.RequestCache"
 
 func getCache(req *http.Request) map[string]interface{} {
-	if cache, ok := req.Context().Value(requestCacheKey).(map[string]interface{}); ok {
+	if cache, ok := req.Context().Value(RequestCacheKey).(map[string]interface{}); ok {
 		return cache
 	}
 
@@ -53,6 +61,7 @@ func getCache(req *http.Request) map[string]interface{} {
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
+// TODO: we don't really use the cache here. Instead use a secretLister?
 func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, triggerNS string) ([]byte, error) {
 	var cache map[string]interface{}
 
@@ -160,4 +169,53 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 		return fmt.Errorf("invalid json: %w", err)
 	}
 	return nil
+}
+
+// ResolveURL returns the URL for the given core interceptor
+func ResolveURL(i *triggersv1.TriggerInterceptor) string {
+	// This is temporary until we implement #868
+	base := fmt.Sprintf("http://%s.%s.svc/", CoreInterceptorsHost, system.GetNamespace())
+	path := ""
+	switch {
+	case i.Bitbucket != nil:
+		path = "bitbucket"
+	case i.CEL != nil:
+		path = "cel"
+	case i.GitHub != nil:
+		path = "github"
+	case i.GitLab != nil:
+		path = "gitlab"
+	}
+	return base + path
+}
+
+// Execute executes the InterceptorRequest using the given httpClient
+func Execute(ctx context.Context, client *http.Client, req *triggersv1.InterceptorRequest, url string) (*triggersv1.InterceptorResponse, error) {
+	b, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: Seed context with timeouts
+	r, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(b))
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		// TODO: error type for easier checking. wrap in status.Errorf?
+		return nil, fmt.Errorf("interceptor response was not 200: %v", string(body))
+	}
+	iresp := triggersv1.InterceptorResponse{}
+	if err := json.Unmarshal(body, &iresp); err != nil {
+		return nil, err
+	}
+	return &iresp, nil
 }
