@@ -266,42 +266,8 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 	}
 
 	for _, i := range t.Spec.Interceptors {
-		var interceptor interceptors.Interceptor
-		switch {
-		case i.Webhook != nil:
-			interceptor = webhook.NewInterceptor(i.Webhook, r.HTTPClient, t.Namespace, log)
-		case i.GitHub != nil:
-			interceptor = github.NewInterceptor(r.KubeClientSet, log)
-		case i.GitLab != nil:
-			interceptor = gitlab.NewInterceptor(r.KubeClientSet, log)
-		case i.CEL != nil:
-			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
-		case i.Bitbucket != nil:
-			interceptor = bitbucket.NewInterceptor(r.KubeClientSet, log)
-		default:
-			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
-		}
-
-		// Immutable Interface check
-		if interceptorInterface, ok := interceptor.(triggersv1.InterceptorInterface); ok {
-			// Set per interceptor config params to the request
-			request.InterceptorParams = interceptors.GetInterceptorParams(i)
-			interceptorResponse := interceptorInterface.Process(context.Background(), &request)
-			if !interceptorResponse.Continue {
-				return nil, nil, interceptorResponse, nil
-			}
-
-			if interceptorResponse.Extensions != nil {
-				// Merge any extensions and pass it on to the next request in the chain
-				for k, v := range interceptorResponse.Extensions {
-					request.Extensions[k] = v
-				}
-			}
-			// Clear interceptorParams for the next interceptor in chain
-			request.InterceptorParams = map[string]interface{}{}
-		} else {
-			// Old style interceptors (Webhook)
-			// Merge any extensions into body to enable chaining behavior
+		if i.Webhook != nil {
+			// Old style interceptor (everything but CEL at the moment)
 			body, err := extendBodyWithExtensions(request.Body, request.Extensions)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("could not merge extensions with body: %w", err)
@@ -312,7 +278,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 				URL:    in.URL,
 				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
 			}
-
+			interceptor := webhook.NewInterceptor(i.Webhook, r.HTTPClient, t.Namespace, log)
 			res, err := interceptor.ExecuteTrigger(req)
 			if err != nil {
 				return nil, nil, nil, err
@@ -327,7 +293,41 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			// request chaining.
 			request.Header = res.Header.Clone()
 			request.Body = payload
+			continue
 		}
+
+		var interceptor triggersv1.InterceptorInterface
+		switch {
+		case i.GitHub != nil:
+			interceptor = github.NewInterceptor(r.KubeClientSet, log)
+		case i.GitLab != nil:
+			interceptor = gitlab.NewInterceptor(r.KubeClientSet, log)
+		case i.CEL != nil:
+			interceptor = cel.NewInterceptor(r.KubeClientSet, log)
+		case i.Bitbucket != nil:
+			interceptor = bitbucket.NewInterceptor(r.KubeClientSet, log)
+		default:
+			return nil, nil, nil, fmt.Errorf("unknown interceptor type: %v", i)
+		}
+		if interceptor == nil {
+			return nil, nil, nil, fmt.Errorf("could not initialize interceptor type: %v", i)
+		}
+
+		// Set per interceptor config params to the request
+		request.InterceptorParams = interceptors.GetInterceptorParams(i)
+		interceptorResponse := interceptor.Process(context.Background(), &request)
+		if !interceptorResponse.Continue {
+			return nil, nil, interceptorResponse, nil
+		}
+
+		if interceptorResponse.Extensions != nil {
+			// Merge any extensions and pass it on to the next request in the chain
+			for k, v := range interceptorResponse.Extensions {
+				request.Extensions[k] = v
+			}
+		}
+		// Clear interceptorParams for the next interceptor in chain
+		request.InterceptorParams = map[string]interface{}{}
 	}
 	return request.Body, request.Header, &triggersv1.InterceptorResponse{
 		Continue:   true,

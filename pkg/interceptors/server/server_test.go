@@ -76,10 +76,13 @@ func TestServer_ServeHTTP(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
 
-			server := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			server, err := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			if err != nil {
+				t.Fatalf("error initializing core interceptors: %v", err)
+			}
 			body, err := json.Marshal(tc.req)
 			if err != nil {
-				t.Fatalf("Failed to marshal errors ")
+				t.Fatalf("Failed to marshal errors")
 			}
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", tc.path), bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
@@ -133,7 +136,10 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
 
-			server := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			server, err := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			if err != nil {
+				t.Fatalf("error initializing core interceptors: %v", err)
+			}
 			body, err := json.Marshal(tc.req)
 			if err != nil {
 				t.Fatalf("Failed to marshal errors ")

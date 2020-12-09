@@ -61,16 +61,11 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) interceptors.Interceptor {
+func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
 		Logger:        l,
 		KubeClientSet: k,
 	}
-}
-
-// We need to keep this method around till we migrate the other interceptors to the new interface
-func (w *Interceptor) ExecuteTrigger(_ *http.Request) (*http.Response, error) {
-	return nil, fmt.Errorf("executeTrigger() is deprecated. Call Process() instead")
 }
 
 func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, error) {
