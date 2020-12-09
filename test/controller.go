@@ -96,6 +96,9 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		Dynamic:  dynamicclientset.New(tekton.WithClient(dynamicClient)),
 	}
 
+	// Teach Kube clients about the Tekton resources (needed by discovery client when creating resources)
+	AddTektonResources(c.Kube)
+
 	// Setup fake informer for reconciler tests
 	ctbInformer := fakeclustertriggerbindinginformer.Get(ctx)
 	elInformer := fakeeventlistenerinformer.Get(ctx)

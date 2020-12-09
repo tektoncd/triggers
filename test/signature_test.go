@@ -8,10 +8,7 @@ import (
 )
 
 func TestHMACHeader(t *testing.T) {
-	got, err := test.HMACHeader("secret", json.RawMessage(`{}`))
-	if err != nil {
-		t.Fatalf("HMACHeader() error: %v", err)
-	}
+	got := test.HMACHeader(t, "secret", json.RawMessage(`{}`))
 	// Generated from https://play.golang.org/p/OlkBawQQPiJ
 	want := "sha1=5d61605c3feea9799210ddcb71307d4ba264225f"
 	if want != got {

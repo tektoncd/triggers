@@ -35,10 +35,8 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature, err := test.HMACHeader(secretToken, emptyJSONBody)
-	if err != nil {
-		t.Fatalf("could not generate HMAC header: %v", err)
-	}
+	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+
 	tests := []struct {
 		name              string
 		interceptorParams *triggersv1.GitHubInterceptor
@@ -156,10 +154,8 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature, err := test.HMACHeader(secretToken, emptyJSONBody)
-	if err != nil {
-		t.Fatalf("could not generate HMAC header: %v", err)
-	}
+	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+
 	tests := []struct {
 		name              string
 		interceptorParams *triggersv1.GitHubInterceptor
