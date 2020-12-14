@@ -364,6 +364,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 				existingDeployment.Spec.Template.Spec.Volumes = deployment.Spec.Template.Spec.Volumes
 				updated = true
 			}
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, deployment.Spec.Template.Spec.SecurityContext) {
+				existingDeployment.Spec.Template.Spec.SecurityContext = deployment.Spec.Template.Spec.SecurityContext
+				updated = true
+			}
 		}
 		if updated {
 			if _, err := r.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(ctx, existingDeployment, metav1.UpdateOptions{}); err != nil {
@@ -461,6 +465,10 @@ func getDeployment(el *v1alpha1.EventListener) *appsv1.Deployment {
 					ServiceAccountName: serviceAccountName,
 					Containers:         []corev1.Container{container},
 					Volumes:            vol,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: ptr.Bool(true),
+						RunAsUser:    ptr.Int64(65532),
+					},
 				},
 			},
 		},

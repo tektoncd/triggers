@@ -233,6 +233,10 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							},
 						},
 					}},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: ptr.Bool(true),
+						RunAsUser:    ptr.Int64(65532),
+					},
 				},
 			},
 		},
@@ -596,6 +600,10 @@ func TestReconcile(t *testing.T) {
 	deploymentMissingVolumes := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.Volumes = nil
 		d.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+	})
+
+	deploymentMissingSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].SecurityContext = nil
 	})
 
 	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
@@ -971,7 +979,24 @@ func TestReconcile(t *testing.T) {
 			Deployments:    []*appsv1.Deployment{deploymentWithTLSConnection},
 			Services:       []*corev1.Service{elServiceWithTLSConnection},
 		},
-	}}
+	}, {
+		name: "eventlistener with security context",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+	},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup with startResources
