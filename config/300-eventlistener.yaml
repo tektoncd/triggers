@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: eventlisteners.triggers.tekton.dev
@@ -24,10 +24,6 @@ metadata:
 spec:
   group: triggers.tekton.dev
   scope: Namespaced
-  versions:
-  - name: v1alpha1
-    served: true
-    storage: true
   names:
     kind: EventListener
     plural: eventlisteners
@@ -37,18 +33,32 @@ spec:
     categories:
     - tekton
     - tekton-triggers
-  # Opt into the status subresource so metadata.generation
-  # starts to increment
-  subresources:
-    status: {}
-  version: v1alpha1
-  additionalPrinterColumns:
-  - name: Address
-    type: string
-    JSONPath: .status.address.url
-  - name: Available
-    type: string
-    JSONPath: ".status.conditions[?(@.type=='Available')].status"
-  - name: Reason
-    type: string
-    JSONPath: ".status.conditions[?(@.type=='Available')].reason"
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        # One can use x-kubernetes-preserve-unknown-fields: true
+        # at the root of the schema (and inside any properties, additionalProperties)
+        # to get the traditional CRD behaviour that nothing is pruned, despite
+        # setting spec.preserveUnknownProperties: false.
+        #
+        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
+        # See issue: https://github.com/knative/serving/issues/912
+        x-kubernetes-preserve-unknown-fields: true
+    # Opt into the status subresource so metadata.generation
+    # starts to increment
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Address
+      type: string
+      jsonPath: .status.address.url
+    - name: Available
+      type: string
+      jsonPath: ".status.conditions[?(@.type=='Available')].status"
+    - name: Reason
+      type: string
+      jsonPath: ".status.conditions[?(@.type=='Available')].reason"
