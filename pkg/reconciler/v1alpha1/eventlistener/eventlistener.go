@@ -61,12 +61,15 @@ const (
 )
 
 var (
-	// The container that we use to run in the EventListener Pods
-	elImage = flag.String("el-image", "override-with-el:latest",
+	// ELImage defines the container that we use to run in the EventListener Pods
+	ELImage = flag.String("el-image", "override-with-el:latest",
 		"The container image for the EventListener Pod.")
 	// ElPort defines the port for the EventListener to listen on
 	ElPort = flag.Int("el-port", 8080,
 		"The container port for the EventListener to listen on.")
+	// ELSetSecurityContext defines if the security context is set.
+	ELSetSecurityContext = flag.Bool("el-security-context", true,
+		"Add a security context to the event listener deployment.")
 	// ELReadTimeOut defines the read timeout for EventListener Server
 	ELReadTimeOut = flag.Int64("el-readtimeout", 5,
 		"The read timeout for EventListener Server.")
@@ -364,7 +367,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 				existingDeployment.Spec.Template.Spec.Volumes = deployment.Spec.Template.Spec.Volumes
 				updated = true
 			}
-			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, deployment.Spec.Template.Spec.SecurityContext) {
+			if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, deployment.Spec.Template.Spec.SecurityContext) && *ELSetSecurityContext {
 				existingDeployment.Spec.Template.Spec.SecurityContext = deployment.Spec.Template.Spec.SecurityContext
 				updated = true
 			}
@@ -402,6 +405,7 @@ func getDeployment(el *v1alpha1.EventListener) *appsv1.Deployment {
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
 		serviceAccountName                   string
+		securityContext                      corev1.PodSecurityContext
 	)
 	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name))
 
@@ -447,6 +451,13 @@ func getDeployment(el *v1alpha1.EventListener) *appsv1.Deployment {
 		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
 	}
 
+	if *ELSetSecurityContext {
+		securityContext = corev1.PodSecurityContext{
+			RunAsNonRoot: ptr.Bool(true),
+			RunAsUser:    ptr.Int64(65532),
+		}
+	}
+
 	return &appsv1.Deployment{
 		ObjectMeta: generateObjectMeta(el),
 		Spec: appsv1.DeploymentSpec{
@@ -465,10 +476,7 @@ func getDeployment(el *v1alpha1.EventListener) *appsv1.Deployment {
 					ServiceAccountName: serviceAccountName,
 					Containers:         []corev1.Container{container},
 					Volumes:            vol,
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr.Bool(true),
-						RunAsUser:    ptr.Int64(65532),
-					},
+					SecurityContext:    &securityContext,
 				},
 			},
 		},
@@ -539,7 +547,7 @@ func getContainer(el *v1alpha1.EventListener) corev1.Container {
 
 	return corev1.Container{
 		Name:  "event-listener",
-		Image: *elImage,
+		Image: *ELImage,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(*ElPort),
 			Protocol:      corev1.ProtocolTCP,
