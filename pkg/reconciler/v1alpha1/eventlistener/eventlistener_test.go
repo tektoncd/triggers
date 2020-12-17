@@ -174,7 +174,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 					ServiceAccountName: "sa",
 					Containers: []corev1.Container{{
 						Name:  "event-listener",
-						Image: *elImage,
+						Image: *ELImage,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: int32(*ElPort),
 							Protocol:      corev1.ProtocolTCP,
@@ -257,7 +257,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 var withTLSConfig = func(d *appsv1.Deployment) {
 	d.Spec.Template.Spec.Containers = []corev1.Container{{
 		Name:  "event-listener",
-		Image: *elImage,
+		Image: *ELImage,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(8443),
 			Protocol:      corev1.ProtocolTCP,
