@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -20,10 +19,16 @@ type InterceptorInterface interface {
 // Do not generate DeepCopy(). See #827
 // +k8s:deepcopy-gen=false
 type InterceptorRequest struct {
-	// Body is the incoming HTTP event body
-	Body json.RawMessage `json:"body,omitempty"`
+	// Body is the incoming HTTP event body. We use a "string" representation of the JSON body
+	// in order to preserve the body exactly as it was sent (including spaces etc.). This is necessary
+	// for some interceptors e.g. GitHub for validating the body with a signature. While []byte can also
+	// store an exact representation of the body, `json.Marshal` will compact []byte to a base64 encoded
+	// string which means that we will lose the spaces any time we marshal this struct.
+	Body string `json:"body,omitempty"`
+
 	// Header are the headers for the incoming HTTP event
 	Header map[string][]string `json:"header,omitempty"`
+
 	// Extensions are extra values that are added by previous interceptors in a chain
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 

@@ -37,7 +37,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 		name: "valid request that should continue",
 		path: "/cel",
 		req: &v1alpha1.InterceptorRequest{
-			Body: json.RawMessage(`{}`),
+			Body: `{}`,
 			Header: map[string][]string{
 				"X-Event-Type": {"push"},
 			},
@@ -53,7 +53,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 		name: "valid request that should not continue",
 		path: "/cel",
 		req: &v1alpha1.InterceptorRequest{
-			Body: json.RawMessage(`{}`),
+			Body: `{}`,
 			Header: map[string][]string{
 				"X-Event-Type": {"push"},
 			},

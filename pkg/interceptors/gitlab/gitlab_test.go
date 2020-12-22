@@ -18,7 +18,6 @@ package gitlab
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -99,7 +98,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -238,7 +237,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -286,7 +285,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	}
 
 	req := &triggersv1.InterceptorRequest{
-		Body: json.RawMessage(`{}`),
+		Body: `{}`,
 		Header: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
