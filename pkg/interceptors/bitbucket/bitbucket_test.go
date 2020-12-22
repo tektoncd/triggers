@@ -117,7 +117,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 			}
 
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -263,7 +263,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 			}
 
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -308,7 +308,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	}
 
 	req := &triggersv1.InterceptorRequest{
-		Body: json.RawMessage(`{}`),
+		Body: `{}`,
 		Header: http.Header{
 			"Content-Type": []string{"application/json"},
 		},

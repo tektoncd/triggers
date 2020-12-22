@@ -259,7 +259,7 @@ func TestInterceptor_Process(t *testing.T) {
 				Logger:        logger.Sugar(),
 			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
-				Body: tt.body,
+				Body: string(tt.body),
 				Header: http.Header{
 					"Content-Type":   []string{"application/json"},
 					"X-Test":         []string{"test-value"},
@@ -356,7 +356,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 				Logger: logger.Sugar(),
 			}
 			res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
-				Body: tt.body,
+				Body: string(tt.body),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 					"X-Test":       []string{"test-value"},
@@ -392,7 +392,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 		Logger: logger.Sugar(),
 	}
 	res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
-		Body:   json.RawMessage(`{}`),
+		Body:   `{}`,
 		Header: http.Header{},
 		InterceptorParams: map[string]interface{}{
 			"filter": func() {}, // Should fail JSON unmarshal

@@ -71,7 +71,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 		secretToken := secret.Data[p.SecretRef.SecretKey]
 
-		if err := gh.ValidateSignature(header, r.Body, secretToken); err != nil {
+		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
 			return interceptors.Fail(codes.FailedPrecondition, err.Error())
 		}
 	}

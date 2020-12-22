@@ -113,7 +113,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			kubeClient := fakekubeclient.Get(ctx)
 
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -258,7 +258,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 			kubeClient := fakekubeclient.Get(ctx)
 
 			req := &triggersv1.InterceptorRequest{
-				Body: tt.payload,
+				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -301,7 +301,7 @@ func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	kubeClient := fakekubeclient.Get(ctx)
 	req := &triggersv1.InterceptorRequest{
-		Body: json.RawMessage(`{}`),
+		Body: `{}`,
 		Header: http.Header{
 			"Content-Type":    []string{"application/x-www-form-urlencoded"},
 			"X-Hub-Signature": []string{"foo"},
@@ -337,7 +337,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	}
 
 	req := &triggersv1.InterceptorRequest{
-		Body: json.RawMessage(`{}`),
+		Body: `{}`,
 		Header: http.Header{
 			"Content-Type": []string{"application/json"},
 		},

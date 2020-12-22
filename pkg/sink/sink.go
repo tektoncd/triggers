@@ -254,7 +254,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
 	// or add to the Extensions
 	request := triggersv1.InterceptorRequest{
-		Body:       event,
+		Body:       string(event),
 		Header:     in.Header.Clone(),
 		Extensions: map[string]interface{}{}, // Empty extensions for the first interceptor in chain
 		Context: &triggersv1.TriggerContext{
@@ -266,9 +266,8 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 	}
 
 	for _, i := range t.Spec.Interceptors {
-		if i.Webhook != nil {
-			// Old style interceptor (everything but CEL at the moment)
-			body, err := extendBodyWithExtensions(request.Body, request.Extensions)
+		if i.Webhook != nil { // Old style interceptor
+			body, err := extendBodyWithExtensions([]byte(request.Body), request.Extensions)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("could not merge extensions with body: %w", err)
 			}
@@ -292,7 +291,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			// Set the next request to be the output of the last response to enable
 			// request chaining.
 			request.Header = res.Header.Clone()
-			request.Body = payload
+			request.Body = string(payload)
 			continue
 		}
 
@@ -329,7 +328,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 		// Clear interceptorParams for the next interceptor in chain
 		request.InterceptorParams = map[string]interface{}{}
 	}
-	return request.Body, request.Header, &triggersv1.InterceptorResponse{
+	return []byte(request.Body), request.Header, &triggersv1.InterceptorResponse{
 		Continue:   true,
 		Extensions: request.Extensions,
 	}, nil

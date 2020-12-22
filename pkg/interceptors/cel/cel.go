@@ -131,8 +131,8 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 
 	var payload = []byte(`{}`)
-	if r.Body != nil {
-		payload = r.Body
+	if r.Body != "" {
+		payload = []byte(r.Body)
 	}
 
 	evalContext, err := makeEvalContext(payload, r.Header, r.Context.EventURL, r.Extensions)
