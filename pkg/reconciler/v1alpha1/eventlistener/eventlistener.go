@@ -51,7 +51,7 @@ const (
 	// eventListenerConfigMapName is for the automatically created ConfigMap
 	eventListenerConfigMapName = "config-logging-triggers"
 	// eventListenerServicePortName defines service port name for EventListener Service
-	eventListenerServicePortName = "listener"
+	eventListenerServicePortName = "http-listener"
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
