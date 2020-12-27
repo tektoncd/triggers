@@ -370,7 +370,7 @@ func TestEventListenerCreate(t *testing.T) {
 		},
 	}
 
-	labelSelector := fields.SelectorFromSet(eventReconciler.GenerateResourceLabels(el.Name)).String()
+	labelSelector := fields.SelectorFromSet(eventReconciler.GenerateResourceLabels(el.Name, eventReconciler.DefaultStaticResourceLabels)).String()
 	// Grab EventListener sink pods
 	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
@@ -378,7 +378,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// ElPort forward sink pod for http request
-	portString := strconv.Itoa(*eventReconciler.ElPort)
+	portString := strconv.Itoa(eventReconciler.DefaultPort)
 	podName := sinkPods.Items[0].Name
 	stopChan, errChan := make(chan struct{}, 1), make(chan error, 1)
 
