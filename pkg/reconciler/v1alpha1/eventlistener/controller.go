@@ -18,7 +18,6 @@ package eventlistener
 
 import (
 	"context"
-	"os"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
@@ -36,46 +35,49 @@ import (
 )
 
 // NewController creates a new instance of an EventListener controller.
-func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	logger := logging.FromContext(ctx)
-	kubeclientset := kubeclient.Get(ctx)
-	triggersclientset := triggersclient.Get(ctx)
-	eventListenerInformer := eventlistenerinformer.Get(ctx)
-	deploymentInformer := deployinformer.Get(ctx)
-	serviceInformer := serviceinformer.Get(ctx)
+func NewController(config Config) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		logger := logging.FromContext(ctx)
+		kubeclientset := kubeclient.Get(ctx)
+		triggersclientset := triggersclient.Get(ctx)
+		eventListenerInformer := eventlistenerinformer.Get(ctx)
+		deploymentInformer := deployinformer.Get(ctx)
+		serviceInformer := serviceinformer.Get(ctx)
 
-	c := &Reconciler{
-		KubeClientSet:       kubeclientset,
-		TriggersClientSet:   triggersclientset,
-		configmapLister:     configmapinformer.Get(ctx).Lister(),
-		deploymentLister:    deploymentInformer.Lister(),
-		eventListenerLister: eventListenerInformer.Lister(),
-		serviceLister:       serviceInformer.Lister(),
-		systemNamespace:     os.Getenv("SYSTEM_NAMESPACE"),
-	}
+		reconciler := &Reconciler{
+			KubeClientSet:       kubeclientset,
+			TriggersClientSet:   triggersclientset,
+			configmapLister:     configmapinformer.Get(ctx).Lister(),
+			deploymentLister:    deploymentInformer.Lister(),
+			eventListenerLister: eventListenerInformer.Lister(),
+			serviceLister:       serviceInformer.Lister(),
 
-	impl := eventlistenerreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
-		return controller.Options{
-			AgentName: ControllerName,
+			config: config,
 		}
-	})
 
-	logger.Info("Setting up event handlers")
-	eventListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-		DeleteFunc: impl.Enqueue,
-	})
+		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
+			return controller.Options{
+				AgentName: ControllerName,
+			}
+		})
 
-	deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
-		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-	})
+		logger.Info("Setting up event handlers")
+		eventListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    impl.Enqueue,
+			UpdateFunc: controller.PassNew(impl.Enqueue),
+			DeleteFunc: impl.Enqueue,
+		})
 
-	serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
-		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-	})
+		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
 
-	return impl
+		serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
+		return impl
+	}
 }

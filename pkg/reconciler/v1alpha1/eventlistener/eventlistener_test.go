@@ -100,7 +100,7 @@ var (
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
 // given test.Resources r where r represents the state of the system
-func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, context.CancelFunc) {
+func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
@@ -122,14 +122,41 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources) (test.Assets, co
 		})
 	clients := test.SeedResources(t, ctx, r)
 	cmw := configmap.NewInformedWatcher(clients.Kube, system.GetNamespace())
+	if c == nil {
+		c = makeConfig()
+	}
 	testAssets := test.Assets{
-		Controller: NewController(ctx, cmw),
+		Controller: NewController(*c)(ctx, cmw),
 		Clients:    clients,
 	}
 	if la, ok := testAssets.Controller.Reconciler.(pkgreconciler.LeaderAware); ok {
 		_ = la.Promote(pkgreconciler.UniversalBucket(), func(pkgreconciler.Bucket, types.NamespacedName) {})
 	}
 	return testAssets, cancel
+}
+
+// makeConfig is a helper to build a config that is consumed by an EventListener.
+// It generates a default Config for the EventListener without any flags set and accepts functions for modification.
+func makeConfig(ops ...func(d *Config)) *Config {
+	c := Config{
+		Image:              &DefaultImage,
+		Port:               &DefaultPort,
+		SetSecurityContext: &DefaultSetSecurityContext,
+		ReadTimeOut:        &DefaultReadTimeout,
+		WriteTimeOut:       &DefaultWriteTimeout,
+		IdleTimeOut:        &DefaultIdleTimeout,
+		TimeOutHandler:     &DefaultTimeOutHandler,
+		PeriodSeconds:      &DefaultPeriodSeconds,
+		FailureThreshold:   &DefaultFailureThreshold,
+
+		StaticResourceLabels: DefaultStaticResourceLabels,
+		SystemNamespace:      DefaultSystemNamespace,
+	}
+
+	for _, op := range ops {
+		op(&c)
+	}
+	return &c
 }
 
 // makeEL is a helper to build an EventListener for tests.
@@ -174,9 +201,9 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 					ServiceAccountName: "sa",
 					Containers: []corev1.Container{{
 						Name:  "event-listener",
-						Image: *ELImage,
+						Image: DefaultImage,
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(*ElPort),
+							ContainerPort: int32(DefaultPort),
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						LivenessProbe: &corev1.Probe{
@@ -184,31 +211,31 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
-									Port:   intstr.FromInt((*ElPort)),
+									Port:   intstr.FromInt(DefaultPort),
 								},
 							},
-							PeriodSeconds:    int32(*PeriodSeconds),
-							FailureThreshold: int32(*FailureThreshold),
+							PeriodSeconds:    int32(DefaultPeriodSeconds),
+							FailureThreshold: int32(DefaultFailureThreshold),
 						},
 						ReadinessProbe: &corev1.Probe{
 							Handler: corev1.Handler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
-									Port:   intstr.FromInt((*ElPort)),
+									Port:   intstr.FromInt(DefaultPort),
 								},
 							},
-							PeriodSeconds:    int32(*PeriodSeconds),
-							FailureThreshold: int32(*FailureThreshold),
+							PeriodSeconds:    int32(DefaultPeriodSeconds),
+							FailureThreshold: int32(DefaultFailureThreshold),
 						},
 						Args: []string{
 							"-el-name", eventListenerName,
 							"-el-namespace", namespace,
-							"-port", strconv.Itoa(*ElPort),
-							"readtimeout", strconv.FormatInt(*ELReadTimeOut, 10),
-							"writetimeout", strconv.FormatInt(*ELWriteTimeOut, 10),
-							"idletimeout", strconv.FormatInt(*ELIdleTimeOut, 10),
-							"timeouthandler", strconv.FormatInt(*ELTimeOutHandler, 10),
+							"-port", strconv.Itoa(DefaultPort),
+							"readtimeout", strconv.FormatInt(DefaultReadTimeout, 10),
+							"writetimeout", strconv.FormatInt(DefaultWriteTimeout, 10),
+							"idletimeout", strconv.FormatInt(DefaultIdleTimeout, 10),
+							"timeouthandler", strconv.FormatInt(DefaultTimeOutHandler, 10),
 						},
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "config-logging",
@@ -257,7 +284,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 var withTLSConfig = func(d *appsv1.Deployment) {
 	d.Spec.Template.Spec.Containers = []corev1.Container{{
 		Name:  "event-listener",
-		Image: *ELImage,
+		Image: DefaultImage,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(8443),
 			Protocol:      corev1.ProtocolTCP,
@@ -270,8 +297,8 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					Port:   intstr.FromInt((8443)),
 				},
 			},
-			PeriodSeconds:    int32(*PeriodSeconds),
-			FailureThreshold: int32(*FailureThreshold),
+			PeriodSeconds:    int32(DefaultPeriodSeconds),
+			FailureThreshold: int32(DefaultFailureThreshold),
 		},
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -281,8 +308,8 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					Port:   intstr.FromInt((8443)),
 				},
 			},
-			PeriodSeconds:    int32(*PeriodSeconds),
-			FailureThreshold: int32(*FailureThreshold),
+			PeriodSeconds:    int32(DefaultPeriodSeconds),
+			FailureThreshold: int32(DefaultFailureThreshold),
 		},
 		Args: []string{
 			"-el-name", eventListenerName,
@@ -365,9 +392,9 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 			Ports: []corev1.ServicePort{{
 				Name:     eventListenerServicePortName,
 				Protocol: corev1.ProtocolTCP,
-				Port:     int32(*ElPort),
+				Port:     int32(DefaultPort),
 				TargetPort: intstr.IntOrString{
-					IntVal: int32(*ElPort),
+					IntVal: int32(DefaultPort),
 				},
 			}},
 		},
@@ -392,7 +419,7 @@ var withTLSPort = bldr.EventListenerStatus(
 
 var withStatus = bldr.EventListenerStatus(
 	bldr.EventListenerConfig(generatedResourceName),
-	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, *ElPort)),
+	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, DefaultPort)),
 	bldr.EventListenerCondition(
 		v1alpha1.ServiceExists,
 		corev1.ConditionTrue,
@@ -446,6 +473,10 @@ func TestReconcile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	configWithSetSecurityContextFalse := makeConfig(func(c *Config) {
+		c.SetSecurityContext = ptr.Bool(false)
+	})
 
 	elWithStatus := makeEL(withStatus)
 
@@ -667,6 +698,7 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
+		config         *Config        // Config of the reconciler
 		startResources test.Resources // State of the world before we call Reconcile
 		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{{
@@ -995,12 +1027,29 @@ func TestReconcile(t *testing.T) {
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
+	}, {
+		name:   "eventlistener with SetSecurityContext false",
+		key:    reconcileKey,
+		config: configWithSetSecurityContextFalse,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			Services:       []*corev1.Service{elService},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
 	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup with startResources
-			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources)
+			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources, tt.config)
 			defer cancel()
 			// Run Reconcile
 			err := testAssets.Controller.Reconciler.Reconcile(context.Background(), tt.key)
@@ -1027,6 +1076,7 @@ func TestReconcile_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
+		config         *Config        // Config of the reconciler
 		startResources test.Resources // State of the world before we call Reconcile
 		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{{
@@ -1087,7 +1137,7 @@ func TestReconcile_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup with startResources
-			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources)
+			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources, tt.config)
 			defer cancel()
 			// Run Reconcile
 			err := testAssets.Controller.Reconciler.Reconcile(context.Background(), tt.key)
@@ -1194,8 +1244,13 @@ func Test_mergeMaps(t *testing.T) {
 }
 
 func TestGenerateResourceLabels(t *testing.T) {
-	expectedLabels := mergeMaps(StaticResourceLabels, map[string]string{"eventlistener": eventListenerName})
-	actualLabels := GenerateResourceLabels(eventListenerName)
+	staticResourceLabels := map[string]string{
+		"app.kubernetes.io/managed-by": "EventListener",
+		"app.kubernetes.io/part-of":    "Triggers",
+	}
+
+	expectedLabels := mergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	actualLabels := GenerateResourceLabels(eventListenerName, staticResourceLabels)
 	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
 		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
 	}
@@ -1288,7 +1343,7 @@ func Test_generateObjectMeta(t *testing.T) {
 	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
-			actualObjectMeta := generateObjectMeta(tests[i].el)
+			actualObjectMeta := generateObjectMeta(tests[i].el, DefaultStaticResourceLabels)
 			if diff := cmp.Diff(tests[i].expectedObjectMeta, actualObjectMeta); diff != "" {
 				t.Errorf("generateObjectMeta() did not return expected. -want, +got: %s", diff)
 			}
