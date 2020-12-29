@@ -468,7 +468,7 @@ func TestTriggerValidate_error(t *testing.T) {
 					Ref: ptr.String("ttname"),
 					Spec: &v1alpha1.TriggerTemplateSpec{
 						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-							RawExtension: simpleResourceTemplate,
+							RawExtension: simpleResourceTemplate(t),
 						}},
 					},
 				},
