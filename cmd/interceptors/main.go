@@ -61,8 +61,7 @@ func main() {
 	logger := zap.Sugar()
 	ctx = logging.WithLogger(ctx, logger)
 	defer func() {
-		err := logger.Sync()
-		if err != nil {
+		if err := logger.Sync(); err != nil {
 			log.Fatalf("failed to sync the logger: %s", err)
 		}
 	}()
