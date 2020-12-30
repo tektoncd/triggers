@@ -124,7 +124,6 @@ func impersonateRBAC(t *testing.T, sa, namespace string, kubeClient kubernetes.I
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
 	t.Parallel()
-
 	defer cleanup(t, c, namespace, "my-eventlistener")
 	knativetest.CleanupOnInterrupt(func() { cleanup(t, c, namespace, "my-eventlistener") }, t.Logf)
 
@@ -151,7 +150,6 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error marshalling PipelineResource 1: %s", err)
 	}
-
 	// This is a templated resource, which does not have a namespace.
 	// This is defaulted to the EventListener namespace.
 	pr2 := v1alpha1.PipelineResource{
@@ -174,7 +172,6 @@ func TestEventListenerCreate(t *testing.T) {
 			},
 		},
 	}
-
 	pr2Bytes, err := json.Marshal(pr2)
 	if err != nil {
 		t.Fatalf("Error marshalling ResourceTemplate PipelineResource 2: %s", err)
@@ -279,7 +276,6 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating RoleBinding: %s", err)
 	}
-
 	impersonateRBAC(t, sa.Name, namespace, c.KubeClient)
 
 	// EventListener
@@ -425,7 +421,6 @@ func TestEventListenerCreate(t *testing.T) {
 	if err := <-errChan; err != nil {
 		t.Fatalf("Forwarding stream of data failed:: %v", err)
 	}
-
 	// Send POST request to EventListener sink
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {

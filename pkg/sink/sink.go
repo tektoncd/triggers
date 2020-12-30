@@ -292,8 +292,12 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 		}
 		// TODO: Plumb through context from EL
 		request.InterceptorParams = interceptors.GetInterceptorParams(i)
-		url := interceptors.ResolveURL(i)
-		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url)
+		url, err := interceptors.ResolveURL(i)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
 		if err != nil {
 			return nil, nil, nil, err
 		}

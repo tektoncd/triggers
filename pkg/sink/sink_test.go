@@ -114,7 +114,10 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, auth A
 		srv.Close()
 	})
 	httpClient := srv.Client()
-	u, _ := url.Parse(srv.URL)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("url parse err: %s", err)
+	}
 	httpClient.Transport = &http.Transport{
 		Proxy: http.ProxyURL(u),
 	}
@@ -1115,7 +1118,10 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 	client := srv.Client()
-	u, _ := url.Parse(srv.URL)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("url parse err: %v", err)
+	}
 	// Redirect all requests to the fake server.
 	client.Transport = &http.Transport{
 		Proxy: http.ProxyURL(u),

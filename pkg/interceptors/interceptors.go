@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/tektoncd/triggers/pkg/system"
@@ -172,7 +173,7 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 }
 
 // ResolveURL returns the URL for the given core interceptor
-func ResolveURL(i *triggersv1.TriggerInterceptor) string {
+func ResolveURL(i *triggersv1.TriggerInterceptor) (*url.URL, error) {
 	// This is temporary until we implement #868
 	base := fmt.Sprintf("http://%s.%s.svc/", CoreInterceptorsHost, system.GetNamespace())
 	path := ""
@@ -186,7 +187,7 @@ func ResolveURL(i *triggersv1.TriggerInterceptor) string {
 	case i.GitLab != nil:
 		path = "gitlab"
 	}
-	return base + path
+	return url.Parse(base + path)
 }
 
 // Execute executes the InterceptorRequest using the given httpClient

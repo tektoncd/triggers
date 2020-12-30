@@ -20,6 +20,7 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -28,7 +29,6 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/names"
-	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +70,7 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 		if err != nil {
 			t.Error(err)
 		} else {
-			t.Log(string(bs))
+			t.Logf("%s", bs)
 		}
 
 		header(t.Logf, fmt.Sprintf("Dumping logs from tekton-triggers-controller in namespace %s", triggersNamespace))
@@ -89,8 +89,16 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 			t.Log(webhookLogs)
 		}
 
+		header(t.Logf, fmt.Sprintf("Dumping logs from tekton-triggers-core-interceptors in namespace %s", triggersNamespace))
+		interceptorLogs, err := CollectPodLogsWithLabel(cs.KubeClient, triggersNamespace, "app=tekton-triggers-core-interceptors")
+		if err != nil {
+			t.Logf("Could not get logs for tekton-triggers-webhook Pod: %s", err)
+		} else {
+			t.Log(interceptorLogs)
+		}
+
 		header(t.Logf, fmt.Sprintf("Dumping logs from EventListener sinks in namespace %s", namespace))
-		elSinkLogs, err := CollectPodLogsWithLabel(cs.KubeClient, namespace, "triggers=eventlistener")
+		elSinkLogs, err := CollectPodLogsWithLabel(cs.KubeClient, namespace, "app.kubernetes.io/managed-by=EventListener")
 		if err != nil {
 			t.Logf("Could not get logs for EventListener sink Pods: %s", err)
 		} else {
@@ -155,7 +163,7 @@ func verifyDefaultServiceAccountExists(t *testing.T, namespace string, kubeClien
 func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	var output []byte
 	printOrAdd := func(kind, name string, i interface{}) {
-		bs, err := yaml.Marshal(i)
+		bs, err := json.Marshal(i)
 		if err != nil {
 			return
 		}

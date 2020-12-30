@@ -327,8 +327,11 @@ func TestResolvePath(t *testing.T) {
 		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/",
 	}} {
 		t.Run(tc.want, func(t *testing.T) {
-			got := interceptors.ResolveURL(&tc.in)
-			if tc.want != got {
+			got, err := interceptors.ResolveURL(&tc.in)
+			if err != nil {
+				t.Fatalf("ResolveURL error: %v", err)
+			}
+			if tc.want != got.String() {
 				t.Fatalf("ResolveURL() want: %s; got: %s", tc.want, got)
 			}
 		})
