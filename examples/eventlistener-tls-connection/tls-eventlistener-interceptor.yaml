@@ -24,7 +24,7 @@ spec:
       spec:
         template:
           spec:
-            serviceAccountName: tekton-triggers-tls-sa
+            serviceAccountName: tekton-triggers-example-sa
             containers:
             - env:
               - name: TLS_CERT
