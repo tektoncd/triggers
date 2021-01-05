@@ -474,8 +474,14 @@ func TestReconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	customPort := 80
+
 	configWithSetSecurityContextFalse := makeConfig(func(c *Config) {
 		c.SetSecurityContext = ptr.Bool(false)
+	})
+
+	configWithPortSet := makeConfig(func(c *Config) {
+		c.Port = &customPort
 	})
 
 	elWithStatus := makeEL(withStatus)
@@ -597,6 +603,10 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
+	elWithPortSet := makeEL(withStatus, bldr.EventListenerStatus(
+		bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, customPort)),
+	))
+
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
 		d.Labels = mergeMaps(updateLabel, generatedLabels)
@@ -663,6 +673,16 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.ObjectMeta.Annotations = map[string]string{"annotationkey": "annotationvalue"}
 	})
 
+	deploymentWithPortSet := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort = int32(customPort)
+		d.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Port = intstr.IntOrString{
+			IntVal: int32(customPort),
+		}
+		d.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Port = intstr.IntOrString{
+			IntVal: int32(customPort),
+		}
+	})
+
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
@@ -687,6 +707,13 @@ func TestReconcile(t *testing.T) {
 		s.Spec.Ports[0].Port = int32(8443)
 		s.Spec.Ports[0].TargetPort = intstr.IntOrString{
 			IntVal: int32(8443),
+		}
+	})
+
+	elServiceWithPortSet := makeService(func(s *corev1.Service) {
+		s.Spec.Ports[0].Port = int32(customPort)
+		s.Spec.Ports[0].TargetPort = intstr.IntOrString{
+			IntVal: int32(customPort),
 		}
 	})
 
@@ -1045,6 +1072,24 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
 	},
+		{
+			name:   "eventlistener with port set in config",
+			key:    reconcileKey,
+			config: configWithPortSet,
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithStatus},
+				Deployments:    []*appsv1.Deployment{elDeployment},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithPortSet},
+				Deployments:    []*appsv1.Deployment{deploymentWithPortSet},
+				Services:       []*corev1.Service{elServiceWithPortSet},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1152,6 +1197,66 @@ func TestReconcile_Delete(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func Test_getPort(t *testing.T) {
+	tests := []struct {
+		name         string
+		el           *v1alpha1.EventListener
+		config       Config
+		expectedPort int
+	}{{
+		name:         "EventListener with status",
+		el:           makeEL(withStatus),
+		config:       *makeConfig(),
+		expectedPort: DefaultPort,
+	}, {
+		name: "EventListener with TLS configuration",
+		el: makeEL(withStatus, withTLSPort, func(el *v1alpha1.EventListener) {
+			el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+				WithPodSpec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Env: []corev1.EnvVar{{
+									Name: "TLS_CERT",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret-key",
+											},
+											Key: "tls.crt",
+										},
+									},
+								}, {
+									Name: "TLS_KEY",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret-key",
+											},
+											Key: "tls.key",
+										},
+									},
+								}},
+							}},
+						},
+					},
+				},
+			}
+		}),
+		config:       *makeConfig(),
+		expectedPort: 8443,
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualPort := getPort(tt.el, tt.config)
+			if diff := cmp.Diff(tt.expectedPort, actualPort); diff != "" {
+				t.Errorf("getPort() did not return expected. -want, +got: %s", diff)
 			}
 		})
 	}

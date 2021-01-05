@@ -157,6 +157,8 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		serviceType = el.Spec.Resources.KubernetesResource.ServiceType
 	}
 
+	port := getPort(el, r.config)
+
 	service := &corev1.Service{
 		ObjectMeta: generateObjectMeta(el, r.config.StaticResourceLabels),
 		Spec: corev1.ServiceSpec{
@@ -165,9 +167,9 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 			Ports: []corev1.ServicePort{{
 				Name:     eventListenerServicePortName,
 				Protocol: corev1.ProtocolTCP,
-				Port:     int32(*r.config.Port),
+				Port:     int32(port),
 				TargetPort: intstr.IntOrString{
-					IntVal: int32(*r.config.Port),
+					IntVal: int32(port),
 				}},
 			},
 		},
@@ -178,7 +180,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingService.ObjectMeta, service.ObjectMeta)
 		el.Status.SetExistsCondition(v1alpha1.ServiceExists, nil)
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, *r.config.Port))
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, port))
 		if !reflect.DeepEqual(existingService.Spec.Selector, service.Spec.Selector) {
 			existingService.Spec.Selector = service.Spec.Selector
 			updated = true
@@ -209,7 +211,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 			logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, *r.config.Port))
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, port))
 		logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
 		logger.Error(err)
@@ -491,7 +493,6 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 	}
 
 	if elCert != "" && elKey != "" {
-		*c.Port = 8443
 		scheme = corev1.URISchemeHTTPS
 		vMount = append(vMount, corev1.VolumeMount{
 			Name:      "https-connection",
@@ -499,7 +500,6 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 			MountPath: "/etc/triggers/tls",
 		})
 	} else {
-		*c.Port = 8080
 		scheme = corev1.URISchemeHTTP
 	}
 
@@ -508,11 +508,13 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 		isMultiNS = true
 	}
 
+	port := getPort(el, c)
+
 	return corev1.Container{
 		Name:  "event-listener",
 		Image: *c.Image,
 		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(*c.Port),
+			ContainerPort: int32(port),
 			Protocol:      corev1.ProtocolTCP,
 		}},
 		LivenessProbe: &corev1.Probe{
@@ -520,7 +522,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,
-					Port:   intstr.FromInt((*c.Port)),
+					Port:   intstr.FromInt(port),
 				},
 			},
 			PeriodSeconds:    int32(*c.PeriodSeconds),
@@ -531,7 +533,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,
-					Port:   intstr.FromInt((*c.Port)),
+					Port:   intstr.FromInt(port),
 				},
 			},
 			PeriodSeconds:    int32(*c.PeriodSeconds),
@@ -541,7 +543,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 		Args: []string{
 			"--el-name=" + el.Name,
 			"--el-namespace=" + el.Namespace,
-			"--port=" + strconv.Itoa(*c.Port),
+			"--port=" + strconv.Itoa(port),
 			"--readtimeout=" + strconv.FormatInt(*c.ReadTimeOut, 10),
 			"--writetimeout=" + strconv.FormatInt(*c.WriteTimeOut, 10),
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
@@ -553,6 +555,41 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 		VolumeMounts: vMount,
 		Env:          env,
 	}
+}
+
+func getPort(el *v1alpha1.EventListener, c Config) int {
+	var (
+		elCert, elKey string
+	)
+
+	certEnv := map[string]*corev1.EnvVarSource{}
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+			for i := range el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env {
+				certEnv[el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].Name] =
+					el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].ValueFrom
+			}
+		}
+	}
+
+	if v, ok := certEnv["TLS_CERT"]; ok {
+		elCert = v.SecretKeyRef.Key
+	} else {
+		elCert = ""
+	}
+	if v, ok := certEnv["TLS_KEY"]; ok {
+		elKey = v.SecretKeyRef.Key
+	} else {
+		elKey = ""
+	}
+
+	if elCert != "" && elKey != "" && *c.Port == DefaultPort {
+		// We return port 8443 if TLS is enabled and the default HTTP port is set.
+		// This effectively makes 8443 the default HTTPS port unless a user explicitly sets a different port.
+		return 8443
+	}
+
+	return *c.Port
 }
 
 // GenerateResourceLabels generates the labels to be used on all generated resources.
