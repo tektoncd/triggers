@@ -324,13 +324,10 @@ func TestResolvePath(t *testing.T) {
 		in: triggersv1.EventInterceptor{
 			Webhook: &triggersv1.WebhookInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/",
+		want: "http://tekton-triggers-core-interceptors.knative-testing.svc",
 	}} {
 		t.Run(tc.want, func(t *testing.T) {
-			got, err := interceptors.ResolveURL(&tc.in)
-			if err != nil {
-				t.Fatalf("ResolveURL error: %v", err)
-			}
+			got := interceptors.ResolveURL(&tc.in)
 			if tc.want != got.String() {
 				t.Fatalf("ResolveURL() want: %s; got: %s", tc.want, got)
 			}

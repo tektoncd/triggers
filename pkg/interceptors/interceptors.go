@@ -173,9 +173,8 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 }
 
 // ResolveURL returns the URL for the given core interceptor
-func ResolveURL(i *triggersv1.TriggerInterceptor) (*url.URL, error) {
+func ResolveURL(i *triggersv1.TriggerInterceptor) *url.URL {
 	// This is temporary until we implement #868
-	base := fmt.Sprintf("http://%s.%s.svc/", CoreInterceptorsHost, system.GetNamespace())
 	path := ""
 	switch {
 	case i.Bitbucket != nil:
@@ -187,7 +186,11 @@ func ResolveURL(i *triggersv1.TriggerInterceptor) (*url.URL, error) {
 	case i.GitLab != nil:
 		path = "gitlab"
 	}
-	return url.Parse(base + path)
+	return &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, system.GetNamespace()),
+		Path:   path,
+	}
 }
 
 // Execute executes the InterceptorRequest using the given httpClient
