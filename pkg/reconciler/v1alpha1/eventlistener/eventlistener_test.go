@@ -203,7 +203,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						Name:  "event-listener",
 						Image: DefaultImage,
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(DefaultPort),
+							ContainerPort: int32(eventListenerContainerPort),
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						LivenessProbe: &corev1.Probe{
@@ -211,7 +211,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
-									Port:   intstr.FromInt(DefaultPort),
+									Port:   intstr.FromInt(eventListenerContainerPort),
 								},
 							},
 							PeriodSeconds:    int32(DefaultPeriodSeconds),
@@ -222,7 +222,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
-									Port:   intstr.FromInt(DefaultPort),
+									Port:   intstr.FromInt(eventListenerContainerPort),
 								},
 							},
 							PeriodSeconds:    int32(DefaultPeriodSeconds),
@@ -231,7 +231,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						Args: []string{
 							"-el-name", eventListenerName,
 							"-el-namespace", namespace,
-							"-port", strconv.Itoa(DefaultPort),
+							"-port", strconv.Itoa(eventListenerContainerPort),
 							"readtimeout", strconv.FormatInt(DefaultReadTimeout, 10),
 							"writetimeout", strconv.FormatInt(DefaultWriteTimeout, 10),
 							"idletimeout", strconv.FormatInt(DefaultIdleTimeout, 10),
@@ -286,7 +286,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 		Name:  "event-listener",
 		Image: DefaultImage,
 		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(8443),
+			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
 		}},
 		LivenessProbe: &corev1.Probe{
@@ -294,7 +294,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: corev1.URISchemeHTTPS,
-					Port:   intstr.FromInt((8443)),
+					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
 			PeriodSeconds:    int32(DefaultPeriodSeconds),
@@ -305,7 +305,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: corev1.URISchemeHTTPS,
-					Port:   intstr.FromInt((8443)),
+					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
 			PeriodSeconds:    int32(DefaultPeriodSeconds),
@@ -314,7 +314,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 		Args: []string{
 			"-el-name", eventListenerName,
 			"-el-namespace", namespace,
-			"-port", strconv.Itoa(8443),
+			"-port", strconv.Itoa(eventListenerContainerPort),
 			"-tls-cert", "/etc/triggers/tls/tls.pem",
 			"-tls-key", "/etc/triggers/tls/tls.key",
 		},
@@ -394,7 +394,7 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 				Protocol: corev1.ProtocolTCP,
 				Port:     int32(DefaultPort),
 				TargetPort: intstr.IntOrString{
-					IntVal: int32(DefaultPort),
+					IntVal: int32(eventListenerContainerPort),
 				},
 			}},
 		},
@@ -673,16 +673,6 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.ObjectMeta.Annotations = map[string]string{"annotationkey": "annotationvalue"}
 	})
 
-	deploymentWithPortSet := makeDeployment(func(d *appsv1.Deployment) {
-		d.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort = int32(customPort)
-		d.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Port = intstr.IntOrString{
-			IntVal: int32(customPort),
-		}
-		d.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Port = intstr.IntOrString{
-			IntVal: int32(customPort),
-		}
-	})
-
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
@@ -704,17 +694,12 @@ func TestReconcile(t *testing.T) {
 	})
 
 	elServiceWithTLSConnection := makeService(func(s *corev1.Service) {
+		s.Spec.Ports[0].Name = eventListenerServiceTLSPortName
 		s.Spec.Ports[0].Port = int32(8443)
-		s.Spec.Ports[0].TargetPort = intstr.IntOrString{
-			IntVal: int32(8443),
-		}
 	})
 
 	elServiceWithPortSet := makeService(func(s *corev1.Service) {
 		s.Spec.Ports[0].Port = int32(customPort)
-		s.Spec.Ports[0].TargetPort = intstr.IntOrString{
-			IntVal: int32(customPort),
-		}
 	})
 
 	loggingConfigMap := defaultLoggingConfigMap()
@@ -1085,7 +1070,7 @@ func TestReconcile(t *testing.T) {
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{elWithPortSet},
-				Deployments:    []*appsv1.Deployment{deploymentWithPortSet},
+				Deployments:    []*appsv1.Deployment{elDeployment},
 				Services:       []*corev1.Service{elServiceWithPortSet},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			},
@@ -1202,17 +1187,24 @@ func TestReconcile_Delete(t *testing.T) {
 	}
 }
 
-func Test_getPort(t *testing.T) {
+func Test_getServicePort(t *testing.T) {
 	tests := []struct {
-		name         string
-		el           *v1alpha1.EventListener
-		config       Config
-		expectedPort int
+		name                string
+		el                  *v1alpha1.EventListener
+		config              Config
+		expectedServicePort corev1.ServicePort
 	}{{
-		name:         "EventListener with status",
-		el:           makeEL(withStatus),
-		config:       *makeConfig(),
-		expectedPort: DefaultPort,
+		name:   "EventListener with status",
+		el:     makeEL(withStatus),
+		config: *makeConfig(),
+		expectedServicePort: corev1.ServicePort{
+			Name:     eventListenerServicePortName,
+			Protocol: corev1.ProtocolTCP,
+			Port:     int32(DefaultPort),
+			TargetPort: intstr.IntOrString{
+				IntVal: int32(eventListenerContainerPort),
+			},
+		},
 	}, {
 		name: "EventListener with TLS configuration",
 		el: makeEL(withStatus, withTLSPort, func(el *v1alpha1.EventListener) {
@@ -1248,15 +1240,22 @@ func Test_getPort(t *testing.T) {
 				},
 			}
 		}),
-		config:       *makeConfig(),
-		expectedPort: 8443,
+		config: *makeConfig(),
+		expectedServicePort: corev1.ServicePort{
+			Name:     eventListenerServiceTLSPortName,
+			Protocol: corev1.ProtocolTCP,
+			Port:     int32(8443),
+			TargetPort: intstr.IntOrString{
+				IntVal: int32(eventListenerContainerPort),
+			},
+		},
 	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualPort := getPort(tt.el, tt.config)
-			if diff := cmp.Diff(tt.expectedPort, actualPort); diff != "" {
-				t.Errorf("getPort() did not return expected. -want, +got: %s", diff)
+			actualPort := getServicePort(tt.el, tt.config)
+			if diff := cmp.Diff(tt.expectedServicePort, actualPort); diff != "" {
+				t.Errorf("getServicePort() did not return expected. -want, +got: %s", diff)
 			}
 		})
 	}

@@ -52,6 +52,10 @@ const (
 	eventListenerConfigMapName = "config-logging-triggers"
 	// eventListenerServicePortName defines service port name for EventListener Service
 	eventListenerServicePortName = "http-listener"
+	// eventListenerServiceTLSPortName defines service TLS port name for EventListener Service
+	eventListenerServiceTLSPortName = "https-listener"
+	// eventListenerContainerPort defines the port exposed by the EventListener Container
+	eventListenerContainerPort = 8000
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -157,21 +161,14 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		serviceType = el.Spec.Resources.KubernetesResource.ServiceType
 	}
 
-	port := getPort(el, r.config)
+	servicePort := getServicePort(el, r.config)
 
 	service := &corev1.Service{
 		ObjectMeta: generateObjectMeta(el, r.config.StaticResourceLabels),
 		Spec: corev1.ServiceSpec{
 			Selector: GenerateResourceLabels(el.Name, r.config.StaticResourceLabels),
 			Type:     serviceType,
-			Ports: []corev1.ServicePort{{
-				Name:     eventListenerServicePortName,
-				Protocol: corev1.ProtocolTCP,
-				Port:     int32(port),
-				TargetPort: intstr.IntOrString{
-					IntVal: int32(port),
-				}},
-			},
+			Ports:    []corev1.ServicePort{servicePort},
 		},
 	}
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
@@ -180,7 +177,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingService.ObjectMeta, service.ObjectMeta)
 		el.Status.SetExistsCondition(v1alpha1.ServiceExists, nil)
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, port))
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
 		if !reflect.DeepEqual(existingService.Spec.Selector, service.Spec.Selector) {
 			existingService.Spec.Selector = service.Spec.Selector
 			updated = true
@@ -211,7 +208,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 			logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, port))
+		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
 		logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
 		logger.Error(err)
@@ -508,13 +505,11 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 		isMultiNS = true
 	}
 
-	port := getPort(el, c)
-
 	return corev1.Container{
 		Name:  "event-listener",
 		Image: *c.Image,
 		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(port),
+			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
 		}},
 		LivenessProbe: &corev1.Probe{
@@ -522,7 +517,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,
-					Port:   intstr.FromInt(port),
+					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
 			PeriodSeconds:    int32(*c.PeriodSeconds),
@@ -533,7 +528,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,
-					Port:   intstr.FromInt(port),
+					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
 			PeriodSeconds:    int32(*c.PeriodSeconds),
@@ -543,7 +538,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 		Args: []string{
 			"--el-name=" + el.Name,
 			"--el-namespace=" + el.Namespace,
-			"--port=" + strconv.Itoa(port),
+			"--port=" + strconv.Itoa(eventListenerContainerPort),
 			"--readtimeout=" + strconv.FormatInt(*c.ReadTimeOut, 10),
 			"--writetimeout=" + strconv.FormatInt(*c.WriteTimeOut, 10),
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
@@ -557,10 +552,13 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 	}
 }
 
-func getPort(el *v1alpha1.EventListener, c Config) int {
+func getServicePort(el *v1alpha1.EventListener, c Config) corev1.ServicePort {
 	var (
 		elCert, elKey string
 	)
+
+	servicePortName := eventListenerServicePortName
+	servicePortPort := *c.Port
 
 	certEnv := map[string]*corev1.EnvVarSource{}
 	if el.Spec.Resources.KubernetesResource != nil {
@@ -583,13 +581,23 @@ func getPort(el *v1alpha1.EventListener, c Config) int {
 		elKey = ""
 	}
 
-	if elCert != "" && elKey != "" && *c.Port == DefaultPort {
-		// We return port 8443 if TLS is enabled and the default HTTP port is set.
-		// This effectively makes 8443 the default HTTPS port unless a user explicitly sets a different port.
-		return 8443
+	if elCert != "" && elKey != "" {
+		servicePortName = eventListenerServiceTLSPortName
+		if *c.Port == DefaultPort {
+			// We return port 8443 if TLS is enabled and the default HTTP port is set.
+			// This effectively makes 8443 the default HTTPS port unless a user explicitly sets a different port.
+			servicePortPort = 8443
+		}
 	}
 
-	return *c.Port
+	return corev1.ServicePort{
+		Name:     servicePortName,
+		Protocol: corev1.ProtocolTCP,
+		Port:     int32(servicePortPort),
+		TargetPort: intstr.IntOrString{
+			IntVal: int32(eventListenerContainerPort),
+		},
+	}
 }
 
 // GenerateResourceLabels generates the labels to be used on all generated resources.
