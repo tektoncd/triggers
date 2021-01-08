@@ -81,6 +81,7 @@ func main() {
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
+		Handler:      mux,
 	}
 
 	logger.Infof("Listen and serve on port %d", Port)

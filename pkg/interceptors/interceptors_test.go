@@ -304,27 +304,27 @@ func TestResolvePath(t *testing.T) {
 		in: triggersv1.EventInterceptor{
 			CEL: &triggersv1.CELInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/cel",
+		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/cel",
 	}, {
 		in: triggersv1.EventInterceptor{
 			GitLab: &triggersv1.GitLabInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/gitlab",
+		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/gitlab",
 	}, {
 		in: triggersv1.EventInterceptor{
 			GitHub: &triggersv1.GitHubInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/github",
+		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/github",
 	}, {
 		in: triggersv1.EventInterceptor{
 			Bitbucket: &triggersv1.BitbucketInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc/bitbucket",
+		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/bitbucket",
 	}, {
 		in: triggersv1.EventInterceptor{
 			Webhook: &triggersv1.WebhookInterceptor{},
 		},
-		want: "http://tekton-triggers-core-interceptors.knative-testing.svc",
+		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc",
 	}} {
 		t.Run(tc.want, func(t *testing.T) {
 			got := interceptors.ResolveURL(&tc.in)

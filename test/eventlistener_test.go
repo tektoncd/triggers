@@ -31,6 +31,8 @@ import (
 	"strings"
 	"testing"
 
+	"knative.dev/pkg/ptr"
+
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/google/go-cmp/cmp"
@@ -278,42 +280,53 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 	impersonateRBAC(t, sa.Name, namespace, c.KubeClient)
 
-	// EventListener
-	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(context.Background(),
-		bldr.EventListener("my-eventlistener", namespace,
-			bldr.EventListenerMeta(
-				bldr.Label("triggers", "eventlistener"),
-			),
-			bldr.EventListenerSpec(
-				bldr.EventListenerResources(
-					bldr.EventListenerKubernetesResources(
-						bldr.EventListenerPodSpec(duckv1.WithPodSpec{
-							Template: duckv1.PodSpecable{
-								Spec: corev1.PodSpec{
-									ServiceAccountName: sa.Name,
-									NodeSelector:       map[string]string{"beta.kubernetes.io/os": "linux"},
-									Tolerations: []corev1.Toleration{{
-										Key:      "key",
-										Operator: "Equal",
-										Value:    "value",
-										Effect:   "NoSchedule",
-									}},
-								},
+	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(context.Background(), &triggersv1.EventListener{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-eventlistener",
+			Namespace: namespace,
+		},
+		Spec: triggersv1.EventListenerSpec{
+			Triggers: []triggersv1.EventListenerTrigger{{
+				Bindings: []*triggersv1.EventListenerBinding{{
+					Ref:  tb.Name,
+					Kind: triggersv1.NamespacedTriggerBindingKind,
+				}, {
+					Ref:  ctb.Name,
+					Kind: triggersv1.ClusterTriggerBindingKind,
+				}},
+				Template: &triggersv1.EventListenerTemplate{
+					Ref: ptr.String(tt.Name),
+				},
+				Interceptors: []*triggersv1.EventInterceptor{{
+					CEL: &triggersv1.CELInterceptor{
+						Filter: `body.action == "edited"`,
+					},
+				}},
+			}},
+			Replicas: ptr.Int32(3),
+			Resources: triggersv1.Resources{
+				KubernetesResource: &triggersv1.KubernetesResource{
+					WithPodSpec: duckv1.WithPodSpec{
+						Template: duckv1.PodSpecable{
+							Spec: corev1.PodSpec{
+								ServiceAccountName: sa.Name,
+								NodeSelector:       map[string]string{"beta.kubernetes.io/os": "linux"},
+								Tolerations: []corev1.Toleration{{
+									Key:      "key",
+									Operator: "Equal",
+									Value:    "value",
+									Effect:   "NoSchedule",
+								}},
 							},
-						}),
-					),
-				),
-				bldr.EventListenerReplicas(3),
-				bldr.EventListenerTrigger(tt.Name, "",
-					bldr.EventListenerTriggerBinding(tb.Name, "", "v1alpha1"),
-					bldr.EventListenerTriggerBinding(ctb.Name, "ClusterTriggerBinding", "v1alpha1"),
-				),
-			),
-		), metav1.CreateOptions{})
+						},
+					},
+				},
+			},
+		},
+	}, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create EventListener: %s", err)
 	}
-
 	// Verify the EventListener to be ready
 	if err := WaitFor(eventListenerReady(t, c, namespace, el.Name)); err != nil {
 		t.Fatalf("EventListener not ready: %s", err)

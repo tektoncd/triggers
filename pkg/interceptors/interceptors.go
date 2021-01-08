@@ -188,7 +188,7 @@ func ResolveURL(i *triggersv1.TriggerInterceptor) *url.URL {
 	}
 	return &url.URL{
 		Scheme: "http",
-		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, system.GetNamespace()),
+		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, system.DefaultNamespace),
 		Path:   path,
 	}
 }
