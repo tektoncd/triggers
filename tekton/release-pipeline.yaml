@@ -23,6 +23,8 @@ spec:
     type: image
   - name: builtEventListenerSinkImage
     type: image
+  - name: builtCoreInterceptorsImage
+    type: image
   - name: notification
     type: cloudEvent
   tasks:
@@ -72,5 +74,7 @@ spec:
             resource: builtWebhookImage
           - name: builtEventListenerSinkImage
             resource: builtEventListenerSinkImage
+          - name: builtCoreInterceptorsImage
+            resource: builtCoreInterceptorsImage
           - name: notification
             resource: notification
