@@ -62,6 +62,7 @@ the triggers repo, a terminal window and a text editor.
         --resource=builtEventListenerSinkImage=event-listener-sink-image \
         --resource=builtControllerImage=triggers-controller-image \
         --resource=builtWebhookImage=triggers-webhook-image \
+        --resource=builtCoreInterceptorsImage=core-interceptors-image \
         --resource=notification=post-release-trigger \
         triggers-release
     ```
