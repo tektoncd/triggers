@@ -491,33 +491,15 @@ func TestReconcile(t *testing.T) {
 	})
 
 	elWithNodePortServiceType := makeEL(withStatus, func(el *v1alpha1.EventListener) {
-		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
-			ServiceType: corev1.ServiceTypeNodePort,
-		}
+		el.Spec.ServiceType = corev1.ServiceTypeNodePort
 	})
 
 	elWithTolerations := makeEL(withStatus, func(el *v1alpha1.EventListener) {
-		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
-			WithPodSpec: duckv1.WithPodSpec{
-				Template: duckv1.PodSpecable{
-					Spec: corev1.PodSpec{
-						Tolerations: updateTolerations,
-					},
-				},
-			},
-		}
+		el.Spec.PodTemplate.Tolerations = updateTolerations
 	})
 
 	elWithNodeSelector := makeEL(withStatus, func(el *v1alpha1.EventListener) {
-		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
-			WithPodSpec: duckv1.WithPodSpec{
-				Template: duckv1.PodSpecable{
-					Spec: corev1.PodSpec{
-						NodeSelector: updateNodeSelector,
-					},
-				},
-			},
-		}
+		el.Spec.PodTemplate.NodeSelector = updateNodeSelector
 	})
 
 	elWithReplicas := makeEL(withStatus, func(el *v1alpha1.EventListener) {
