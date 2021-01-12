@@ -24,11 +24,10 @@ import (
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
-	"knative.dev/pkg/ptr"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -48,33 +47,23 @@ func TestEventListenerScale(t *testing.T) {
 	createServiceAccount(t, c, namespace, saName)
 	// Create an EventListener with 1000 Triggers
 	var err error
-	el := &triggersv1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-eventlistener",
-			Namespace: namespace,
-		},
-		Spec: triggersv1.EventListenerSpec{
-			ServiceAccountName: saName,
-			Replicas:           ptr.Int32(3),
-			Resources: triggersv1.Resources{
-				KubernetesResource: &triggersv1.KubernetesResource{
-					WithPodSpec: duckv1.WithPodSpec{
-						Template: duckv1.PodSpecable{
-							Spec: corev1.PodSpec{
-								NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
-								Tolerations: []corev1.Toleration{{
-									Key:      "key",
-									Operator: "Equal",
-									Value:    "value",
-									Effect:   "NoSchedule",
-								}},
-							},
-						},
+	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(
+		bldr.EventListenerServiceAccount(saName),
+		bldr.EventListenerReplicas(3),
+		bldr.EventListenerPodTemplate(
+			bldr.EventListenerPodTemplateSpec(
+				bldr.EventListenerPodTemplateNodeSelector(map[string]string{"beta.kubernetes.io/os": "linux"}),
+				bldr.EventListenerPodTemplateTolerations([]corev1.Toleration{
+					{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
 					},
-				},
-			},
-		},
-	}
+				}),
+			),
+		),
+	))
 
 	for i := 0; i < 1000; i++ {
 		trigger := triggersv1.EventListenerTrigger{

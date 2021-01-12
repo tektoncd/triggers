@@ -156,7 +156,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 
 func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	// for backward compatibility with original behavior
-	var serviceType corev1.ServiceType
+	var serviceType = el.Spec.ServiceType
 	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceType != "" {
 		serviceType = el.Spec.Resources.KubernetesResource.ServiceType
 	}
@@ -371,7 +371,9 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 	)
 	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
 
-	// For backward compatibility with serviceAccountName field as part of eventlistener.
+	// For backward compatibility with podTemplate, serviceAccountName field as part of eventlistener.
+	tolerations = el.Spec.PodTemplate.Tolerations
+	nodeSelector = el.Spec.PodTemplate.NodeSelector
 	serviceAccountName = el.Spec.ServiceAccountName
 
 	vol := []corev1.Volume{{

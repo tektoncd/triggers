@@ -5,16 +5,12 @@ metadata:
   name: listener-tolerations
 spec:
   serviceAccountName: tekton-triggers-example-sa
-  resources:
-    kubernetesResource:
-      spec:
-        template:
-          spec:
-            tolerations:
-            - key: key
-              value: value
-              operator: Equal
-              effect: NoSchedule
+  podTemplate:
+    tolerations:
+    - key: key
+      value: value
+      operator: Equal
+      effect: NoSchedule
   triggers:
     - name: foo-trig
       bindings:
