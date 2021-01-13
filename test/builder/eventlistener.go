@@ -109,7 +109,7 @@ func EventListenerReplicas(replicas int32) EventListenerSpecOp {
 // EventListenerPodTemplate sets the specified pod template of the EventListener.
 func EventListenerPodTemplate(podTemplate v1alpha1.PodTemplate) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.PodTemplate = podTemplate
+		spec.DeprecatedPodTemplate = podTemplate
 	}
 }
 
