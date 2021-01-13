@@ -173,6 +173,8 @@ rules:
 
 ### ServiceType
 
+The `serviceType` field is deprecated. Consider using `Resources` field.
+
 The `serviceType` field is optional. EventListener sinks are exposed via
 [Kubernetes Services](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
 By default, the serviceType is `ClusterIP` which means any pods running in the
@@ -192,6 +194,8 @@ If you want to deploy more than one pod, you can specify the number to `replicas
 **Note:** If user sets `replicas` field while creating/updating eventlistener yaml then it won't respects replicas values edited by user manually on deployment or through any other mechanism (ex: HPA).
 
 ### PodTemplate
+
+The `podTemplate` field is deprecated. Consider using `Resources` field.
 
 The `podTemplate` field is optional. A PodTemplate is specifications for 
 creating EventListener pod. A PodTemplate consists of:
@@ -219,9 +223,14 @@ Resource field helps to provide Kubernetes or custom resource information.
 For more info on the design refer [TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md)
 
 Right now the `resources` field is optional in order to support backward compatibility with original behavior of `podTemplate`, `serviceType` and `serviceAccountName` fieds.
-In the future, we plan to deprecate `serviceAccountName`, `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
+In the future, we plan to remove `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
 
 For now `resources` has support for `kubernetesResource` but later it will have a support for Custom CRD`(ex: Knative Service)` as `customResource`
+
+`kubernetesResource` have two fields
+* ServiceType
+* Spec(PodTemplateSpec)
+
 
 ```yaml
 spec:

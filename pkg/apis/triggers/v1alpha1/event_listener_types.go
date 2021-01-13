@@ -55,11 +55,13 @@ type EventListener struct {
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
-	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
-	Replicas           *int32                 `json:"replicas,omitempty"`
-	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
-	NamespaceSelector  NamespaceSelector      `json:"namespaceSelector,omitempty"`
-	Resources          Resources              `json:"resources,omitempty"`
+	// To be removed in a later release #904
+	DeprecatedServiceType corev1.ServiceType `json:"serviceType,omitempty"`
+	Replicas              *int32             `json:"replicas,omitempty"`
+	// To be removed in a later release #904
+	DeprecatedPodTemplate PodTemplate       `json:"podTemplate,omitempty"`
+	NamespaceSelector     NamespaceSelector `json:"namespaceSelector,omitempty"`
+	Resources             Resources         `json:"resources,omitempty"`
 }
 
 type Resources struct {
