@@ -306,7 +306,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						Kind: triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -325,7 +325,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						Kind: triggersv1.ClusterTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -349,7 +349,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						},
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -367,7 +367,7 @@ func Test_ResolveTrigger(t *testing.T) {
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -379,7 +379,7 @@ func Test_ResolveTrigger(t *testing.T) {
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Template: triggersv1.EventListenerTemplate{
-						Name: "my-triggertemplate",
+						Ref: ptr.String("my-triggertemplate"),
 					},
 					Bindings: []*triggersv1.EventListenerBinding{{
 						Name:  "p1",
@@ -425,7 +425,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						Value: ptr.String("v2"),
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -457,7 +457,7 @@ func Test_ResolveTrigger(t *testing.T) {
 						Ref:        "my-triggerbinding",
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -541,7 +541,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 						Kind: triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -559,7 +559,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 						Kind: triggersv1.ClusterTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "my-triggertemplate",
+						Ref:        ptr.String("my-triggertemplate"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -577,7 +577,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 						Kind: triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "invalid-tt-name",
+						Ref:        ptr.String("invalid-tt-name"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -595,7 +595,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 						Kind: triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Name:       "invalid-tt-name",
+						Ref:        ptr.String("invalid-tt-name"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -605,11 +605,11 @@ func Test_ResolveTrigger_error(t *testing.T) {
 			getTT:  getTT,
 		},
 		{
-			name: "trigger template missing name",
+			name: "trigger template missing ref",
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Template: triggersv1.EventListenerTemplate{
-						Name: "",
+						Ref: ptr.String(""),
 					},
 				},
 			},
@@ -620,7 +620,7 @@ func Test_ResolveTrigger_error(t *testing.T) {
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Template: triggersv1.EventListenerTemplate{
-						Name: "my-triggertemplate",
+						Ref: ptr.String("my-triggertemplate"),
 					},
 					Bindings: []*triggersv1.EventListenerBinding{{
 						Value: ptr.String("only-val"),

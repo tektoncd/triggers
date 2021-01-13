@@ -46,7 +46,6 @@ func (t *Trigger) SetDefaults(ctx context.Context) {
 		}
 	}
 	t.Spec.Bindings = bindings
-	templateNameToRef(&t.Spec.Template)
 }
 
 // set default TriggerBinding kind for Bindings in TriggerSpec
@@ -57,13 +56,5 @@ func (t triggerSpecBindingArray) defaultBindings() {
 				b.Kind = NamespacedTriggerBindingKind
 			}
 		}
-	}
-}
-
-func templateNameToRef(template *TriggerSpecTemplate) {
-	name := template.Name
-	if name != "" && template.Ref == nil {
-		template.Ref = &name
-		template.Name = ""
 	}
 }

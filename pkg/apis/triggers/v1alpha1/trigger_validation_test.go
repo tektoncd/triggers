@@ -80,7 +80,7 @@ func Test_TriggerValidate(t *testing.T) {
 					Ref:  "ref-to-another-binding",
 					Kind: v1alpha1.NamespacedTriggerBindingKind,
 				}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "my-tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("baz")},
 			},
 		},
 	}, {
@@ -144,7 +144,7 @@ func Test_TriggerValidate(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Spec: &v1alpha1.TriggerBindingSpec{}, Name: "foo"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 			},
 		},
 	}, {
@@ -187,7 +187,7 @@ func Test_TriggerValidate(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name: "ref-to-a-template",
+					Ref: ptr.String("ref-to-a-template"),
 				},
 			},
 		},
@@ -219,7 +219,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 			},
 		},
 	}, {
@@ -231,7 +231,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: "", Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 			},
 		},
 	}, {
@@ -243,7 +243,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Kind: "BadKind", Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 			},
 		},
 	}, {
@@ -255,7 +255,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "foo"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 			},
 		},
 	}, {
@@ -267,31 +267,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt", APIVersion: "invalid"},
-			},
-		},
-	}, {
-		name: "Template with missing Name", // TODO(#791): Remove when Name is removed
-		tr: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "", APIVersion: "v1alpha1"},
-			},
-		},
-	}, {
-		name: "Template with both Name and Ref", // TODO(#791): Remove when Name is removed
-		tr: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt", Ref: ptr.String("tt"), APIVersion: "v1alpha1"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "invalid"},
 			},
 		},
 	}, {
@@ -335,7 +311,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings:     []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template:     v1alpha1.TriggerSpecTemplate{Name: "tt", APIVersion: "v1alpha1"},
+				Template:     v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "v1alpha1"},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{}},
 			},
 		},
@@ -348,7 +324,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt", APIVersion: "v1alpha1"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "v1alpha1"},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
 					Webhook: &v1alpha1.WebhookInterceptor{
 						ObjectRef: &corev1.ObjectReference{
@@ -420,7 +396,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
 					GitHub:    &v1alpha1.GitHubInterceptor{},
 					GitLab:    &v1alpha1.GitLabInterceptor{},
@@ -437,7 +413,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-				Template: v1alpha1.TriggerSpecTemplate{Name: "tt"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
 					CEL: &v1alpha1.CELInterceptor{},
 				}},
@@ -480,7 +456,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "name"},
 			Spec: v1alpha1.TriggerSpec{
 				Template: v1alpha1.TriggerSpecTemplate{
-					Name: "ttname",
+					Ref: ptr.String("tt-name"),
 					Spec: &v1alpha1.TriggerTemplateSpec{
 						ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
 							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
