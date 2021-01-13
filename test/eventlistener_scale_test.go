@@ -84,7 +84,7 @@ func TestEventListenerScale(t *testing.T) {
 				APIVersion: "v1alpha1",
 			}},
 			Template: &triggersv1.EventListenerTemplate{
-				Name:       "my-triggertemplate",
+				Ref:        ptr.String("my-triggertemplate"),
 				APIVersion: "v1alpha1",
 			},
 		}

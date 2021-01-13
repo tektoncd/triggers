@@ -679,7 +679,7 @@ func TestHandleEventPassesURLThrough(t *testing.T) {
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
 				Bindings: []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
-				Template: &triggersv1.EventListenerTemplate{Name: "tt"},
+				Template: &triggersv1.EventListenerTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					CEL: &triggersv1.CELInterceptor{
 						Overlays: []triggersv1.CELOverlay{
@@ -793,7 +793,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	for i := 0; i < numTriggers; i++ {
 		trigger := triggersv1.EventListenerTrigger{
 			Bindings: []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
-			Template: &triggersv1.EventListenerTemplate{Name: "tt"},
+			Template: &triggersv1.EventListenerTemplate{Ref: ptr.String("tt")},
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: interceptorObjectRef,
@@ -1300,7 +1300,7 @@ func TestHandleEventWithInterceptorsAndTriggerAuth(t *testing.T) {
 				Triggers: []triggersv1.EventListenerTrigger{{
 					ServiceAccountName: testCase.userVal,
 					Bindings:           []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
-					Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
+					Template:           &triggersv1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*triggersv1.EventInterceptor{{
 						GitHub: &triggersv1.GitHubInterceptor{
 							SecretRef: &triggersv1.SecretRef{
@@ -1387,7 +1387,7 @@ func TestHandleEventWithBitbucketInterceptors(t *testing.T) {
 			Triggers: []triggersv1.EventListenerTrigger{{
 				ServiceAccountName: userWithPermissions,
 				Bindings:           []*triggersv1.EventListenerBinding{{Ref: "tb", Kind: "TriggerBinding"}},
-				Template:           &triggersv1.EventListenerTemplate{Name: "tt"},
+				Template:           &triggersv1.EventListenerTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					Bitbucket: &triggersv1.BitbucketInterceptor{
 						SecretRef: &triggersv1.SecretRef{

@@ -28,6 +28,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestEventListenerBuilder(t *testing.T) {
@@ -203,7 +204,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -233,7 +234,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -263,7 +264,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -300,7 +301,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 					},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -338,7 +339,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}, {
@@ -348,7 +349,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt2",
+						Ref:        ptr.String("tt2"),
 						APIVersion: "v1alpha1",
 					},
 				},
@@ -397,7 +398,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -449,7 +450,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -491,7 +492,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},
@@ -523,7 +524,7 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Name:       "tt1",
+						Ref:        ptr.String("tt1"),
 						APIVersion: "v1alpha1",
 					},
 				}},

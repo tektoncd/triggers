@@ -55,16 +55,6 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 		}
 	}
 
-	// Validate only one of Name or Ref is set.
-	if t.Name != "" && t.Ref != nil {
-		errs = errs.Also(apis.ErrMultipleOneOf("template.name", "template.ref"))
-	}
-
-	// Set Ref to Name
-	if t.Name != "" {
-		t.Ref = &t.Name
-	}
-
 	switch {
 	case t.Spec != nil && t.Ref != nil:
 		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.ref"))
