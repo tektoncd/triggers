@@ -67,7 +67,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(rt); err != nil {
-		return fmt.Errorf("couldn't unmarshal json: %v", err)
+		return fmt.Errorf("couldn't unmarshal json from the TriggerTemplate: %v", err)
 	}
 
 	data = addLabels(data, map[string]string{
