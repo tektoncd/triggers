@@ -795,11 +795,6 @@ func (in *TriggerSpecBinding) DeepCopyInto(out *TriggerSpecBinding) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Spec != nil {
-		in, out := &in.Spec, &out.Spec
-		*out = new(TriggerBindingSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 

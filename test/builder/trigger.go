@@ -85,7 +85,7 @@ func TriggerSpecServiceAccountName(saName string) TriggerSpecOp {
 }
 
 // TriggerSpecBinding adds a Binding to the Trigger in TriggerSpec.
-func TriggerSpecBinding(ref, kind, name, apiVersion string, ops ...TriggerBindingSpecOp) TriggerSpecOp {
+func TriggerSpecBinding(ref, kind, name, apiVersion string) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
 		binding := &v1alpha1.TriggerSpecBinding{
 			Name:       name,
@@ -100,12 +100,6 @@ func TriggerSpecBinding(ref, kind, name, apiVersion string, ops ...TriggerBindin
 
 			if kind == "TriggerBinding" || kind == "" {
 				binding.Kind = v1alpha1.NamespacedTriggerBindingKind
-			}
-		}
-		if len(ops) != 0 {
-			binding.Spec = &v1alpha1.TriggerBindingSpec{}
-			for _, op := range ops {
-				op(binding.Spec)
 			}
 		}
 		spec.Bindings = append(spec.Bindings, binding)

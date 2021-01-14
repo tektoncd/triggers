@@ -77,9 +77,6 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 	bindingParams := []triggersv1.Param{}
 	for _, b := range bindings {
 		switch {
-		case b.Spec != nil: // Could also call SetDefaults and not rely on this?
-			bindingParams = append(bindingParams, b.Spec.Params...)
-
 		case b.Name != "" && b.Value != nil:
 			bindingParams = append(bindingParams, triggersv1.Param{
 				Name:  b.Name,

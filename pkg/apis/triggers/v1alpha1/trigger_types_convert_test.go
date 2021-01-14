@@ -62,12 +62,6 @@ func TestToEventListenerTrigger(t *testing.T) {
 					APIVersion: "b",
 					Kind:       "c",
 					Ref:        "d",
-					Spec: &TriggerBindingSpec{
-						Params: []Param{{
-							Name:  "a",
-							Value: "b",
-						}},
-					},
 				}},
 				Template: TriggerSpecTemplate{
 					Ref:        ptr.String("a"),
@@ -85,12 +79,6 @@ func TestToEventListenerTrigger(t *testing.T) {
 					APIVersion: "b",
 					Kind:       "c",
 					Ref:        "d",
-					Spec: &TriggerBindingSpec{
-						Params: []Param{{
-							Name:  "a",
-							Value: "b",
-						}},
-					},
 				}},
 				Template: &EventListenerTemplate{
 					Ref:        ptr.String("a"),

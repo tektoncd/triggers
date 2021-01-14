@@ -48,40 +48,6 @@ func TestTriggerBuilder(t *testing.T) {
 		},
 		builder: Trigger("name", "namespace"),
 	}, {
-		name: "One Trigger with one embedded Binding",
-		normal: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				ServiceAccountName: "serviceAccount",
-				Bindings: []*v1alpha1.TriggerSpecBinding{{
-					Name: "tb1",
-					Spec: &v1alpha1.TriggerBindingSpec{
-						Params: []v1alpha1.Param{
-							{
-								Name:  "key",
-								Value: "value",
-							},
-						},
-					},
-					APIVersion: "v1alpha1",
-				}},
-				Template: v1alpha1.TriggerSpecTemplate{
-					Ref:        ptr.String("tt1"),
-					APIVersion: "v1alpha1",
-				},
-			},
-		},
-		builder: Trigger("name", "namespace",
-			TriggerSpec(
-				TriggerSpecServiceAccountName("serviceAccount"),
-				TriggerSpecTemplate("tt1", "v1alpha1"),
-				TriggerSpecBinding("", "", "tb1", "v1alpha1", TriggerBindingParam("key", "value")),
-			),
-		),
-	}, {
 		name: "One Trigger with one Binding",
 		normal: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
