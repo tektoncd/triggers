@@ -340,13 +340,8 @@ func Test_ResolveTrigger(t *testing.T) {
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Bindings: []*triggersv1.EventListenerBinding{{
-						Name: "my-embed-binding",
-						Spec: &triggersv1.TriggerBindingSpec{
-							Params: []triggersv1.Param{{
-								Name:  "key",
-								Value: "value",
-							}},
-						},
+						Name:  "key",
+						Value: ptr.String("value"),
 					}},
 					Template: triggersv1.EventListenerTemplate{
 						Ref:        ptr.String("my-triggertemplate"),

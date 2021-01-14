@@ -191,7 +191,7 @@ func EventListenerTriggerServiceAccount(saName, namespace string) EventListenerT
 }
 
 // EventListenerTriggerBinding adds a Binding to the Trigger in EventListenerSpec Triggers.
-func EventListenerTriggerBinding(ref, kind, apiVersion string, ops ...TriggerBindingSpecOp) EventListenerTriggerOp {
+func EventListenerTriggerBinding(ref, kind, apiVersion string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
 		binding := &v1alpha1.EventListenerBinding{
 			APIVersion: apiVersion,
@@ -205,12 +205,6 @@ func EventListenerTriggerBinding(ref, kind, apiVersion string, ops ...TriggerBin
 
 			if kind == "TriggerBinding" || kind == "" {
 				binding.Kind = v1alpha1.NamespacedTriggerBindingKind
-			}
-		}
-		if len(ops) != 0 {
-			binding.Spec = &v1alpha1.TriggerBindingSpec{}
-			for _, op := range ops {
-				op(binding.Spec)
 			}
 		}
 		trigger.Bindings = append(trigger.Bindings, binding)

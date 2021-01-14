@@ -73,15 +73,11 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 		switch {
 		case b.Ref != "":
 			switch {
-			case b.Spec != nil: // Cannot specify both Ref and Spec
-				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Spec", i)))
 			case b.Name != "": // Cannot specify both Ref and Name
 				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Name", i)))
 			case b.Kind != NamespacedTriggerBindingKind && b.Kind != ClusterTriggerBindingKind: // Kind must be valid
 				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), fmt.Sprintf("bindings[%d].kind", i)))
 			}
-		case b.Spec != nil: // TODO(#768): Remove deprecated old style embedded bindings
-			break // For backwards compatibility, users who specify Spec may also specify Name
 		case b.Name != "":
 			if b.Value == nil { // Value is mandatory if Name is specified
 				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("bindings[%d].Value", i)))

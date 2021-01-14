@@ -129,25 +129,6 @@ func Test_TriggerValidate(t *testing.T) {
 				bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
 			)),
 	}, {
-		name: "Deprecated: old embedded bindings with empty name",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1alpha1"),
-				bldr.TriggerSpecBinding("", "", "", "v1alpha1", bldr.TriggerBindingParam("key", "value")),
-			)),
-	}, {
-		name: "Deprecated: old embedded bindings",
-		tr: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{Spec: &v1alpha1.TriggerBindingSpec{}, Name: "foo"}},
-				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
-			},
-		},
-	}, {
 		name: "Valid Trigger with CEL overlays",
 		tr: bldr.Trigger("name", "namespace",
 			bldr.TriggerSpec(

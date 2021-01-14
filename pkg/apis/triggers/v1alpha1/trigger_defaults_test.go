@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"knative.dev/pkg/ptr"
 )
 
 func TestTriggerSetDefaults(t *testing.T) {
@@ -58,42 +57,6 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}, {
 					Kind: v1alpha1.ClusterTriggerBindingKind,
 					Ref:  "cluster-binding",
-				}},
-			},
-		},
-	}, {
-		name: "default old embed binding to new",
-		in: &v1alpha1.Trigger{
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{
-					Kind: v1alpha1.NamespacedTriggerBindingKind,
-					Ref:  "binding",
-				}, {
-					Kind: v1alpha1.NamespacedTriggerBindingKind,
-					Spec: &v1alpha1.TriggerBindingSpec{
-						Params: []v1alpha1.Param{{
-							Name:  "p1",
-							Value: "v1",
-						}, {
-							Name:  "p2",
-							Value: "v2",
-						}},
-					},
-				}},
-			},
-		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
-		want: &v1alpha1.Trigger{
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{
-					Kind: v1alpha1.NamespacedTriggerBindingKind,
-					Ref:  "binding",
-				}, {
-					Name:  "p1",
-					Value: ptr.String("v1"),
-				}, {
-					Name:  "p2",
-					Value: ptr.String("v2"),
 				}},
 			},
 		},
