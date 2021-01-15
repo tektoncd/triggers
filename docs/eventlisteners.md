@@ -845,6 +845,6 @@ and code samples are licensed under the
 Triggers now support both `HTTP` and `HTTPS` connection by adding few configuration to eventlistener.
 
 To setup TLS connection add two set of reserved environment variables `TLS_CERT` and `TLS_KEY` using `secretKeyRef` env type 
-where we need to specify the `secret` which contains `cert` and `key` files. See the full [example]((../examples/eventlistener-tls-connection/README.md)) for more details.
+where we need to specify the `secret` which contains `cert` and `key` files. See the full [example](../examples/eventlistener-tls-connection/README.md) for more details.
 
 Refer [TEP-0027](https://github.com/tektoncd/community/blob/master/teps/0027-https-connection-to-triggers-eventlistener.md) for more information on design and user stories.
