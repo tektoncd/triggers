@@ -19,7 +19,7 @@ spec:
         name: getting-started-pipeline-run-$(uid)
         namespace: $(tt.params.namespace)
       spec:
-        serviceAccountName: tekton-triggers-admin
+        serviceAccountName: tekton-triggers-example-sa
         pipelineRef:
           name: getting-started-pipeline
         resources:
@@ -36,7 +36,7 @@ spec:
               type: image
               params:
                 - name: url
-                  value: DOCKERREPO-REPLACEME  # docker-repo-location.com/repo:getting-started
+                  value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
           - name: event-to-sink
             resourceSpec:
               type: cloudEvent
@@ -64,7 +64,7 @@ metadata:
   name: getting-started-listener
   namespace: getting-started
 spec:
-  serviceAccountName: tekton-triggers-admin
+  serviceAccountName: tekton-triggers-example-sa
   triggers:
     - bindings:
       - ref: getting-started-pipelinebinding
