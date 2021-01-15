@@ -41,7 +41,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	"knative.dev/pkg/configmap"
+	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -121,7 +121,7 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test
 			return kubeClient.ReactionChain[len(kubeClient.ReactionChain)-1].React(action)
 		})
 	clients := test.SeedResources(t, ctx, r)
-	cmw := configmap.NewInformedWatcher(clients.Kube, system.GetNamespace())
+	cmw := cminformer.NewInformedWatcher(clients.Kube, system.GetNamespace())
 	if c == nil {
 		c = makeConfig()
 	}

@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/configmap"
+	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
 )
@@ -46,7 +47,7 @@ func ConfigureLogging(logKeyString, configName string, stopCh <-chan struct{}, k
 	logger.Infof("Starting the Configuration %v", logKeyString)
 
 	// Watch the logging config map and dynamically update logging levels.
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
+	configMapWatcher := cminformer.NewInformedWatcher(kubeClient, system.GetNamespace())
 	configMapWatcher.Watch(configName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logKeyString))
 	if err = configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start configuration manager: %v", err)
