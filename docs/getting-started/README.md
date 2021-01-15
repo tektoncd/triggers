@@ -40,7 +40,7 @@ your cluster, you will need this for your Webhook in later steps.
 - Create the _getting-started_ namespace, where all our resources will live.
   - `kubectl create namespace getting-started`
 - [Create the admin user, role and rolebinding](./rbac/admin-role.yaml)
-  - `kubectl apply -f ./docs/getting-started/rbac/admin-role.yaml`
+  - `kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml`
 - If you have a cluster secret for a Let's Encrypt cert already provisioned
 you will need to export it, and reimport it to the _getting-started_ namespace.
 The following is a general example of what you'd need to do.
@@ -50,7 +50,7 @@ The following is a general example of what you'd need to do.
 	   kubectl apply --namespace=<new namespace> -f -
 	```
 - [Create the create-webhook user, role and rolebinding](./rbac/webhook-role.yaml)
-  - `kubectl apply -f ./docs/getting-started/rbac/webhook-role.yaml`
+  - `kubectl -n getting-started apply -f ./docs/getting-started/rbac/webhook-role.yaml`
   - This will allow our webhook to create the things it needs to.
 
 ## Install the Pipeline and Triggers
@@ -60,7 +60,7 @@ The following is a general example of what you'd need to do.
 Now we have to install the Pipeline we plan to use and also our Triggers
 resources.
 
-`kubectl apply -f ./docs/getting-started/pipeline.yaml`
+`kubectl -n getting-started apply -f ./docs/getting-started/pipeline.yaml`
 
 Our Pipeline will do a few things.
 
@@ -83,7 +83,7 @@ the yaml file.
 #### What does it do?
 
 The Pipeline will build a Docker image with
-[img](https://github.com/genuinetools/img) and deploy it locally via kubectl
+[kaniko](https://github.com/GoogleContainerTools/kaniko) and deploy it locally via kubectl
 image.
 
 ### [Install the TriggerTemplate, TriggerBinding and EventListener](./triggers.yaml)
@@ -98,7 +98,7 @@ The Triggers project will pickup from there.
   - You will need to replace the `DOCKERREPO-REPLACEME` string everywhere it is
     needed.
   - Once you have updated the triggers file, you can apply it!
-    - `kubectl apply -f ./docs/getting-started/triggers.yaml`
+    - `kubectl -n getting-started apply -f ./docs/getting-started/triggers.yaml`
   - If that succeeded, your cluster is ready to start handling Events.
 
 ## Add Ingress and GitHub-Webhook Tasks
@@ -108,11 +108,11 @@ new ingress by configuring GitHub with our GitHub Task.
 
 First lets create our ingress Task.
 
-`kubectl apply -f ./docs/getting-started/create-ingress.yaml -n getting-started`
+`kubectl -n getting-started apply -f ./docs/getting-started/create-ingress.yaml`
 
 Now lets create our webhook Task.
 
-`kubectl apply -f ./docs/getting-started/create-webhook.yaml -n getting-started`
+`kubectl -n getting-started apply -f ./docs/getting-started/create-webhook.yaml`
 
 ## Run Ingress Task
 
@@ -133,7 +133,7 @@ own DNS name.
 
 When you are ready, run the ingress Task.
 
-`kubectl apply -f docs/getting-started/ingress-run.yaml`
+`kubectl -n getting-started apply -f docs/getting-started/ingress-run.yaml`
 
 ## Run GitHub Webhook Task
 
@@ -145,26 +145,20 @@ with the following access.
 - `public_repo`
 - `admin:repo_hook`
 
-Next, create a secret like so with your access token.
+Next, edit the `docs/getting-started/secret.yaml` file with the above access
+token.
 
 **NOTE**: You do NOT have to `base64` encode this access token, just copy paste it in.
 Also, the `secret` can be any string data. Examples: mordor-awaits, my-name-is-bill,
 tekton, tekton-1s-awes0me.
 
-```
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webhook-secret
-  namespace: getting-started
-stringData:
-  token: YOUR-GITHUB-ACCESS-TOKEN
-  secret: random-string-data
-```
+Create the secret by running:
+
+`kubectl -n getting-started apply -f docs/getting-started/secret.yaml`
 
 ### Update webhook task run
 
-Now lets update the GitHub Task run.
+Now lets update the GitHub Task run (`docs/getting-started/webhook-run.yaml`).
 
 There are a few fields to change, but these fields must be updated at the
 minimum.
@@ -178,7 +172,7 @@ minimum.
 
 Now lets run our updated webhook task.
 
-`kubectl apply -f docs/getting-started/webhook-run.yaml`
+`kubectl -n getting-started apply -f docs/getting-started/webhook-run.yaml`
 
 ## Watch it work!
 
@@ -188,11 +182,11 @@ Now lets run our updated webhook task.
   - First the image builder task.
     - `kubectl logs -l somelabel=somekey --all-containers`
   - Then our deployer task.
-    - `kubectl logs -l tekton.dev/pipeline=getting-started-pipeline -n getting-started --all-containers`
+    - `kubectl -n getting-started logs -l tekton.dev/pipeline=getting-started-pipeline --all-containers`
 - We can see now that our CI system is working! Images pushed to this repo
   result in a running pod in our cluster.
   - We can examine our pod like so.
-    - `kubectl logs tekton-triggers-built-me -n getting-started --all-containers`
+    - `kubectl -n getting-started logs tekton-triggers-built-me --all-containers`
 
 Now we can see our new image running our cluster, after having been retrieved,
 tested, vetted and built, docker pushed (and pulled) and finally ran on our
