@@ -57,6 +57,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-core-interceptors
+  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-triggers
