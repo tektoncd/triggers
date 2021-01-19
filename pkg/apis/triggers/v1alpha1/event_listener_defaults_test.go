@@ -162,6 +162,27 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				Replicas: ptr.Int32(2),
 			},
 		},
+	}, {
+		name: "deprecate template name",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Template: &v1alpha1.TriggerSpecTemplate{
+						DeprecatedName: "foo",
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Template: &v1alpha1.TriggerSpecTemplate{
+						Ref: ptr.String("foo"),
+					},
+				}},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
