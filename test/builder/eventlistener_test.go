@@ -28,7 +28,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
-	"knative.dev/pkg/ptr"
 )
 
 func TestEventListenerBuilder(t *testing.T) {
@@ -204,8 +203,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -234,8 +233,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -264,8 +263,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -301,8 +300,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						},
 					},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -339,8 +338,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}, {
 					Bindings: []*v1alpha1.EventListenerBinding{{
@@ -349,8 +348,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt2"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt2",
+						APIVersion:     "v1alpha1",
 					},
 				},
 				},
@@ -398,8 +397,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -450,8 +449,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			}},
@@ -492,8 +491,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 			},
@@ -524,8 +523,8 @@ func TestEventListenerBuilder(t *testing.T) {
 						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
-						Ref:        ptr.String("tt1"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "tt1",
+						APIVersion:     "v1alpha1",
 					},
 				}},
 				Resources: v1alpha1.Resources{

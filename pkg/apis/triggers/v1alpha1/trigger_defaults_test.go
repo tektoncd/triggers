@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTriggerSetDefaults(t *testing.T) {
@@ -74,6 +75,24 @@ func TestTriggerSetDefaults(t *testing.T) {
 				Bindings: []*v1alpha1.TriggerSpecBinding{{
 					Ref: "binding", // If upgrade context was set, Kind should have been added
 				}},
+			},
+		},
+	}, {
+		name: "sets template name to ref",
+		wc:   v1alpha1.WithUpgradeViaDefaulting,
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					DeprecatedName: "tt-name",
+				},
+			},
+		},
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Template: v1alpha1.TriggerSpecTemplate{
+					Ref:            ptr.String("tt-name"),
+					DeprecatedName: "",
+				},
 			},
 		},
 	}}

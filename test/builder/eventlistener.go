@@ -144,8 +144,8 @@ func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTrigger
 	return func(spec *v1alpha1.EventListenerSpec) {
 		t := v1alpha1.EventListenerTrigger{
 			Template: &v1alpha1.EventListenerTemplate{
-				Ref:        &ttName,
-				APIVersion: apiVersion,
+				DeprecatedName: ttName,
+				APIVersion:     apiVersion,
 			},
 		}
 

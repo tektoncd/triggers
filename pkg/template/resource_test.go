@@ -536,8 +536,8 @@ func Test_ResolveTrigger_error(t *testing.T) {
 						Kind: triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
-						Ref:        ptr.String("my-triggertemplate"),
-						APIVersion: "v1alpha1",
+						DeprecatedName: "my-triggertemplate",
+						APIVersion:     "v1alpha1",
 					},
 				},
 			},
