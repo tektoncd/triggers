@@ -39,12 +39,9 @@ type TriggerSpec struct {
 }
 
 type TriggerSpecTemplate struct {
-	// Deprecated: Use Ref instead
-	// To be removed in a later release #911
-	DeprecatedName string               `json:"name,omitempty"`
-	Ref            *string              `json:"ref,omitempty"`
-	APIVersion     string               `json:"apiversion,omitempty"`
-	Spec           *TriggerTemplateSpec `json:"spec,omitempty"`
+	Ref        *string              `json:"ref,omitempty"`
+	APIVersion string               `json:"apiversion,omitempty"`
+	Spec       *TriggerTemplateSpec `json:"spec,omitempty"`
 }
 
 type TriggerSpecBinding struct {

@@ -84,8 +84,8 @@ func TestEventListenerScale(t *testing.T) {
 				APIVersion: "v1alpha1",
 			}},
 			Template: &triggersv1.EventListenerTemplate{
-				DeprecatedName: "my-triggertemplate",
-				APIVersion:     "v1alpha1",
+				Ref:        ptr.String("my-triggertemplate"),
+				APIVersion: "v1alpha1",
 			},
 		}
 		trigger.Name = fmt.Sprintf("%d", i)
