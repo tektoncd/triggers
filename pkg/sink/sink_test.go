@@ -424,7 +424,7 @@ func TestHandleEvent(t *testing.T) {
 				},
 				Spec: triggersv1.TriggerSpec{
 					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{DeprecatedName: "git-clone"},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}},
 			EventListeners: []*triggersv1.EventListener{{

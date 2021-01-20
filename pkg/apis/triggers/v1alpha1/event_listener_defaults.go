@@ -30,9 +30,6 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 		for i := range el.Spec.Triggers {
 			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).
 				defaultBindings()
-			if el.Spec.Triggers[i].Template != nil {
-				templateNameToRef(el.Spec.Triggers[i].Template)
-			}
 		}
 		// Remove Deprecated Resource Fields
 		// To be removed in a later release #904

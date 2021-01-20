@@ -248,31 +248,7 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{DeprecatedName: "tt", APIVersion: "invalid"},
-			},
-		},
-	}, {
-		name: "Template with missing Name", // TODO(#911): Remove when Name is removed
-		tr: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{DeprecatedName: "", APIVersion: "v1alpha1"},
-			},
-		},
-	}, {
-		name: "Template with both Name and Ref", // TODO(#791): Remove when Name is removed
-		tr: &v1alpha1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.TriggerSpec{
-				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1alpha1"}},
-				Template: v1alpha1.TriggerSpecTemplate{DeprecatedName: "tt", Ref: ptr.String("tt"), APIVersion: "v1alpha1"},
+				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "invalid"},
 			},
 		},
 	}, {

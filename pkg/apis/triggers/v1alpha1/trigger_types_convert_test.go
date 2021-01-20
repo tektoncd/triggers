@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"knative.dev/pkg/ptr"
 )
 
 func TestToEventListenerTrigger(t *testing.T) {
@@ -38,13 +39,13 @@ func TestToEventListenerTrigger(t *testing.T) {
 			in: TriggerSpec{
 				Name: "foo",
 				Template: TriggerSpecTemplate{
-					DeprecatedName: "baz",
+					Ref: ptr.String("baz"),
 				},
 			},
 			out: EventListenerTrigger{
 				Name: "foo",
 				Template: &EventListenerTemplate{
-					DeprecatedName: "baz",
+					Ref: ptr.String("baz"),
 				},
 			},
 		},
@@ -63,8 +64,8 @@ func TestToEventListenerTrigger(t *testing.T) {
 					Ref:        "d",
 				}},
 				Template: TriggerSpecTemplate{
-					DeprecatedName: "a",
-					APIVersion:     "b",
+					Ref:        ptr.String("a"),
+					APIVersion: "b",
 				},
 			},
 			out: EventListenerTrigger{
@@ -80,8 +81,8 @@ func TestToEventListenerTrigger(t *testing.T) {
 					Ref:        "d",
 				}},
 				Template: &EventListenerTemplate{
-					DeprecatedName: "a",
-					APIVersion:     "b",
+					Ref:        ptr.String("a"),
+					APIVersion: "b",
 				},
 			},
 		},

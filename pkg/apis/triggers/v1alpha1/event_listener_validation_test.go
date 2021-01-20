@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func Test_EventListenerValidate(t *testing.T) {
@@ -249,7 +250,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Ref: "", Kind: v1alpha1.NamespacedTriggerBindingKind}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 				}},
 			},
 		},
@@ -263,7 +264,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Ref: "tb", Kind: ""}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 				}},
 			},
 		},
@@ -277,7 +278,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt", APIVersion: "invalid"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt"), APIVersion: "invalid"},
 				}},
 			},
 		},
@@ -291,7 +292,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "", APIVersion: "v1alpha1"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String(""), APIVersion: "v1alpha1"},
 				}},
 			},
 		},
@@ -313,7 +314,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings:     []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template:     &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template:     &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{}},
 				}},
 			},
@@ -328,7 +329,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
 							ObjectRef: &corev1.ObjectReference{
@@ -402,7 +403,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						GitHub:    &v1alpha1.GitHubInterceptor{},
 						GitLab:    &v1alpha1.GitLabInterceptor{},
@@ -421,7 +422,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &v1alpha1.EventListenerTemplate{DeprecatedName: "tt"},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						CEL: &v1alpha1.CELInterceptor{},
 					}},
