@@ -1,0 +1,70 @@
+# Copyright 2020 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Interceptor
+metadata:
+  name: cel
+spec:
+  clientConfig:
+    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/cel"
+  # Until #869 is implemented, the params field is only informational
+  params:
+    - name: "filter"
+      description: "A CEL expression that evaluates to true or false"
+    - name: "overlays"
+      description: "CEL expressions whose values get mapped to user defined keys"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Interceptor
+metadata:
+  name: bitbucket
+spec:
+  clientConfig:
+    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/bitbucket"
+  # Until #869 is implemented, the params field is only informational
+  params:
+    - name: "eventTypes"
+      description: "A list of event types to accept"
+    - name: "secretRef"
+      description: "A reference to a secret containing a shared token for payload validation"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Interceptor
+metadata:
+  name: github
+spec:
+  clientConfig:
+    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/github"
+  # Until #869 is implemented, the params field is only informational
+  params:
+    - name: "eventTypes"
+      description: "A list of event types to accept"
+    - name: "secretRef"
+      description: "A reference to a secret containing a shared token for payload validation"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Interceptor
+metadata:
+  name: gitlab
+spec:
+  clientConfig:
+    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/gitlab"
+  # Until #869 is implemented, the params field is only informational
+  params:
+    - name: "eventTypes"
+      description: "A list of event types to accept"
+    - name: "secretRef"
+      description: "A reference to a secret containing a shared token for payload validation"
+---

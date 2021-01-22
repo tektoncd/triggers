@@ -20,14 +20,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
-	"os"
 	"path"
 
 	"google.golang.org/grpc/codes"
+	"knative.dev/pkg/apis"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -171,28 +171,40 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 	return nil
 }
 
-// ResolveURL returns the URL for the given core interceptor
-func ResolveURL(i *triggersv1.TriggerInterceptor) *url.URL {
+// Getname returns the name for the given core interceptor
+func GetName(i *triggersv1.TriggerInterceptor) string {
 	// This is temporary until we implement #868
-	path := ""
+	name := ""
 	switch {
 	case i.Bitbucket != nil:
-		path = "bitbucket"
+		name = "bitbucket"
 	case i.CEL != nil:
-		path = "cel"
+		name = "cel"
 	case i.GitHub != nil:
-		path = "github"
+		name = "github"
 	case i.GitLab != nil:
-		path = "gitlab"
+		name = "gitlab"
 	}
-	return &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, os.Getenv("TEKTON_INSTALL_NAMESPACE")),
-		Path:   path,
-	}
+	return name
 }
 
-// Execute executes the InterceptorRequest using the given httpClient
+type InterceptorGetter func(name string) (*triggersv1.Interceptor, error)
+
+var ErrNilURL = errors.New("interceptor URL was nil")
+
+// ResolveToURL finds an Interceptor's URL.
+func ResolveToURL(getter InterceptorGetter, name string) (*apis.URL, error) {
+	ic, err := getter(name)
+	if err != nil {
+		return nil, err
+	}
+	url := ic.Spec.ClientConfig.URL
+	if url == nil {
+		return nil, ErrNilURL
+	}
+	return ic.Spec.ClientConfig.URL, nil
+}
+
 func Execute(ctx context.Context, client *http.Client, req *triggersv1.InterceptorRequest, url string) (*triggersv1.InterceptorResponse, error) {
 	b, err := json.Marshal(req)
 	if err != nil {

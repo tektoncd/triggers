@@ -248,9 +248,6 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 									FieldPath: "metadata.namespace",
 								},
 							},
-						}, {
-							Name:  "TEKTON_INSTALL_NAMESPACE",
-							Value: "tekton-pipelines",
 						}},
 					}},
 					Volumes: []corev1.Volume{{
@@ -336,9 +333,6 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					FieldPath: "metadata.namespace",
 				},
 			},
-		}, {
-			Name:  "TEKTON_INSTALL_NAMESPACE",
-			Value: "tekton-pipelines",
 		}, {
 			Name: "TLS_CERT",
 			ValueFrom: &corev1.EnvVarSource{
