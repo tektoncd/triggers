@@ -6,7 +6,42 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/codes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+// Interceptor describes a interceptor's configuration such as the fields it accepts
+// and its deployment address
+type Interceptor struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec InterceptorSpec `json:"spec"`
+}
+
+type InterceptorSpec struct {
+	ClientConfig ClientConfig `json:"clientConfig"`
+}
+
+// ClientConfig describes how a client can communicate with the Interceptor
+type ClientConfig struct {
+	URL *apis.URL `json:"url,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// InterceptorList contains a list of InterceptorConfigurations.
+// We don't use this but it's required for certain codegen features.
+type InterceptorList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Interceptor `json:"items"`
+}
 
 type InterceptorInterface interface {
 	// Process executes the given InterceptorRequest. Simply getting a non-nil InterceptorResponse back is not sufficient

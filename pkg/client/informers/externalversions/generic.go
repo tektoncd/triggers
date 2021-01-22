@@ -57,6 +57,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().ClusterTriggerBindings().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("eventlisteners"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().EventListeners().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("interceptors"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().Interceptors().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("triggers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().Triggers().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("triggerbindings"):
