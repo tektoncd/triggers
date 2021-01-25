@@ -76,19 +76,6 @@ func TestEventListenerSetDefaults(t *testing.T) {
 			},
 		},
 	}, {
-		name: "set replicas to 1 if provided replicas is 0 as part of eventlistener spec",
-		in: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(0),
-			},
-		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
-		want: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(1),
-			},
-		},
-	}, {
 		name: "deprecate podTemplate nodeselector to resource",
 		in: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
