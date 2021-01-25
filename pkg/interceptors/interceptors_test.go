@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -327,12 +328,27 @@ func TestResolvePath(t *testing.T) {
 		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc",
 	}} {
 		t.Run(tc.want, func(t *testing.T) {
+			os.Setenv("TEKTON_INSTALL_NAMESPACE", "tekton-pipelines")
+			t.Cleanup(func() { os.Unsetenv("TEKTON_INSTALL_NAMESPACE") })
 			got := interceptors.ResolveURL(&tc.in)
 			if tc.want != got.String() {
 				t.Fatalf("ResolveURL() want: %s; got: %s", tc.want, got)
 			}
 		})
 	}
+
+	t.Run("different namespaces", func(t *testing.T) {
+		os.Setenv("TEKTON_INSTALL_NAMESPACE", "another-namespace")
+		t.Cleanup(func() { os.Unsetenv("TEKTON_INSTALL_NAMESPACE") })
+		in := &triggersv1.EventInterceptor{
+			Bitbucket: &triggersv1.BitbucketInterceptor{},
+		}
+		got := interceptors.ResolveURL(in)
+		want := "http://tekton-triggers-core-interceptors.another-namespace.svc/bitbucket"
+		if want != got.String() {
+			t.Fatalf("ResolveURL() want: %s; got: %s", want, got)
+		}
+	})
 }
 
 // testServer creates a httptest server with the passed in handler and returns a http.Client that
