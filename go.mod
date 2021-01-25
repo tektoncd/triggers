@@ -9,6 +9,7 @@ require (
 	github.com/google/cel-go v0.6.0
 	github.com/google/go-cmp v0.5.4
 	github.com/google/go-github/v31 v31.0.0
+	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.7.4
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/pipeline v0.20.0

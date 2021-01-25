@@ -72,7 +72,7 @@ const (
 
 func init() {
 	// Override UID generator for consistent test results.
-	template.UID = func() string { return eventID }
+	template.UUID = func() string { return eventID }
 }
 
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic client. The returned client is used to

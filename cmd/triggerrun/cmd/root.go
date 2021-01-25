@@ -103,7 +103,7 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 
 	logger, _ := zap.NewProduction()
 	sugerLogger := logger.Sugar()
-	eventID := template.UID()
+	eventID := template.UUID()
 	r := newSink(config, sugerLogger)
 	eventLog := sugerLogger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 	for _, tri := range triggers {

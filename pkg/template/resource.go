@@ -22,10 +22,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // uidMatch determines the uid variable within the resource template
@@ -136,8 +135,8 @@ func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, ol
 	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value), -1)
 }
 
-// UID generates a random string like the Kubernetes apiserver generateName metafield postfix.
-var UID = func() string { return rand.String(5) }
+// UUID generates a Universally Unique IDentifier following RFC 4122.
+var UUID = func() string { return uuid.New().String() }
 
 // applyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.

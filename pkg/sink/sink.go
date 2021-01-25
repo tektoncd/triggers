@@ -88,7 +88,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	eventID := template.UID()
+	eventID := template.UUID()
 	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
