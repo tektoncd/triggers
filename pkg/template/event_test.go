@@ -17,6 +17,7 @@ limitations under the License.
 package template
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -24,11 +25,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
@@ -532,7 +533,7 @@ func TestResolveResources(t *testing.T) {
 			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)}),
 		)),
 		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "cbhtc"}`),
+			json.RawMessage(`{"rt1": "31313131-3131-4131-b131-313131313131"}`),
 		},
 	}, {
 		name: "uid replacement is consistent across multiple templates",
@@ -541,15 +542,17 @@ func TestResolveResources(t *testing.T) {
 			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "$(uid)"}`)}),
 		)),
 		want: []json.RawMessage{
-			json.RawMessage(`{"rt1": "cbhtc"}`),
-			json.RawMessage(`{"rt2": "cbhtc"}`),
+			json.RawMessage(`{"rt1": "31313131-3131-4131-b131-313131313131"}`),
+			json.RawMessage(`{"rt2": "31313131-3131-4131-b131-313131313131"}`),
 		},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Seeded for UID() to return "cbhtc"
-			utilrand.Seed(0)
+			// Seeded for UUID() to return "31313131-3131-4131-b131-313131313131"
+			reader := bytes.NewReader([]byte("1111111111111111"))
+			uuid.SetRand(reader)
+			uuid.SetClockSequence(1)
 			got := ResolveResources(addOldEscape(tt.template), tt.params)
 			// Use toString so that it is easy to compare the json.RawMessage diffs
 			if diff := cmp.Diff(toString(tt.want), toString(got)); diff != "" {

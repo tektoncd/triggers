@@ -55,7 +55,7 @@ func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensio
 // ResolveResources resolves a templated resource by replacing params with their values.
 func ResolveResources(template *triggersv1.TriggerTemplate, params []triggersv1.Param) []json.RawMessage {
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
-	uid := UID()
+	uid := UUID()
 
 	oldEscape := metav1.HasAnnotation(template.ObjectMeta, OldEscapeAnnotation)
 
