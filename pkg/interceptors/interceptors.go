@@ -24,9 +24,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
-
-	"github.com/tektoncd/triggers/pkg/system"
 
 	"google.golang.org/grpc/codes"
 
@@ -188,7 +187,7 @@ func ResolveURL(i *triggersv1.TriggerInterceptor) *url.URL {
 	}
 	return &url.URL{
 		Scheme: "http",
-		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, system.DefaultNamespace),
+		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, os.Getenv("TEKTON_INSTALL_NAMESPACE")),
 		Path:   path,
 	}
 }
