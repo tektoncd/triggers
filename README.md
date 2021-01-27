@@ -1,6 +1,8 @@
 # Tekton Triggers
 
+[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/tektoncd/triggers)
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/triggers)](https://goreportcard.com/report/github.com/tektoncd/triggers)
+
 
 <p align="center">
 <img src="tekton-triggers.png" alt="Tekton Triggers logo (Tekton cat playing with a ball)"></img>
