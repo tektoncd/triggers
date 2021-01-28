@@ -26,8 +26,10 @@ import (
 )
 
 // EventListenerLister helps list EventListeners.
+// All objects returned here must be treated as read-only.
 type EventListenerLister interface {
 	// List lists all EventListeners in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.EventListener, err error)
 	// EventListeners returns an object that can list and get EventListeners.
 	EventListeners(namespace string) EventListenerNamespaceLister
@@ -58,10 +60,13 @@ func (s *eventListenerLister) EventListeners(namespace string) EventListenerName
 }
 
 // EventListenerNamespaceLister helps list and get EventListeners.
+// All objects returned here must be treated as read-only.
 type EventListenerNamespaceLister interface {
 	// List lists all EventListeners in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.EventListener, err error)
 	// Get retrieves the EventListener from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.EventListener, error)
 	EventListenerNamespaceListerExpansion
 }

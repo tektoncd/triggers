@@ -21,7 +21,8 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 cd ${REPO_ROOT_DIR}
 
-VERSION="release-0.20"
+# Update when you want to pin knative.dev/pkg
+VERSION="master"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.

@@ -26,8 +26,10 @@ import (
 )
 
 // TriggerBindingLister helps list TriggerBindings.
+// All objects returned here must be treated as read-only.
 type TriggerBindingLister interface {
 	// List lists all TriggerBindings in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerBinding, err error)
 	// TriggerBindings returns an object that can list and get TriggerBindings.
 	TriggerBindings(namespace string) TriggerBindingNamespaceLister
@@ -58,10 +60,13 @@ func (s *triggerBindingLister) TriggerBindings(namespace string) TriggerBindingN
 }
 
 // TriggerBindingNamespaceLister helps list and get TriggerBindings.
+// All objects returned here must be treated as read-only.
 type TriggerBindingNamespaceLister interface {
 	// List lists all TriggerBindings in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerBinding, err error)
 	// Get retrieves the TriggerBinding from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TriggerBinding, error)
 	TriggerBindingNamespaceListerExpansion
 }
