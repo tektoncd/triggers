@@ -26,8 +26,10 @@ import (
 )
 
 // TriggerTemplateLister helps list TriggerTemplates.
+// All objects returned here must be treated as read-only.
 type TriggerTemplateLister interface {
 	// List lists all TriggerTemplates in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerTemplate, err error)
 	// TriggerTemplates returns an object that can list and get TriggerTemplates.
 	TriggerTemplates(namespace string) TriggerTemplateNamespaceLister
@@ -58,10 +60,13 @@ func (s *triggerTemplateLister) TriggerTemplates(namespace string) TriggerTempla
 }
 
 // TriggerTemplateNamespaceLister helps list and get TriggerTemplates.
+// All objects returned here must be treated as read-only.
 type TriggerTemplateNamespaceLister interface {
 	// List lists all TriggerTemplates in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TriggerTemplate, err error)
 	// Get retrieves the TriggerTemplate from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TriggerTemplate, error)
 	TriggerTemplateNamespaceListerExpansion
 }

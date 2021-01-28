@@ -1,6 +1,6 @@
 module github.com/tektoncd/triggers
 
-go 1.14
+go 1.15
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.7.4
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/pipeline v0.20.0
+	github.com/tektoncd/pipeline v0.20.1-0.20210203144343-1b7a37f0d21d
 	github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5
 	github.com/tidwall/gjson v1.3.5 // indirect
 	github.com/tidwall/sjson v1.0.4
@@ -21,26 +21,17 @@ require (
 	google.golang.org/genproto v0.0.0-20201211151036-40ec1c210f7a
 	google.golang.org/grpc v1.34.0
 	google.golang.org/protobuf v1.25.0
-	k8s.io/api v0.18.12
-	k8s.io/apimachinery v0.18.12
-	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/code-generator v0.18.12
-	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
-	knative.dev/pkg v0.0.0-20210107022335-51c72e24c179
+	k8s.io/api v0.19.7
+	k8s.io/apimachinery v0.19.7
+	k8s.io/client-go v0.19.7
+	k8s.io/code-generator v0.19.7
+	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
+	knative.dev/pkg v0.0.0-20210130001831-ca02ef752ac6
 	sigs.k8s.io/yaml v1.2.0
 )
 
-// Knative deps (release-0.20)
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.13.4
 	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
-)
-
-// Pin k8s deps to 0.18.8
-replace (
-	k8s.io/api => k8s.io/api v0.18.12
-	k8s.io/apimachinery => k8s.io/apimachinery v0.18.12
-	k8s.io/client-go => k8s.io/client-go v0.18.12
-	k8s.io/code-generator => k8s.io/code-generator v0.18.12
 )

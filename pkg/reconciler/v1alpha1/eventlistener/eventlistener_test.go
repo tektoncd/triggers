@@ -1120,16 +1120,18 @@ func TestReconcile_Delete(t *testing.T) {
 		key:  fmt.Sprintf("%s/%s", namespace, "el-2"),
 		startResources: test.Resources{
 			Namespaces: []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{makeEL(), makeEL(withFinalizer, withDeletionTimestamp, func(el *v1alpha1.EventListener) {
-				el.Name = "el-2" // TODO: makeEL take name, ns as args
-			})},
+			EventListeners: []*v1alpha1.EventListener{
+				makeEL(),
+				// TODO: makeEL take name, ns as args
+				makeEL(withFinalizer, withDeletionTimestamp, func(el *v1alpha1.EventListener) { el.Name = "el-2" })},
 			ConfigMaps: []*corev1.ConfigMap{logConfig(namespace)},
 		},
 		endResources: test.Resources{
 			Namespaces: []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{makeEL(), makeEL(withFinalizerRemoved, withDeletionTimestamp, func(el *v1alpha1.EventListener) {
-				el.Name = "el-2"
-			})},
+			EventListeners: []*v1alpha1.EventListener{
+				makeEL(withFinalizerRemoved, withDeletionTimestamp, func(el *v1alpha1.EventListener) { el.Name = "el-2" }),
+				makeEL(),
+			},
 			ConfigMaps: []*corev1.ConfigMap{logConfig(namespace)},
 		},
 	}, {

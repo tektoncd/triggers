@@ -26,10 +26,13 @@ import (
 )
 
 // ClusterTriggerBindingLister helps list ClusterTriggerBindings.
+// All objects returned here must be treated as read-only.
 type ClusterTriggerBindingLister interface {
 	// List lists all ClusterTriggerBindings in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerBinding, err error)
 	// Get retrieves the ClusterTriggerBinding from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ClusterTriggerBinding, error)
 	ClusterTriggerBindingListerExpansion
 }
