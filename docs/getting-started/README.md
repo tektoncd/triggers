@@ -166,7 +166,7 @@ minimum.
 - GitHubOrg: The GitHub org you are using for this getting-started.
 - GitHubUser: Your GitHub username.
 - GitHubRepo: The repo we will be using for this example.
-- ExternalDomain: Update this to be the to something other then `demo.iancoffey.com`
+- GitHubDomain: Update this to be the to something other then `demo.iancoffey.com`
 
 ### Run the Webhook Task
 
