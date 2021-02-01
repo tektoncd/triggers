@@ -229,6 +229,11 @@ func TestEventListenerValidate_error(t *testing.T) {
 		name string
 		el   *v1alpha1.EventListener
 	}{{
+		name: "Invalid EventListener name",
+		el: bldr.EventListener("longlonglonglonglonglonglonglonglonglonglonglonglonglonglname", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1"))),
+	}, {
 		name: "Valid EventListener with empty TriggerTemplate name",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
