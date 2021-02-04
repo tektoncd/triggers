@@ -26,10 +26,13 @@ import (
 )
 
 // InterceptorLister helps list Interceptors.
+// All objects returned here must be treated as read-only.
 type InterceptorLister interface {
 	// List lists all Interceptors in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error)
 	// Get retrieves the Interceptor from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Interceptor, error)
 	InterceptorListerExpansion
 }
