@@ -26,8 +26,9 @@ import (
 // and TriggerSpecTemplate; TriggerSpecBinding provides extracted values for
 // TriggerSpecTemplate to then create resources from.
 type TriggerSpec struct {
-	Bindings []*TriggerSpecBinding `json:"bindings"`
-	Template TriggerSpecTemplate   `json:"template"`
+	Bindings []*TriggerSpecBinding `json:"bindings,omitempty"`
+	Template TriggerSpecTemplate   `json:"template,omitempty"`
+	Triggers []*TriggerRefSpec     `json:"triggers,omitempty"`
 	// +optional
 	Name         string                `json:"name,omitempty"`
 	Interceptors []*TriggerInterceptor `json:"interceptors,omitempty"`
@@ -42,6 +43,10 @@ type TriggerSpecTemplate struct {
 	Ref        *string              `json:"ref,omitempty"`
 	APIVersion string               `json:"apiversion,omitempty"`
 	Spec       *TriggerTemplateSpec `json:"spec,omitempty"`
+}
+
+type TriggerRefSpec struct {
+	Ref *string `json:"ref,omitempty"`
 }
 
 type TriggerSpecBinding struct {

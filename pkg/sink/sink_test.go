@@ -161,10 +161,10 @@ func toTaskRun(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
 
 // checkSinkResponse checks that the sink response status code is 201 and that
 // the body returns the EventListener, namespace, and eventID.
-func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
+func checkSinkResponse(t *testing.T, resp *http.Response, elName string, code int) {
 	t.Helper()
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected response code 201 but got: %v", resp.Status)
+	if resp.StatusCode != code {
+		t.Fatalf("expected response code %d but got: %v", code, resp.Status)
 	}
 	var gotBody Response
 	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
@@ -330,6 +330,7 @@ func TestHandleEvent(t *testing.T) {
 		webhookInterceptor http.HandlerFunc
 		eventBody          []byte
 		headers            map[string][]string
+		statusCode         int
 		// want is the resulting TaskRun(s) created by the EventListener
 		want []pipelinev1.TaskRun
 	}{{
@@ -592,6 +593,37 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		want:      tenGitCloneTaskRuns,
 	}, {
+		name: "eventListener ignores hidden Triggers",
+		resources: test.Resources{
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					NamespaceSelector: triggersv1.NamespaceSelector{
+						MatchNames: []string{namespace},
+					},
+				},
+			}},
+			Triggers: []*triggersv1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "sink-hidden-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						sinkLabel: sinkHidden,
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: gitCloneTBSpec,
+					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+				},
+			}},
+		},
+		eventBody:  eventBody,
+		statusCode: 202,
+		want:       []pipelinev1.TaskRun{},
+	}, {
 		name: "with webhook interceptors",
 		resources: test.Resources{
 			Triggers: []*triggersv1.Trigger{{
@@ -700,7 +732,10 @@ func TestHandleEvent(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error sending request: %s", err)
 			}
-			checkSinkResponse(t, resp, elName)
+			if tc.statusCode == 0 {
+				tc.statusCode = http.StatusCreated
+			}
+			checkSinkResponse(t, resp, elName, tc.statusCode)
 			// Check right resources were created.
 			got := toTaskRun(t, dynamicClient.Actions())
 
@@ -1024,7 +1059,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID)
+			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, nil)
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1095,7 +1130,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID); err == nil {
+	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID, nil); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1115,7 +1150,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID")
+	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", nil)
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1193,7 +1228,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID)
+	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID, nil)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}

@@ -172,6 +172,18 @@ func Test_TriggerValidate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "Trigger referencing other trigger without binding",
+		tr: bldr.Trigger("name", "namespace", bldr.TriggerSpec(
+			bldr.TriggerRefSpec("my-trigger-ref"),
+		)),
+	}, {
+		name: "Trigger has both trigger ref and binding",
+		tr: bldr.Trigger("name", "namespace", bldr.TriggerSpec(
+			bldr.TriggerRefSpec("my-trigger-ref"),
+			bldr.TriggerSpecTemplate("tt", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+		)),
 	}}
 
 	for _, test := range tests {

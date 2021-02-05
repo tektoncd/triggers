@@ -225,8 +225,9 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 }
 
 func (t *EventListenerTrigger) validate(ctx context.Context) (errs *apis.FieldError) {
-	if t.Template == nil && t.TriggerRef == "" {
-		errs = errs.Also(apis.ErrMissingOneOf("template", "triggerRef"))
+
+	if t.Template == nil && t.TriggerRef == "" && (t.Triggers == nil || len(t.Triggers) == 0) {
+		errs = errs.Also(apis.ErrMissingOneOf("template", "triggerRef", "triggers"))
 	}
 
 	// Validate optional Bindings
@@ -234,6 +235,10 @@ func (t *EventListenerTrigger) validate(ctx context.Context) (errs *apis.FieldEr
 	if t.Template != nil {
 		// Validate required TriggerTemplate
 		errs = errs.Also(t.Template.validate(ctx))
+	}
+
+	if t.Template == nil && t.Bindings != nil && len(t.Bindings) > 0 {
+		errs = errs.Also(apis.ErrInvalidValue("If template is not set, then bindings do not apply", "bindings"))
 	}
 
 	// Validate optional Interceptors

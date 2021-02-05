@@ -24,6 +24,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	"knative.dev/pkg/ptr"
 )
 
 // EventListenerOp is an operation which modifies the EventListener.
@@ -222,6 +223,19 @@ func EventListenerTriggerName(name string) EventListenerTriggerOp {
 func EventListenerTriggerServiceAccount(saName, namespace string) EventListenerTriggerOp {
 	return func(trigger *v1alpha1.EventListenerTrigger) {
 		trigger.ServiceAccountName = saName
+	}
+}
+
+// EventListenerTriggers adds a nested Trigger ref to the EventListenerSpec Triggers.
+func EventListenerTriggers(ref string) EventListenerTriggerOp {
+	return func(trigger *v1alpha1.EventListenerTrigger) {
+		nestedTrigger := &v1alpha1.EventListenerTriggers{
+			Ref: ptr.String(ref),
+		}
+		if trigger.Triggers == nil {
+			trigger.Triggers = []*v1alpha1.EventListenerTriggers{}
+		}
+		trigger.Triggers = append(trigger.Triggers, nestedTrigger)
 	}
 }
 

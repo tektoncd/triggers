@@ -33,17 +33,34 @@ func (t *Trigger) Validate(ctx context.Context) *apis.FieldError {
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
-func (t *TriggerSpec) validate(ctx context.Context) *apis.FieldError {
-	// Validate optional Bindings
-	errs := triggerSpecBindingArray(t.Bindings).validate(ctx)
-	// Validate required TriggerTemplate
-	errs = errs.Also(t.Template.validate(ctx))
+func (t *TriggerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
+	if t.Template == (TriggerSpecTemplate{}) && (t.Triggers == nil || len(t.Triggers) == 0) {
+		errs = errs.Also(apis.ErrMissingOneOf("template", "triggers"))
+	}
+	if t.Template != (TriggerSpecTemplate{}) {
+		// Validate optional Bindings
+		errs = errs.Also(triggerSpecBindingArray(t.Bindings).validate(ctx))
+		// Validate required TriggerTemplate
+		errs = errs.Also(t.Template.validate(ctx))
+	}
+	if t.Triggers == nil && len(t.Triggers) == 0 {
+		errs = errs.Also(triggerRefSpecArray(t.Triggers).validate(ctx))
+	}
 
 	// Validate optional Interceptors
 	for i, interceptor := range t.Interceptors {
 		errs = errs.Also(interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)))
 	}
 
+	return errs
+}
+
+func (t triggerRefSpecArray) validate(ctx context.Context) (errs *apis.FieldError) {
+	for i, trigger := range t {
+		if *trigger.Ref == "" {
+			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("trigger[%d].Ref", i)))
+		}
+	}
 	return errs
 }
 

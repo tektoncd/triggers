@@ -90,9 +90,10 @@ type PodTemplate struct {
 // TriggerTemplate to then create resources from. TriggerRef can also be
 // provided instead of TriggerBinding, Interceptors and TriggerTemplate
 type EventListenerTrigger struct {
-	Bindings   []*EventListenerBinding `json:"bindings,omitempty"`
-	Template   *EventListenerTemplate  `json:"template,omitempty"`
-	TriggerRef string                  `json:"triggerRef,omitempty"`
+	Bindings   []*EventListenerBinding  `json:"bindings,omitempty"`
+	Template   *EventListenerTemplate   `json:"template,omitempty"`
+	Triggers   []*EventListenerTriggers `json:"triggers,omitempty"`
+	TriggerRef string                   `json:"triggerRef,omitempty"`
 	// +optional
 	Name         string              `json:"name,omitempty"`
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
@@ -122,6 +123,9 @@ type EventListenerBinding = TriggerSpecBinding
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.
 type EventListenerTemplate = TriggerSpecTemplate
+
+// EventListenerTriggers allows an eventlistener to specify nested triggers.
+type EventListenerTriggers = TriggerRefSpec
 
 // EventListenerList contains a list of TriggerBinding
 //

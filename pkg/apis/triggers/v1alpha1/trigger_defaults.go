@@ -20,6 +20,7 @@ import (
 	"context"
 )
 
+type triggerRefSpecArray []*TriggerRefSpec
 type triggerSpecBindingArray []*TriggerSpecBinding
 
 // SetDefaults sets the defaults on the object.

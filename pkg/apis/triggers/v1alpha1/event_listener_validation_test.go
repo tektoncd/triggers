@@ -135,6 +135,33 @@ func Test_EventListenerValidate(t *testing.T) {
 					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
 				))),
 	}, {
+		name: "Valid EventListener with nested triggers",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggers("trigger1"),
+					bldr.EventListenerTriggers("trigger2"),
+				))),
+	}, {
+		name: "Valid EventListener with binding, template, and triggers",
+		el: bldr.EventListener("name", "namespace",
+			bldr.EventListenerSpec(
+				bldr.EventListenerTrigger("tt", "v1alpha1",
+					bldr.EventListenerTriggerBinding("tb", "", "v1alpha1"),
+					bldr.EventListenerTriggers("trigger1"),
+				))),
+	}, {
+		name: "Valid EventListener with triggers and empty template",
+		el: func() *v1alpha1.EventListener {
+			el := bldr.EventListener("name", "namespace")
+			el.Spec.Triggers = []v1alpha1.EventListenerTrigger{{
+				Triggers: []*v1alpha1.EventListenerTriggers{{
+					Ref: ptr.String("trigger-ref"),
+				}},
+			}}
+			return el
+		}(),
+	}, {
 		name: "Valid EventListener with CEL overlays",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(

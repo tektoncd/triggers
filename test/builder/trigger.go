@@ -21,6 +21,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 // TriggerOp is an operation which modifies the Trigger.
@@ -81,6 +82,15 @@ func TriggerSpecName(name string) TriggerSpecOp {
 func TriggerSpecServiceAccountName(saName string) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
 		spec.ServiceAccountName = saName
+	}
+}
+
+func TriggerRefSpec(ref string) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		ref := &v1alpha1.TriggerRefSpec{
+			Ref: ptr.String(ref),
+		}
+		spec.Triggers = append(spec.Triggers, ref)
 	}
 }
 
