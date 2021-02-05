@@ -34,6 +34,7 @@ using [Event Interceptors](#Interceptors).
     - [Bitbucket Interceptors](#bitbucket-interceptors)
     - [CEL Interceptors](#cel-interceptors)
       - [Overlays](#overlays)
+    - [Internal Interceptor](#internal-interceptor)
     - [Chaining Interceptors](#chaining-interceptors)
   - [EventListener Response](#eventlistener-response)
   - [How does the EventListener work?](#how-does-the-eventlistener-work)
@@ -684,6 +685,64 @@ spec:
   - name: branch
     value: $(extensions.short_sha)
 ```
+
+### Internal Interceptors
+
+This interceptor type is experimental and only enabled if `-internal-trigger=true` is passed to the `event-listener` process.
+
+This interceptor is meant to allow for a single trigger to branch its logic for selecting `triggerbindings` and `triggertemplates` after the initial trigger. Without this interceptor, many triggers have to be created with the same initial logic, but small differences in the match criteria due to wanting to set different `triggerbindings`. For example, given four pipelines that are triggered based on a Github `pull_request` event, each would require the same initial logic for the Github Interceptor before matching the associated bindings and template.
+
+The internal interceptor, when enabled, creates two layers of triggers. Standard triggers, including the ones embedded in the eventlistener block are still exposed to the resolution loop of the event listener. Internal triggers, which are `Trigger` objects in the same namespace labeled with `tekton.dev/internal=true`, are not exposed in this resolution loop, but rather stored in a different resolver.
+
+When the internal interceptor is hit in the resolution chain, it processes the matched internal trigger in the same way as other interceptors. At this time, internal interceptors should not call other interceptors as the processing loop will be cancelled before that nesting is processed.
+
+First, create an internal Trigger:
+
+  ```yaml
+  apiVersion: triggers.tekton.dev/v1alpha1
+  kind: Trigger
+  metadata:
+    name: internal-trigger
+    labels:
+      tekton.dev/internal: "true"
+  spec:
+    interceptors:
+      - cel:
+          filter: body.pull_request.repository.language == "Go"
+          overlays:
+          - key: extensions.truncated_sha
+            expression: "body.pull_request.head.sha.truncate(7)"
+    bindings:
+    - ref: internal-binding
+    template:
+      ref: internal-template
+  ```
+
+Then, create a trigger that invokes this internal trigger:
+
+  ```yaml
+  apiVersion: triggers.tekton.dev/v1alpha1
+  kind: Trigger
+  metadata:
+    name: trigger
+  spec:
+    interceptors:
+       - github:
+          secretRef:
+            secretName: github-secret
+            secretKey: secretToken
+          eventTypes:
+          - pull_request   
+      - internal:
+          name: internal-trigger
+    #These bindings are still processed
+    bindings:
+    - ref: pipeline-binding
+    template:
+      ref: pipeline-template
+  ```
+
+This structure on an event that matched these selectors would run two templates, both `pipeline-template` and `internal-template`.
 
 ### Chaining Interceptors
 

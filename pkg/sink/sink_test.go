@@ -159,12 +159,12 @@ func toTaskRun(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
 	return trs
 }
 
-// checkSinkResponse checks that the sink response status code is 201 and that
+// checkSinkResponse checks that the sink response status code is as defined and that
 // the body returns the EventListener, namespace, and eventID.
-func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
+func checkSinkResponse(t *testing.T, resp *http.Response, elName string, statusCode int) {
 	t.Helper()
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected response code 201 but got: %v", resp.Status)
+	if resp.StatusCode != statusCode {
+		t.Fatalf("expected response code %d but got: %v", statusCode, resp.Status)
 	}
 	var gotBody Response
 	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
@@ -331,7 +331,8 @@ func TestHandleEvent(t *testing.T) {
 		eventBody          []byte
 		headers            map[string][]string
 		// want is the resulting TaskRun(s) created by the EventListener
-		want []pipelinev1.TaskRun
+		want       []pipelinev1.TaskRun
+		statusCode int
 	}{{
 		name: "single trigger embedded within EventListener",
 		resources: test.Resources{
@@ -680,12 +681,77 @@ func TestHandleEvent(t *testing.T) {
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
 		}},
+	}, {
+		name: "internal-invocation",
+		// resources are the K8s objects to setup the test env.
+		resources: test.Resources{
+			TriggerBindings:  []*triggersv1.TriggerBinding{gitCloneTB},
+			TriggerTemplates: []*triggersv1.TriggerTemplate{gitCloneTT},
+			Triggers: []*triggersv1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger-external",
+					Namespace: namespace,
+				},
+				Spec: triggersv1.TriggerSpec{
+					Interceptors: []*triggersv1.TriggerInterceptor{
+						{
+							Internal: &triggersv1.InternalInterceptor{Name: "git-clone-trigger"},
+						},
+						{
+							Webhook: &triggersv1.WebhookInterceptor{
+								ObjectRef: &corev1.ObjectReference{
+									APIVersion: "v1",
+									Kind:       "Service",
+									Name:       "foo",
+								},
+							},
+						},
+					},
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"tekton.dev/internal": "true",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}},
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					Triggers: []triggersv1.EventListenerTrigger{{
+						TriggerRef: "git-clone-trigger-external",
+					}},
+				},
+			}},
+		},
+		webhookInterceptor: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}),
+		eventBody: eventBody,
+		// want is the resulting TaskRun(s) created by the EventListener
+		want:       []pipelinev1.TaskRun{gitCloneTaskRun},
+		statusCode: 202,
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// TODO: Do we ever support multiple eventListeners? Maybe change test.Resources to only accept one?
+			if tc.name == "internal-invocation" {
+				t.Log("I'm here!")
+			}
 			elName := tc.resources.EventListeners[0].Name
 			sink, dynamicClient := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
+			sink.InternalTriggerEnabled = true
 			ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 			defer ts.Close()
 			req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(tc.eventBody))
@@ -700,7 +766,10 @@ func TestHandleEvent(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error sending request: %s", err)
 			}
-			checkSinkResponse(t, resp, elName)
+			if tc.statusCode == 0 {
+				tc.statusCode = 201
+			}
+			checkSinkResponse(t, resp, elName, tc.statusCode)
 			// Check right resources were created.
 			got := toTaskRun(t, dynamicClient.Actions())
 
@@ -1024,7 +1093,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID)
+			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, make(chan string))
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1095,7 +1164,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID); err == nil {
+	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID, make(chan string)); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1115,7 +1184,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID")
+	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", make(chan string))
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1193,7 +1262,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID)
+	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID, make(chan string))
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}

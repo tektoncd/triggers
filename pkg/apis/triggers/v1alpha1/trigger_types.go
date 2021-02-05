@@ -87,6 +87,7 @@ type TriggerInterceptor struct {
 	GitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
 	CEL       *CELInterceptor       `json:"cel,omitempty"`
 	Bitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
+	Internal  *InternalInterceptor  `json:"internal,omitempty"`
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -117,6 +118,11 @@ type GitHubInterceptor struct {
 type GitLabInterceptor struct {
 	SecretRef  *SecretRef `json:"secretRef,omitempty"`
 	EventTypes []string   `json:"eventTypes,omitempty"`
+}
+
+// InternalInterceptor provides a webhook to expose triggers only for internal processing
+type InternalInterceptor struct {
+	Name string `json:"name,omitempty"`
 }
 
 // CELInterceptor provides a webhook to intercept and pre-process events

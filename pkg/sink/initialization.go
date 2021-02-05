@@ -51,6 +51,8 @@ var (
 		"The idle timeout for EventListener Server.")
 	elTimeOutHandler = flag.Int64("timeouthandler", 5,
 		"The timeout for Timeout Handler of EventListener Server.")
+	internalTriggerFlag = flag.Bool("internal-trigger", false,
+		"Enable processing of internal triggers via interceptors")
 	isMultiNSFlag = flag.Bool("is-multi-ns", false,
 		"Whether EventListener serve Multiple NS.")
 	tlsCertFlag = flag.String("tls-cert", "",
@@ -77,6 +79,8 @@ type Args struct {
 	ELTimeOutHandler time.Duration
 	// IsMultiNS determines whether el functions as namespaced or clustered
 	IsMultiNS bool
+	// InternalTrigger determines whether we are processing some triggers as internal
+	InternalTrigger bool
 	// Key defines the filename for tls Key.
 	Key string
 	// Cert defines the filename for tls Cert.
@@ -112,6 +116,7 @@ func GetArgs() (Args, error) {
 		ELWriteTimeOut:   time.Duration(*elWriteTimeOut),
 		ELIdleTimeOut:    time.Duration(*elIdleTimeOut),
 		ELTimeOutHandler: time.Duration(*elTimeOutHandler),
+		InternalTrigger:  *internalTriggerFlag,
 		Cert:             *tlsCertFlag,
 		Key:              *tlsKeyFlag,
 	}, nil

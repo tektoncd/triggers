@@ -37,6 +37,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -52,6 +53,7 @@ type Sink struct {
 	HTTPClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string
+	InternalTriggerEnabled bool
 	Logger                 *zap.SugaredLogger
 	Auth                   AuthOverride
 
@@ -93,9 +95,10 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
 	var trItems []*triggersv1.Trigger
+	labelSelector := r.GetLabelSelector(false)
 	if len(el.Spec.NamespaceSelector.MatchNames) == 1 &&
 		el.Spec.NamespaceSelector.MatchNames[0] == "*" {
-		trList, err := r.TriggerLister.List(labels.Everything())
+		trList, err := r.TriggerLister.List(labelSelector)
 		if err != nil {
 			r.Logger.Errorf("Error getting Triggers: %s", err)
 			response.WriteHeader(http.StatusInternalServerError)
@@ -104,7 +107,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		trItems = trList
 	} else if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
 		for _, v := range el.Spec.NamespaceSelector.MatchNames {
-			trList, err := r.TriggerLister.Triggers(v).List(labels.Everything())
+			trList, err := r.TriggerLister.Triggers(v).List(labelSelector)
 			if err != nil {
 				r.Logger.Errorf("Error getting Triggers: %s", err)
 				response.WriteHeader(http.StatusInternalServerError)
@@ -118,11 +121,54 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		r.Logger.Errorf("Error merging Triggers: %s", err)
 	}
 	result := make(chan int, 10)
+
+	internalTriggerMap := make(map[string]triggersv1.Trigger, 10)
+	if r.InternalTriggerEnabled {
+		internalLabelSelector := r.GetLabelSelector(true)
+		internalTriggers, err := r.TriggerLister.List(internalLabelSelector)
+		if err != nil {
+			r.Logger.Errorf("Error querying internal triggers: %s", err)
+		}
+		for _, t := range internalTriggers {
+			internalTriggerMap[t.ObjectMeta.Name] = *t
+		}
+	}
+	internal := make(chan string, 10)
+	if r.InternalTriggerEnabled {
+		defer func() {
+			//Unless unauthorized, all triggers have to process before this function
+			//closes execution. This means that we can close this channel immediately
+			//when the handle func closes
+			internal <- ""
+		}()
+		go func(internalTriggers chan string) {
+			for {
+				t := <-internalTriggers
+				//use empty string because a k8s object name cannot be empty
+				if t != "" {
+					if trigger, ok := internalTriggerMap[t]; ok {
+						go func(invokeTrigger triggersv1.Trigger, name string) {
+							localRequest := request.Clone(request.Context())
+							if err := r.ProcessTrigger(invokeTrigger, localRequest, event, eventID, eventLog, internalTriggers); err != nil {
+								if kerrors.IsUnauthorized(err) || kerrors.IsForbidden(err) {
+									r.Logger.Warn("Unable to process internal trigger %s. Error %s", name, err)
+								}
+							}
+						}(trigger, t)
+					} else {
+						r.Logger.Warnf("Failed to process internal trigger %s, not found in eventlistener namespace.", t)
+					}
+				} else {
+					break
+				}
+			}
+		}(internal)
+	}
 	// Execute each Trigger
 	for _, t := range triggers {
 		go func(t triggersv1.Trigger) {
 			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(t, localRequest, event, eventID, eventLog); err != nil {
+			if err := r.ProcessTrigger(t, localRequest, event, eventID, eventLog, internal); err != nil {
 				if kerrors.IsUnauthorized(err) {
 					result <- http.StatusUnauthorized
 					return
@@ -197,10 +243,10 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 	return triggers, nil
 }
 
-func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+func (r Sink) ProcessTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger, internalTriggers chan string) error {
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
+	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID, internalTriggers)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -242,7 +288,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
 // When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
-func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, internalTriggers chan string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
 	if len(t.Spec.Interceptors) == 0 {
 		return event, in.Header, nil, nil
 	}
@@ -288,6 +334,14 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			// request chaining.
 			request.Header = res.Header.Clone()
 			request.Body = string(payload)
+			continue
+		}
+		if i.Internal != nil {
+			if r.InternalTriggerEnabled {
+				internalTriggers <- i.Internal.Name
+			} else {
+				r.Logger.Warn("Internal trigger invoked but disabled on startup")
+			}
 			continue
 		}
 		// TODO: Plumb through context from EL
@@ -355,4 +409,20 @@ func extendBodyWithExtensions(body []byte, extensions map[string]interface{}) ([
 	}
 
 	return body, nil
+}
+
+//Generates the sink label selector for the internal feature
+func (r *Sink) GetLabelSelector(internal bool) labels.Selector {
+	selectExpr := selection.NotEquals
+	if internal {
+		selectExpr = selection.Equals
+	}
+	if r.InternalTriggerEnabled {
+		labelReq, err := labels.NewRequirement("tekton.dev/internal", selectExpr, []string{"true"})
+		if err != nil {
+			return labels.Everything()
+		}
+		return labels.NewSelector().Add(*labelReq)
+	}
+	return labels.Everything()
 }

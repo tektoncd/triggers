@@ -35,6 +35,9 @@ func Test_GetArgs(t *testing.T) {
 	if err := flag.Set(isMultiNS, "true"); err != nil {
 		t.Errorf("Error setting flag isMultiNS: %s", err)
 	}
+	if err := flag.Set("internal-trigger", "true"); err != nil {
+		t.Errorf("Error setting flagg internal-trriger: %s", err)
+	}
 
 	sinkArgs, err := GetArgs()
 	if err != nil {
@@ -51,6 +54,9 @@ func Test_GetArgs(t *testing.T) {
 	}
 	if sinkArgs.IsMultiNS != true {
 		t.Errorf("Error EL Type want type, got %t", sinkArgs.IsMultiNS)
+	}
+	if sinkArgs.InternalTrigger != true {
+		t.Errorf("Error internal trigger, want true, got %t", sinkArgs.InternalTrigger)
 	}
 }
 

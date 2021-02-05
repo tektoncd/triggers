@@ -106,6 +106,7 @@ func main() {
 		HTTPClient:                  http.DefaultClient,
 		EventListenerName:           sinkArgs.ElName,
 		EventListenerNamespace:      sinkArgs.ElNamespace,
+		InternalTriggerEnabled:      sinkArgs.InternalTrigger,
 		Logger:                      logger,
 		Auth:                        sink.DefaultAuthOverride{},
 		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
