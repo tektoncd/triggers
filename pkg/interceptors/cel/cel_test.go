@@ -231,6 +231,21 @@ func TestInterceptor_Process(t *testing.T) {
 			},
 		},
 	}, {
+		name: "demonstrate defaulting logic within cel interceptor",
+		CEL: &triggersv1.CELInterceptor{
+			Overlays: []triggersv1.CELOverlay{
+				{Key: "one", Expression: "has(body.value) ? body.value : 'default'"},
+				{Key: "two", Expression: "has(body.test.second) ? body.test.second : 'default'"},
+				{Key: "three", Expression: "has(body.test.third) && has(body.test.third.thing) ? body.value.third.thing : 'default'"},
+			},
+		},
+		body: json.RawMessage(`{"value":"test","test":{"other":"thing"}}`),
+		wantExtensions: map[string]interface{}{
+			"one":   "test",
+			"two":   "default",
+			"three": "default",
+		},
+	}, {
 		name: "filters and overlays can access passed in extensions",
 		CEL: &triggersv1.CELInterceptor{
 			Filter: `extensions.foo == "bar"`,
@@ -695,6 +710,11 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			name: "marshalJSON marshalling string",
 			expr: "body.value.marshalJSON()",
 			want: "unexpected type 'string' passed to marshalJSON",
+		},
+		{
+			name: "has function missing nested key",
+			expr: "has(body.pull_request.repository.owner) ? body.pull_request.repository.owner : 'me'",
+			want: `failed to evaluate: no such key: repository`,
 		},
 	}
 	for _, tt := range tests {
