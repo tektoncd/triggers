@@ -90,8 +90,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 
 	eventID := template.UUID()
 	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
-	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, eventID, string(event), request.Header)
+	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with path %s, payload: %s and header: %v",
+		r.EventListenerName, r.EventListenerNamespace, eventID, request.URL.Path, string(event), request.Header)
 	var trItems []*triggersv1.Trigger
 	if len(el.Spec.NamespaceSelector.MatchNames) == 1 &&
 		el.Spec.NamespaceSelector.MatchNames[0] == "*" {
