@@ -1,6 +1,6 @@
 <!--
 ---
-linkTitle: "Exposing Event Listeners Externally"
+linkTitle: "Exposing EventListeners Externally"
 weight: 6
 ---
 -->
