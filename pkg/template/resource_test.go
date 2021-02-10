@@ -100,6 +100,28 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 			},
 			want: json.RawMessage(`{"foo": {"a":"b"}}`),
 		}, {
+			name: "escape newline in param val with JSON requires oldescape",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: `{"a":\n{"b":"c"}\n}`,
+				},
+				rt: json.RawMessage(`{"foo": "$(tt.params.p1)"}`),
+			},
+			oldEscape: true,
+			want:      json.RawMessage(`{"foo": "{\"a\":\n{\"b\":\"c\"}\n}"}`),
+		}, {
+			name: "escape newline in param val",
+			args: args{
+				param: triggersv1.Param{
+					Name: "p1",
+					Value: `test
+value`,
+				},
+				rt: json.RawMessage(`{"foo": "$(tt.params.p1)"}`),
+			},
+			want: json.RawMessage(`{"foo": "test\nvalue"}`),
+		}, {
 			name: "escape quotes in param val - old escaping",
 			args: args{
 				param: triggersv1.Param{

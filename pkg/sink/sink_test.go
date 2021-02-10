@@ -680,7 +680,83 @@ func TestHandleEvent(t *testing.T) {
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
 		}},
-	}}
+	},
+		{
+			name: "single trigger with newline resolved param",
+			resources: test.Resources{
+				EventListeners: []*triggersv1.EventListener{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      eventListenerName,
+						Namespace: namespace,
+					},
+					Spec: triggersv1.EventListenerSpec{
+						Triggers: []triggersv1.EventListenerTrigger{{
+							Name: "git-clone-trigger",
+							Bindings: []*triggersv1.EventListenerBinding{{
+								Ref:  "git-clone",
+								Kind: triggersv1.NamespacedTriggerBindingKind,
+							}},
+							Template: &triggersv1.EventListenerTemplate{
+								Ref: ptr.String("git-clone"),
+							},
+						}},
+					},
+				}},
+				TriggerBindings: []*triggersv1.TriggerBinding{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "git-clone",
+						Namespace: namespace,
+					},
+					Spec: triggersv1.TriggerBindingSpec{
+						Params: []triggersv1.Param{
+							{Name: "url", Value: `{"a":\n{"b":"c"}\n}`},
+							{Name: "revision", Value: `test\nrevision`},
+							{Name: "name", Value: "git-clone-run"},
+							{Name: "app", Value: "$(body.foo)"},
+							{Name: "type", Value: "$(header.Content-Type)"},
+						},
+					},
+				}},
+				TriggerTemplates: []*triggersv1.TriggerTemplate{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "git-clone",
+						Namespace: namespace,
+						Annotations: map[string]string{
+							"triggers.tekton.dev/old-escape-quotes": "true",
+						},
+					},
+					Spec: gitCloneTTSpec,
+				}},
+			},
+			eventBody: eventBody,
+			want: []pipelinev1.TaskRun{{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-run",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app":                                  "bar\t\r\nbaz昨",
+						"type":                                 "application/json",
+						"triggers.tekton.dev/eventlistener":    eventListenerName,
+						"triggers.tekton.dev/trigger":          "git-clone-trigger",
+						"triggers.tekton.dev/triggers-eventid": "12345",
+					},
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					Params: []pipelinev1.Param{{
+						Name:  "url",
+						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "{\"a\":\n{\"b\":\"c\"}\n}"},
+					}, {
+						Name:  "git-revision",
+						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "test\nrevision"},
+					}},
+					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+				},
+			}},
+		}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// TODO: Do we ever support multiple eventListeners? Maybe change test.Resources to only accept one?

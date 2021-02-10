@@ -126,13 +126,14 @@ func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage
 func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(tt.params.%s)", param.Name)
+	paramValue := strings.Replace(param.Value, "\n", "\\n", -1)
 	// Escape quotes so that that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
 	if oldEscape {
-		paramValue := strings.Replace(param.Value, `"`, `\"`, -1)
+		paramValue = strings.Replace(paramValue, `"`, `\"`, -1)
 		return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
 	}
-	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value), -1)
+	return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
 }
 
 // UUID generates a Universally Unique IDentifier following RFC 4122.
