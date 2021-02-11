@@ -48,7 +48,7 @@ spec:
     spec:
       serviceAccountName: tekton-triggers-core-interceptors
       containers:
-      - name: tekton-triggers-controller
+      - name: tekton-triggers-core-interceptors
         image: "ko://github.com/tektoncd/triggers/cmd/interceptors"
         args: [
           "-logtostderr",
