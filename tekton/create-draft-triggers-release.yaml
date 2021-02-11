@@ -14,20 +14,20 @@
 
 # This is a modified version of the Task in the tektoncd/plumbing repo:
 # https://github.com/tektoncd/plumbing/blob/master/tekton/resources/release/github_release.yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: create-draft-triggers-release
 spec:
-  inputs:
-    params:
-    - name: package
-      description: package (and its children) under test
-    - name: release-tag
-      description: Release number and git tag to be applied (e.g. 0.888.1, with 'v')
-    - name: previous-release-tag
-      description: Previous release number - for author and PR list calculation
-    resources:
+  params:
+  - name: package
+    description: package (and its children) under test
+  - name: release-tag
+    description: Release number and git tag to be applied (e.g. 0.888.1, with 'v')
+  - name: previous-release-tag
+    description: Previous release number - for author and PR list calculation
+  resources:
+    inputs:
     - name: source
       type: git
   stepTemplate:
@@ -38,11 +38,11 @@ spec:
             name: github-token
             key: GITHUB_TOKEN
       - name: VERSION
-        value: $(inputs.params.release-tag)
+        value: $(params.release-tag)
       - name: PROJECT
-        value: $(inputs.params.package)
+        value: $(params.package)
       - name: OLD_VERSION
-        value: $(inputs.params.previous-release-tag)
+        value: $(params.previous-release-tag)
   steps:
     - name: header
       image: gcr.io/tekton-releases/dogfooding/hub
@@ -110,13 +110,13 @@ spec:
 
         [Fill list here]
 
-        ## How to upgrade from $(inputs.params.previous-release-tag) :up_arrow:
+        ## How to upgrade from $(params.previous-release-tag) :up_arrow:
 
         1. [Describe required steps for user to upgrade to the latest version]
         EOF
     - name: filter-data
       image: gcr.io/tekton-releases/dogfooding/hub
-      workingdir: $(inputs.resources.source.path)
+      workingdir: $(resources.inputs.source.path)
       script: |
         #!/usr/bin/env bash
         set -e
@@ -125,7 +125,7 @@ spec:
         git fetch --unshallow
 
         LOWER_THRESHOLD=$(git rev-list ${OLD_VERSION} | wc -l)
-        UPPER_THRESHOLD=$(git rev-list $(inputs.resources.source.revision) | wc -l)
+        UPPER_THRESHOLD=$(git rev-list $(resources.inputs.source.revision) | wc -l)
         echo "LOWER_THRESHOLD: $LOWER_THRESHOLD"
         echo "UPPER_THRESHOLD: $UPPER_THRESHOLD"
 
@@ -145,7 +145,7 @@ spec:
         cat $HOME/pr.csv
     - name: authors
       image: gcr.io/tekton-releases/dogfooding/hub
-      workingdir: $(inputs.resources.source.path)
+      workingdir: $(resources.inputs.source.path)
       script: |
         #!/usr/bin/env bash
         set -ex
@@ -164,7 +164,7 @@ spec:
         EOF
     - name: pr-data
       image: gcr.io/tekton-releases/dogfooding/hub
-      workingdir: $(inputs.resources.source.path)
+      workingdir: $(resources.inputs.source.path)
       script: |
         #!/usr/bin/env bash
         set -ex
@@ -181,11 +181,11 @@ spec:
         awk -F";" '{ print "- "$3" ("$2")" }' $HOME/pr.csv | tee -a $HOME/release.md
     - name: create-draft
       image: gcr.io/tekton-releases/dogfooding/hub
-      workingdir: $(inputs.resources.source.path)
+      workingdir: $(resources.inputs.source.path)
       script: |
         #!/usr/bin/env bash
         set -ex
 
         hub release create --draft --prerelease \
-          --commitish $(inputs.resources.source.revision) \
+          --commitish $(resources.inputs.source.revision) \
           --file $HOME/release.md ${VERSION}
