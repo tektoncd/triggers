@@ -1,27 +1,16 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: publish-tekton-triggers
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
     - name: source
       type: git
       targetPath: go/src/github.com/tektoncd/triggers
     - name: bucket
       type: storage
-    params:
-    - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
-    - name: imageRegistry
-      description: TODO(tektoncd/pipeline#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
-    - name: pathToProject
-      description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
-    - name: releaseAsLatest
-      description: "Whether to tag and publish this release as Triggers' latest"
-      default: "true"
-  outputs:
-    resources:
+    outputs:
     - name: bucket
       type: storage
     - name: builtControllerImage
@@ -34,6 +23,16 @@ spec:
       type: image
     - name: notification
       type: cloudEvent
+  params:
+  - name: versionTag
+    description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+  - name: imageRegistry
+    description: TODO(tektoncd/pipeline#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
+  - name: pathToProject
+    description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+  - name: releaseAsLatest
+    description: "Whether to tag and publish this release as Triggers' latest"
+    default: "true"
   steps:
   - name: link-input-bucket-to-output
     image: busybox
@@ -49,13 +48,13 @@ spec:
     args:
     - "-p"
     - "/workspace/output/bucket/latest/"
-    - "/workspace/output/bucket/previous/$(inputs.params.versionTag)/"
+    - "/workspace/output/bucket/previous/$(params.versionTag)/"
 
   - name: run-ko
     image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
     env:
     - name: KO_DOCKER_REPO
-      value: $(inputs.params.imageRegistry)
+      value: $(params.imageRegistry)
     - name: GOPATH
       value: /workspace/go
     - name: GOOGLE_APPLICATION_CREDENTIALS
@@ -74,12 +73,12 @@ spec:
       # Change to directory with our .ko.yaml
       cd /workspace/go/src/github.com/tektoncd/triggers
       # Rewrite "devel" to inputs.params.versionTag
-      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(inputs.params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/triggers/config/*.yaml
+      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/triggers/config/*.yaml
 
-      OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+      OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
 
       # Publish images and create release.yaml
-      ko resolve --platform=all --preserve-import-paths -t $(inputs.params.versionTag) -f /workspace/go/src/github.com/tektoncd/triggers/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
+      ko resolve --platform=all --preserve-import-paths -t $(params.versionTag) -f /workspace/go/src/github.com/tektoncd/triggers/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
 
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
@@ -96,10 +95,10 @@ spec:
       #!/bin/sh
       set -ex
 
-      if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+      if [[ "$(params.releaseAsLatest)" == "true" ]]
       then
         mkdir -p "/workspace/output/bucket/latest/"
-        OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+        OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
         OUTPUT_BUCKET_LATEST_DIR="/workspace/output/bucket/latest"
         cp "$OUTPUT_BUCKET_RELEASE_DIR/release.yaml" "$OUTPUT_BUCKET_LATEST_DIR/release.yaml"
         cp "$OUTPUT_BUCKET_RELEASE_DIR/release.notags.yaml" "$OUTPUT_BUCKET_LATEST_DIR/release.notags.yaml"
@@ -113,13 +112,13 @@ spec:
 
       REGIONS=(us eu asia)
       IMAGES=(
-      $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):$(inputs.params.versionTag)
-      $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtWebhookImage.url):$(inputs.params.versionTag)
-      $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtEventListenerSinkImage.url):$(inputs.params.versionTag)
-      $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtCoreInterceptorsImage.url):$(inputs.params.versionTag)
+      $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtControllerImage.url):$(params.versionTag)
+      $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtWebhookImage.url):$(params.versionTag)
+      $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtEventListenerSinkImage.url):$(params.versionTag)
+      $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtCoreInterceptorsImage.url):$(params.versionTag)
       )
       # Parse the built images from the release.yaml generated by ko
-      BUILT_IMAGES=( $(/workspace/go/src/github.com/tektoncd/triggers/tekton/koparse/koparse.py --path /workspace/output/bucket/previous/$(inputs.params.versionTag)/release.yaml --base $(inputs.params.imageRegistry)/$(inputs.params.pathToProject) --images ${IMAGES[@]}) )
+      BUILT_IMAGES=( $(/workspace/go/src/github.com/tektoncd/triggers/tekton/koparse/koparse.py --path /workspace/output/bucket/previous/$(params.versionTag)/release.yaml --base $(params.imageRegistry)/$(params.pathToProject) --images ${IMAGES[@]}) )
 
       # Auth with account credentials
       gcloud auth activate-service-account --key-file=/secret/release.json
@@ -130,20 +129,20 @@ spec:
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         IMAGE_WITHOUT_SHA_AND_TAG=${IMAGE_WITHOUT_SHA%%:*}
         IMAGE_WITH_SHA=${IMAGE_WITHOUT_SHA_AND_TAG}@${IMAGE##*@}
-        if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+        if [[ "$(params.releaseAsLatest)" == "true" ]]
         then
           gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${IMAGE_WITHOUT_SHA_AND_TAG}:latest
         fi
         for REGION in "${REGIONS[@]}"
         do
-          if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+          if [[ "$(params.releaseAsLatest)" == "true" ]]
           then
-            for TAG in "latest" $(inputs.params.versionTag)
+            for TAG in "latest" $(params.versionTag)
             do
               gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
             done
           else
-            TAG="$(inputs.params.versionTag)"
+            TAG="$(params.versionTag)"
             gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
           fi
         done
