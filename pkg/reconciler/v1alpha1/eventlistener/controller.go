@@ -22,15 +22,17 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
-
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
+	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"k8s.io/client-go/tools/cache"
+	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	configmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap"
 	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection/clients/dynamicclient"
 	"knative.dev/pkg/logging"
 )
 
@@ -38,6 +40,7 @@ import (
 func NewController(config Config) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
+		dynamicclientset := dynamicclient.Get(ctx)
 		kubeclientset := kubeclient.Get(ctx)
 		triggersclientset := triggersclient.Get(ctx)
 		eventListenerInformer := eventlistenerinformer.Get(ctx)
@@ -45,6 +48,7 @@ func NewController(config Config) func(context.Context, configmap.Watcher) *cont
 		serviceInformer := serviceinformer.Get(ctx)
 
 		reconciler := &Reconciler{
+			DynamicClientSet:    dynamicclientset,
 			KubeClientSet:       kubeclientset,
 			TriggersClientSet:   triggersclientset,
 			configmapLister:     configmapinformer.Get(ctx).Lister(),
@@ -62,6 +66,9 @@ func NewController(config Config) func(context.Context, configmap.Watcher) *cont
 		})
 
 		logger.Info("Setting up event handlers")
+
+		reconciler.podspecableTracker = dynamicduck.NewListableTracker(ctx, duckinformer.Get, impl)
+
 		eventListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    impl.Enqueue,
 			UpdateFunc: controller.PassNew(impl.Enqueue),

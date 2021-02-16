@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -145,6 +146,27 @@ func TestGetResourcesFromClients(t *testing.T) {
 		},
 	}
 
+	cData := &duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "knativeservice",
+			Namespace: "foo",
+		},
+	}
+	cData1 := &duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "knativeservice1",
+			Namespace: "foo",
+		},
+	}
+
 	tests := []struct {
 		name      string
 		Resources Resources
@@ -165,6 +187,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				Deployments:            []*appsv1.Deployment{deployment1},
 				Services:               []*corev1.Service{service1},
 				Pods:                   []*corev1.Pod{pod1},
+				WithPod:                []*duckv1.WithPod{cData},
 			},
 		},
 		{
@@ -179,6 +202,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 				Deployments:            []*appsv1.Deployment{deployment1, deployment2},
 				Services:               []*corev1.Service{service1, service2},
 				Pods:                   []*corev1.Pod{pod1, pod2},
+				WithPod:                []*duckv1.WithPod{cData, cData1},
 			},
 		},
 		{

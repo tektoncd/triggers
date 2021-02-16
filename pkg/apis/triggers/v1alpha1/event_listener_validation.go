@@ -17,13 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 var (
@@ -57,9 +60,43 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 	for i, trigger := range s.Triggers {
 		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}
+	// Both Kubernetes and Custom resource can't be present at the same time
+	if s.Resources.KubernetesResource != nil && s.Resources.CustomResource != nil {
+		return apis.ErrMultipleOneOf("spec.resources.kubernetesResource", "spec.resources.customResource")
+	}
+
 	if s.Resources.KubernetesResource != nil {
 		errs = errs.Also(validateKubernetesObject(s.Resources.KubernetesResource).ViaField("spec.resources.kubernetesResource"))
 	}
+
+	if s.Resources.CustomResource != nil {
+		errs = errs.Also(validateCustomObject(s.Resources.CustomResource).ViaField("spec.resources.customResource"))
+	}
+	return errs
+}
+
+func validateCustomObject(customData *CustomResource) (errs *apis.FieldError) {
+	orig := duckv1.WithPod{}
+	decoder := json.NewDecoder(bytes.NewBuffer(customData.RawExtension.Raw))
+
+	if err := decoder.Decode(&orig); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue(err, "spec"))
+	}
+
+	if len(orig.Spec.Template.Spec.Containers) > 1 {
+		errs = errs.Also(apis.ErrMultipleOneOf("containers").ViaField("spec.template.spec"))
+	}
+	errs = errs.Also(apis.CheckDisallowedFields(orig.Spec.Template.Spec,
+		*podSpecMask(&orig.Spec.Template.Spec)).ViaField("spec.template.spec"))
+
+	// bounded by condition because containers fields are optional so there is a chance that containers can be nil.
+	if len(orig.Spec.Template.Spec.Containers) == 1 {
+		errs = errs.Also(apis.CheckDisallowedFields(orig.Spec.Template.Spec.Containers[0],
+			*containerFieldMask(&orig.Spec.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
+		// validate env
+		errs = errs.Also(validateEnv(orig.Spec.Template.Spec.Containers[0].Env).ViaField("spec.template.spec.containers[0].env"))
+	}
+
 	return errs
 }
 
@@ -168,7 +205,6 @@ func containerFieldMask(in *corev1.Container) *corev1.Container {
 	out.VolumeMounts = nil
 	out.ImagePullPolicy = ""
 	out.Lifecycle = nil
-	out.SecurityContext = nil
 	out.Stdin = false
 	out.StdinOnce = false
 	out.TerminationMessagePath = ""
@@ -195,7 +231,6 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	// Disallowed fields
 	// This list clarifies which all podspec fields are not allowed.
 	out.Volumes = nil
-	out.ImagePullSecrets = nil
 	out.EnableServiceLinks = nil
 	out.ImagePullSecrets = nil
 	out.InitContainers = nil

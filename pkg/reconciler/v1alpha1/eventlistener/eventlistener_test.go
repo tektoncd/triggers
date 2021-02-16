@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/system"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -242,15 +243,15 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							MountPath: "/etc/config-logging",
 						}},
 						Env: []corev1.EnvVar{{
+							Name:  "TEKTON_INSTALL_NAMESPACE",
+							Value: "tekton-pipelines",
+						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
 									FieldPath: "metadata.namespace",
 								},
 							},
-						}, {
-							Name:  "TEKTON_INSTALL_NAMESPACE",
-							Value: "tekton-pipelines",
 						}},
 					}},
 					Volumes: []corev1.Volume{{
@@ -330,13 +331,6 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			ReadOnly:  true,
 		}},
 		Env: []corev1.EnvVar{{
-			Name: "SYSTEM_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		}, {
 			Name:  "TEKTON_INSTALL_NAMESPACE",
 			Value: "tekton-pipelines",
 		}, {
@@ -359,6 +353,13 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					Key: "tls.key",
 				},
 			},
+		}, {
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
 		}},
 	}}
 	d.Spec.Template.Spec.Volumes = []corev1.Volume{{
@@ -378,6 +379,76 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			},
 		},
 	}}
+}
+
+// makeWithPod is a helper to build a Knative Service that is created by an EventListener.
+// It generates a basic Knative Service for the simplest EventListener and accepts functions for modification
+func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
+	ownerRefs := makeEL().GetOwnerReference()
+
+	d := duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generatedResourceName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*ownerRefs,
+			},
+			Labels: generatedLabels,
+		},
+		Spec: duckv1.WithPodSpec{
+			Template: duckv1.PodSpecable{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "event-listener",
+						Image: DefaultImage,
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: int32(eventListenerContainerPort),
+							Protocol:      corev1.ProtocolTCP,
+						}},
+						Args: []string{
+							"--el-name=" + eventListenerName,
+							"--el-namespace=" + namespace,
+							"--port=" + strconv.Itoa(eventListenerContainerPort),
+							"--readtimeout=" + strconv.FormatInt(DefaultReadTimeout, 10),
+							"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
+							"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
+							"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+							"--is-multi-ns=" + strconv.FormatBool(false),
+						},
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:      "config-logging",
+							MountPath: "/etc/config-logging",
+						}},
+						Env: []corev1.EnvVar{{
+							Name:  "TEKTON_INSTALL_NAMESPACE",
+							Value: "tekton-pipelines",
+						}, {
+							Name:  "SYSTEM_NAMESPACE",
+							Value: "test-pipelines",
+						}},
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "config-logging",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: eventListenerConfigMapName,
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+	for _, op := range ops {
+		op(&d)
+	}
+	return &d
 }
 
 // makeService is a helper to build a Service that is created by an EventListener.
@@ -421,6 +492,19 @@ func logConfig(ns string) *corev1.ConfigMap {
 
 var withTLSPort = bldr.EventListenerStatus(
 	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, 8443)),
+)
+
+var withKnativeStatus = bldr.EventListenerStatus(
+	bldr.EventListenerCondition(
+		v1alpha1.ServiceExists,
+		corev1.ConditionFalse,
+		"", "",
+	),
+	bldr.EventListenerCondition(
+		v1alpha1.DeploymentExists,
+		corev1.ConditionFalse,
+		"", "",
+	),
 )
 
 var withStatus = bldr.EventListenerStatus(
@@ -562,6 +646,101 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
+	elWithCustomResourceForEnv := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: generatedResourceName,
+				},
+				Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							Env: []corev1.EnvVar{{
+								Name: "key",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+										Key:                  "a.crt",
+									},
+								},
+							}},
+						}},
+					},
+				}},
+			}),
+		}
+	})
+	elWithCustomResourceForNodeSelector := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: generatedResourceName,
+				},
+				Spec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							NodeSelector: map[string]string{
+								"hi": "hello",
+							},
+						},
+					}},
+			}),
+		}
+	})
+
+	elWithCustomResourceForArgs := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: generatedResourceName,
+				},
+				Spec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Args: []string{
+									"--test" + "10",
+								},
+							}},
+						},
+					}},
+			}),
+		}
+	})
+	elWithCustomResourceForImage := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: generatedResourceName,
+				},
+				Spec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Image: "test",
+							}},
+						},
+					}},
+			}),
+		}
+	})
+
 	elWithTLSConnection := makeEL(withStatus, withTLSPort, func(el *v1alpha1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
 			WithPodSpec: duckv1.WithPodSpec{
@@ -615,9 +794,9 @@ func TestReconcile(t *testing.T) {
 
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
-		d.Labels = mergeMaps(updateLabel, generatedLabels)
+		d.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
 		d.Spec.Selector.MatchLabels = generatedLabels
-		d.Spec.Template.Labels = mergeMaps(updateLabel, generatedLabels)
+		d.Spec.Template.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
 	})
 
 	elDeploymentWithAnnotations := makeDeployment(func(d *appsv1.Deployment) {
@@ -679,10 +858,43 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.ObjectMeta.Annotations = map[string]string{"annotationkey": "annotationvalue"}
 	})
 
+	nodeSelectorForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.Spec.Template.Spec.NodeSelector = map[string]string{
+			"hi": "hello",
+		}
+	})
+
+	argsForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.Spec.Template.Spec.Containers[0].Args = []string{
+			"--is-multi-ns=" + strconv.FormatBool(true),
+		}
+	})
+
+	imageForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.Spec.Template.Spec.Containers[0].Image = DefaultImage
+	})
+	envForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
+			Name:  "TEKTON_INSTALL_NAMESPACE",
+			Value: "tekton-pipelines",
+		}, {
+			Name: "key",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+					Key:                  "a.crt",
+				},
+			},
+		}, {
+			Name:  "SYSTEM_NAMESPACE",
+			Value: "test-pipelines",
+		}}
+	})
+
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
-		s.Labels = mergeMaps(updateLabel, generatedLabels)
+		s.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
 		s.Spec.Selector = generatedLabels
 	})
 
@@ -1062,23 +1274,81 @@ func TestReconcile(t *testing.T) {
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
+	}, {
+		name:   "eventlistener with port set in config",
+		key:    reconcileKey,
+		config: configWithPortSet,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithPortSet},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+			Services:       []*corev1.Service{elServiceWithPortSet},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
 	},
 		{
-			name:   "eventlistener with port set in config",
-			key:    reconcileKey,
-			config: configWithPortSet,
+			name: "eventlistener with added env for custome resource",
+			key:  reconcileKey,
 			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithStatus},
-				Deployments:    []*appsv1.Deployment{elDeployment},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			},
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithPortSet},
-				Deployments:    []*appsv1.Deployment{elDeployment},
-				Services:       []*corev1.Service{elServiceWithPortSet},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{envForCustomResource},
+			},
+		},
+		{
+			name: "eventlistener with added NodeSelector for custom resource",
+			key:  reconcileKey,
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+			},
+		}, {
+			name: "eventlistener with added Args for custom resource",
+			key:  reconcileKey,
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{argsForCustomResource},
+			},
+		}, {
+			name: "eventlistener with added Image for custom resource",
+			key:  reconcileKey,
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{imageForCustomResource},
 			},
 		},
 	}
@@ -1102,6 +1372,175 @@ func TestReconcile(t *testing.T) {
 				apis.Condition{}.LastTransitionTime.Inner.Time,
 				metav1.ObjectMeta{}.Finalizers,
 			)); diff != "" {
+				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestReconcile_InvalidForCustomResource(t *testing.T) {
+	err := os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	elWithCustomResource := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        generatedResourceName,
+					Labels:      map[string]string{"serving.knative.dev/visibility": "cluster-local"},
+					Annotations: map[string]string{"key": "value"},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "v1",
+					}},
+				},
+				Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "rev1",
+						Labels:      map[string]string{"key": "value"},
+						Annotations: map[string]string{"key": "value"},
+					},
+					Spec: corev1.PodSpec{
+						Tolerations: updateTolerations,
+						NodeSelector: map[string]string{
+							"hi1": "hello1",
+						},
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU: resource.Quantity{Format: resource.DecimalSI},
+								},
+							},
+							Env: []corev1.EnvVar{{
+								Name: "key",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+										Key:                  "a.crt",
+									},
+								},
+							}},
+						}},
+					},
+				}},
+			}),
+		}
+	})
+	customResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.ObjectMeta.Labels = map[string]string{"serving.knative.dev/visibility": "cluster-local1"}
+		data.ObjectMeta.Annotations = map[string]string{"key1": "value1"}
+		data.ObjectMeta.OwnerReferences = []metav1.OwnerReference{{
+			APIVersion: "v2",
+		}}
+		data.Spec.Template.ObjectMeta.Name = "rev"
+		data.Spec.Template.ObjectMeta.Labels = map[string]string{"key1": "value1"}
+		data.Spec.Template.ObjectMeta.Annotations = map[string]string{"key1": "value1"}
+		data.Spec.Template.Spec.NodeSelector = map[string]string{"hi": "hello"}
+		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
+			Name:  "SYSTEM_NAMESPACE",
+			Value: "test-pipelines",
+		}, {
+			Name:  "TEKTON_INSTALL_NAMESPACE",
+			Value: "tekton-pipelines",
+		}, {
+			Name: "key1",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+					Key:                  "a.crt",
+				},
+			},
+		}}
+		data.Spec.Template.Spec.Containers[0].Args = []string{
+			"--is-multi-ns1=" + strconv.FormatBool(true),
+			"--el-namespace=" + "test",
+		}
+		data.Spec.Template.Spec.Containers[0].Image = "test"
+		data.Spec.Template.Spec.Containers[0].Name = "test"
+		data.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{{
+			Protocol: corev1.ProtocolUDP,
+		}}
+		data.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{{
+			Name:      "config-logging-dummy",
+			MountPath: "/etc/config-logging-dummy",
+			ReadOnly:  true,
+		}}
+		data.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+			},
+		}
+		data.Spec.Template.Spec.Volumes = []corev1.Volume{{
+			Name: "config-logging1",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: eventListenerConfigMapName,
+					},
+				},
+			},
+		}}
+		data.Spec.Template.Spec.ServiceAccountName = "test"
+		data.Spec.Template.Spec.Tolerations = []corev1.Toleration{{
+			Key: "key1",
+		}}
+	})
+
+	loggingConfigMap := defaultLoggingConfigMap()
+	loggingConfigMap.ObjectMeta.Namespace = namespace
+	reconcilerLoggingConfigMap := defaultLoggingConfigMap()
+	reconcilerLoggingConfigMap.ObjectMeta.Namespace = reconcilerNamespace
+
+	tests := []struct {
+		name           string
+		key            string
+		config         *Config        // Config of the reconciler
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
+	}{
+		{
+			name: "eventlistener with custome resource",
+			key:  reconcileKey,
+			startResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResource},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{customResource},
+			},
+			endResources: test.Resources{
+				Namespaces:     []*corev1.Namespace{namespaceResource},
+				EventListeners: []*v1alpha1.EventListener{elWithCustomResource},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				WithPod:        []*duckv1.WithPod{customResource},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup with startResources
+			testAssets, cancel := getEventListenerTestAssets(t, tt.startResources, tt.config)
+			defer cancel()
+			// Run Reconcile
+			err := testAssets.Controller.Reconciler.Reconcile(context.Background(), tt.key)
+			if err != nil {
+				t.Errorf("eventlistener.Reconcile() returned error: %s", err)
+				return
+			}
+			// Grab test resource results
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
+				apis.Condition{}.LastTransitionTime.Inner.Time,
+				metav1.ObjectMeta{}.Finalizers,
+			)); diff == "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
@@ -1314,54 +1753,13 @@ func Test_wrapError(t *testing.T) {
 	}
 }
 
-func Test_mergeMaps(t *testing.T) {
-	tests := []struct {
-		name           string
-		l1, l2         map[string]string
-		expectedLabels map[string]string
-	}{{
-		name:           "Both maps empty",
-		l1:             nil,
-		l2:             nil,
-		expectedLabels: map[string]string{},
-	}, {
-		name:           "Map one empty",
-		l1:             nil,
-		l2:             map[string]string{"k": "v"},
-		expectedLabels: map[string]string{"k": "v"},
-	}, {
-		name:           "Map two empty",
-		l1:             map[string]string{"k": "v"},
-		l2:             nil,
-		expectedLabels: map[string]string{"k": "v"},
-	}, {
-		name:           "Both maps",
-		l1:             map[string]string{"k1": "v1"},
-		l2:             map[string]string{"k2": "v2"},
-		expectedLabels: map[string]string{"k1": "v1", "k2": "v2"},
-	}, {
-		name:           "Both maps with clobber",
-		l1:             map[string]string{"k1": "v1"},
-		l2:             map[string]string{"k1": "v2"},
-		expectedLabels: map[string]string{"k1": "v2"},
-	}}
-	for i := range tests {
-		t.Run(tests[i].name, func(t *testing.T) {
-			actualLabels := mergeMaps(tests[i].l1, tests[i].l2)
-			if diff := cmp.Diff(tests[i].expectedLabels, actualLabels); diff != "" {
-				t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
-			}
-		})
-	}
-}
-
 func TestGenerateResourceLabels(t *testing.T) {
 	staticResourceLabels := map[string]string{
 		"app.kubernetes.io/managed-by": "EventListener",
 		"app.kubernetes.io/part-of":    "Triggers",
 	}
 
-	expectedLabels := mergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	expectedLabels := dynamicduck.MergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
 	actualLabels := GenerateResourceLabels(eventListenerName, staticResourceLabels)
 	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
 		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
@@ -1429,7 +1827,7 @@ func Test_generateObjectMeta(t *testing.T) {
 				Controller:         &isController,
 				BlockOwnerDeletion: &blockOwnerDeletion,
 			}},
-			Labels: mergeMaps(map[string]string{"k": "v"}, generatedLabels),
+			Labels: dynamicduck.MergeMaps(map[string]string{"k": "v"}, generatedLabels),
 		},
 	}, {
 		name: "EventListener with Annotation",

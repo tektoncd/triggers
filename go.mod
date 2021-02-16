@@ -11,6 +11,7 @@ require (
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.7.4
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/pipeline v0.20.1-0.20210203144343-1b7a37f0d21d
 	github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5
