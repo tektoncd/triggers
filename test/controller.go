@@ -18,9 +18,11 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	// Link in the fakes so they get injected into injection.Fake
+	logger "github.com/sirupsen/logrus"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
 	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
@@ -37,10 +39,16 @@ import (
 	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/apis/duck"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
+	duckinformerfake "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
@@ -49,6 +57,7 @@ import (
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
+	fakedynamicclientset "knative.dev/pkg/injection/clients/dynamicclient/fake"
 )
 
 // Resources represents the desired state of the system (i.e. existing resources)
@@ -66,15 +75,18 @@ type Resources struct {
 	Secrets                []*corev1.Secret
 	ServiceAccounts        []*corev1.ServiceAccount
 	Pods                   []*corev1.Pod
+	WithPod                []*duckv1.WithPod
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
-	Kube     *fakekubeclientset.Clientset
-	Triggers *faketriggersclientset.Clientset
-	Pipeline *fakepipelineclientset.Clientset
-	Resource *fakeresourceclientset.Clientset
-	Dynamic  *dynamicclientset.Clientset
+	Kube                *fakekubeclientset.Clientset
+	Triggers            *faketriggersclientset.Clientset
+	Pipeline            *fakepipelineclientset.Clientset
+	Resource            *fakeresourceclientset.Clientset
+	Dynamic             *dynamicclientset.Clientset
+	DynamicClient       *fakedynamic.FakeDynamicClient
+	DuckInformerFactory duck.InformerFactory
 }
 
 // Assets holds references to the controller and clients.
@@ -89,11 +101,12 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	c := Clients{
-		Kube:     fakekubeclient.Get(ctx),
-		Triggers: faketriggersclient.Get(ctx),
-		Pipeline: fakepipelineclient.Get(ctx),
-		Resource: fakeresourceclient.Get(ctx),
-		Dynamic:  dynamicclientset.New(tekton.WithClient(dynamicClient)),
+		Kube:          fakekubeclient.Get(ctx),
+		Triggers:      faketriggersclient.Get(ctx),
+		Pipeline:      fakepipelineclient.Get(ctx),
+		Resource:      fakeresourceclient.Get(ctx),
+		Dynamic:       dynamicclientset.New(tekton.WithClient(dynamicClient)),
+		DynamicClient: fakedynamicclientset.Get(ctx),
 	}
 
 	// Teach Kube clients about the Tekton resources (needed by discovery client when creating resources)
@@ -111,6 +124,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	secretInformer := fakesecretinformer.Get(ctx)
 	saInformer := fakeserviceaccountinformer.Get(ctx)
 	podInformer := fakepodinformer.Get(ctx)
+	duckInformerFactory := duckinformerfake.Get(ctx)
 
 	// Create Namespaces
 	for _, ns := range r.Namespaces {
@@ -209,10 +223,35 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 	}
+	for _, d := range r.WithPod {
+		marshaledData, err := json.Marshal(d)
+		if err != nil {
+			logger.Errorf("failed to marshal custom object %v ", err)
+			t.Fatal(err)
+		}
+		data := new(unstructured.Unstructured)
+		if err := data.UnmarshalJSON(marshaledData); err != nil {
+			logger.Errorf("failed to unmarshal to unstructured object %v ", err)
+			t.Fatal(err)
+		}
+		gvr, _ := meta.UnsafeGuessKindToResource(data.GetObjectKind().GroupVersionKind())
+		shInformer, _, err := duckInformerFactory.Get(ctx, gvr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := shInformer.GetIndexer().Add(data); err != nil {
+			t.Fatal(err)
+		}
+		dynamicInterface := c.DynamicClient.Resource(gvr)
+		if _, err := dynamicInterface.Namespace(data.GetNamespace()).Create(context.Background(), data, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	c.Kube.ClearActions()
 	c.Triggers.ClearActions()
 	c.Pipeline.ClearActions()
+	c.DynamicClient.ClearActions()
 	return c
 }
 
@@ -307,6 +346,28 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		}
 		for _, pod := range podList.Items {
 			testResources.Pods = append(testResources.Pods, pod.DeepCopy())
+		}
+		// Hardcode GVR for custom resource test
+		gvr := schema.GroupVersionResource{
+			Group:    "serving.knative.dev",
+			Version:  "v1",
+			Resource: "services",
+		}
+		dynamicInterface := c.DynamicClient.Resource(gvr)
+		var withPod = duckv1.WithPod{}
+		customData, err := dynamicInterface.Namespace(ns.Name).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, cData := range customData.Items {
+			backToWithPod, err := cData.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			if err = json.Unmarshal(backToWithPod, &withPod); err != nil {
+				return nil, err
+			}
+			testResources.WithPod = append(testResources.WithPod, withPod.DeepCopy())
 		}
 
 	}

@@ -62,3 +62,9 @@ spec:
     - name: Reason
       type: string
       jsonPath: ".status.conditions[?(@.type=='Available')].reason"
+    - name: Ready
+      type: string
+      jsonPath: ".status.conditions[?(@.type=='Ready')].status"
+    - name: Reason
+      type: string
+      jsonPath: ".status.conditions[?(@.type=='Ready')].reason"

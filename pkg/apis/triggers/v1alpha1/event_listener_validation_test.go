@@ -21,10 +21,12 @@ import (
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -212,6 +214,29 @@ func Test_EventListenerValidate(t *testing.T) {
 						}),
 					)),
 			)),
+	}, {
+		name: "Valid EventListener with custom resources",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Ref:        "tb",
+						Kind:       "TriggerBinding",
+						APIVersion: "v1alpha1",
+					}},
+					TriggerRef: "triggerref",
+				}},
+				Resources: v1alpha1.Resources{
+					CustomResource: &v1alpha1.CustomResource{
+						RawExtension: getValidRawData(t),
+					},
+				},
+			},
+		},
 	}}
 
 	for _, test := range tests {
@@ -575,6 +600,53 @@ func TestEventListenerValidate_error(t *testing.T) {
 						}),
 					)),
 			)),
+	}, {
+		name: "user specify both kubernetes and custom resources",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Ref:        "tb",
+						Kind:       "TriggerBinding",
+						APIVersion: "v1alpha1",
+					}},
+				}},
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						ServiceType: "NodePort",
+					},
+					CustomResource: &v1alpha1.CustomResource{
+						RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "value"}`)},
+					},
+				},
+			},
+		},
+	}, {
+		name: "user specify multiple containers, unsupported podspec and container field in custom resources",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Ref:        "tb",
+						Kind:       "TriggerBinding",
+						APIVersion: "v1alpha1",
+					}},
+				}},
+				Resources: v1alpha1.Resources{
+					CustomResource: &v1alpha1.CustomResource{
+						RawExtension: getRawData(t),
+					},
+				},
+			},
+		},
 	}}
 
 	for _, test := range tests {
@@ -584,4 +656,63 @@ func TestEventListenerValidate_error(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getRawData(t *testing.T) runtime.RawExtension {
+	return test.RawExtension(t, duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "knativeservice",
+		},
+		Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "tekton-triggers-example-sa",
+				NodeName:           "minikube",
+				Containers: []corev1.Container{{
+					Name: "first-container",
+				}, {
+					Env: []corev1.EnvVar{{
+						Name: "key",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+								Key:                  "a.crt",
+							},
+						},
+					}},
+				}},
+			},
+		}},
+	})
+}
+
+func getValidRawData(t *testing.T) runtime.RawExtension {
+	return test.RawExtension(t, duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "knativeservice",
+		},
+		Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "tekton-triggers-example-sa",
+				Containers: []corev1.Container{{
+					Env: []corev1.EnvVar{{
+						Name: "key",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "test"},
+								Key:                  "a.crt",
+							},
+						},
+					}},
+				}},
+			},
+		}},
+	})
 }

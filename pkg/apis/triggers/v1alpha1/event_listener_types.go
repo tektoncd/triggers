@@ -22,10 +22,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	"knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -66,6 +68,11 @@ type EventListenerSpec struct {
 
 type Resources struct {
 	KubernetesResource *KubernetesResource `json:"kubernetesResource,omitempty"`
+	CustomResource     *CustomResource     `json:"customResource,omitempty"`
+}
+
+type CustomResource struct {
+	runtime.RawExtension `json:",inline"`
 }
 
 type KubernetesResource struct {
@@ -217,6 +224,17 @@ func (els *EventListenerStatus) SetDeploymentConditions(deploymentConditions []a
 	for _, cond := range deploymentConditions {
 		els.SetCondition(&apis.Condition{
 			Type:    apis.ConditionType(cond.Type),
+			Status:  cond.Status,
+			Reason:  cond.Reason,
+			Message: cond.Message,
+		})
+	}
+}
+
+func (els *EventListenerStatus) SetConditionsForDynamicObjects(conditions v1beta1.Conditions) {
+	for _, cond := range conditions {
+		els.SetCondition(&apis.Condition{
+			Type:    cond.Type,
 			Status:  cond.Status,
 			Reason:  cond.Reason,
 			Message: cond.Message,

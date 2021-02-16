@@ -13,11 +13,11 @@ rules:
   resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
- # secrets are only needed for GitHub/GitLab interceptors
- # configmaps is needed for updating logging config
+# secrets are only needed for GitHub/GitLab interceptors
+# configmaps is needed for updating logging config
   resources: ["configmaps", "secrets"]
   verbs: ["get", "list", "watch"]
- # Permissions to create resources in associated TriggerTemplates
+# Permissions to create resources in associated TriggerTemplates
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
   verbs: ["create"]

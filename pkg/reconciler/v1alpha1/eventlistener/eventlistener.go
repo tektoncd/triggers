@@ -17,33 +17,41 @@ limitations under the License.
 package eventlistener
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/system"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
-	pkgreconciler "knative.dev/pkg/reconciler"
-
-	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 const (
@@ -66,6 +74,7 @@ const (
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
+	DynamicClientSet dynamic.Interface
 
 	// KubeClientSet allows us to talk to the k8s for core APIs
 	KubeClientSet kubernetes.Interface
@@ -80,7 +89,9 @@ type Reconciler struct {
 	serviceLister       corev1lister.ServiceLister
 
 	// config is the configuration options that the Reconciler accepts.
-	config Config
+	config             Config
+	podspecableTracker dynamicduck.ListableTracker
+	onlyOnce           sync.Once
 }
 
 var (
@@ -103,6 +114,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 	// and may not have had all of the assumed default specified.
 	el.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
 
+	if el.Spec.Resources.CustomResource != nil {
+		kError := r.reconcileCustomObject(ctx, logger, el)
+		return wrapError(kError, nil)
+	}
 	deploymentReconcileError := r.reconcileDeployment(ctx, logger, el)
 	serviceReconcileError := r.reconcileService(ctx, logger, el)
 
@@ -143,7 +158,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	}
 
 	// TODO(dibyom): We should exclude propagation of some annotations such as `kubernetes.io/last-applied-revision`
-	if !reflect.DeepEqual(existing.Annotations, mergeMaps(existing.Annotations, desired.Annotations)) {
+	if !reflect.DeepEqual(existing.Annotations, dynamicduck.MergeMaps(existing.Annotations, desired.Annotations)) {
 		updated = true
 		existing.Annotations = desired.Annotations
 	}
@@ -239,7 +254,16 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		return err
 	}
 
-	container := getContainer(el, r.config)
+	container := getContainer(el, r.config, nil)
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name: "SYSTEM_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			}},
+	})
+	container = addCertsForSecureConnection(container, r.config)
+
 	deployment := getDeployment(el, r.config)
 
 	existingDeployment, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
@@ -359,6 +383,129 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	return nil
 }
 
+func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+	// check logging config, create if it doesn't exist
+	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	original := &duckv1.WithPod{}
+	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
+	if err := decoder.Decode(&original); err != nil {
+		logger.Errorf("unable to decode object", err)
+		return err
+	}
+
+	customObjectData := original.DeepCopy()
+
+	namespace := original.GetNamespace()
+	// Default the resource creation to the EventListenerNamespace if not found in the resource object
+	if namespace == "" {
+		namespace = el.GetNamespace()
+	}
+
+	container := getContainer(el, r.config, original)
+
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name: "SYSTEM_NAMESPACE",
+		// Cannot use FieldRef here because Knative Serving mask that field under feature gate
+		// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
+		Value: el.Namespace,
+	})
+
+	podlabels := dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
+
+	podlabels = dynamicduck.MergeMaps(podlabels, customObjectData.Labels)
+
+	original.Labels = podlabels
+	original.Annotations = customObjectData.Annotations
+	original.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Name:        customObjectData.Spec.Template.Name,
+		Labels:      customObjectData.Spec.Template.Labels,
+		Annotations: customObjectData.Spec.Template.Annotations,
+	}
+	original.Spec.Template.Spec = corev1.PodSpec{
+		Tolerations:        customObjectData.Spec.Template.Spec.Tolerations,
+		NodeSelector:       customObjectData.Spec.Template.Spec.NodeSelector,
+		ServiceAccountName: customObjectData.Spec.Template.Spec.ServiceAccountName,
+		Containers:         []corev1.Container{container},
+		Volumes: []corev1.Volume{{
+			Name: "config-logging",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: eventListenerConfigMapName,
+					},
+				},
+			},
+		}},
+	}
+	marshaledData, err := json.Marshal(original)
+	if err != nil {
+		logger.Errorf("failed to marshal custom object", err)
+		return err
+	}
+	data := new(unstructured.Unstructured)
+	if err := data.UnmarshalJSON(marshaledData); err != nil {
+		logger.Errorf("failed to unmarshal to unstructured object", err)
+		return err
+	}
+
+	if data.GetName() == "" {
+		data.SetName(el.Status.Configuration.GeneratedResourceName)
+	}
+	gvr, _ := meta.UnsafeGuessKindToResource(data.GetObjectKind().GroupVersionKind())
+
+	data.SetOwnerReferences([]metav1.OwnerReference{*el.GetOwnerReference()})
+
+	var watchError error
+	r.onlyOnce.Do(func() {
+		watchError = r.podspecableTracker.WatchOnDynamicObject(ctx, gvr)
+	})
+	if watchError != nil {
+		logger.Errorf("failed to watch on created custom object", watchError)
+		return err
+	}
+
+	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Get(ctx, data.GetName(), metav1.GetOptions{})
+	switch {
+	case err == nil:
+		if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
+			if _, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
+				logger.Errorf("error updating to eventListener custom object: %v", err)
+				return err
+			}
+			logger.Infof("Updated EventListener Custom Object %s in Namespace %s", data.GetName(), el.Namespace)
+		}
+
+		customConditions, url, err := dynamicduck.GetConditions(existingCustomObject)
+		if customConditions == nil {
+			// No status in the created object, it is weird but let's not fail
+			logger.Warn("empty status for the created custom object")
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		el.Status.SetConditionsForDynamicObjects(customConditions)
+		if url != nil {
+			el.Status.SetAddress(strings.Split(fmt.Sprintf("%v", url), "//")[1])
+		}
+	case errors.IsNotFound(err):
+		createDynamicObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Create(ctx, data, metav1.CreateOptions{})
+		if err != nil {
+			logger.Errorf("Error creating EventListener Dynamic object: ", err)
+			return err
+		}
+		logger.Infof("Created EventListener Deployment %s in Namespace %s", createDynamicObject.GetName(), el.Namespace)
+	default:
+		logger.Error(err)
+		return err
+	}
+	return nil
+}
+
 func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 	var replicas = ptr.Int32(1)
 	if el.Spec.Replicas != nil {
@@ -370,7 +517,7 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 		serviceAccountName                   string
 		securityContext                      corev1.PodSecurityContext
 	)
-	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
+	podlabels = dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
 
 	serviceAccountName = el.Spec.ServiceAccountName
 
@@ -385,7 +532,15 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 		},
 	}}
 
-	container := getContainer(el, c)
+	container := getContainer(el, c, nil)
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name: "SYSTEM_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			}},
+	})
+	container = addCertsForSecureConnection(container, c)
 	for _, v := range container.Env {
 		// If TLS related env are set then mount secret volume which will be used while starting the eventlistener.
 		if v.Name == "TLS_CERT" {
@@ -410,7 +565,7 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
 		}
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		podlabels = dynamicduck.MergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
 	}
 
 	if *c.SetSecurityContext {
@@ -445,41 +600,12 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 	}
 }
 
-func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
-	var (
-		elCert, elKey string
-		resources     corev1.ResourceRequirements
-	)
-
-	vMount := []corev1.VolumeMount{{
-		Name:      "config-logging",
-		MountPath: "/etc/config-logging",
-	}}
-
-	env := []corev1.EnvVar{{
-		Name: "SYSTEM_NAMESPACE",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
-			},
-		},
-	}, {
-		Name:  "TEKTON_INSTALL_NAMESPACE",
-		Value: system.GetNamespace(),
-	}}
-
+func addCertsForSecureConnection(container corev1.Container, c Config) corev1.Container {
+	var elCert, elKey string
 	certEnv := map[string]*corev1.EnvVarSource{}
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-			for i, e := range el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env {
-				env = append(env, e)
-				certEnv[el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].Name] =
-					el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].ValueFrom
-			}
-		}
+	for i := range container.Env {
+		certEnv[container.Env[i].Name] = container.Env[i].ValueFrom
 	}
-
 	var scheme corev1.URIScheme
 	if v, ok := certEnv["TLS_CERT"]; ok {
 		elCert = "/etc/triggers/tls/" + v.SecretKeyRef.Key
@@ -494,13 +620,66 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 
 	if elCert != "" && elKey != "" {
 		scheme = corev1.URISchemeHTTPS
-		vMount = append(vMount, corev1.VolumeMount{
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      "https-connection",
 			ReadOnly:  true,
 			MountPath: "/etc/triggers/tls",
 		})
 	} else {
 		scheme = corev1.URISchemeHTTP
+	}
+	container.LivenessProbe = &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/live",
+				Scheme: scheme,
+				Port:   intstr.FromInt(eventListenerContainerPort),
+			},
+		},
+		PeriodSeconds:    int32(*c.PeriodSeconds),
+		FailureThreshold: int32(*c.FailureThreshold),
+	}
+	container.ReadinessProbe = &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/live",
+				Scheme: scheme,
+				Port:   intstr.FromInt(eventListenerContainerPort),
+			},
+		},
+		PeriodSeconds:    int32(*c.PeriodSeconds),
+		FailureThreshold: int32(*c.FailureThreshold),
+	}
+	container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)
+	return container
+}
+
+func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
+	var resources corev1.ResourceRequirements
+	vMount := []corev1.VolumeMount{{
+		Name:      "config-logging",
+		MountPath: "/etc/config-logging",
+	}}
+
+	env := []corev1.EnvVar{{
+		Name:  "TEKTON_INSTALL_NAMESPACE",
+		Value: system.GetNamespace(),
+	}}
+
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
+			env = append(env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
+		}
+	}
+	// handle env and resources for custom object
+	if pod != nil {
+		if len(pod.Spec.Template.Spec.Containers) == 1 {
+			for i := range pod.Spec.Template.Spec.Containers[0].Env {
+				env = append(env, pod.Spec.Template.Spec.Containers[0].Env[i])
+			}
+			resources = pod.Spec.Template.Spec.Containers[0].Resources
+		}
 	}
 
 	isMultiNS := false
@@ -515,28 +694,6 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
 		}},
-		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: scheme,
-					Port:   intstr.FromInt(eventListenerContainerPort),
-				},
-			},
-			PeriodSeconds:    int32(*c.PeriodSeconds),
-			FailureThreshold: int32(*c.FailureThreshold),
-		},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: scheme,
-					Port:   intstr.FromInt(eventListenerContainerPort),
-				},
-			},
-			PeriodSeconds:    int32(*c.PeriodSeconds),
-			FailureThreshold: int32(*c.FailureThreshold),
-		},
 		Resources: resources,
 		Args: []string{
 			"--el-name=" + el.Name,
@@ -547,8 +704,6 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
 			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
-			"--tls-cert=" + elCert,
-			"--tls-key=" + elKey,
 		},
 		VolumeMounts: vMount,
 		Env:          env,
@@ -556,9 +711,7 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 }
 
 func getServicePort(el *v1alpha1.EventListener, c Config) corev1.ServicePort {
-	var (
-		elCert, elKey string
-	)
+	var elCert, elKey string
 
 	servicePortName := eventListenerServicePortName
 	servicePortPort := *c.Port
@@ -620,22 +773,9 @@ func generateObjectMeta(el *v1alpha1.EventListener, staticResourceLabels map[str
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,
 		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
-		Labels:          mergeMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
+		Labels:          dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
 		Annotations:     el.Annotations,
 	}
-}
-
-// mergeMaps merges the values in the passed maps into a new map.
-// Values within m2 potentially clobber m1 values.
-func mergeMaps(m1, m2 map[string]string) map[string]string {
-	merged := make(map[string]string, len(m1)+len(m2))
-	for k, v := range m1 {
-		merged[k] = v
-	}
-	for k, v := range m2 {
-		merged[k] = v
-	}
-	return merged
 }
 
 // wrapError wraps errors together. If one of the errors is nil, the other is

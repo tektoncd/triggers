@@ -22,6 +22,9 @@ using [Event Interceptors](#Interceptors).
     - [Replicas](#replicas)
     - [PodTemplate](#podtemplate)
     - [Resources](#resources)
+      - [kubernetesResource](#kubernetesresource)
+      - [CustomResource](#customresource)
+        - [Contract](#contract)
     - [Logging](#logging)
     - [NamespaceSelector](#namespaceSelector)
   - [Labels](#labels)
@@ -45,6 +48,7 @@ using [Event Interceptors](#Interceptors).
     - [ServiceAccount per EventListenerTrigger](#serviceaccount-per-eventlistenertrigger)
   - [EventListener Secure Connection](#eventlistener-secure-connection)
     - [Prerequisites](#prerequisites)
+  - [EventListener Response Format](#eventlistener-response-format)
 
 ## Syntax
 
@@ -70,7 +74,7 @@ the following fields:
   - [`replicas`](#replicas) - Specifies the number of EventListener pods
   - [`podTemplate`](#podTemplate) - Specifies the PodTemplate
     for your EventListener pod
-  - [`resources`](#resources) - Specifies the Kubernetes Resource information
+  - [`resources`](#resources) - Specifies the Kubernetes/Custom Resource shape for the EventListener sink
     for your EventListener pod
   - [`namespaceSelector`](#namespaceSelector) - Specifies the namespaces where
     EventListener can fetch triggers from and create Tekton resources.
@@ -225,8 +229,11 @@ For more info on the design refer [TEP-0008](https://github.com/tektoncd/communi
 Right now the `resources` field is optional in order to support backward compatibility with original behavior of `podTemplate`, `serviceType` and `serviceAccountName` fieds.
 In the future, we plan to remove `serviceType` and `podTemplate` from the EventListener spec in favor of the `resources` field.
 
-For now `resources` has support for `kubernetesResource` but later it will have a support for Custom CRD`(ex: Knative Service)` as `customResource`
+`resources` has support for
+* **kubernetesResource**
+* **CustomResource** for Custom CRD`(ex: Knative Service)`
 
+#### kubernetesResource
 `kubernetesResource` have two fields
 * ServiceType
 * Spec(PodTemplateSpec)
@@ -257,7 +264,60 @@ spec:
 
 With the help of `kubernetesResource` user can specify [PodTemplateSpec](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704).
 
-Right now the allowed values as part of `podSpec` are
+#### CustomResource
+A `CustomResource` object has one field that supports dynamic objects.
+* runtime.RawExtension
+
+Here we will use a [Knative Service](https://knative.dev/docs/) as an example to demonstrate usage of `CustomResource`
+
+**Note:** `Knative Should be installed on the cluster` [ref](https://github.com/tektoncd/community/blob/main/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md#note)
+```yaml
+spec:
+  resources:
+    customResource:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+#      metadata:
+#        name: knativeservice # name field is optional if not provided Triggers will use el name with the el- prefix ex: el-github-knative-listener
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+            - resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "500m"
+```
+
+With the help of `CustomResource` user can specify any dynamic object which adheres to the Contract described below.
+
+##### Contract
+For Knative or any new CRD should satisfy [WithPod{}](https://github.com/knative/pkg/blob/master/apis/duck/v1/podspec_types.go#L41)
+
+**Spec**
+```spec
+   spec:
+     template:
+       metadata:
+       spec:
+```
+**Status**
+```status
+type EventListenerStatus struct {
+  duckv1beta1.Status `json:",inline"`
+
+  // EventListener is Addressable. It currently exposes the service DNS
+  // address of the the EventListener sink
+  duckv1alpha1.AddressStatus `json:",inline"`
+}
+```
+
+##### Note
+For both `CustomResource` and `kubernetesResource` the allowed values for `PodSpec` and `Containers` are
 ```text
 ServiceAccountName
 NodeSelector
@@ -853,3 +913,21 @@ To setup TLS connection add two set of reserved environment variables `TLS_CERT`
 where we need to specify the `secret` which contains `cert` and `key` files. See the full [example](../examples/eventlistener-tls-connection/README.md) for more details.
 
 Refer [TEP-0027](https://github.com/tektoncd/community/blob/master/teps/0027-https-connection-to-triggers-eventlistener.md) for more information on design and user stories.
+
+## EventListener Response Format
+
+```
+kubectl get el
+NAME                       ADDRESS                                                             AVAILABLE   REASON                     READY   REASON
+tls-listener-interceptor   http://el-tls-listener-interceptor.default.svc.cluster.local        True        MinimumReplicasAvailable
+```
+Where
+
+* **NAME:** Name of the created eventlistener
+* **ADDRESS:** Address of the eventlistener
+* **AVAILABLE** This state indicates readiness of Kubernetes Deployment and Service
+* **REASON** Shows the failure reason for Kubernetes Deployment and Service
+* **READY** This state indicates readiness of Custom Resource ex: Knative Service
+* **REASON** Shows the failure reason for Custom Resource
+
+**Note:** The response format will be refactored as part of [issue-932](https://github.com/tektoncd/triggers/issues/932)

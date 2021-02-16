@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestSetGetCondition(t *testing.T) {
@@ -271,4 +272,14 @@ func TestSetDeploymentConditions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetConditionsForDynamicObjects(t *testing.T) {
+	var status EventListenerStatus
+	status.SetConditionsForDynamicObjects(v1beta1.Conditions{{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Reason",
+		Message: "Message",
+	}})
 }
