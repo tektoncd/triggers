@@ -243,7 +243,7 @@ func TestEventListenerCreate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{triggersv1.GroupName},
-				Resources: []string{"clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates", "triggers"},
+				Resources: []string{"clustertriggerbindings", "eventlisteners", "clusterinterceptors", "triggerbindings", "triggertemplates", "triggers"},
 				Verbs:     []string{"get", "list", "watch"},
 			}, {
 				APIGroups: []string{"tekton.dev"},

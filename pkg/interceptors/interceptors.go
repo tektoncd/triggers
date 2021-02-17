@@ -23,11 +23,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
-	"os"
 	"path"
 
 	"google.golang.org/grpc/codes"
+	"knative.dev/pkg/apis"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -171,28 +170,23 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 	return nil
 }
 
-// ResolveURL returns the URL for the given core interceptor
-func ResolveURL(i *triggersv1.TriggerInterceptor) *url.URL {
-	// This is temporary until we implement #868
-	path := ""
-	switch {
-	case i.Bitbucket != nil:
-		path = "bitbucket"
-	case i.CEL != nil:
-		path = "cel"
-	case i.GitHub != nil:
-		path = "github"
-	case i.GitLab != nil:
-		path = "gitlab"
+type InterceptorGetter func(name string) (*triggersv1.ClusterInterceptor, error)
+
+// ResolveToURL finds an Interceptor's URL.
+func ResolveToURL(getter InterceptorGetter, name string) (*apis.URL, error) {
+	ic, err := getter(name)
+	if err != nil {
+		return nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", name, err)
 	}
-	return &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s.%s.svc", CoreInterceptorsHost, os.Getenv("TEKTON_INSTALL_NAMESPACE")),
-		Path:   path,
+	if addr := ic.Status.Address; addr != nil {
+		if addr.URL != nil {
+			return addr.URL, nil
+		}
 	}
+	// If the status does not have a URL, try to generate it from the Spec.
+	return ic.ResolveAddress()
 }
 
-// Execute executes the InterceptorRequest using the given httpClient
 func Execute(ctx context.Context, client *http.Client, req *triggersv1.InterceptorRequest, url string) (*triggersv1.InterceptorResponse, error) {
 	b, err := json.Marshal(req)
 	if err != nil {

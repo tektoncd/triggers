@@ -38,6 +38,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
+	interceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
 	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
 	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger"
@@ -61,6 +62,7 @@ import (
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -74,6 +76,51 @@ func init() {
 	// Override UID generator for consistent test results.
 	template.UUID = func() string { return eventID }
 }
+
+var (
+	github = &triggersv1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "github",
+		},
+		Spec: triggersv1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1.ClientConfig{
+				URL: &apis.URL{
+					Scheme: "http",
+					Host:   "tekton-triggers-core-interceptors",
+					Path:   "/github",
+				},
+			},
+		},
+	}
+	cel = &triggersv1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cel",
+		},
+		Spec: triggersv1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1.ClientConfig{
+				URL: &apis.URL{
+					Scheme: "http",
+					Host:   "tekton-triggers-core-interceptors",
+					Path:   "/cel",
+				},
+			},
+		},
+	}
+	bitbucket = &triggersv1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bitbucket",
+		},
+		Spec: triggersv1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1.ClientConfig{
+				URL: &apis.URL{
+					Scheme: "http",
+					Host:   "tekton-triggers-core-interceptors",
+					Path:   "/bitbucket",
+				},
+			},
+		},
+	}
+)
 
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic client. The returned client is used to
 // create the fake resources and can be used to check if the correct resources were created.
@@ -105,6 +152,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 		TriggerBindingLister:        triggerbindinginformer.Get(ctx).Lister(),
 		ClusterTriggerBindingLister: clustertriggerbindinginformer.Get(ctx).Lister(),
 		TriggerTemplateLister:       triggertemplateinformer.Get(ctx).Lister(),
+		ClusterInterceptorLister:    interceptorinformer.Get(ctx).Lister(),
 	}
 	return r, dynamicClient
 }
@@ -480,6 +528,7 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
+			ClusterInterceptors: []*triggersv1.ClusterInterceptor{github, cel},
 			Triggers: []*triggersv1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
@@ -536,6 +585,7 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
+			ClusterInterceptors: []*triggersv1.ClusterInterceptor{bitbucket},
 			Triggers: []*triggersv1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
@@ -840,12 +890,12 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}
-
 			resources := test.Resources{
-				Triggers:        []*triggersv1.Trigger{trigger},
-				EventListeners:  []*triggersv1.EventListener{el},
-				Secrets:         []*corev1.Secret{secret, authSecret},
-				ServiceAccounts: []*corev1.ServiceAccount{authSA},
+				ClusterInterceptors: []*triggersv1.ClusterInterceptor{github},
+				Triggers:            []*triggersv1.Trigger{trigger},
+				EventListeners:      []*triggersv1.EventListener{el},
+				Secrets:             []*corev1.Secret{secret, authSecret},
+				ServiceAccounts:     []*corev1.ServiceAccount{authSA},
 			}
 			sink, dynamicClient := getSinkAssets(t, resources, el.Name, nil)
 			sink.Auth = fakeAuth{}
@@ -1105,7 +1155,10 @@ func TestExecuteInterceptor_error(t *testing.T) {
 }
 
 func TestExecuteInterceptor_NotContinue(t *testing.T) {
-	s, _ := getSinkAssets(t, test.Resources{}, "el-name", nil)
+	resources := test.Resources{
+		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+	}
+	s, _ := getSinkAssets(t, resources, "el-name", nil)
 	trigger := triggersv1.Trigger{
 		Spec: triggersv1.TriggerSpec{
 			Interceptors: []*triggersv1.EventInterceptor{{
@@ -1149,17 +1202,12 @@ func (f *echoInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
-	ctx, _ := rtesting.SetupFakeContext(t)
-	clients := test.SeedResources(t, ctx, test.Resources{})
-	logger := zaptest.NewLogger(t).Sugar()
-
 	webhookInterceptorName := "foo"
 	echoServer := &echoInterceptor{}
-	httpClient := setupInterceptors(t, clients.Kube, logger, echoServer)
-	s := Sink{
-		HTTPClient: httpClient,
-		Logger:     logger,
+	resources := test.Resources{
+		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
 	}
+	s, _ := getSinkAssets(t, resources, "", echoServer)
 
 	sha := "abcdefghi" // Fake "sha" to send via body
 	// trigger has a chain of 3 interceptors CEL(overlay) -> webhook -> CEL(filter)
@@ -1193,7 +1241,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID)
+	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), s.Logger, eventID)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}

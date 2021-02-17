@@ -22,7 +22,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// Validate InterceptorTYpe
+// Validate ClusterInterceptor
 func (it *ClusterInterceptor) Validate(ctx context.Context) *apis.FieldError {
 	return it.Spec.validate(ctx)
 }

@@ -61,6 +61,7 @@ type Sink struct {
 	TriggerBindingLister        listers.TriggerBindingLister
 	ClusterTriggerBindingLister listers.ClusterTriggerBindingLister
 	TriggerTemplateLister       listers.TriggerTemplateLister
+	ClusterInterceptorLister    listers.ClusterInterceptorLister
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
@@ -118,6 +119,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	triggers, err := r.merge(el.Spec.Triggers, trItems)
 	if err != nil {
 		r.Logger.Errorf("Error merging Triggers: %s", err)
+		response.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	result := make(chan int, 10)
 	// Execute each Trigger
@@ -292,9 +295,14 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 			request.Body = string(payload)
 			continue
 		}
-		// TODO: Plumb through context from EL
 		request.InterceptorParams = interceptors.GetInterceptorParams(i)
-		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, interceptors.ResolveURL(i).String())
+		url, err := interceptors.ResolveToURL(r.ClusterInterceptorLister.Get, i.GetName())
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("could not resolve interceptor URL: %w", err)
+		}
+
+		// TODO: Plumb through context from EL
+		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
 		if err != nil {
 			return nil, nil, nil, err
 		}

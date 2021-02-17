@@ -27,11 +27,11 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// NewController creates a new instance of an InterceptorType controller.
+// NewController creates a new instance of an ClusterInterceptor controller.
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
-		interceptorTypeInformer := clusterinterceptorinformer.Get(ctx)
+		clusterInterceptorInformer := clusterinterceptorinformer.Get(ctx)
 		reconciler := &Reconciler{}
 
 		impl := clusterinterceptorreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
@@ -41,7 +41,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		})
 
 		logger.Info("Setting up event handlers")
-		interceptorTypeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		clusterInterceptorInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    impl.Enqueue,
 			UpdateFunc: controller.PassNew(impl.Enqueue),
 			DeleteFunc: impl.Enqueue,

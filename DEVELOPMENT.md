@@ -227,6 +227,7 @@ You can stand up a version of this controller on-cluster (to your
 
 ```shell
 ko apply -f config/
+ko apply -f config/interceptors
 ```
 
 ### Redeploy controller
