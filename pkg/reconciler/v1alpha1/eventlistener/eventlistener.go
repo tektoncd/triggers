@@ -26,7 +26,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
-	"github.com/tektoncd/triggers/pkg/system"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -463,9 +462,6 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 				FieldPath: "metadata.namespace",
 			},
 		},
-	}, {
-		Name:  "TEKTON_INSTALL_NAMESPACE",
-		Value: system.GetNamespace(),
 	}}
 
 	certEnv := map[string]*corev1.EnvVarSource{}

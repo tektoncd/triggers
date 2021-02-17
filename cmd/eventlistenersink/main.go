@@ -113,6 +113,7 @@ func main() {
 		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
 		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
 		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
+		InterceptorTypeLister:       factory.Triggers().V1alpha1().InterceptorTypes().Lister(),
 	}
 
 	// Listen and serve
