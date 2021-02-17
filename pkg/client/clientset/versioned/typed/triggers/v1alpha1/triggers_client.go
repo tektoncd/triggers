@@ -26,6 +26,7 @@ import (
 
 type TriggersV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ClusterInterceptorsGetter
 	ClusterTriggerBindingsGetter
 	EventListenersGetter
 	TriggersGetter
@@ -36,6 +37,10 @@ type TriggersV1alpha1Interface interface {
 // TriggersV1alpha1Client is used to interact with features provided by the triggers.tekton.dev group.
 type TriggersV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *TriggersV1alpha1Client) ClusterInterceptors() ClusterInterceptorInterface {
+	return newClusterInterceptors(c)
 }
 
 func (c *TriggersV1alpha1Client) ClusterTriggerBindings() ClusterTriggerBindingInterface {
