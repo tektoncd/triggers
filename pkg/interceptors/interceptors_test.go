@@ -18,13 +18,15 @@ package interceptors_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
+
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -35,6 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -240,7 +243,7 @@ func TestGetInterceptorParams_Error(t *testing.T) {
 	}
 }
 
-func Test_GetSecretToken(t *testing.T) {
+func TestGetSecretToken(t *testing.T) {
 	tests := []struct {
 		name   string
 		cache  map[string]interface{}
@@ -297,56 +300,75 @@ func makeSecret(secretText string) *corev1.Secret {
 	}
 }
 
-func TestResolvePath(t *testing.T) {
-	for _, tc := range []struct {
-		in   triggersv1.EventInterceptor
-		want string
+func TestResolveToURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		getter interceptors.InterceptorGetter
+		itype  string
+		want   string
 	}{{
-		in: triggersv1.EventInterceptor{
-			CEL: &triggersv1.CELInterceptor{},
+		name: "ClusterInterceptor has status.address.url",
+		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
+			return &triggersv1.ClusterInterceptor{
+				Status: triggersv1.ClusterInterceptorStatus{
+					AddressStatus: duckv1.AddressStatus{
+						Address: &duckv1.Addressable{
+							URL: &apis.URL{
+								Scheme: "http",
+								Host:   "some-host",
+								Path:   "cel",
+							},
+						},
+					},
+				},
+			}, nil
 		},
-		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/cel",
+		itype: "cel",
+		want:  "http://some-host/cel",
 	}, {
-		in: triggersv1.EventInterceptor{
-			GitLab: &triggersv1.GitLabInterceptor{},
+		name: "ClusterInterceptor does not have a status",
+		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
+			return &triggersv1.ClusterInterceptor{
+				Spec: triggersv1.ClusterInterceptorSpec{
+					ClientConfig: triggersv1.ClientConfig{
+						URL: &apis.URL{
+							Scheme: "http",
+							Host:   "some-host",
+							Path:   n,
+						},
+					},
+				},
+			}, nil
 		},
-		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/gitlab",
-	}, {
-		in: triggersv1.EventInterceptor{
-			GitHub: &triggersv1.GitHubInterceptor{},
-		},
-		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/github",
-	}, {
-		in: triggersv1.EventInterceptor{
-			Bitbucket: &triggersv1.BitbucketInterceptor{},
-		},
-		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/bitbucket",
-	}, {
-		in: triggersv1.EventInterceptor{
-			Webhook: &triggersv1.WebhookInterceptor{},
-		},
-		want: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc",
-	}} {
-		t.Run(tc.want, func(t *testing.T) {
-			os.Setenv("TEKTON_INSTALL_NAMESPACE", "tekton-pipelines")
-			t.Cleanup(func() { os.Unsetenv("TEKTON_INSTALL_NAMESPACE") })
-			got := interceptors.ResolveURL(&tc.in)
-			if tc.want != got.String() {
-				t.Fatalf("ResolveURL() want: %s; got: %s", tc.want, got)
+		itype: "cel",
+		want:  "http://some-host/cel",
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := interceptors.ResolveToURL(tc.getter, tc.itype)
+			if err != nil {
+				t.Fatalf("ResolveToURL() error: %s", err)
+			}
+
+			if got.String() != tc.want {
+				t.Fatalf("ResolveToURL() want: %s; got: %s", tc.want, got)
 			}
 		})
 	}
 
-	t.Run("different namespaces", func(t *testing.T) {
-		os.Setenv("TEKTON_INSTALL_NAMESPACE", "another-namespace")
-		t.Cleanup(func() { os.Unsetenv("TEKTON_INSTALL_NAMESPACE") })
-		in := &triggersv1.EventInterceptor{
-			Bitbucket: &triggersv1.BitbucketInterceptor{},
+	t.Run("interceptor has no URL", func(t *testing.T) {
+		fakeGetter := func(name string) (*triggersv1.ClusterInterceptor, error) {
+			return &triggersv1.ClusterInterceptor{
+				Spec: triggersv1.ClusterInterceptorSpec{
+					ClientConfig: triggersv1.ClientConfig{
+						URL: nil,
+					},
+				},
+			}, nil
 		}
-		got := interceptors.ResolveURL(in)
-		want := "http://tekton-triggers-core-interceptors.another-namespace.svc/bitbucket"
-		if want != got.String() {
-			t.Fatalf("ResolveURL() want: %s; got: %s", want, got)
+		_, err := interceptors.ResolveToURL(fakeGetter, "cel")
+		if !errors.Is(err, triggersv1.ErrNilURL) {
+			t.Fatalf("ResolveToURL expected error to be %s but got %s", triggersv1.ErrNilURL, err)
 		}
 	})
 }

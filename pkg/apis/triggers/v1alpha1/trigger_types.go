@@ -89,6 +89,23 @@ type TriggerInterceptor struct {
 	Bitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
 }
 
+// GetName returns the name for the given interceptor
+func (i *TriggerInterceptor) GetName() string {
+	// This is temporary until we implement #869
+	name := ""
+	switch {
+	case i.Bitbucket != nil:
+		name = "bitbucket"
+	case i.CEL != nil:
+		name = "cel"
+	case i.GitHub != nil:
+		name = "github"
+	case i.GitLab != nil:
+		name = "gitlab"
+	}
+	return name
+}
+
 // WebhookInterceptor provides a webhook to intercept and pre-process events
 type WebhookInterceptor struct {
 	// ObjectRef is a reference to an object that will resolve to a cluster DNS

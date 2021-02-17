@@ -242,9 +242,6 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							MountPath: "/etc/config-logging",
 						}},
 						Env: []corev1.EnvVar{{
-							Name:  "TEKTON_INSTALL_NAMESPACE",
-							Value: "tekton-pipelines",
-						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
@@ -330,9 +327,6 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			ReadOnly:  true,
 		}},
 		Env: []corev1.EnvVar{{
-			Name:  "TEKTON_INSTALL_NAMESPACE",
-			Value: "tekton-pipelines",
-		}, {
 			Name: "TLS_CERT",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -424,9 +418,6 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							ReadOnly:  true,
 						}},
 						Env: []corev1.EnvVar{{
-							Name:  "TEKTON_INSTALL_NAMESPACE",
-							Value: "tekton-pipelines",
-						}, {
 							Name:  "SYSTEM_NAMESPACE",
 							Value: "test-pipelines",
 						}},
@@ -896,9 +887,6 @@ func TestReconcile(t *testing.T) {
 	})
 	envForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
-			Name:  "TEKTON_INSTALL_NAMESPACE",
-			Value: "tekton-pipelines",
-		}, {
 			Name: "key",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -1478,9 +1466,6 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
 			Name:  "SYSTEM_NAMESPACE",
 			Value: "test-pipelines",
-		}, {
-			Name:  "TEKTON_INSTALL_NAMESPACE",
-			Value: "tekton-pipelines",
 		}, {
 			Name: "key1",
 			ValueFrom: &corev1.EnvVarSource{

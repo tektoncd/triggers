@@ -32,6 +32,7 @@ import (
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
+	fakeClusterInterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor/fake"
 	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding/fake"
 	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
 	faketriggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger/fake"
@@ -66,6 +67,7 @@ type Resources struct {
 	Namespaces             []*corev1.Namespace
 	ClusterTriggerBindings []*v1alpha1.ClusterTriggerBinding
 	EventListeners         []*v1alpha1.EventListener
+	ClusterInterceptors    []*v1alpha1.ClusterInterceptor
 	TriggerBindings        []*v1alpha1.TriggerBinding
 	TriggerTemplates       []*v1alpha1.TriggerTemplate
 	Triggers               []*v1alpha1.Trigger
@@ -115,6 +117,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	// Setup fake informer for reconciler tests
 	ctbInformer := fakeclustertriggerbindinginformer.Get(ctx)
 	elInformer := fakeeventlistenerinformer.Get(ctx)
+	icInformer := fakeClusterInterceptorinformer.Get(ctx)
 	ttInformer := faketriggertemplateinformer.Get(ctx)
 	tbInformer := faketriggerbindinginformer.Get(ctx)
 	trInformer := faketriggerinformer.Get(ctx)
@@ -146,6 +149,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 			t.Fatal(err)
 		}
 		if _, err := c.Triggers.TriggersV1alpha1().EventListeners(el.Namespace).Create(context.Background(), el, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, ic := range r.ClusterInterceptors {
+		if err := icInformer.Informer().GetIndexer().Add(ic); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Triggers.TriggersV1alpha1().ClusterInterceptors().Create(context.Background(), ic, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
