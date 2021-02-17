@@ -10,7 +10,7 @@ metadata:
 rules:
 # EventListeners need to be able to fetch all namespaced resources
 - apiGroups: ["triggers.tekton.dev"]
-  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+  resources: ["eventlisteners",  "triggerbindings", "triggertemplates", "triggers"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
  # configmaps is needed for updating logging config
