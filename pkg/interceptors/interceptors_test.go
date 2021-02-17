@@ -26,18 +26,18 @@ import (
 	"strings"
 	"testing"
 
-	duckv1 "knative.dev/pkg/apis/duck/v1"
-
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -52,7 +52,7 @@ func TestGetInterceptorParams(t *testing.T) {
 	}{{
 		name: "cel",
 		in: triggersv1.EventInterceptor{
-			CEL: &triggersv1.CELInterceptor{
+			DeprecatedCEL: &triggersv1.CELInterceptor{
 				Filter: `header.match("foo", "bar")`,
 				Overlays: []triggersv1.CELOverlay{{
 					Key:        "short_sha",
@@ -70,7 +70,7 @@ func TestGetInterceptorParams(t *testing.T) {
 	}, {
 		name: "gitlab",
 		in: triggersv1.EventInterceptor{
-			GitLab: &triggersv1.GitLabInterceptor{
+			DeprecatedGitLab: &triggersv1.GitLabInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
@@ -88,7 +88,7 @@ func TestGetInterceptorParams(t *testing.T) {
 	}, {
 		name: "github",
 		in: triggersv1.EventInterceptor{
-			GitHub: &triggersv1.GitHubInterceptor{
+			DeprecatedGitHub: &triggersv1.GitHubInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
@@ -106,7 +106,7 @@ func TestGetInterceptorParams(t *testing.T) {
 	}, {
 		name: "bitbucket",
 		in: triggersv1.EventInterceptor{
-			Bitbucket: &triggersv1.BitbucketInterceptor{
+			DeprecatedBitbucket: &triggersv1.BitbucketInterceptor{
 				SecretRef: &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
@@ -154,6 +154,30 @@ func TestGetInterceptorParams(t *testing.T) {
 					ArrayVal: []string{"v1", "v2"},
 				},
 			}},
+		},
+	}, {
+		name: "interceptor using ref",
+		in: triggersv1.EventInterceptor{
+			Ref: triggersv1.InterceptorRef{
+				Name: "gitlab",
+			},
+			Params: []triggersv1.InterceptorParams{{
+				Name:  "eventTypes",
+				Value: test.ToV1JSON(t, []string{"push"}),
+			}, {
+				Name: "secretRef",
+				Value: test.ToV1JSON(t, triggersv1.SecretRef{
+					SecretKey:  "test-secret",
+					SecretName: "token",
+				}),
+			}},
+		},
+		want: map[string]interface{}{
+			"eventTypes": test.ToV1JSON(t, []string{"push"}),
+			"secretRef": test.ToV1JSON(t, triggersv1.SecretRef{
+				SecretKey:  "test-secret",
+				SecretName: "token",
+			}),
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

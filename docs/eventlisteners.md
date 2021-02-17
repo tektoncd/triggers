@@ -31,7 +31,7 @@ using [Event Interceptors](#Interceptors).
   - [Annotations](#annotations)
   - [Interceptors](#interceptors)
     - [Webhook Interceptors](#webhook-interceptors)
-      - [Event Interceptor Services](#event-interceptor-services)
+      - [ Webhook Interceptor Services](#webhook-interceptor-services)
     - [GitHub Interceptors](#github-interceptors)
     - [GitLab Interceptors](#gitlab-interceptors)
     - [Bitbucket Interceptors](#bitbucket-interceptors)
@@ -406,10 +406,42 @@ by the annotations available in the eventlistener.
 ## Interceptors
 
 Triggers within an `EventListener` can optionally specify interceptors, to
-modify the behavior or payload of Triggers.
+modify the behavior or payload of Triggers. With 
+[TEP-0026](https://github.com/tektoncd/community/blob/main/teps/0026-interceptor-plugins.md), users have a unified way 
+to configure all interceptors though we continue to support the old core and webhook interceptors as well.
 
-Event Interceptors can take several different forms today:
+An interceptor consists of:
+- `name` - (Optional) a name to identify this interceptor configuration
+- `ref` - A reference to a ClusterInterceptor. At least, the `name` field must be specified while the `kind` and 
+  `apiVersion` fields are optional
+- `params` - (Optional) A list of `name` and `value` pairs. The `name` field is a string while the `value` can be any 
+   valid JSON object
+   
+As an example, see the snippet below:
+```yaml
+interceptors:
+    - name: "validate GitHub payload and filter on eventType"
+      ref:
+        name: "github"
+      params:
+      - name: "secretRef"
+        value:
+          secretName: github-secret
+          secretKey: secretToken
+      - name: "eventTypes"
+        value: ["pull_request"]
+    - name: "CEL filter: only when PRs are opened"
+      ref:
+        name: "cel"
+      params:
+      - name: "filter"
+        value: "body.action in ['opened', 'reopened']"
+```
 
+The following section describes the old and DEPRECATED way of configuring interceptors. While they continue to be 
+supported for now, they will be removed in a future release.
+
+Interceptors can take several different forms:
 - [Webhook Interceptors](#Webhook-Interceptors)
 - [GitHub Interceptors](#GitHub-Interceptors)
 - [GitLab Interceptors](#GitLab-Interceptors)
@@ -445,9 +477,9 @@ is the responsibility of Interceptors to preserve header/body data if desired.
 The response body and headers of the last Interceptor is used for resource
 binding/templating.
 
-#### Event Interceptor Services
+#### Webhook Interceptor Services
 
-To be an Event Interceptor, a Kubernetes object should:
+To be a valid Webhook Interceptor, a Kubernetes object should:
 
 - Be fronted by a regular Kubernetes v1 Service over port 80
 - Accept JSON payloads over HTTP
@@ -494,7 +526,6 @@ spec:
       template:
         ref: pipeline-template
 ```
-
 
 ### GitHub Interceptors
 
@@ -591,7 +622,7 @@ accept to the `eventTypes` field. Valid values can be found in Bitbucket
 The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
-<!-- FILE: examples/bitbucket/bitbucket-eventlistener-interceptor.yaml -->
+<!-- FILE: examples/bitbucket/bitbucket-listener.yaml -->
 ```YAML
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
@@ -599,16 +630,20 @@ kind: EventListener
 metadata:
   name: bitbucket-listener
 spec:
-  serviceAccountName: tekton-triggers-bitbucket-sa
+  serviceAccountName: tekton-triggers-example-sa
   triggers:
     - name: bitbucket-triggers
       interceptors:
-        - bitbucket:
-            secretRef:
-              secretName: bitbucket-secret
-              secretKey: secretToken
-            eventTypes:
-              - repo:refs_changed
+        - ref:
+            name: "bitbucket"
+          params:
+            - name: secretRef
+              value:
+                secretName: bitbucket-secret
+                secretKey: secretToken
+            - name: eventTypes
+              value:
+                - repo:refs_changed
       bindings:
         - ref: bitbucket-binding
       template:
@@ -665,10 +700,13 @@ spec:
   triggers:
     - name: cel-trig
       interceptors:
-        - cel:
-            overlays:
-            - key: truncated_sha
-              expression: "body.pull_request.head.sha.truncate(7)"
+        - ref:
+            name: "cel"
+          params:
+            - name: "overlays"
+              value:
+                - key: extensions.truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - ref: pipeline-binding
       template:

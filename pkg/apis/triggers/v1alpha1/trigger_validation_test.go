@@ -379,9 +379,9 @@ func TestTriggerValidate_error(t *testing.T) {
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
-					GitHub:    &v1alpha1.GitHubInterceptor{},
-					GitLab:    &v1alpha1.GitLabInterceptor{},
-					Bitbucket: &v1alpha1.BitbucketInterceptor{},
+					DeprecatedGitHub:    &v1alpha1.GitHubInterceptor{},
+					DeprecatedGitLab:    &v1alpha1.GitLabInterceptor{},
+					DeprecatedBitbucket: &v1alpha1.BitbucketInterceptor{},
 				}},
 			},
 		},
@@ -396,7 +396,7 @@ func TestTriggerValidate_error(t *testing.T) {
 				Bindings: []*v1alpha1.TriggerSpecBinding{{Name: "tb", Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 				Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("tt")},
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
-					CEL: &v1alpha1.CELInterceptor{},
+					DeprecatedCEL: &v1alpha1.CELInterceptor{},
 				}},
 			},
 		},

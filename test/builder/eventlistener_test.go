@@ -468,7 +468,7 @@ func TestEventListenerBuilder(t *testing.T) {
 			),
 		),
 	}, {
-		name: "One Trigger with CEL Interceptor",
+		name: "One Trigger with DeprecatedCEL Interceptor",
 		normal: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -479,7 +479,7 @@ func TestEventListenerBuilder(t *testing.T) {
 				Triggers: []v1alpha1.EventListenerTrigger{{
 					Name: "foo-trig",
 					Interceptors: []*v1alpha1.EventInterceptor{{
-						CEL: &v1alpha1.CELInterceptor{
+						DeprecatedCEL: &v1alpha1.CELInterceptor{
 							Filter: "body.value == 'test'",
 							Overlays: []v1alpha1.CELOverlay{
 								{Key: "value", Expression: "'testing'"},

@@ -298,9 +298,11 @@ func TestEventListenerCreate(t *testing.T) {
 					Ref: ptr.String(tt.Name),
 				},
 				Interceptors: []*triggersv1.EventInterceptor{{
-					CEL: &triggersv1.CELInterceptor{
-						Filter: `body.action == "edited"`,
-					},
+					Ref: triggersv1.InterceptorRef{Name: "cel"},
+					Params: []triggersv1.InterceptorParams{{
+						Name:  "filter",
+						Value: ToV1JSON(t, `body.action == "edited"`),
+					}},
 				}},
 			}},
 			Replicas: ptr.Int32(3),

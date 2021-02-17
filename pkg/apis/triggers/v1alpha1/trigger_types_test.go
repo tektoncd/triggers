@@ -24,33 +24,40 @@ import (
 
 func TestGetName(t *testing.T) {
 	for _, tc := range []struct {
-		in   v1alpha1.EventInterceptor
+		in   v1alpha1.TriggerInterceptor
 		want string
 	}{{
-		in: v1alpha1.EventInterceptor{
-			CEL: &v1alpha1.CELInterceptor{},
+		in: v1alpha1.TriggerInterceptor{
+			DeprecatedCEL: &v1alpha1.CELInterceptor{},
 		},
 		want: "cel",
 	}, {
-		in: v1alpha1.EventInterceptor{
-			GitLab: &v1alpha1.GitLabInterceptor{},
+		in: v1alpha1.TriggerInterceptor{
+			DeprecatedGitLab: &v1alpha1.GitLabInterceptor{},
 		},
 		want: "gitlab",
 	}, {
-		in: v1alpha1.EventInterceptor{
-			GitHub: &v1alpha1.GitHubInterceptor{},
+		in: v1alpha1.TriggerInterceptor{
+			DeprecatedGitHub: &v1alpha1.GitHubInterceptor{},
 		},
 		want: "github",
 	}, {
-		in: v1alpha1.EventInterceptor{
-			Bitbucket: &v1alpha1.BitbucketInterceptor{},
+		in: v1alpha1.TriggerInterceptor{
+			DeprecatedBitbucket: &v1alpha1.BitbucketInterceptor{},
 		},
 		want: "bitbucket",
 	}, {
-		in: v1alpha1.EventInterceptor{
+		in: v1alpha1.TriggerInterceptor{
 			Webhook: &v1alpha1.WebhookInterceptor{},
 		},
 		want: "",
+	}, {
+		in: v1alpha1.TriggerInterceptor{
+			Ref: v1alpha1.InterceptorRef{
+				Name: "pluggable-interceptor",
+			},
+		},
+		want: "pluggable-interceptor",
 	}} {
 		t.Run(tc.want, func(t *testing.T) {
 			got := tc.in.GetName()

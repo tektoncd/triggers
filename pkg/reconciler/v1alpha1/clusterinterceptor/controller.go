@@ -27,7 +27,6 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// NewController creates a new instance of an ClusterInterceptor controller.
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)

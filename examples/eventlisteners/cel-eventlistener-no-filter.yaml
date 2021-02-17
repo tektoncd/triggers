@@ -7,10 +7,13 @@ spec:
   triggers:
     - name: cel-trig
       interceptors:
-        - cel:
-            overlays:
-            - key: truncated_sha
-              expression: "body.pull_request.head.sha.truncate(7)"
+        - ref:
+            name: "cel"
+          params:
+            - name: "overlays"
+              value:
+                - key: extensions.truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - ref: pipeline-binding
       template:

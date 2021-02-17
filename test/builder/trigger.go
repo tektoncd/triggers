@@ -148,11 +148,11 @@ func TriggerSpecInterceptorParam(name, value string) TriggerInterceptorOp {
 	}
 }
 
-// TriggerSpecCELInterceptor adds a CEL filter to the TriggerSpecTrigger.
+// TriggerSpecCELInterceptor adds a DeprecatedCEL filter to the TriggerSpecTrigger.
 func TriggerSpecCELInterceptor(filter string, ops ...TriggerInterceptorOp) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
 		i := &v1alpha1.TriggerInterceptor{
-			CEL: &v1alpha1.CELInterceptor{
+			DeprecatedCEL: &v1alpha1.CELInterceptor{
 				Filter: filter,
 			},
 		}
@@ -163,11 +163,11 @@ func TriggerSpecCELInterceptor(filter string, ops ...TriggerInterceptorOp) Trigg
 	}
 }
 
-// TriggerSpecCELOverlay modifies CEL interceptor
+// TriggerSpecCELOverlay modifies DeprecatedCEL interceptor
 func TriggerSpecCELOverlay(key, expression string) TriggerInterceptorOp {
 	return func(i *v1alpha1.TriggerInterceptor) {
-		if i.CEL != nil {
-			i.CEL.Overlays = append(i.CEL.Overlays, v1alpha1.CELOverlay{
+		if i.DeprecatedCEL != nil {
+			i.DeprecatedCEL.Overlays = append(i.DeprecatedCEL.Overlays, v1alpha1.CELOverlay{
 				Key:        key,
 				Expression: expression,
 			})

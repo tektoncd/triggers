@@ -162,6 +162,32 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				Replicas: ptr.Int32(2),
 			},
 		},
+	}, {
+		name: "adds interceptorkind when not specified",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Interceptors: []*v1alpha1.EventInterceptor{{
+						Ref: v1alpha1.InterceptorRef{
+							Name: "cel",
+						},
+					}},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Interceptors: []*v1alpha1.EventInterceptor{{
+						Ref: v1alpha1.InterceptorRef{
+							Name: "cel",
+							Kind: v1alpha1.ClusterInterceptorKind,
+						},
+					}},
+				}},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

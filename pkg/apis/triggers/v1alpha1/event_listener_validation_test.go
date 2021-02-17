@@ -435,9 +435,9 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
-						GitHub:    &v1alpha1.GitHubInterceptor{},
-						GitLab:    &v1alpha1.GitLabInterceptor{},
-						Bitbucket: &v1alpha1.BitbucketInterceptor{},
+						DeprecatedGitHub:    &v1alpha1.GitHubInterceptor{},
+						DeprecatedGitLab:    &v1alpha1.GitLabInterceptor{},
+						DeprecatedBitbucket: &v1alpha1.BitbucketInterceptor{},
 					}},
 				}},
 			},
@@ -454,7 +454,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Bindings: []*v1alpha1.EventListenerBinding{{Kind: v1alpha1.NamespacedTriggerBindingKind, Ref: "tb"}},
 					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
-						CEL: &v1alpha1.CELInterceptor{},
+						DeprecatedCEL: &v1alpha1.CELInterceptor{},
 					}},
 				}},
 			},

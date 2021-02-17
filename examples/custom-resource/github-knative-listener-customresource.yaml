@@ -7,14 +7,21 @@ spec:
   triggers:
     - name: github-listener
       interceptors:
-        - github:
-            secretRef:
-              secretName: github-secret
-              secretKey: secretToken
-            eventTypes:
-              - pull_request
-        - cel:
-            filter: "body.action in ['opened', 'synchronize', 'reopened']"
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secretToken
+            - name: "eventTypes"
+              value: ["pull_request"]
+        - name: "only when PRs are opened"
+          ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.action in ['opened', 'synchronize', 'reopened']"
       bindings:
         - ref: github-pr-binding
       template:

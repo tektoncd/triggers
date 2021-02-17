@@ -27,9 +27,11 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 		if el.Spec.Replicas != nil && *el.Spec.Replicas == 0 {
 			*el.Spec.Replicas = 1
 		}
-		for i := range el.Spec.Triggers {
-			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).
-				defaultBindings()
+		for i, t := range el.Spec.Triggers {
+			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).defaultBindings()
+			for _, ti := range t.Interceptors {
+				ti.defaultInterceptorKind()
+			}
 		}
 		// Remove Deprecated Resource Fields
 		// To be removed in a later release #904

@@ -536,15 +536,19 @@ func TestHandleEvent(t *testing.T) {
 				},
 				Spec: triggersv1.TriggerSpec{
 					Interceptors: []*triggersv1.EventInterceptor{{
-						GitHub: &triggersv1.GitHubInterceptor{
-							SecretRef: &triggersv1.SecretRef{
+						Ref: triggersv1.InterceptorRef{Name: "github"},
+						Params: []triggersv1.InterceptorParams{{
+							Name: "secretRef",
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
-							},
-							EventTypes: []string{"pull_request"},
-						},
+							}),
+						}, {
+							Name:  "eventTypes",
+							Value: test.ToV1JSON(t, []string{"pull_request"}),
+						}},
 					}, {
-						CEL: &triggersv1.CELInterceptor{
+						DeprecatedCEL: &triggersv1.CELInterceptor{
 							Overlays: []triggersv1.CELOverlay{
 								// FIXME: We aren't really testing that this value can be used in a binding tho
 								{Key: "new", Expression: "body.repository.url"},
@@ -593,13 +597,17 @@ func TestHandleEvent(t *testing.T) {
 				},
 				Spec: triggersv1.TriggerSpec{
 					Interceptors: []*triggersv1.EventInterceptor{{
-						Bitbucket: &triggersv1.BitbucketInterceptor{
-							SecretRef: &triggersv1.SecretRef{
+						Ref: triggersv1.InterceptorRef{Name: "bitbucket"},
+						Params: []triggersv1.InterceptorParams{{
+							Name: "secretRef",
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
-							},
-							EventTypes: []string{"repo:refs_changed"},
-						},
+							}),
+						}, {
+							Name:  "eventTypes",
+							Value: test.ToV1JSON(t, []string{"repo:refs_changed"}),
+						}},
 					}},
 					Bindings: gitCloneTBSpec,
 					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
@@ -819,13 +827,17 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 				Spec: triggersv1.TriggerSpec{
 					ServiceAccountName: testCase.userVal,
 					Interceptors: []*triggersv1.EventInterceptor{{
-						GitHub: &triggersv1.GitHubInterceptor{
-							SecretRef: &triggersv1.SecretRef{
+						Ref: triggersv1.InterceptorRef{Name: "github"},
+						Params: []triggersv1.InterceptorParams{{
+							Name: "secretRef",
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
-							},
-							EventTypes: []string{"pull_request"},
-						},
+							}),
+						}, {
+							Name:  "eventTypes",
+							Value: test.ToV1JSON(t, []string{"pull_request"}),
+						}},
 					}},
 					Bindings: []*triggersv1.TriggerSpecBinding{{
 						Name:  "url",
@@ -1162,9 +1174,11 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	trigger := triggersv1.Trigger{
 		Spec: triggersv1.TriggerSpec{
 			Interceptors: []*triggersv1.EventInterceptor{{
-				CEL: &triggersv1.CELInterceptor{
-					Filter: `body.head == "abcde"`,
-				},
+				Ref: triggersv1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1.InterceptorParams{{
+					Name:  "filter",
+					Value: test.ToV1JSON(t, `body.head == "abcde"`),
+				}},
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
@@ -1214,12 +1228,14 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	trigger := triggersv1.Trigger{
 		Spec: triggersv1.TriggerSpec{
 			Interceptors: []*triggersv1.EventInterceptor{{
-				CEL: &triggersv1.CELInterceptor{
-					Overlays: []triggersv1.CELOverlay{{
+				Ref: triggersv1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1.InterceptorParams{{
+					Name: "overlays",
+					Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
 						Key:        "truncated_sha",
 						Expression: "body.sha.truncate(5)",
-					}},
-				},
+					}}),
+				}},
 			}, {
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: &corev1.ObjectReference{
@@ -1229,9 +1245,11 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 					},
 				},
 			}, {
-				CEL: &triggersv1.CELInterceptor{
-					Filter: "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\"",
-				},
+				Ref: triggersv1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1.InterceptorParams{{
+					Name:  "filter",
+					Value: test.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
+				}},
 			}},
 		},
 	}

@@ -7,11 +7,15 @@ spec:
   triggers:
     - name: cel-trig-with-matches
       interceptors:
-        - cel:
-            filter: "header.match('X-GitHub-Event', 'pull_request')"
-            overlays:
-            - key: truncated_sha
-              expression: "body.pull_request.head.sha.truncate(7)"
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "header.match('X-GitHub-Event', 'pull_request')"
+            - name: "overlays"
+              value:
+                - key: truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - name: sha
         value: $(extensions.truncated_sha)

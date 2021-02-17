@@ -118,7 +118,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	if err := json.Unmarshal(body.Bytes(), &ireq); err != nil {
 		return nil, badRequest(fmt.Errorf("failed to parse body as InterceptorRequest: %w", err))
 	}
-	// Decorate ctx with eventID
+	is.Logger.Debugf("Interceptor Request is: %+v", ireq)
 	iresp := ii.Process(ctx, &ireq)
 	respBytes, err := json.Marshal(iresp)
 	if err != nil {
