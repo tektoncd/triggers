@@ -28,6 +28,7 @@ type TriggersV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTriggerBindingsGetter
 	EventListenersGetter
+	InterceptorTypesGetter
 	TriggersGetter
 	TriggerBindingsGetter
 	TriggerTemplatesGetter
@@ -44,6 +45,10 @@ func (c *TriggersV1alpha1Client) ClusterTriggerBindings() ClusterTriggerBindingI
 
 func (c *TriggersV1alpha1Client) EventListeners(namespace string) EventListenerInterface {
 	return newEventListeners(c, namespace)
+}
+
+func (c *TriggersV1alpha1Client) InterceptorTypes() InterceptorTypeInterface {
+	return newInterceptorTypes(c)
 }
 
 func (c *TriggersV1alpha1Client) Triggers(namespace string) TriggerInterface {

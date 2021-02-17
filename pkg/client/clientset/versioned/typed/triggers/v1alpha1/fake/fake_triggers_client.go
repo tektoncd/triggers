@@ -36,6 +36,10 @@ func (c *FakeTriggersV1alpha1) EventListeners(namespace string) v1alpha1.EventLi
 	return &FakeEventListeners{c, namespace}
 }
 
+func (c *FakeTriggersV1alpha1) InterceptorTypes() v1alpha1.InterceptorTypeInterface {
+	return &FakeInterceptorTypes{c}
+}
+
 func (c *FakeTriggersV1alpha1) Triggers(namespace string) v1alpha1.TriggerInterface {
 	return &FakeTriggers{c, namespace}
 }

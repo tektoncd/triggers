@@ -28,6 +28,8 @@ type Interface interface {
 	ClusterTriggerBindings() ClusterTriggerBindingInformer
 	// EventListeners returns a EventListenerInformer.
 	EventListeners() EventListenerInformer
+	// InterceptorTypes returns a InterceptorTypeInformer.
+	InterceptorTypes() InterceptorTypeInformer
 	// Triggers returns a TriggerInformer.
 	Triggers() TriggerInformer
 	// TriggerBindings returns a TriggerBindingInformer.
@@ -55,6 +57,11 @@ func (v *version) ClusterTriggerBindings() ClusterTriggerBindingInformer {
 // EventListeners returns a EventListenerInformer.
 func (v *version) EventListeners() EventListenerInformer {
 	return &eventListenerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// InterceptorTypes returns a InterceptorTypeInformer.
+func (v *version) InterceptorTypes() InterceptorTypeInformer {
+	return &interceptorTypeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Triggers returns a TriggerInformer.
