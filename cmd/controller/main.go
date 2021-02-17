@@ -19,6 +19,8 @@ import (
 	"flag"
 	"os"
 
+	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/clusterinterceptor"
+
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
@@ -69,5 +71,7 @@ func main() {
 		injection.WithNamespaceScope(signals.NewContext(), corev1.NamespaceAll),
 		ControllerLogKey,
 		cfg,
-		eventlistener.NewController(c))
+		eventlistener.NewController(c),
+		clusterinterceptor.NewController(),
+	)
 }
