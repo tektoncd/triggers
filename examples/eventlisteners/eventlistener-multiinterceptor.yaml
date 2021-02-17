@@ -8,12 +8,15 @@ spec:
   triggers:
     - name: foo-trig
       interceptors:
-        - github:
-            secretRef:
+        - ref:
+            name: "github"
+          params:
+          - name: "secretRef"
+            value:
               secretName: foo
               secretKey: bar
-            eventTypes:
-              - pull_request
+          - name: "eventTypes"
+            value: ["pull_request"]
         - webhook:
             header:
               - name: Foo-Trig-Header1

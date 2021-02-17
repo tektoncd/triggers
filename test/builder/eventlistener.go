@@ -292,7 +292,7 @@ func EventInterceptorParam(name, value string) EventInterceptorOp {
 func EventListenerCELInterceptor(filter string, ops ...EventInterceptorOp) EventListenerTriggerOp {
 	return func(t *v1alpha1.EventListenerTrigger) {
 		i := &v1alpha1.EventInterceptor{
-			CEL: &v1alpha1.CELInterceptor{
+			DeprecatedCEL: &v1alpha1.CELInterceptor{
 				Filter: filter,
 			},
 		}
@@ -305,8 +305,8 @@ func EventListenerCELInterceptor(filter string, ops ...EventInterceptorOp) Event
 
 func EventListenerCELOverlay(key, expression string) EventInterceptorOp {
 	return func(i *v1alpha1.EventInterceptor) {
-		if i.CEL != nil {
-			i.CEL.Overlays = append(i.CEL.Overlays, v1alpha1.CELOverlay{
+		if i.DeprecatedCEL != nil {
+			i.DeprecatedCEL.Overlays = append(i.DeprecatedCEL.Overlays, v1alpha1.CELOverlay{
 				Key:        key,
 				Expression: expression,
 			})

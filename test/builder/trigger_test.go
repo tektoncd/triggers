@@ -244,7 +244,7 @@ func TestTriggerBuilder(t *testing.T) {
 				ServiceAccountName: "serviceAccount",
 				Name:               "foo-trig",
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
-					CEL: &v1alpha1.CELInterceptor{
+					DeprecatedCEL: &v1alpha1.CELInterceptor{
 						Filter: "body.value == 'test'",
 						Overlays: []v1alpha1.CELOverlay{
 							{Key: "value", Expression: "'testing'"},

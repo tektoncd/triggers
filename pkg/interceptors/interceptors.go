@@ -96,38 +96,40 @@ func GetInterceptorParams(i *triggersv1.EventInterceptor) map[string]interface{}
 			ip["objectRef"] = i.Webhook.ObjectRef
 			ip["header"] = i.Webhook.Header
 		}
-	case i.GitHub != nil:
-		if i.GitHub.EventTypes != nil {
-			ip["eventTypes"] = i.GitHub.EventTypes
+	case i.DeprecatedGitHub != nil:
+		if i.DeprecatedGitHub.EventTypes != nil {
+			ip["eventTypes"] = i.DeprecatedGitHub.EventTypes
 		}
-		if i.GitHub.SecretRef != nil {
-			ip["secretRef"] = i.GitHub.SecretRef
+		if i.DeprecatedGitHub.SecretRef != nil {
+			ip["secretRef"] = i.DeprecatedGitHub.SecretRef
 		}
-	case i.GitLab != nil:
-		if i.GitLab.EventTypes != nil {
-			ip["eventTypes"] = i.GitLab.EventTypes
+	case i.DeprecatedGitLab != nil:
+		if i.DeprecatedGitLab.EventTypes != nil {
+			ip["eventTypes"] = i.DeprecatedGitLab.EventTypes
 		}
-		if i.GitLab.SecretRef != nil {
-			ip["secretRef"] = i.GitLab.SecretRef
+		if i.DeprecatedGitLab.SecretRef != nil {
+			ip["secretRef"] = i.DeprecatedGitLab.SecretRef
 		}
-	case i.CEL != nil:
-		if i.CEL.Filter != "" {
-			ip["filter"] = i.CEL.Filter
-		}
-
-		if i.CEL.Overlays != nil {
-			ip["overlays"] = i.CEL.Overlays
+	case i.DeprecatedCEL != nil:
+		if i.DeprecatedCEL.Filter != "" {
+			ip["filter"] = i.DeprecatedCEL.Filter
 		}
 
-	case i.Bitbucket != nil:
-		if i.Bitbucket.EventTypes != nil {
-			ip["eventTypes"] = i.Bitbucket.EventTypes
+		if i.DeprecatedCEL.Overlays != nil {
+			ip["overlays"] = i.DeprecatedCEL.Overlays
 		}
-		if i.Bitbucket.SecretRef != nil {
-			ip["secretRef"] = i.Bitbucket.SecretRef
+	case i.DeprecatedBitbucket != nil:
+		if i.DeprecatedBitbucket.EventTypes != nil {
+			ip["eventTypes"] = i.DeprecatedBitbucket.EventTypes
+		}
+		if i.DeprecatedBitbucket.SecretRef != nil {
+			ip["secretRef"] = i.DeprecatedBitbucket.SecretRef
+		}
+	case i.Params != nil:
+		for _, p := range i.Params {
+			ip[p.Name] = p.Value
 		}
 	}
-
 	return ip
 }
 

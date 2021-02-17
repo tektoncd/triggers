@@ -7,12 +7,15 @@ spec:
   triggers:
     - name: cel-trig
       interceptors:
-        - cel:
-            overlays:
-            - key: truncated_sha
-              expression: "body.pull_request.head.sha.truncate(7)"
-            - key: branch_name
-              expression: "body.ref.split('/')[2]"
+        - ref:
+            name: "cel"
+          params:
+            - name: "overlays"
+              value:
+                - key: truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
+                - key: branch_name
+                  expression: "body.ref.split('/')[2]"
       bindings:
       - name: sha
         value: $(extensions.truncated_sha)

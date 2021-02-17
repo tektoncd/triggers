@@ -12,11 +12,18 @@ custom resource describes how an EventListener can connect to a workload that
 is running the interceptor business logic (and in the future what extra
 paramters the interceptor accepts).
 
-**NOTE**: This doc is a WIP. Please also see the [Interceptors section](./eventlisteners.md#interceptors) in the EventListener doc.
+A `ClusterInterceptor` will consist of a custom resource of type ClusterInterceptor that defines it and a 
+deployment/service combination that runs a HTTP server containing the actual interceptor processing logic. The 
+interceptor can process the incoming request, decide to stop or continue processing, and add extra fields that are 
+available to `TriggerBindings` and other interceptors in a chain under the `extensions` field.
+
+**NOTE**: This doc describes a ClusterInterceptor and its interface. Please see the [Interceptors section](./eventlisteners.md#interceptors) 
+in the EventListener doc for details on how to configure a Trigger to use an interceptor.
 
 - [Interceptors](#interceptors)
   - [Syntax](#syntax)
     - [clientConfig](#clientConfig)
+  - [Interceptor Services](#interceptor-services)
 
 ## Syntax
 
@@ -55,3 +62,13 @@ spec:
       port: 8081 # defaults to 80
 ```
 
+## Interceptor Services
+
+To be a valid ClusterInterceptor, the workload should satisfy the following:
+
+- Be fronted by a regular Kubernetes v1 Service and serve HTTP
+- Accept HTTP POST requests that contain a [`InterceptorRequest`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorRequest) 
+  JSON body
+- Respond with a status code of 200 OK with [`InterceptorResponse`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorResponse) 
+  body
+- Respond with a non 200 response only if something catastrophic went wrong during processing

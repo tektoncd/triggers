@@ -28,6 +28,9 @@ func (t *Trigger) SetDefaults(ctx context.Context) {
 		return
 	}
 	triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
+	for _, ti := range t.Spec.Interceptors {
+		ti.defaultInterceptorKind()
+	}
 }
 
 // set default TriggerBinding kind for Bindings in TriggerSpec

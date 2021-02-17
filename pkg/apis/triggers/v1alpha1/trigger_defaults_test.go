@@ -76,6 +76,28 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "defaults interceptor ref",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "cel",
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "cel",
+						Kind: v1alpha1.ClusterInterceptorKind,
+					},
+				}},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
