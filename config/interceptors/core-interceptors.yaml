@@ -18,7 +18,10 @@ metadata:
   name: cel
 spec:
   clientConfig:
-    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/cel"
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "cel"
   # Until #869 is implemented, the params field is only informational
   params:
     - name: "filter"
@@ -32,7 +35,10 @@ metadata:
   name: bitbucket
 spec:
   clientConfig:
-    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/bitbucket"
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "bitbucket"
   # Until #869 is implemented, the params field is only informational
   params:
     - name: "eventTypes"
@@ -46,7 +52,10 @@ metadata:
   name: github
 spec:
   clientConfig:
-    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/github"
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "github"
   # Until #869 is implemented, the params field is only informational
   params:
     - name: "eventTypes"
@@ -60,7 +69,10 @@ metadata:
   name: gitlab
 spec:
   clientConfig:
-    url: "http://tekton-triggers-core-interceptors.tekton-pipelines.svc/gitlab"
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "gitlab"
   # Until #869 is implemented, the params field is only informational
   params:
     - name: "eventTypes"

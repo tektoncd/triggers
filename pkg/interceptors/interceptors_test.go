@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	duckv1 "knative.dev/pkg/apis/duck/v1"
+
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -338,8 +340,33 @@ func TestResolvePath(t *testing.T) {
 }
 
 func TestResolveToURL(t *testing.T) {
-	t.Run("resolves URL", func(t *testing.T) {
-		fakeGetter := func(n string) (*triggersv1.InterceptorType, error) {
+	tests := []struct {
+		name   string
+		getter interceptors.InterceptorGetter
+		itype  string
+		want   string
+	}{{
+		name: "interceptorType has status.address.url",
+		getter: func(n string) (*triggersv1.InterceptorType, error) {
+			return &triggersv1.InterceptorType{
+				Status: triggersv1.InterceptorTypeStatus{
+					AddressStatus: duckv1.AddressStatus{
+						Address: &duckv1.Addressable{
+							URL: &apis.URL{
+								Scheme: "http",
+								Host:   "some-host",
+								Path:   "cel",
+							},
+						},
+					},
+				},
+			}, nil
+		},
+		itype: "cel",
+		want:  "http://some-host/cel",
+	}, {
+		name: "interceptorType does not have a status",
+		getter: func(n string) (*triggersv1.InterceptorType, error) {
 			return &triggersv1.InterceptorType{
 				Spec: triggersv1.InterceptorTypeSpec{
 					ClientConfig: triggersv1.ClientConfig{
@@ -351,17 +378,22 @@ func TestResolveToURL(t *testing.T) {
 					},
 				},
 			}, nil
-		}
+		},
+		itype: "cel",
+		want:  "http://some-host/cel",
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := interceptors.ResolveToURL(tc.getter, tc.itype)
+			if err != nil {
+				t.Fatalf("ResolveToURL() error: %s", err)
+			}
 
-		got, err := interceptors.ResolveToURL(fakeGetter, "cel")
-		if err != nil {
-			t.Fatalf("ResolveToURL() error: %s", err)
-		}
-		want := "http://some-host/cel"
-		if got.String() != want {
-			t.Fatalf("ResolveToURL want: %s; got: %s", want, got)
-		}
-	})
+			if got.String() != tc.want {
+				t.Fatalf("ResolveToURL want: %s; got: %s", tc.want, got)
+			}
+		})
+	}
 
 	t.Run("interceptor has no URL", func(t *testing.T) {
 		fakeGetter := func(name string) (*triggersv1.InterceptorType, error) {
