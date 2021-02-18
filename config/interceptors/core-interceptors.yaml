@@ -22,12 +22,6 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "cel"
-  # Until #869 is implemented, the params field is only informational
-  params:
-    - name: "filter"
-      description: "A CEL expression that evaluates to true or false"
-    - name: "overlays"
-      description: "CEL expressions whose values get mapped to user defined keys"
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: InterceptorType
@@ -39,12 +33,6 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "bitbucket"
-  # Until #869 is implemented, the params field is only informational
-  params:
-    - name: "eventTypes"
-      description: "A list of event types to accept"
-    - name: "secretRef"
-      description: "A reference to a secret containing a shared token for payload validation"
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: InterceptorType
@@ -56,12 +44,6 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "github"
-  # Until #869 is implemented, the params field is only informational
-  params:
-    - name: "eventTypes"
-      description: "A list of event types to accept"
-    - name: "secretRef"
-      description: "A reference to a secret containing a shared token for payload validation"
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: InterceptorType
@@ -73,10 +55,4 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "gitlab"
-  # Until #869 is implemented, the params field is only informational
-  params:
-    - name: "eventTypes"
-      description: "A list of event types to accept"
-    - name: "secretRef"
-      description: "A reference to a secret containing a shared token for payload validation"
 ---
