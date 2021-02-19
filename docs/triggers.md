@@ -27,7 +27,7 @@ the following fields:
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your Trigger resource object. The spec include:
     - [`bindings`] - (Optional) A list of bindings to use. Can either be a reference to existing `TriggerBinding` resources or embedded name/value pairs.
-    - [`template`] - (Optional) Either a reference to a TriggerTemplate object or an embedded TriggerTemplate spec.
+    - [`template`] - Either a reference to a TriggerTemplate object or an embedded TriggerTemplate spec.
     - [`interceptors`](./eventlisteners.md#interceptors) - (Optional) list of interceptors to use
     - [`serviceAccountName`] - (Optional) Specifies the ServiceAccount provided to EventListener by Trigger to create resources
 
