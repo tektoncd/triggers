@@ -118,7 +118,8 @@ func main() {
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", r.HandleEvent)
+	eventHandler := http.HandlerFunc(r.HandleEvent)
+	mux.Handle("/", r.IsValidPayload(eventHandler))
 
 	// For handling Liveness Probe
 	// TODO(dibyom): Livness, metrics etc. should be on a separate port

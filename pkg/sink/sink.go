@@ -71,6 +71,8 @@ type Response struct {
 	Namespace string `json:"namespace,omitempty"`
 	// EventID is a uniqueID that gets assigned to each incoming request
 	EventID string `json:"eventID,omitempty"`
+	// ErrorMessage gives message about Error which occurs during event processing
+	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
 // HandleEvent processes an incoming HTTP event for the event listener.
