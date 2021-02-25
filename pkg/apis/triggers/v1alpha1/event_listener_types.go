@@ -61,9 +61,10 @@ type EventListenerSpec struct {
 	DeprecatedServiceType corev1.ServiceType `json:"serviceType,omitempty"`
 	Replicas              *int32             `json:"replicas,omitempty"`
 	// To be removed in a later release #904
-	DeprecatedPodTemplate PodTemplate       `json:"podTemplate,omitempty"`
-	NamespaceSelector     NamespaceSelector `json:"namespaceSelector,omitempty"`
-	Resources             Resources         `json:"resources,omitempty"`
+	DeprecatedPodTemplate PodTemplate           `json:"podTemplate,omitempty"`
+	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
+	Resources             Resources             `json:"resources,omitempty"`
 }
 
 type Resources struct {

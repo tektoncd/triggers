@@ -22,7 +22,8 @@ package v1alpha1
 
 import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	apis "knative.dev/pkg/apis"
 )
@@ -384,6 +385,11 @@ func (in *EventListenerSpec) DeepCopyInto(out *EventListenerSpec) {
 	}
 	in.DeprecatedPodTemplate.DeepCopyInto(&out.DeprecatedPodTemplate)
 	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
+	if in.LabelSelector != nil {
+		in, out := &in.LabelSelector, &out.LabelSelector
+		*out = new(v1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	in.Resources.DeepCopyInto(&out.Resources)
 	return
 }
@@ -625,7 +631,7 @@ func (in *PodTemplate) DeepCopyInto(out *PodTemplate) {
 	*out = *in
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]v1.Toleration, len(*in))
+		*out = make([]corev1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1189,7 +1195,7 @@ func (in *WebhookInterceptor) DeepCopyInto(out *WebhookInterceptor) {
 	*out = *in
 	if in.ObjectRef != nil {
 		in, out := &in.ObjectRef, &out.ObjectRef
-		*out = new(v1.ObjectReference)
+		*out = new(corev1.ObjectReference)
 		**out = **in
 	}
 	if in.Header != nil {

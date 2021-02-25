@@ -461,6 +461,149 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
+		name: "label selector match expressions",
+		resources: test.Resources{
+			Namespaces: []*corev1.Namespace{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "bar",
+				},
+			}},
+			TriggerBindings: []*triggersv1.TriggerBinding{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone",
+					Namespace: "bar",
+				},
+				Spec: triggersv1.TriggerBindingSpec{
+					Params: []triggersv1.Param{
+						{Name: "url", Value: "$(body.repository.url)"},
+						{Name: "revision", Value: "$(body.head_commit.id)"},
+						{Name: "name", Value: "git-clone-run"},
+						{Name: "app", Value: "$(body.foo)"},
+						{Name: "type", Value: "$(header.Content-Type)"},
+					},
+				},
+			}},
+			TriggerTemplates: []*triggersv1.TriggerTemplate{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone",
+					Namespace: "bar",
+				},
+				Spec: gitCloneTTSpec,
+			}},
+			Triggers: []*triggersv1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger",
+					Namespace: "bar",
+					Labels: map[string]string{
+						"foo": "bar",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "second-not-invoked-trigger",
+					Namespace: "bar",
+					Labels: map[string]string{
+						"foo": "notbar",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}},
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					NamespaceSelector: triggersv1.NamespaceSelector{
+						MatchNames: []string{"bar"},
+					},
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"foo": "bar"},
+					},
+				},
+			}},
+		},
+		eventBody: eventBody,
+		// only one of the tasks is invoked
+		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+	}, {
+		name: "label selector match expressions without namespace selector",
+		resources: test.Resources{
+			Namespaces: []*corev1.Namespace{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "bar",
+				},
+			}},
+			TriggerBindings: []*triggersv1.TriggerBinding{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone",
+					Namespace: namespace,
+				},
+				Spec: triggersv1.TriggerBindingSpec{
+					Params: []triggersv1.Param{
+						{Name: "url", Value: "$(body.repository.url)"},
+						{Name: "revision", Value: "$(body.head_commit.id)"},
+						{Name: "name", Value: "git-clone-run"},
+						{Name: "app", Value: "$(body.foo)"},
+						{Name: "type", Value: "$(header.Content-Type)"},
+					},
+				},
+			}},
+			TriggerTemplates: []*triggersv1.TriggerTemplate{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone",
+					Namespace: namespace,
+				},
+				Spec: gitCloneTTSpec,
+			}},
+			Triggers: []*triggersv1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"foo": "bar",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "second-not-invoked-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"foo": "notbar",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}},
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"foo": "bar"},
+					},
+				},
+			}},
+		},
+		eventBody: eventBody,
+		// only one of the tasks is invoked
+		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+	}, {
 		name: "eventlistener with a trigger ref",
 		resources: test.Resources{
 			TriggerBindings:  []*triggersv1.TriggerBinding{gitCloneTB},

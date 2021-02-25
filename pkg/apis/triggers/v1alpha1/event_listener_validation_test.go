@@ -145,6 +145,28 @@ func Test_EventListenerValidate(t *testing.T) {
 					bldr.EventListenerCELInterceptor("", bldr.EventListenerCELOverlay("body.value", "'testing'")),
 				))),
 	}, {
+		name: "Namespace selector with label selector",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				NamespaceSelector: v1alpha1.NamespaceSelector{
+					MatchNames: []string{"foo"},
+				},
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"foo": "bar",
+					},
+				},
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{Ref: "bindingRef", Kind: v1alpha1.NamespacedTriggerBindingKind}},
+					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
+				}},
+			},
+		},
+	}, {
 		name: "Valid EventListener with kubernetes env for podspec",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(

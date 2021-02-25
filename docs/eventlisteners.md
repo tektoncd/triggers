@@ -27,6 +27,7 @@ using [Event Interceptors](#Interceptors).
         - [Contract](#contract)
     - [Logging](#logging)
     - [NamespaceSelector](#namespaceSelector)
+    - [LabelSelector](#labelSelector)
   - [Labels](#labels)
   - [Annotations](#annotations)
   - [Interceptors](#interceptors)
@@ -346,8 +347,7 @@ kubectl get pods --selector eventlistener=my-eventlistener
 ### NamespaceSelector
 The `namespaceSelector` field is optional.
 This field determines the namespaces where EventListener can search for triggers and
-create Tekton resources. If this field isn't provided, EventListener will only serve Triggers from its
-own namespace.
+create Tekton resources. If this field isn't provided, EventListener will only serve Triggers listed in its inline configuration or selected with LabelSelectors below.
 
 Snippet below will function in foo and bar namespaces.
 ```yaml
@@ -363,6 +363,31 @@ can be used where we only provide single argument for `matchNames` as `*`.
   namespaceSelector:
     matchNames:
     - *
+```
+
+### LabelSelector
+This field determines the labels for which EventListener will select triggers and
+create Tekton resources.
+
+In the snippet below, the EventListener will only select triggers from its  namespace with 
+label `foo=bar`.
+```yaml
+  labelSelector:
+    matchLabels:
+      foo: bar
+```
+
+The standard Kubernetes `labelSelector` mechanism is utilitized, so `matchExpressions`
+can also be used. In this configuration, it will use the `matchExpression`
+query to match Triggers across all namespaces.
+```yaml
+  namespaceSelector:
+    matchNames:
+    - *
+  labelSelector:
+    matchExpressions:
+      - {key: environment, operator: In, values: [dev,stage]}
+      - {key: trigger-phase, operator: NotIn, values: [testing]}
 ```
 
 
