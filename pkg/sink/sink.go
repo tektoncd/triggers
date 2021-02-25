@@ -96,26 +96,50 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with path %s, payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, request.URL.Path, string(event), request.Header)
 	var trItems []*triggersv1.Trigger
-	if len(el.Spec.NamespaceSelector.MatchNames) == 1 &&
-		el.Spec.NamespaceSelector.MatchNames[0] == "*" {
-		trList, err := r.TriggerLister.List(labels.Everything())
+	labelSelector := labels.Everything()
+	if el.Spec.LabelSelector != nil {
+		labelSelector, err = metav1.LabelSelectorAsSelector(el.Spec.LabelSelector)
+		if err != nil {
+			r.Logger.Errorf("Failed to create label selector: %s", err)
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	var triggerFunc func() ([]*triggersv1.Trigger, error)
+	switch {
+	case len(el.Spec.NamespaceSelector.MatchNames) == 1 && el.Spec.NamespaceSelector.MatchNames[0] == "*":
+		triggerFunc = func() ([]*triggersv1.Trigger, error) {
+			return r.TriggerLister.List(labelSelector)
+		}
+	case len(el.Spec.NamespaceSelector.MatchNames) != 0:
+		triggerFunc = func() ([]*triggersv1.Trigger, error) {
+			var trList []*triggersv1.Trigger
+			for _, v := range el.Spec.NamespaceSelector.MatchNames {
+				trNsList, err := r.TriggerLister.Triggers(v).List(labelSelector)
+				if err != nil {
+					return nil, err
+				}
+				trList = append(trList, trNsList...)
+			}
+			return trList, nil
+		}
+	case len(el.Spec.NamespaceSelector.MatchNames) == 0:
+		if el.Spec.LabelSelector != nil {
+			triggerFunc = func() ([]*triggersv1.Trigger, error) {
+				return r.TriggerLister.Triggers(el.GetNamespace()).List(labelSelector)
+			}
+		}
+	}
+	if triggerFunc != nil {
+		trList, err := triggerFunc()
 		if err != nil {
 			r.Logger.Errorf("Error getting Triggers: %s", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		trItems = trList
-	} else if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
-		for _, v := range el.Spec.NamespaceSelector.MatchNames {
-			trList, err := r.TriggerLister.Triggers(v).List(labels.Everything())
-			if err != nil {
-				r.Logger.Errorf("Error getting Triggers: %s", err)
-				response.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			trItems = append(trItems, trList...)
-		}
+		trItems = append(trItems, trList...)
 	}
+
 	triggers, err := r.merge(el.Spec.Triggers, trItems)
 	if err != nil {
 		r.Logger.Errorf("Error merging Triggers: %s", err)
