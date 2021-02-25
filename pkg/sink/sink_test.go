@@ -1129,7 +1129,8 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 
 // echoInterceptor stores and returns the body back
 type echoInterceptor struct {
-	body map[string]interface{}
+	body    map[string]interface{}
+	counter int
 }
 
 func (f *echoInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -1140,7 +1141,13 @@ func (f *echoInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+	if f.counter == 0 {
+		data["extensions"].(map[string]interface{})["add_pr_body"].(map[string]interface{})["pull_request_body"] = "key"
+	} else if f.counter == 1 {
+		data["extensions"].(map[string]interface{})["add_team_members"] = "something"
+	}
 	f.body = data
+	f.counter++
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1161,15 +1168,15 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		Logger:     logger,
 	}
 
-	sha := "abcdefghi" // Fake "sha" to send via body
-	// trigger has a chain of 3 interceptors CEL(overlay) -> webhook -> CEL(filter)
+	pull_request_url := "https://github.com/some/pr" // Fake "pull_request_url" to send via body
+	// trigger has a chain of 4 interceptors CEL(overlay) -> webhook -> webhook -> CEL(filter)
 	trigger := triggersv1.Trigger{
 		Spec: triggersv1.TriggerSpec{
 			Interceptors: []*triggersv1.EventInterceptor{{
 				CEL: &triggersv1.CELInterceptor{
 					Overlays: []triggersv1.CELOverlay{{
-						Key:        "truncated_sha",
-						Expression: "body.sha.truncate(5)",
+						Key:        "add_pr_body.pull_request_url",
+						Expression: "body.pull_request_url",
 					}},
 				},
 			}, {
@@ -1181,8 +1188,16 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 					},
 				},
 			}, {
+				Webhook: &triggersv1.WebhookInterceptor{
+					ObjectRef: &corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       webhookInterceptorName,
+					},
+				},
+			}, {
 				CEL: &triggersv1.CELInterceptor{
-					Filter: "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\"",
+					Filter: "body.extensions.add_pr_body.pull_request_url == \"https://github.com/some/pr\" && extensions.add_pr_body.pull_request_url == \"https://github.com/some/pr\"",
 				},
 			}},
 		},
@@ -1192,16 +1207,20 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
+	body := fmt.Sprintf(`{"pull_request_url": "%s"}`, pull_request_url)
 	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), logger, eventID)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}
 
 	wantBody := map[string]interface{}{
-		"sha": sha,
+		"pull_request_url": pull_request_url,
 		"extensions": map[string]interface{}{
-			"truncated_sha": "abcde",
+			"add_team_members": "something",
+			"add_pr_body": map[string]interface{}{
+				"pull_request_body": "key",
+				"pull_request_url":  "https://github.com/some/pr",
+			},
 		},
 	}
 	var gotBody map[string]interface{}
@@ -1225,7 +1244,9 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 
 	// Check we maintain the extensions outside the body as well
 	wantExtensions := map[string]interface{}{
-		"truncated_sha": "abcde",
+		"add_pr_body": map[string]interface{}{
+			"pull_request_url": "https://github.com/some/pr",
+		},
 	}
 
 	if diff := cmp.Diff(iresp.Extensions, wantExtensions); diff != "" {
@@ -1241,7 +1262,7 @@ func TestExtendBodyWithExtensions(t *testing.T) {
 		want       map[string]interface{}
 	}{{
 		name: "merges all extensions to an extension field",
-		body: json.RawMessage(`{"sha": "abcdef"}`),
+		body: json.RawMessage(`{"pull_request_url": "https://github.com/some/pr"}`),
 		extensions: map[string]interface{}{
 			"added_field": "val1",
 			"nested": map[string]interface{}{
@@ -1249,7 +1270,7 @@ func TestExtendBodyWithExtensions(t *testing.T) {
 			},
 		},
 		want: map[string]interface{}{
-			"sha": "abcdef",
+			"pull_request_url": "https://github.com/some/pr",
 			"extensions": map[string]interface{}{
 				"added_field": "val1",
 				"nested": map[string]interface{}{
@@ -1259,12 +1280,12 @@ func TestExtendBodyWithExtensions(t *testing.T) {
 		},
 	}, {
 		name: "body contains an extension already",
-		body: json.RawMessage(`{"sha": "abcdef", "extensions": {"foo": "bar"}}`),
+		body: json.RawMessage(`{"pull_request_url": "https://github.com/some/pr", "extensions": {"foo": "bar"}}`),
 		extensions: map[string]interface{}{
 			"added_field": "val1",
 		},
 		want: map[string]interface{}{
-			"sha": "abcdef",
+			"pull_request_url": "https://github.com/some/pr",
 			"extensions": map[string]interface{}{
 				"foo":         "bar",
 				"added_field": "val1",
@@ -1272,10 +1293,10 @@ func TestExtendBodyWithExtensions(t *testing.T) {
 		},
 	}, {
 		name:       "no extensions",
-		body:       json.RawMessage(`{"sha": "abcdef"}`),
+		body:       json.RawMessage(`{"pull_request_url": "https://github.com/some/pr"}`),
 		extensions: map[string]interface{}{},
 		want: map[string]interface{}{
-			"sha": "abcdef",
+			"pull_request_url": "https://github.com/some/pr",
 		},
 	}}
 
