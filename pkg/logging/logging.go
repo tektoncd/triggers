@@ -20,9 +20,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/tektoncd/triggers/pkg/system"
 	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/configmap"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/logging"
@@ -30,7 +28,7 @@ import (
 )
 
 // Configure logging
-func ConfigureLogging(logKeyString, configName string, stopCh <-chan struct{}, kubeClient *kubernetes.Clientset) *zap.SugaredLogger {
+func ConfigureLogging(logKeyString, configName string, stopCh <-chan struct{}, cmw *cminformer.InformedWatcher) *zap.SugaredLogger {
 	flag.Parse()
 	cm, err := configmap.Load("/etc/config-logging")
 	if err != nil {
@@ -46,11 +44,6 @@ func ConfigureLogging(logKeyString, configName string, stopCh <-chan struct{}, k
 
 	logger.Infof("Starting the Configuration %v", logKeyString)
 
-	// Watch the logging config map and dynamically update logging levels.
-	configMapWatcher := cminformer.NewInformedWatcher(kubeClient, system.GetNamespace())
-	configMapWatcher.Watch(configName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logKeyString))
-	if err = configMapWatcher.Start(stopCh); err != nil {
-		logger.Fatalf("failed to start configuration manager: %v", err)
-	}
+	cmw.Watch(configName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logKeyString))
 	return logger
 }

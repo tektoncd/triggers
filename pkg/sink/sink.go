@@ -54,7 +54,7 @@ type Sink struct {
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
 	Auth                   AuthOverride
-
+	Recorder               *Recorder
 	// listers index properties about resources
 	EventListenerLister         listers.EventListenerLister
 	TriggerLister               listers.TriggerLister

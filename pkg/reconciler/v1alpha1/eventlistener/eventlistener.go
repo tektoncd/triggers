@@ -25,6 +25,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/system"
 	"go.uber.org/zap"
@@ -39,11 +41,9 @@ import (
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/logging"
-	pkgreconciler "knative.dev/pkg/reconciler"
-
-	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
+	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 const (
@@ -53,6 +53,8 @@ const (
 	eventListenerConfigMapName = "config-logging-triggers"
 	// eventListenerServicePortName defines service port name for EventListener Service
 	eventListenerServicePortName = "http-listener"
+	// metricsServicePortName defines the service port name for metrics
+	metricsServicePortName = "http-metrics"
 	// eventListenerServiceTLSPortName defines service TLS port name for EventListener Service
 	eventListenerServiceTLSPortName = "https-listener"
 	// eventListenerContainerPort defines the port exposed by the EventListener Container
@@ -62,6 +64,9 @@ const (
 	GeneratedResourcePrefix = "el"
 
 	defaultConfig = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
+
+	// Initial hardcoding for METRICS_DOMAIN
+	triggersMetricsDomain = "tekton.dev/triggers"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -169,7 +174,15 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		Spec: corev1.ServiceSpec{
 			Selector: GenerateResourceLabels(el.Name, r.config.StaticResourceLabels),
 			Type:     serviceType,
-			Ports:    []corev1.ServicePort{servicePort},
+			Ports: []corev1.ServicePort{servicePort, {
+				Name:     metricsServicePortName,
+				Protocol: corev1.ProtocolTCP,
+				// TODO: hardcoded
+				Port: int32(9090),
+				TargetPort: intstr.IntOrString{
+					IntVal: int32(9090),
+				},
+			}},
 		},
 	}
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
@@ -232,9 +245,28 @@ func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.Sug
 	return nil
 }
 
+func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
+		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
+			logger.Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
+			return err
+		}
+	} else if err != nil {
+		logger.Errorf("Error retrieving ConfigMap %q: %s", metrics.ConfigMapName(), err)
+		return err
+	}
+	return nil
+
+}
+
 func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	// check logging config, create if it doesn't exist
 	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	if err := r.reconcileObservabilityConfig(ctx, logger, el); err != nil {
 		logger.Error(err)
 		return err
 	}
@@ -466,6 +498,12 @@ func getContainer(el *v1alpha1.EventListener, c Config) corev1.Container {
 	}, {
 		Name:  "TEKTON_INSTALL_NAMESPACE",
 		Value: system.GetNamespace(),
+	}, {
+		Name:  "CONFIG_OBSERVABILITY_NAME",
+		Value: metrics.ConfigMapName(),
+	}, {
+		Name:  "METRICS_DOMAIN",
+		Value: triggersMetricsDomain,
 	}}
 
 	certEnv := map[string]*corev1.EnvVarSource{}
@@ -661,6 +699,16 @@ func defaultLoggingConfigMap() *corev1.ConfigMap {
 		Data: map[string]string{
 			"loglevel.eventlistener": "info",
 			"zap-logger-config":      defaultConfig,
+		},
+	}
+}
+
+func defaultObservabilityConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: metrics.ConfigMapName()},
+		Data: map[string]string{
+			//TODO: Better nonempty config
+			"_example": "See tekton-pipelines namespace for valid values",
 		},
 	}
 }

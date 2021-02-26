@@ -42,6 +42,7 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	cminformer "knative.dev/pkg/configmap/informer"
+	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -251,6 +252,12 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						}, {
 							Name:  "TEKTON_INSTALL_NAMESPACE",
 							Value: "tekton-pipelines",
+						}, {
+							Name:  "CONFIG_OBSERVABILITY_NAME",
+							Value: metrics.ConfigMapName(),
+						}, {
+							Name:  "METRICS_DOMAIN",
+							Value: triggersMetricsDomain,
 						}},
 					}},
 					Volumes: []corev1.Volume{{
@@ -340,6 +347,12 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			Name:  "TEKTON_INSTALL_NAMESPACE",
 			Value: "tekton-pipelines",
 		}, {
+			Name:  "CONFIG_OBSERVABILITY_NAME",
+			Value: metrics.ConfigMapName(),
+		}, {
+			Name:  "METRICS_DOMAIN",
+			Value: triggersMetricsDomain,
+		}, {
 			Name: "TLS_CERT",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -401,6 +414,13 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 				Port:     int32(DefaultPort),
 				TargetPort: intstr.IntOrString{
 					IntVal: int32(eventListenerContainerPort),
+				},
+			}, {
+				Name:     metricsServicePortName,
+				Protocol: corev1.ProtocolTCP,
+				Port:     int32(9090),
+				TargetPort: intstr.IntOrString{
+					IntVal: int32(9090),
 				},
 			}},
 		},
@@ -710,6 +730,8 @@ func TestReconcile(t *testing.T) {
 
 	loggingConfigMap := defaultLoggingConfigMap()
 	loggingConfigMap.ObjectMeta.Namespace = namespace
+	observabilityConfigMap := defaultObservabilityConfigMap()
+	observabilityConfigMap.ObjectMeta.Namespace = namespace
 	reconcilerLoggingConfigMap := defaultLoggingConfigMap()
 	reconcilerLoggingConfigMap.ObjectMeta.Namespace = reconcilerNamespace
 
@@ -731,7 +753,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
 			Services:       []*corev1.Service{makeService()},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with additional label",
@@ -751,7 +773,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedLabels)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elServiceWithLabels},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with additional annotation",
@@ -769,7 +791,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus, withAddedAnnotations)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elServiceWithAnnotation},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with updated service account",
@@ -785,7 +807,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithUpdatedSA},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithUpdatedSA},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with added tolerations",
@@ -801,7 +823,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithTolerations},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithTolerations},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with added NodeSelector",
@@ -817,7 +839,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithNodeSelector},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithNodeSelector},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with NodePort service",
@@ -833,7 +855,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elServiceTypeNodePort},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Check that if a user manually updates the labels for a service, we revert the change.
@@ -850,7 +872,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added labels
 			Deployments:    []*appsv1.Deployment{elDeployment},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Check that if a user manually updates the annotations for a service, we do not revert the change.
@@ -867,7 +889,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elServiceWithAnnotation},
 			Deployments:    []*appsv1.Deployment{elDeployment},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Checks that EL reconciler does not overwrite NodePort set by k8s (see #167)
@@ -884,7 +906,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elServiceWithUpdatedNodePort},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with labels applied to deployment",
@@ -900,7 +922,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Check that if a user manually updates the annotations for a deployment, we do not revert the change.
@@ -917,7 +939,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Updating replicas on deployment itself is success because no replicas provided as part of eventlistener spec
@@ -934,7 +956,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with failed update to deployment replicas",
@@ -950,7 +972,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with updated config volumes",
@@ -965,7 +987,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		// Checks that we do not overwrite replicas changed on the deployment itself when replicas provided as part of eventlistener spec
@@ -982,7 +1004,7 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1alpha1.EventListener{elWithReplicas},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicasNotConsidered},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name: "eventlistener with kubernetes resource",
@@ -990,12 +1012,12 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResource},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResource},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResource},
 			Services:       []*corev1.Service{elServiceTypeNodePort},
 		},
@@ -1005,12 +1027,12 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResourceObjectMeta},
 			Services:       []*corev1.Service{elService},
 		},
@@ -1020,12 +1042,12 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentWithTLSConnection},
 			Services:       []*corev1.Service{elServiceWithTLSConnection},
 		},
@@ -1036,14 +1058,14 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
 		name:   "eventlistener with SetSecurityContext false",
@@ -1053,14 +1075,14 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
 			Services:       []*corev1.Service{elService},
-			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	},
 		{
@@ -1071,14 +1093,14 @@ func TestReconcile(t *testing.T) {
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{elWithStatus},
 				Deployments:    []*appsv1.Deployment{elDeployment},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			},
 			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1alpha1.EventListener{elWithPortSet},
 				Deployments:    []*appsv1.Deployment{elDeployment},
 				Services:       []*corev1.Service{elServiceWithPortSet},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			},
 		},
 	}

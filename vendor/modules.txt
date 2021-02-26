@@ -318,6 +318,7 @@ github.com/tidwall/pretty
 ## explicit
 github.com/tidwall/sjson
 # go.opencensus.io v0.22.5
+## explicit
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
