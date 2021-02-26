@@ -1188,6 +1188,13 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 					},
 				},
 			}, {
+				CEL: &triggersv1.CELInterceptor{
+					Overlays: []triggersv1.CELOverlay{{
+						Key:        "something",
+						Expression: "body.pull_request_url",
+					}},
+				},
+			}, {
 				Webhook: &triggersv1.WebhookInterceptor{
 					ObjectRef: &corev1.ObjectReference{
 						APIVersion: "v1",
@@ -1221,6 +1228,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				"pull_request_body": "key",
 				"pull_request_url":  "https://github.com/some/pr",
 			},
+			"something": "https://github.com/some/pr",
 		},
 	}
 	var gotBody map[string]interface{}
@@ -1247,6 +1255,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		"add_pr_body": map[string]interface{}{
 			"pull_request_url": "https://github.com/some/pr",
 		},
+		"something": "https://github.com/some/pr",
 	}
 
 	if diff := cmp.Diff(iresp.Extensions, wantExtensions); diff != "" {
