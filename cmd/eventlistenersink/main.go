@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
 	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -113,6 +114,17 @@ func main() {
 		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
 		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
 		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
+	}
+	eventListenerBackoff := wait.Backoff{
+		Duration: 100 * time.Millisecond,
+		Factor:   2.5,
+		Jitter:   0.3,
+		Steps:    10,
+		Cap:      5 * time.Second,
+	}
+	err = r.WaitForEventListener(eventListenerBackoff)
+	if err != nil {
+		panic(err)
 	}
 
 	// Listen and serve

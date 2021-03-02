@@ -20,7 +20,23 @@ import (
 	"flag"
 	"strconv"
 	"testing"
+	"time"
+
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
+	"github.com/tektoncd/triggers/test"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
+
+var testBackoff = wait.Backoff{
+	Duration: 50 * time.Millisecond,
+	Factor:   1.0,
+	Jitter:   0.1,
+	Steps:    1,
+	Cap:      100 * time.Millisecond,
+}
 
 func Test_GetArgs(t *testing.T) {
 	if err := flag.Set(name, "elname"); err != nil {
@@ -99,5 +115,49 @@ func Test_GetArgs_error(t *testing.T) {
 				t.Errorf("GetArgs() did not return error when expected; sinkArgs: %v", sinkArgs)
 			}
 		})
+	}
+}
+
+func TestWaitForEventlistener(t *testing.T) {
+	eventListenerName := "my-eventlistener"
+	namespace := "my-namespace"
+	eventListener := &triggersv1.EventListener{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eventListenerName,
+			Namespace: namespace,
+		},
+		Spec: triggersv1.EventListenerSpec{},
+	}
+	ctx, _ := rtesting.SetupFakeContext(t)
+	test.SeedResources(t, ctx, test.Resources{EventListeners: []*triggersv1.EventListener{eventListener}})
+	r := Sink{
+		EventListenerName:      eventListenerName,
+		EventListenerNamespace: namespace,
+		EventListenerLister:    eventlistenerinformer.Get(ctx).Lister(),
+	}
+
+	err := r.WaitForEventListener(testBackoff)
+	if err != nil {
+		t.Fatalf("Expected no error, received %s", err)
+	}
+}
+
+func TestWaitForEventlistener_Fatal(t *testing.T) {
+	eventListenerName := "my-eventlistener"
+	namespace := "my-namespace"
+	ctx, _ := rtesting.SetupFakeContext(t)
+	test.SeedResources(t, ctx, test.Resources{EventListeners: []*triggersv1.EventListener{}})
+	r := Sink{
+		EventListenerName:      eventListenerName,
+		EventListenerNamespace: namespace,
+		EventListenerLister:    eventlistenerinformer.Get(ctx).Lister(),
+	}
+	// will fail
+	err := r.WaitForEventListener(testBackoff)
+	if err == nil {
+		t.Fatalf("expected eventlistener wait to fail, instead succeeded")
+	}
+	if err.Error() != "Unable to retrieve EventListener my-eventlistener in Namespace my-namespace: timed out waiting for the condition" {
+		t.Fatalf("got incorrect error message, received: %s", err)
 	}
 }
