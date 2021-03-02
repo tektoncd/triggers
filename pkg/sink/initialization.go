@@ -18,10 +18,13 @@ package sink
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"golang.org/x/xerrors"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	discoveryclient "k8s.io/client-go/discovery"
 	kubeclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -132,4 +135,20 @@ func ConfigureClients(clusterConfig *rest.Config) (Clients, error) {
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
 	}, nil
+}
+
+// WaitForEventListener waits for the Kubernetes eventlistener configuration
+func (r *Sink) WaitForEventListener(backoff wait.Backoff) error {
+
+	if err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		if _, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName); errors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return fmt.Errorf("Unable to retrieve EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+	}
+	return nil
 }
