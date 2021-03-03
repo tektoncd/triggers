@@ -35,7 +35,7 @@ To get started with Tekton Triggers, see the following:
 
 * [Overview of Tekton Triggers](./docs/README.md)
 * [Setting Up Tekton Triggers](./docs/install.md)
-* [Getting Started with Tekton Triggers](.docs/getting-started/README.md)
+* [Getting Started with Tekton Triggers](./docs/getting-started/README.md)
 * [Tekton Triggers code examples](./examples/README.md)
 
 The "Getting Started with Tekton Triggers" guide walks you through setting up an end-to-end image building solution triggered via GitHub's `push` events.
