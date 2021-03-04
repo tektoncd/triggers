@@ -46,7 +46,7 @@ the functionality of Tekton Pipelines to support events:
    runs before the `TriggerBinding` enabling you to perform payload filtering, verification (using a secret), transformation, define and test trigger conditions, and other
    useful processing. Once the event data passes through an interceptor, it then goes to the `Trigger` before you pass the payload data to the `TriggerBinding`.
 
-   **Note:** `Interceptors` are currently part of `EventListeners` but are being converted to a standalond CRD in [PR 960](https://github.com/tektoncd/triggers/pull/960). 
+   **Note:** `Interceptors` are currently part of the `EventListener` API but are being converted to a standalone CRD in [PR 960](https://github.com/tektoncd/triggers/pull/960). 
 
 
 ## What can I do with Triggers?
