@@ -124,7 +124,7 @@ func main() {
 	}
 	err = r.WaitForEventListener(eventListenerBackoff)
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 
 	// Listen and serve
