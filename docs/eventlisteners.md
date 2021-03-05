@@ -152,9 +152,7 @@ and used if present in place of the `EventListener` service account when creatin
 ```yaml
 triggers:
   - name: trigger-1
-    serviceAccount: 
-      name: trigger-1-sa
-      namespace: event-listener-namespace
+    serviceAccountName: trigger-1-sa
     interceptors:
       - github:
           eventTypes: ["pull_request"]
