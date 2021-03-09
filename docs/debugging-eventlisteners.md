@@ -10,7 +10,7 @@ From the command-line, the easiest way to get the logs is:
 ```shell
 $ tkn eventlistener logs
 ```
-See [here](https://github.com/tektoncd/cli/blob/master/docs/cmd/tkn_eventlistener_logs.md) for more uses of the config.
+See [here](https://github.com/tektoncd/cli/blob/main/docs/cmd/tkn_eventlistener_logs.md) for more uses of the config.
 
 Alternatively, you can get them with kubectl:
 

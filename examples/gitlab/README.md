@@ -19,7 +19,7 @@ Creates an EventListener that listens for GitLab webhook events.
    ```
 
    **Note**: Instead of port forwarding, you can set the
-   [`serviceType`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#serviceType)
+   [`serviceType`](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md#serviceType)
    to `LoadBalancer` to expose the EventListener with a public IP.
 
 1. Test by sending the sample payload.
