@@ -10,9 +10,6 @@ spec:
         spec:
           containers:
           - name: hello
-            image: busybox
-            args:
-              - wget
-              - --spider
-              - el-cron-listener.default.svc.cluster.local:8080
+            image: curlimages/curl
+            args: ["curl", "-X", "POST" , "--data" ,"{}", "el-cron-listener.default.svc.cluster.local:8080" ]
           restartPolicy: Never
