@@ -6,15 +6,15 @@ weight: 2
 -->
 # Setting Up Tekton Triggers
 
-Follow the steps below to set up an official release of Tekton Triggers on your Kubernetes cluster. 
+Follow the steps below to set up an official release of Tekton Triggers on your Kubernetes cluster.
 If you want to test Triggers from `HEAD`, see the
-[Tekton Developer Guide](https://github.com/tektoncd/triggers/blob/master/DEVELOPMENT.md#install-triggers).
+[Tekton Developer Guide](https://github.com/tektoncd/triggers/blob/main/DEVELOPMENT.md#install-triggers).
 
 ## Prerequisites
 
 You must satisfy the following prerequisties to set up Tekton Triggers:
 
-* You must have a Kubernetes Cluster running Kubernetes 1.18 or above. 
+* You must have a Kubernetes Cluster running Kubernetes 1.18 or above.
 
   You can use [`kind`](https://kind.sigs.k8s.io/) to quickly create a local cluster with RBAC enabled for testing purposes:
 
@@ -25,7 +25,7 @@ You must satisfy the following prerequisties to set up Tekton Triggers:
 * You must have Tekton Pipelines installed on your Kubernetes cluster.
 
   For instructions, see [Installing Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/install.md).
-  
+
 * You must grant the `cluster-admin` privilege to the user with which you installed Tekton Pipelines.
 
   For instructions, see [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control).
@@ -64,4 +64,4 @@ You must satisfy the following prerequisties to set up Tekton Triggers:
 You are now ready to configure Tekton Triggers for your workflow. For instructions, see the following:
 
 - [Tekton Triggers Getting Started Guide](./getting-started/)
-- [Tekton Triggers code examples](https://github.com/tektoncd/triggers/tree/master/examples)
+- [Tekton Triggers code examples](https://github.com/tektoncd/triggers/tree/main/examples)
