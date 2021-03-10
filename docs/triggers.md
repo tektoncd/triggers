@@ -4,33 +4,27 @@ linkTitle: "Trigger"
 weight: 9
 ---
 -->
-# Triggers
+# `Triggers`
 
-A `Trigger` is resource that combines `TriggerTemplate`, `TriggerBindings` and `interceptors`. The `Trigger` is processed by EventListener which referenced it when it receives an incoming.
+A `Trigger` specifies what happens when the [`EventListener`](./eventlisteners.md) detects an event. A `Trigger` specifies a [`TriggerTemplate`](./triggertemplates.md),
+a [`TriggerBinding`](./triggerbindings.md), and optionally an [`Interceptor`](./eventlisteners.md#interceptors).
 
-- [Triggers](#triggers)
-  - [Syntax](#syntax)
-    - [template](#template)
+## Structure of a `Trigger`
 
-## Syntax
-
-To define a configuration file for an `Trigger` resource, you can specify
-the following fields:
+When creating a `Trigger` definition you must specify the required fields and can also specify any of the optional fields listed below:
 
 - Required:
-  - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `triggers.tekton.dev/v1alpha1`.
-  - [`kind`][kubernetes-overview] - Specifies the `Trigger` resource
-    object.
-  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
-    `Trigger` resource object, for example a `name`.
-  - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    your Trigger resource object. The spec include:
-    - [`bindings`] - (Optional) A list of bindings to use. Can either be a reference to existing `TriggerBinding` resources or embedded name/value pairs.
-    - [`template`] - Either a reference to a TriggerTemplate object or an embedded TriggerTemplate spec.
-    - [`interceptors`](./eventlisteners.md#interceptors) - (Optional) list of interceptors to use
-    - [`serviceAccountName`] - (Optional) Specifies the ServiceAccount provided to EventListener by Trigger to create resources
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version; for example `triggers.tekton.dev/v1alpha1`.
+  - [`kind`][kubernetes-overview] - Specifies that this resource object is a `Trigger` object.
+  - [`metadata`][kubernetes-overview] - Specifies metadata to uniquely identify this `Trigger` object; for example a `name`.
+  - [`spec`][kubernetes-overview] - Specifies the configuration information for this Trigger object, including:
+    - [`bindings`] - (Optional) Specifies a list of field bindings; each binding can either reference an existing `TriggerBinding` or embedded a `TriggerBinding`
+                     definition using a `name`/`value` pair.
+    - [`template`] - Specifies the corresponding `TriggerTemplate` either as a reference as an embedded `TriggerTemplate` definition.
+    - [`interceptors`] - (Optional) specifies one or more `Interceptors` that will process the payload data before passing it to the `TriggerTemplate`.
+    - [`serviceAccountName`] - (Optional) Specifies the `ServiceAccount` to supply to the `EventListener` to instantiate/execute the target resources.
 
+Below is an example `Trigger` definition:
 
 <!-- FILE: examples/triggers/trigger.yaml -->
 ```YAML
@@ -51,11 +45,18 @@ spec:
     ref: pipeline-template
 ```
 
-### template
-The `template` field inside a `Trigger` can either point to an existing `TriggerTemplate` object (using `name`) or the template spec can be embedded inside the Trigger using the `spec` field:
+## Specifying the corresponding `TriggerTemplate`
+
+In the `template` field,  you can do one of the following:
+
+* Use the `name` parameter to reference an external `TriggerTemplate` object, or
+
+* Use the `spec` parameter to directly embed a `TriggerTemplate` definition.
+
+For example:
 
 ```yaml
-# Embedded Template Spec
+# Example: embedded TriggerTemplate definition
 triggers:
   - name: "my-trigger"
     template:
