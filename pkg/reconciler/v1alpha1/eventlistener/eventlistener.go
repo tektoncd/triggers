@@ -158,7 +158,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	}
 
 	// TODO(dibyom): We should exclude propagation of some annotations such as `kubernetes.io/last-applied-revision`
-	if !reflect.DeepEqual(existing.Annotations, dynamicduck.MergeMaps(existing.Annotations, desired.Annotations)) {
+	if !reflect.DeepEqual(existing.Annotations, mergeMaps(existing.Annotations, desired.Annotations)) {
 		updated = true
 		existing.Annotations = desired.Annotations
 	}
@@ -255,6 +255,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	}
 
 	container := getContainer(el, r.config, nil)
+	container.VolumeMounts = []corev1.VolumeMount{{
+		Name:      "config-logging",
+		MountPath: "/etc/config-logging",
+	}}
 	container.Env = append(container.Env, corev1.EnvVar{
 		Name: "SYSTEM_NAMESPACE",
 		ValueFrom: &corev1.EnvVarSource{
@@ -406,6 +410,11 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	}
 
 	container := getContainer(el, r.config, original)
+	container.VolumeMounts = []corev1.VolumeMount{{
+		Name:      "config-logging",
+		MountPath: "/etc/config-logging",
+		ReadOnly:  true,
+	}}
 
 	container.Env = append(container.Env, corev1.EnvVar{
 		Name: "SYSTEM_NAMESPACE",
@@ -414,9 +423,9 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		Value: el.Namespace,
 	})
 
-	podlabels := dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
+	podlabels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
 
-	podlabels = dynamicduck.MergeMaps(podlabels, customObjectData.Labels)
+	podlabels = mergeMaps(podlabels, customObjectData.Labels)
 
 	original.Labels = podlabels
 	original.Annotations = customObjectData.Annotations
@@ -471,7 +480,103 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Get(ctx, data.GetName(), metav1.GetOptions{})
 	switch {
 	case err == nil:
-		if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
+		originalObject := &duckv1.WithPod{}
+		existingObject := &duckv1.WithPod{}
+		originalData, e := data.MarshalJSON()
+		if e != nil {
+			return e
+		}
+		if e := json.Unmarshal(originalData, &originalObject); e != nil {
+			return e
+		}
+		updatedData, e := existingCustomObject.MarshalJSON()
+		if e != nil {
+			return e
+		}
+		if e := json.Unmarshal(updatedData, &existingObject); e != nil {
+			return e
+		}
+		// Determine if reconciliation has to occur
+		updated := reconcileObjectMeta(&existingObject.ObjectMeta, originalObject.ObjectMeta)
+		if !reflect.DeepEqual(existingObject.Spec.Template.Name, originalObject.Spec.Template.Name) {
+			existingObject.Spec.Template.Name = originalObject.Spec.Template.Name
+			updated = true
+		}
+		if !reflect.DeepEqual(existingObject.Spec.Template.Labels, originalObject.Spec.Template.Labels) {
+			existingObject.Spec.Template.Labels = originalObject.Spec.Template.Labels
+			updated = true
+		}
+		if !reflect.DeepEqual(existingObject.Spec.Template.Annotations, originalObject.Spec.Template.Annotations) {
+			existingObject.Spec.Template.Annotations = originalObject.Spec.Template.Annotations
+			updated = true
+		}
+		if existingObject.Spec.Template.Spec.ServiceAccountName != originalObject.Spec.Template.Spec.ServiceAccountName {
+			existingObject.Spec.Template.Spec.ServiceAccountName = originalObject.Spec.Template.Spec.ServiceAccountName
+			updated = true
+		}
+		if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Tolerations, originalObject.Spec.Template.Spec.Tolerations) {
+			existingObject.Spec.Template.Spec.Tolerations = originalObject.Spec.Template.Spec.Tolerations
+			updated = true
+		}
+		if !reflect.DeepEqual(existingObject.Spec.Template.Spec.NodeSelector, originalObject.Spec.Template.Spec.NodeSelector) {
+			existingObject.Spec.Template.Spec.NodeSelector = originalObject.Spec.Template.Spec.NodeSelector
+			updated = true
+		}
+		if len(existingObject.Spec.Template.Spec.Containers) == 0 ||
+			len(existingObject.Spec.Template.Spec.Containers) > 1 {
+			existingObject.Spec.Template.Spec.Containers = []corev1.Container{container}
+			updated = true
+		} else {
+			if existingObject.Spec.Template.Spec.Containers[0].Name != container.Name {
+				existingObject.Spec.Template.Spec.Containers[0].Name = container.Name
+				updated = true
+			}
+			if existingObject.Spec.Template.Spec.Containers[0].Image != container.Image {
+				existingObject.Spec.Template.Spec.Containers[0].Image = container.Image
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].Ports, container.Ports) {
+				existingObject.Spec.Template.Spec.Containers[0].Ports = container.Ports
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].Args, container.Args) {
+				existingObject.Spec.Template.Spec.Containers[0].Args = container.Args
+				updated = true
+			}
+			if existingObject.Spec.Template.Spec.Containers[0].Command != nil {
+				existingObject.Spec.Template.Spec.Containers[0].Command = nil
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].Resources, container.Resources) {
+				existingObject.Spec.Template.Spec.Containers[0].Resources = container.Resources
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].Env, container.Env) {
+				existingObject.Spec.Template.Spec.Containers[0].Env = container.Env
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].VolumeMounts, originalObject.Spec.Template.Spec.Containers[0].VolumeMounts) {
+				existingObject.Spec.Template.Spec.Containers[0].VolumeMounts = container.VolumeMounts
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Volumes, originalObject.Spec.Template.Spec.Volumes) {
+				existingObject.Spec.Template.Spec.Volumes = originalObject.Spec.Template.Spec.Volumes
+				updated = true
+			}
+		}
+
+		//if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
+		if updated {
+			existingMarshaledData, err := json.Marshal(existingObject)
+			if err != nil {
+				logger.Errorf("failed to marshal custom object", err)
+				return err
+			}
+			existingCustomObject = new(unstructured.Unstructured)
+			if err := existingCustomObject.UnmarshalJSON(existingMarshaledData); err != nil {
+				logger.Errorf("failed to unmarshal to unstructured object", err)
+				return err
+			}
 			if _, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
 				logger.Errorf("error updating to eventListener custom object: %v", err)
 				return err
@@ -517,7 +622,7 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 		serviceAccountName                   string
 		securityContext                      corev1.PodSecurityContext
 	)
-	podlabels = dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
+	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
 
 	serviceAccountName = el.Spec.ServiceAccountName
 
@@ -533,6 +638,10 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 	}}
 
 	container := getContainer(el, c, nil)
+	container.VolumeMounts = []corev1.VolumeMount{{
+		Name:      "config-logging",
+		MountPath: "/etc/config-logging",
+	}}
 	container.Env = append(container.Env, corev1.EnvVar{
 		Name: "SYSTEM_NAMESPACE",
 		ValueFrom: &corev1.EnvVarSource{
@@ -565,7 +674,7 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
 		}
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = dynamicduck.MergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
 	}
 
 	if *c.SetSecurityContext {
@@ -656,10 +765,6 @@ func addCertsForSecureConnection(container corev1.Container, c Config) corev1.Co
 
 func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
 	var resources corev1.ResourceRequirements
-	vMount := []corev1.VolumeMount{{
-		Name:      "config-logging",
-		MountPath: "/etc/config-logging",
-	}}
 
 	env := []corev1.EnvVar{{
 		Name:  "TEKTON_INSTALL_NAMESPACE",
@@ -705,8 +810,7 @@ func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) cor
 			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 		},
-		VolumeMounts: vMount,
-		Env:          env,
+		Env: env,
 	}
 }
 
@@ -773,7 +877,7 @@ func generateObjectMeta(el *v1alpha1.EventListener, staticResourceLabels map[str
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,
 		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
-		Labels:          dynamicduck.MergeMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
+		Labels:          mergeMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
 		Annotations:     el.Annotations,
 	}
 }
@@ -803,4 +907,17 @@ func defaultLoggingConfigMap() *corev1.ConfigMap {
 			"zap-logger-config":      defaultConfig,
 		},
 	}
+}
+
+// mergeMaps merges the values in the passed maps into a new map.
+// Values within m2 potentially clobber m1 values.
+func mergeMaps(m1, m2 map[string]string) map[string]string {
+	merged := make(map[string]string, len(m1)+len(m2))
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for k, v := range m2 {
+		merged[k] = v
+	}
+	return merged
 }
