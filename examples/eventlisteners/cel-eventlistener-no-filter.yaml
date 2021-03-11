@@ -9,7 +9,7 @@ spec:
       interceptors:
         - cel:
             overlays:
-            - key: extensions.truncated_sha
+            - key: truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - ref: pipeline-binding
