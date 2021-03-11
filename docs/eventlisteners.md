@@ -667,7 +667,7 @@ spec:
       interceptors:
         - cel:
             overlays:
-            - key: extensions.truncated_sha
+            - key: truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
       bindings:
       - ref: pipeline-binding
@@ -685,9 +685,9 @@ top-level `extensions` field  and are accessible by TriggerBindings.
       interceptors:
         - cel:
             overlays:
-            - key: extensions.truncated_sha
+            - key: truncated_sha
               expression: "body.pull_request.head.sha.truncate(7)"
-            - key: extensions.branch_name
+            - key: branch_name
               expression: "body.ref.split('/')[2]"
 ```
 
