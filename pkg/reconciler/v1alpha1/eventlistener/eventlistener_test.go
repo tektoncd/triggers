@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/system"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -422,6 +421,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "config-logging",
 							MountPath: "/etc/config-logging",
+							ReadOnly:  true,
 						}},
 						Env: []corev1.EnvVar{{
 							Name:  "TEKTON_INSTALL_NAMESPACE",
@@ -740,6 +740,22 @@ func TestReconcile(t *testing.T) {
 			}),
 		}
 	})
+	elWithCustomResourceForAnnotation := makeEL(withStatus, withKnativeStatus, func(el *v1alpha1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1alpha1.CustomResource{
+			RawExtension: test.RawExtension(t, duckv1.WithPod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "serving.knative.dev/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: generatedResourceName,
+					Annotations: map[string]string{
+						"key": "value",
+					},
+				},
+			}),
+		}
+	})
 
 	elWithTLSConnection := makeEL(withStatus, withTLSPort, func(el *v1alpha1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
@@ -794,9 +810,9 @@ func TestReconcile(t *testing.T) {
 
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
-		d.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
+		d.Labels = mergeMaps(updateLabel, generatedLabels)
 		d.Spec.Selector.MatchLabels = generatedLabels
-		d.Spec.Template.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
+		d.Spec.Template.Labels = mergeMaps(updateLabel, generatedLabels)
 	})
 
 	elDeploymentWithAnnotations := makeDeployment(func(d *appsv1.Deployment) {
@@ -873,6 +889,11 @@ func TestReconcile(t *testing.T) {
 	imageForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Spec.Template.Spec.Containers[0].Image = DefaultImage
 	})
+	annotationForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
+		data.Annotations = map[string]string{
+			"key": "value",
+		}
+	})
 	envForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
 			Name:  "TEKTON_INSTALL_NAMESPACE",
@@ -894,7 +915,7 @@ func TestReconcile(t *testing.T) {
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
-		s.Labels = dynamicduck.MergeMaps(updateLabel, generatedLabels)
+		s.Labels = mergeMaps(updateLabel, generatedLabels)
 		s.Spec.Selector = generatedLabels
 	})
 
@@ -1291,66 +1312,78 @@ func TestReconcile(t *testing.T) {
 			Services:       []*corev1.Service{elServiceWithPortSet},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 		},
+	}, {
+		name: "eventlistener with added env for custome resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{envForCustomResource},
+		},
+	}, {
+		name: "eventlistener with added NodeSelector for custom resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+		},
+	}, {
+		name: "eventlistener with added Args for custom resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{argsForCustomResource},
+		},
+	}, {
+		name: "eventlistener with added Image for custom resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{imageForCustomResource},
+		},
+	}, {
+		name: "eventlistener with annotation for custom resource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForAnnotation},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForAnnotation},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{annotationForCustomResource},
+		},
 	},
-		{
-			name: "eventlistener with added env for custome resource",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				WithPod:        []*duckv1.WithPod{envForCustomResource},
-			},
-		},
-		{
-			name: "eventlistener with added NodeSelector for custom resource",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
-			},
-		}, {
-			name: "eventlistener with added Args for custom resource",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				WithPod:        []*duckv1.WithPod{argsForCustomResource},
-			},
-		}, {
-			name: "eventlistener with added Image for custom resource",
-			key:  reconcileKey,
-			startResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-			},
-			endResources: test.Resources{
-				Namespaces:     []*corev1.Namespace{namespaceResource},
-				EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
-				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
-				WithPod:        []*duckv1.WithPod{imageForCustomResource},
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1759,7 +1792,7 @@ func TestGenerateResourceLabels(t *testing.T) {
 		"app.kubernetes.io/part-of":    "Triggers",
 	}
 
-	expectedLabels := dynamicduck.MergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	expectedLabels := mergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
 	actualLabels := GenerateResourceLabels(eventListenerName, staticResourceLabels)
 	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
 		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
@@ -1827,7 +1860,7 @@ func Test_generateObjectMeta(t *testing.T) {
 				Controller:         &isController,
 				BlockOwnerDeletion: &blockOwnerDeletion,
 			}},
-			Labels: dynamicduck.MergeMaps(map[string]string{"k": "v"}, generatedLabels),
+			Labels: mergeMaps(map[string]string{"k": "v"}, generatedLabels),
 		},
 	}, {
 		name: "EventListener with Annotation",
