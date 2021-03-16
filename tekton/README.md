@@ -24,10 +24,3 @@ To start from scratch and use these Pipelines and Tasks:
 ## Create an official release
 
 To create an official release, follows the steps in the [release-cheat-sheet](./release-cheat-sheet.md)
-
-## Supporting scripts and images
-
-Some supporting scripts have been written using Python 2.7:
-
-- [koparse](./koparse) - Contains logic for parsing `release.yaml` files created
-  by `ko`
