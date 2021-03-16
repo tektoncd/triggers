@@ -26,8 +26,8 @@ import (
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	corev1 "k8s.io/api/core/v1"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"go.uber.org/zap"
@@ -61,7 +61,7 @@ func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string
 }
 
 func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, error) {
-	u, err := getURI(w.Webhook.ObjectRef, w.TriggerNamespace) // TODO: Cache this result or do this on initialization
+	u, err := getURI(w.Webhook, w.TriggerNamespace) // TODO: Cache this result or do this on initialization
 	if err != nil {
 		return nil, err
 	}
@@ -85,17 +85,21 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 }
 
 // getURI retrieves the ObjectReference to URI.
-func getURI(objRef *corev1.ObjectReference, ns string) (*url.URL, error) {
+func getURI(webhook *v1alpha1.WebhookInterceptor, ns string) (*url.URL, error) {
 	// TODO: This should work for any Addressable.
 	// Use something like https://github.com/knative/eventing-contrib/blob/7c0fc5cfa8bd44da0767d9e7b250264ea6eb7d8d/pkg/controller/sinks/sinks.go#L32
-	if objRef.Kind == "Service" && objRef.APIVersion == "v1" {
+	switch {
+	case webhook.URL != nil:
+		return webhook.URL.URL(), nil
+	case webhook.ObjectRef.Kind == "Service" && webhook.ObjectRef.APIVersion == "v1":
 		// TODO: Also assuming port 80 and http here. Use DNS/or the env vars?
-		if objRef.Namespace != "" {
-			ns = objRef.Namespace
+		if webhook.ObjectRef.Namespace != "" {
+			ns = webhook.ObjectRef.Namespace
 		}
-		return url.Parse(fmt.Sprintf("http://%s.%s.svc/", objRef.Name, ns))
+		return url.Parse(fmt.Sprintf("http://%s.%s.svc/", webhook.ObjectRef.Name, ns))
+	default:
+		return nil, errors.New("invalid objRef")
 	}
-	return nil, errors.New("Invalid objRef")
 }
 
 func addInterceptorHeaders(header http.Header, headerParams []pipelinev1.Param) {
