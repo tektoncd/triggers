@@ -1146,6 +1146,11 @@ func (in *WebhookInterceptor) DeepCopyInto(out *WebhookInterceptor) {
 		*out = new(v1.ObjectReference)
 		**out = **in
 	}
+	if in.URL != nil {
+		in, out := &in.URL, &out.URL
+		*out = new(apis.URL)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Header != nil {
 		in, out := &in.Header, &out.Header
 		*out = make([]v1beta1.Param, len(*in))

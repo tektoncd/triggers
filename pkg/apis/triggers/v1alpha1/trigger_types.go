@@ -20,6 +20,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // TriggerSpec represents a connection between TriggerSpecBinding,
@@ -95,6 +96,8 @@ type WebhookInterceptor struct {
 	// name to use as the EventInterceptor. Either objectRef or url can be specified
 	// +optional
 	ObjectRef *corev1.ObjectReference `json:"objectRef,omitempty"`
+	// +optional
+	URL *apis.URL `json:"url,omitempty"`
 	// Header is a group of key-value pairs that can be appended to the
 	// interceptor request headers. This allows the interceptor to make
 	// decisions specific to an EventListenerTrigger.
