@@ -49,6 +49,10 @@ the functionality of Tekton Pipelines to support events:
    **Note:** `Interceptors` are currently part of `EventListeners` but are being converted to a standalond CRD in [PR 960](https://github.com/tektoncd/triggers/pull/960). 
 
 
+## Example Workflow
+![](../images/SequenceDiagram.png)
+
+
 ## What can I do with Triggers?
 
 As an example, you can implement the following CI/CD workflow with Triggers:

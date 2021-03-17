@@ -1,0 +1,30 @@
+@startuml tekton-triggers
+autonumber " ."
+hide footbox
+skinparam monochrome true
+
+actor Developer
+participant "Repository"
+
+box "EventListener"
+    participant "Service"
+    participant "TriggerBinding"
+    participant "TriggerTemplate"
+end box
+
+participant "Tekton"
+
+Developer -> "Repository": Commit Code
+"Repository" -> "Repository": Trigger Webhook
+"Repository" -> "Service": POST Payload
+
+"Service" -> "TriggerBinding": Forward Event
+
+activate "TriggerBinding"
+"TriggerBinding" -> "TriggerBinding": Extract Fields
+"TriggerBinding" -> "TriggerTemplate": Forward Fields
+deactivate "TriggerBinding"
+
+activate "TriggerTemplate"
+"TriggerTemplate" -> "Tekton": Invoke Resource
+deactivate "TriggerTemplate"
