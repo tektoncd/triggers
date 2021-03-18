@@ -109,11 +109,14 @@ the triggers repo, a terminal window and a text editor.
     ```bash
     # Test latest
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.6.1/release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/release.yaml
+    # NOTE: Some older releases might not have a separate interceptors.yaml as they used to be bundled in release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/interceptors.yaml
     ```
 
 14. Announce the release in Slack channels #general and #triggers.
