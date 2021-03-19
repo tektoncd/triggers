@@ -154,7 +154,7 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-clusterrole"},
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{triggersv1.GroupName},
-				Resources: []string{"clustertriggerbindings"},
+				Resources: []string{"clustertriggerbindings", "clusterinterceptors"},
 				Verbs:     []string{"get", "list", "watch"},
 			}},
 		}, metav1.CreateOptions{},
