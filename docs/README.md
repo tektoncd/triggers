@@ -70,3 +70,4 @@ To get started with Tekton Triggers, see the following:
 *   [Setting Up Tekton Triggers](https://github.com/tektoncd/triggers/blob/main/docs/install.md)
 *   [Getting Started with Tekton Triggers](https://github.com/tektoncd/triggers/blob/main/docs/getting-started/README.md)
 *   [Tekton Triggers code examples](https://github.com/tektoncd/triggers/tree/main/examples)
+*   [Troubleshooting Tekton Triggers](https://github.com/tektoncd/triggers/blob/main/docs/troubleshooting.md)
