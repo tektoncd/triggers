@@ -35,7 +35,7 @@ header "Running ingress tests"
 
 # Run the integration tests
 header "Running Go e2e tests"
-go_test_e2e -run="TestEventListenerCreate" -count=10 -timeout=20m ./test || failed=1
+go_test_e2e -run="TestEventListenerCreate" -timeout=20m ./test || failed=1
 #go_test_e2e -timeout=20m ./cmd/... || failed=1
 
 (( failed )) && fail_test
