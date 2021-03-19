@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
 	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -85,6 +84,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	// Create a sharedInformer factory so that we can cache API server calls
 	factory := externalversions.NewSharedInformerFactoryWithOptions(sinkClients.TriggersClient,
 		30*time.Second, externalversions.WithNamespace(sinkArgs.ElNamespace))
 	if sinkArgs.IsMultiNS {
@@ -92,6 +92,28 @@ func main() {
 			30*time.Second)
 	}
 
+	// Create EventListener Sink
+	r := sink.Sink{
+		KubeClientSet:          kubeClient,
+		DiscoveryClient:        sinkClients.DiscoveryClient,
+		DynamicClient:          dynamicCS,
+		TriggersClient:         sinkClients.TriggersClient,
+		HTTPClient:             http.DefaultClient,
+		EventListenerName:      sinkArgs.ElName,
+		EventListenerNamespace: sinkArgs.ElNamespace,
+		Logger:                 logger,
+		Auth:                   sink.DefaultAuthOverride{},
+		// Register all the listers we'll need
+		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
+		TriggerLister:               factory.Triggers().V1alpha1().Triggers().Lister(),
+		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
+		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
+		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
+		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
+	}
+
+	// Start and sync the informers before we start taking traffic
+	// TODO: maybe we should have a timeout here?
 	factory.Start(ctx.Done())
 	res := factory.WaitForCacheSync(ctx.Done())
 	for r, hasSynced := range res {
@@ -100,36 +122,6 @@ func main() {
 		}
 	}
 	logger.Infof("Synced informers. Starting EventListener")
-
-	// Create EventListener Sink
-	r := sink.Sink{
-		KubeClientSet:               kubeClient,
-		DiscoveryClient:             sinkClients.DiscoveryClient,
-		DynamicClient:               dynamicCS,
-		TriggersClient:              sinkClients.TriggersClient,
-		HTTPClient:                  http.DefaultClient,
-		EventListenerName:           sinkArgs.ElName,
-		EventListenerNamespace:      sinkArgs.ElNamespace,
-		Logger:                      logger,
-		Auth:                        sink.DefaultAuthOverride{},
-		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
-		TriggerLister:               factory.Triggers().V1alpha1().Triggers().Lister(),
-		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
-		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
-		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
-		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
-	}
-	eventListenerBackoff := wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   2.5,
-		Jitter:   0.3,
-		Steps:    10,
-		Cap:      5 * time.Second,
-	}
-	err = r.WaitForEventListener(eventListenerBackoff)
-	if err != nil {
-		logger.Fatal(err)
-	}
 
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
