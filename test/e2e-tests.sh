@@ -28,15 +28,15 @@ install_pipeline_crd
 install_triggers_crd
 
 header "Running yaml tests"
-#$(dirname $0)/e2e-tests-yaml.sh || failed=1
+$(dirname $0)/e2e-tests-yaml.sh || failed=1
 
 header "Running ingress tests"
-#$(dirname $0)/e2e-tests-ingress.sh || failed=1
+$(dirname $0)/e2e-tests-ingress.sh || failed=1
 
 # Run the integration tests
 header "Running Go e2e tests"
 go_test_e2e -run="Test10" -timeout=20m ./test || failed=1
-#go_test_e2e -timeout=20m ./cmd/... || failed=1
+go_test_e2e -timeout=20m ./cmd/... || failed=1
 
 (( failed )) && fail_test
 success

@@ -125,7 +125,6 @@ func impersonateRBAC(t *testing.T, sa, namespace string, kubeClient kubernetes.I
 
 func TestEventListenerCreate(t *testing.T) {
 	c, namespace := setup(t)
-	t.Parallel()
 	defer cleanup(t, c, namespace, "my-eventlistener")
 	knativetest.CleanupOnInterrupt(func() { cleanup(t, c, namespace, "my-eventlistener") }, t.Logf)
 
