@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,7 +29,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
 	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -93,10 +91,14 @@ func main() {
 			30*time.Second)
 	}
 
-	go func(ctx context.Context) {
-		factory.Start(ctx.Done())
-		<-ctx.Done()
-	}(ctx)
+	factory.Start(ctx.Done())
+	res := factory.WaitForCacheSync(ctx.Done())
+	for r, hasSynced := range res {
+		if !hasSynced {
+			logger.Fatalf("failed to sync informer for: %s", r)
+		}
+	}
+	logger.Infof("Synced informers. Starting EventListener")
 
 	// Create EventListener Sink
 	r := sink.Sink{
@@ -116,17 +118,17 @@ func main() {
 		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
 		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
 	}
-	eventListenerBackoff := wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   2.5,
-		Jitter:   0.3,
-		Steps:    10,
-		Cap:      5 * time.Second,
-	}
-	err = r.WaitForEventListener(eventListenerBackoff)
-	if err != nil {
-		logger.Fatal(err)
-	}
+	//eventListenerBackoff := wait.Backoff{
+	//	Duration: 100 * time.Millisecond,
+	//	Factor:   2.5,
+	//	Jitter:   0.3,
+	//	Steps:    10,
+	//	Cap:      5 * time.Second,
+	//}
+	//err = r.WaitForEventListener(eventListenerBackoff)
+	//if err != nil {
+	//	logger.Fatal(err)
+	//}
 
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
