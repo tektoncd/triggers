@@ -17,20 +17,17 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
-
-	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
 	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
+	"go.uber.org/zap"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -94,11 +91,6 @@ func main() {
 			30*time.Second)
 	}
 
-	go func(ctx context.Context) {
-		factory.Start(ctx.Done())
-		<-ctx.Done()
-	}(ctx)
-
 	// Create EventListener Sink
 	r := sink.Sink{
 		KubeClientSet:          kubeClient,
@@ -119,28 +111,16 @@ func main() {
 		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
 	}
 
-	eventListenerBackoff := wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   2.5,
-		Jitter:   0.3,
-		Steps:    10,
-		Cap:      5 * time.Second,
+	// Start and sync the informers before we start taking traffic
+	// TODO: maybe we should have a timeout here?
+	factory.Start(ctx.Done())
+	res := factory.WaitForCacheSync(ctx.Done())
+	for r, hasSynced := range res {
+		if !hasSynced {
+			logger.Fatalf("failed to sync informer for: %s", r)
+		}
 	}
-	err = r.WaitForEventListener(eventListenerBackoff)
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	//// Start and sync the informers before we start taking traffic
-	//// TODO: maybe we should have a timeout here?
-	//factory.Start(ctx.Done())
-	//res := factory.WaitForCacheSync(ctx.Done())
-	//for r, hasSynced := range res {
-	//	if !hasSynced {
-	//		logger.Fatalf("failed to sync informer for: %s", r)
-	//	}
-	//}
-	//logger.Infof("Synced informers. Starting EventListener")
+	logger.Infof("Synced informers. Starting EventListener")
 
 	// Listen and serve
 	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
