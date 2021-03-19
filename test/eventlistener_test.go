@@ -577,6 +577,12 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 }
 
+func Test10(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		TestEventListenerCreate(t)
+	}
+}
+
 // The structure of this field corresponds to values for the `license` key in
 // testdata/pr.json, and can be used to unmarshal the dat.
 type license struct {
