@@ -49,6 +49,31 @@ spec:
     ref: pipeline-template
 ```
 
+Triggers can reference templates and bindings based on data in the event body, headers, or processed extensions using the `dynamicRef` field. This allows contextual information to be pulled in from the event to determine which binding or template should be populated. The `dynamicRef` field for `bindings` and `templates` can be populated in the same manner as triggertemplate params.
+
+This can be useful when different pipelines require different resources or workspaces to run. `TriggerTemplate` objects by themselves must have a static configuration structure, even if individual strings are able to be populated.
+
+These dynamic resolutions also allow for a fallback option if the dynamic resolution does not succeed. If the `dynamicRef` fields are not present in the event body, the Trigger processing will use the `ref` field if populated.
+
+<!-- FILE: examples/triggers/trigger-with-event-reference.yaml -->
+```YAML
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: trigger
+spec:
+  interceptors:
+    - cel:
+        overlays:
+        - key: extensions.truncated_sha
+          expression: "body.pull_request.head.sha.truncate(7)"
+  bindings:
+  - dynamicRef: pipeline-$(body.repository.owner.login)-binding
+  template:
+    dynamicRef: pipeline-$(header.X-GitHub-Event)-trigger
+    ref: pipeline-default-trigger
+```
+
 ## Specifying the corresponding `TriggerTemplate`
 
 In the `template` field,  you can do one of the following:

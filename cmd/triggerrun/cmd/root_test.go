@@ -35,9 +35,12 @@ import (
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/test"
+	intercepttest "github.com/tektoncd/triggers/test/interceptor"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -117,6 +120,33 @@ X-Header: testheader
 	}
 }
 
+var cel = &triggersv1.ClusterInterceptor{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "cel",
+	},
+	Spec: triggersv1.ClusterInterceptorSpec{
+		ClientConfig: triggersv1.ClientConfig{
+			URL: &apis.URL{
+				Scheme: "http",
+				Host:   "tekton-triggers-core-interceptors",
+				Path:   "/cel",
+			},
+		},
+	},
+}
+
+type CelInterceptorOnlyLister struct{}
+
+func (c *CelInterceptorOnlyLister) List(selector labels.Selector) (ret []*v1alpha1.ClusterInterceptor, err error) {
+	return []*v1alpha1.ClusterInterceptor{cel}, nil
+}
+
+// Get retrieves the ClusterInterceptor from the index for a given name.
+// Objects returned here must be treated as read-only.
+func (c *CelInterceptorOnlyLister) Get(name string) (*v1alpha1.ClusterInterceptor, error) {
+	return cel, nil
+}
+
 func Test_processTriggerSpec(t *testing.T) {
 	type args struct {
 		t         *triggersv1.Trigger
@@ -124,7 +154,7 @@ func Test_processTriggerSpec(t *testing.T) {
 		event     []byte
 		resources test.Resources
 	}
-	eventBody := json.RawMessage(`{"repository": {"links": {"clone": [{"href": "testurl", "name": "ssh"}, {"href": "testurl", "name": "http"}]}}, "changes": [{"ref": {"displayId": "test-branch"}}]}`)
+	eventBody := json.RawMessage(`{"repository": {"links": {"clone": [{"href": "testurl", "name": "ssh"}, {"href": "testurl", "name": "http"}]}}, "changes": [{"ref": {"displayId": "test-branch"}}], "foo":"bar"}`)
 	r, err := http.NewRequest("POST", "URL", bytes.NewReader(eventBody))
 	if err != nil {
 		t.Errorf("Cannot create a new request:%s", err)
@@ -180,6 +210,19 @@ func Test_processTriggerSpec(t *testing.T) {
 		},
 	}
 
+	triggerBindingWithExtensions := v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-event-binding",
+			Namespace: "default",
+		},
+		Spec: triggersv1.TriggerBindingSpec{
+			Params: []triggersv1.Param{{
+				Name:  "foo",
+				Value: "$(extensions.cel)",
+			}},
+		},
+	}
+
 	wantTaskRun := pipelinev1alpha1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
@@ -227,6 +270,63 @@ func Test_processTriggerSpec(t *testing.T) {
 			},
 		},
 		want: []json.RawMessage{wantTrBytes},
+	}, {
+		name: "interceptor error",
+		args: args{
+			t: &v1alpha1.Trigger{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-triggerRun",
+				},
+				Spec: v1alpha1.TriggerSpec{
+					Interceptors: []*v1alpha1.TriggerInterceptor{
+						{
+							DeprecatedCEL: &v1alpha1.CELInterceptor{Filter: "body.nonexistentkey"},
+						},
+					},
+					Bindings: []*v1alpha1.TriggerSpecBinding{{Ref: "git-event-binding"}},                // These should be references to TriggerBindings defined below
+					Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("simple-pipeline-template")}, // This should be a reference to a TriggerTemplate defined below
+				},
+			},
+			request: r,
+			event:   eventBody,
+			resources: test.Resources{
+				// Add any resources that we need to create with a fake client
+				TriggerBindings:  []*v1alpha1.TriggerBinding{&triggerBinding},
+				TriggerTemplates: []*triggersv1.TriggerTemplate{&triggerTemplate},
+			},
+		},
+		wantErr: true,
+	}, {
+		name: "interceptor extension populated",
+		args: args{
+			t: &v1alpha1.Trigger{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-triggerRun",
+				},
+				Spec: v1alpha1.TriggerSpec{
+					Interceptors: []*v1alpha1.TriggerInterceptor{
+						{
+							DeprecatedCEL: &v1alpha1.CELInterceptor{
+								Overlays: []v1alpha1.CELOverlay{{
+									Key:        "cel",
+									Expression: "body.foo",
+								}},
+							},
+						},
+					},
+					Bindings: []*v1alpha1.TriggerSpecBinding{{Ref: "git-event-binding"}},                // These should be references to TriggerBindings defined below
+					Template: v1alpha1.TriggerSpecTemplate{Ref: ptr.String("simple-pipeline-template")}, // This should be a reference to a TriggerTemplate defined below
+				},
+			},
+			request: r,
+			event:   eventBody,
+			resources: test.Resources{
+				// Add any resources that we need to create with a fake client
+				TriggerBindings:  []*v1alpha1.TriggerBinding{&triggerBindingWithExtensions},
+				TriggerTemplates: []*triggersv1.TriggerTemplate{&triggerTemplate},
+			},
+		},
+		want: []json.RawMessage{wantTrBytes},
 	}}
 
 	for _, tt := range tests {
@@ -235,8 +335,9 @@ func Test_processTriggerSpec(t *testing.T) {
 			logger := zaptest.NewLogger(t).Sugar()
 			kubeClient, triggerClient := getFakeTriggersClient(t, tt.args.resources)
 			s := sink.Sink{
-				KubeClientSet: kubeClient,
-				HTTPClient:    http.DefaultClient,
+				KubeClientSet:            kubeClient,
+				HTTPClient:               intercepttest.SetupInterceptors(t, kubeClient, logger, nil),
+				ClusterInterceptorLister: &CelInterceptorOnlyLister{},
 			}
 			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, logger, s)
 			if (err != nil) != tt.wantErr {

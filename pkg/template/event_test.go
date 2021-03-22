@@ -19,7 +19,9 @@ package template
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -30,6 +32,7 @@ import (
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -126,7 +129,7 @@ func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs)
+			got, err := applyEventValuesToParams(tt.args.params, &event{}, tt.args.paramSpecs)
 			if err != nil {
 				t.Errorf("applyEventValuesToParams(): unexpected error: %s", err.Error())
 			}
@@ -299,7 +302,8 @@ func TestApplyEventValuesToParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
+			event, _ := newEvent(tt.body, tt.header, tt.extensions)
+			got, err := applyEventValuesToParams(tt.params, event, nil)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -340,7 +344,8 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
+			event, _ := newEvent(tt.body, tt.header, tt.extensions)
+			got, err := applyEventValuesToParams(tt.params, event, nil)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", got)
 			}
@@ -560,4 +565,329 @@ func TestResolveResources(t *testing.T) {
 			}
 		})
 	}
+}
+
+var (
+	emptyTrigger                = *bldr.Trigger("trigger", "namespace")
+	triggerWithNoExpressionRefs = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.TriggerSpecTemplate("tt-first", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb-bar", "", "", "v1alpha1"),
+		))
+	triggerWithBodyExpressionRefs = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.DynamicTriggerSpecTemplate("tt-$(body.position)", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.DynamicTriggerSpecBinding("tb-$(body.foo)", "", "", "v1alpha1"),
+		))
+	resolvedTriggerBodyDynamicExpressions = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.DynamicTriggerSpecTemplate("tt-first", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.DynamicStaticTriggerSpecBinding("tb-bar", "", "", "", "v1alpha1"),
+		))
+
+	triggerWithHeaderExpressionRefs = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.DynamicTriggerSpecTemplate("tt-$(header.X-Header)", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.DynamicTriggerSpecBinding("tb-$(header.X-Github-Event)", "", "", "v1alpha1"),
+		))
+	triggerWithHeaderExpressionRefsAndFallback = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.DynamicStaticTriggerSpecTemplate("tt-$(header.X-Header)", "tt-first", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.DynamicStaticTriggerSpecBinding("tb-$(header.X-Github-Event)", "tb-bar", "", "", "v1alpha1"),
+		))
+	resolvedTriggerHeaderDynamicExpressions = *bldr.Trigger("name", "namespace",
+		bldr.TriggerSpec(
+			bldr.DynamicTriggerSpecTemplate("tt-first", "v1alpha1"),
+			bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+			bldr.DynamicTriggerSpecBinding("tb-bar", "", "", "v1alpha1"),
+		))
+	headers = http.Header{
+		"X-Github-Event": []string{"bar"},
+		"X-Header":       []string{"first"},
+	}
+	populatedEvent, _ = newEvent(json.RawMessage(`{"foo": "bar","position": "first"}`), headers, make(map[string]interface{}))
+)
+
+func TestResolveResourceNames(t *testing.T) {
+	tests := []struct {
+		name        string
+		trigger     triggersv1.Trigger
+		event       *event
+		wantTrigger triggersv1.Trigger
+	}{
+		{
+			name:        "Empty trigger not modified",
+			trigger:     emptyTrigger,
+			event:       &event{},
+			wantTrigger: emptyTrigger,
+		}, {
+			name:        "Trigger ref names not modified - no expressions",
+			trigger:     triggerWithNoExpressionRefs,
+			event:       &event{},
+			wantTrigger: triggerWithNoExpressionRefs,
+		}, {
+			name:        "Populate bindings and templates with body expression",
+			trigger:     triggerWithBodyExpressionRefs,
+			event:       populatedEvent,
+			wantTrigger: resolvedTriggerBodyDynamicExpressions,
+		}, {
+			name:        "Populate bindings and templates with header expression",
+			trigger:     triggerWithHeaderExpressionRefs,
+			event:       populatedEvent,
+			wantTrigger: resolvedTriggerHeaderDynamicExpressions,
+		}, {
+			name:    "Use fallback when refs are not present",
+			trigger: triggerWithHeaderExpressionRefsAndFallback,
+			event: &event{
+				Body: populatedEvent.Body,
+			},
+			wantTrigger: triggerWithNoExpressionRefs,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trigger, err := resolveResourceNames(tt.trigger, tt.event)
+			if err != nil {
+				t.Errorf("resolveResourceNames(): unexpected error: %s", err.Error())
+			}
+			if diff := cmp.Diff(tt.wantTrigger, trigger); diff != "" {
+				t.Errorf("didn't get expected resolved trigger -want + got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestResolveResourceNames_Error(t *testing.T) {
+	tests := []struct {
+		name    string
+		trigger triggersv1.Trigger
+		event   *event
+		wantMsg string
+	}{
+		{
+			name:    "Trigger without required body parameters",
+			trigger: triggerWithBodyExpressionRefs,
+			event: &event{
+				Header: populatedEvent.Header,
+			},
+			wantMsg: regexp.QuoteMeta("failed to replace JSONPath value for expression $(body.foo)"),
+		}, {
+			name:    "Trigger without required header parameters",
+			trigger: triggerWithHeaderExpressionRefs,
+			event: &event{
+				Body: populatedEvent.Body,
+			},
+			wantMsg: regexp.QuoteMeta("failed to replace JSONPath value for expression $(header.X-Github-Event)"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trigger, err := resolveResourceNames(tt.trigger, tt.event)
+			if err == nil {
+				t.Errorf("did not get expected error - got: %v", trigger)
+			}
+
+			if !checkMessageContains(t, tt.wantMsg, err.Error()) {
+				t.Fatalf("resolveResourceNames() got %+v, wanted error to contain %s", err.Error(), tt.wantMsg)
+			}
+		})
+	}
+}
+
+var (
+	uncalledTBFunc = func(name string) (*triggersv1.TriggerBinding, error) {
+		return nil, errors.New("Uncalled")
+	}
+	uncalledCTBFunc = func(name string) (*triggersv1.ClusterTriggerBinding, error) {
+		return nil, errors.New("Uncalled")
+	}
+	uncalledTTFunc = func(name string) (*triggersv1.TriggerTemplate, error) {
+		return nil, errors.New("Uncalled")
+	}
+	resolveTBFunc = func(tb *triggersv1.TriggerBinding) func(name string) (*triggersv1.TriggerBinding, error) {
+		return func(name string) (*triggersv1.TriggerBinding, error) {
+			return tb, nil
+		}
+	}
+	resolveTTFunc = func(tt *triggersv1.TriggerTemplate) func(name string) (*triggersv1.TriggerTemplate, error) {
+		return func(name string) (*triggersv1.TriggerTemplate, error) {
+			return tt, nil
+		}
+	}
+)
+
+type resolveArgs struct {
+	trigger    triggersv1.Trigger
+	getTB      getTriggerBinding
+	getCTB     getClusterTriggerBinding
+	getTT      getTriggerTemplate
+	body       []byte
+	header     http.Header
+	extensions map[string]interface{}
+}
+
+var triggerWithSingleBinding = *bldr.Trigger("name", "namespace",
+	bldr.TriggerSpec(
+		bldr.TriggerSpecTemplate("tt", "v1alpha1"),
+		bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+	))
+
+var triggerWithTemplateExpressionRefs = *bldr.Trigger("name", "namespace",
+	bldr.TriggerSpec(
+		bldr.TriggerSpecTemplate("tt-$(header.X-Header)", "v1alpha1"),
+		bldr.TriggerSpecBinding("tb", "", "", "v1alpha1"),
+	))
+
+func TestResolve(t *testing.T) {
+	triggerWithSingleBinding.Spec.Bindings = append(triggerWithSingleBinding.Spec.Bindings, &triggersv1.TriggerSpecBinding{
+		Name:  "param",
+		Value: ptr.String("value"),
+	})
+	tests := []struct {
+		name    string
+		args    resolveArgs
+		want    []json.RawMessage
+		wantErr bool
+		errMsg  string
+	}{{
+		name: "invalid body",
+		args: resolveArgs{
+			trigger:    triggerWithHeaderExpressionRefs,
+			getTB:      uncalledTBFunc,
+			getCTB:     uncalledCTBFunc,
+			getTT:      uncalledTTFunc,
+			body:       []byte("invalid JSON"),
+			header:     http.Header{},
+			extensions: map[string]interface{}{},
+		},
+		want:    []json.RawMessage{},
+		wantErr: true,
+		errMsg:  "Failed to marshal event",
+	}, {
+		name: "fails to find extension in triggerbinding name",
+		args: resolveArgs{
+			trigger:    triggerWithHeaderExpressionRefs,
+			getTB:      uncalledTBFunc,
+			getCTB:     uncalledCTBFunc,
+			getTT:      uncalledTTFunc,
+			body:       []byte{},
+			header:     http.Header{},
+			extensions: map[string]interface{}{},
+		},
+		want:    []json.RawMessage{},
+		wantErr: true,
+		errMsg:  "Failed to resolve resource refs for trigger",
+	}, {
+		name: "fails to find extension in triggertemplate name",
+		args: resolveArgs{
+			trigger:    triggerWithTemplateExpressionRefs,
+			getTB:      uncalledTBFunc,
+			getCTB:     uncalledCTBFunc,
+			getTT:      uncalledTTFunc,
+			body:       []byte{},
+			header:     http.Header{},
+			extensions: map[string]interface{}{},
+		},
+		want:    []json.RawMessage{},
+		wantErr: true,
+		errMsg:  "Failed to resolve resource refs for trigger",
+	},
+		{
+			name: "fails to resolve trigger",
+			args: resolveArgs{
+				trigger:    triggerWithHeaderExpressionRefs,
+				getTB:      uncalledTBFunc,
+				getCTB:     uncalledCTBFunc,
+				getTT:      uncalledTTFunc,
+				body:       []byte{},
+				header:     headers,
+				extensions: map[string]interface{}{},
+			},
+			want:    []json.RawMessage{},
+			wantErr: true,
+			errMsg:  "Failed to resolve trigger",
+		},
+		{
+			name: "fails to resolve params",
+			args: resolveArgs{
+				trigger: triggerWithSingleBinding,
+				getTB: resolveTBFunc(bldr.TriggerBinding("tb", "", bldr.TriggerBindingSpec(
+					bldr.TriggerBindingParam("aparam", "$(body.notexist)"),
+				))),
+				getCTB: uncalledCTBFunc,
+				getTT: func() getTriggerTemplate {
+					tt := bldr.TriggerTemplate("tt", "", bldr.TriggerTemplateSpec(bldr.TriggerTemplateParam("oneparam", "", "")))
+					tt.Spec.Params = append(tt.Spec.Params, triggersv1.ParamSpec{
+						Name:        "aparam",
+						Description: "Nil param",
+						Default:     nil,
+					})
+					return resolveTTFunc(tt)
+				}(),
+				body:       []byte{},
+				header:     headers,
+				extensions: map[string]interface{}{},
+			},
+			want:    []json.RawMessage{},
+			wantErr: true,
+			errMsg:  "Failed to resolve parameters for trigger",
+		}, {
+			name: "Resolve fully",
+			args: resolveArgs{
+				trigger: triggerWithSingleBinding,
+				getTB: resolveTBFunc(bldr.TriggerBinding("tb", "", bldr.TriggerBindingSpec(
+					bldr.TriggerBindingParam("aparam", "$(body.notexist)"),
+					bldr.TriggerBindingParam("anotherparam", "value"),
+				))),
+				getCTB: uncalledCTBFunc,
+				getTT: func() getTriggerTemplate {
+					tt := bldr.TriggerTemplate("tt", "",
+						bldr.TriggerTemplateSpec(
+							bldr.TriggerTemplateParam("aparam", "", ""),
+						),
+					)
+					tt.Spec.ResourceTemplates = []triggersv1.TriggerResourceTemplate{}
+					return resolveTTFunc(tt)
+				}(),
+				body:       []byte{},
+				header:     headers,
+				extensions: map[string]interface{}{},
+			},
+			want: []json.RawMessage{},
+		}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Seeded for UUID() to return "31313131-3131-4131-b131-313131313131"
+			reader := bytes.NewReader([]byte("1111111111111111"))
+			uuid.SetRand(reader)
+			uuid.SetClockSequence(1)
+			got, err := Resolve(tt.args.trigger, tt.args.getTB, tt.args.getCTB, tt.args.getTT, tt.args.body, tt.args.header, tt.args.extensions)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Resolve() error = %v. wantErr %v", err, tt.wantErr)
+				return
+			} else if tt.wantErr {
+				checkMessageContains(t, err.Error(), tt.errMsg)
+				return
+			}
+
+			if diff := cmp.Diff(toString(tt.want), toString(got)); diff != "" {
+				t.Errorf("didn't get expected resource template -want + got: %s", diff)
+			}
+		})
+	}
+
+}
+
+func checkMessageContains(t *testing.T, x, y string) bool {
+	t.Helper()
+	match, err := regexp.MatchString(x, y)
+	if err != nil {
+		t.Errorf("wanted message to contain %s. was: %s", y, x)
+	}
+	return match
 }

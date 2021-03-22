@@ -1065,6 +1065,11 @@ func (in *TriggerSpecTemplate) DeepCopyInto(out *TriggerSpecTemplate) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DynamicRef != nil {
+		in, out := &in.DynamicRef, &out.DynamicRef
+		*out = new(string)
+		**out = **in
+	}
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
 		*out = new(TriggerTemplateSpec)

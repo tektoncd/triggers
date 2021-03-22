@@ -242,30 +242,26 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 		}
 	}
 
-	rt, err := template.ResolveTrigger(t,
-		r.TriggerBindingLister.TriggerBindings(t.Namespace).Get,
-		r.ClusterTriggerBindingLister.Get,
-		r.TriggerTemplateLister.TriggerTemplates(t.Namespace).Get)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 	extensions := map[string]interface{}{}
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
-	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
+
+	resources, err := template.Resolve(t,
+		r.TriggerBindingLister.TriggerBindings(t.Namespace).Get,
+		r.ClusterTriggerBindingLister.Get,
+		r.TriggerTemplateLister.TriggerTemplates(t.Namespace).Get,
+		finalPayload, header, extensions)
 	if err != nil {
-		log.Error(err)
+		log.Error("Failed to resolve trigger resources", err)
 		return err
 	}
 
-	log.Infof("ResolvedParams : %+v", params)
-	resources := template.ResolveResources(rt.TriggerTemplate, params)
 	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
+
 	return nil
 }
 
