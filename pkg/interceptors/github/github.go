@@ -59,6 +59,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 	// Validate secrets first before anything else, if set
 	if p.SecretRef != nil {
+		// Check the secret to see if it is empty
+		if p.SecretRef.SecretKey == "" {
+			return interceptors.Fail(codes.FailedPrecondition, "github interceptor secretRef.secretKey is empty")
+		}
 		header := headers.Get("X-Hub-Signature")
 		if header == "" {
 			return interceptors.Fail(codes.FailedPrecondition, "no X-Hub-Signature header set")

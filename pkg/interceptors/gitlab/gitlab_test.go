@@ -230,6 +230,21 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				"token": []byte("secrettoken"),
 			},
 		},
+	}, {
+		name: "empty secret",
+		interceptorParams: &triggersv1.GitLabInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+			},
+		},
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte("secrettoken"),
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

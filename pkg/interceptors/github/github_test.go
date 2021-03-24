@@ -246,6 +246,23 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		},
 		eventType: "MY_EVENT",
 		payload:   emptyJSONBody,
+	}, {
+		name: "empty secret",
+		interceptorParams: &triggersv1.GitHubInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+			},
+		},
+		signature: emptyBodyHMACSignature,
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte(secretToken),
+			},
+		},
+		payload: emptyJSONBody,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
