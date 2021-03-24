@@ -54,6 +54,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 
 	headers := interceptors.Canonical(r.Header)
 	if p.SecretRef != nil {
+		// Check the secret to see if it is empty
+		if p.SecretRef.SecretKey == "" {
+			return interceptors.Fail(codes.FailedPrecondition, "gitlab interceptor secretRef.secretKey is empty")
+		}
 		header := headers.Get("X-GitLab-Token")
 		if header == "" {
 			return interceptors.Fail(codes.InvalidArgument, "no X-GitLab-Token header set")

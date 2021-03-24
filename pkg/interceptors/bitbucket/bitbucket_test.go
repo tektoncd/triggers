@@ -49,7 +49,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 	}{{
 		name:              "no secret",
 		interceptorParams: &triggersv1.BitbucketInterceptor{},
-		payload:           json.RawMessage(`{}`),
+		payload:           emptyJSONBody,
 		signature:         "foo",
 	}, {
 		name: "valid header for secret",
@@ -68,13 +68,13 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 				"token": []byte(secretToken),
 			},
 		},
-		payload: json.RawMessage(`{}`),
+		payload: emptyJSONBody,
 	}, {
 		name: "matching event",
 		interceptorParams: &triggersv1.BitbucketInterceptor{
 			EventTypes: []string{"pr:opened", "repo:refs_changed"},
 		},
-		payload:   json.RawMessage(`{}`),
+		payload:   emptyJSONBody,
 		eventType: "repo:refs_changed",
 	}, {
 		name: "valid header for secret and matching event",
@@ -95,7 +95,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 			},
 		},
 		eventType: "repo:refs_changed",
-		payload:   json.RawMessage(`{}`),
+		payload:   emptyJSONBody,
 	}, {
 		name:              "nil body does not panic",
 		interceptorParams: &triggersv1.BitbucketInterceptor{},
@@ -179,7 +179,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 				"token": []byte("secrettoken"),
 			},
 		},
-		payload: json.RawMessage(`{}`),
+		payload: emptyJSONBody,
 	}, {
 		name: "no X-Hub-Signature header for secret",
 		interceptorParams: &triggersv1.BitbucketInterceptor{
@@ -196,13 +196,13 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 				"token": []byte("secrettoken"),
 			},
 		},
-		payload: json.RawMessage(`{}`),
+		payload: emptyJSONBody,
 	}, {
 		name: "no matching event",
 		interceptorParams: &triggersv1.BitbucketInterceptor{
 			EventTypes: []string{"pr:opened", "repo:refs_changed"},
 		},
-		payload:   json.RawMessage(`{}`),
+		payload:   emptyJSONBody,
 		eventType: "event",
 	}, {
 		name: "invalid header for secret, but matching event",
@@ -223,7 +223,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 			},
 		},
 		eventType: "pr:opened",
-		payload:   json.RawMessage(`{}`),
+		payload:   emptyJSONBody,
 	}, {
 		name: "valid header for secret, but no matching event",
 		interceptorParams: &triggersv1.BitbucketInterceptor{
@@ -243,7 +243,24 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 			},
 		},
 		eventType: "event",
-		payload:   json.RawMessage(`{}`),
+		payload:   emptyJSONBody,
+	}, {
+		name: "empty secret",
+		interceptorParams: &triggersv1.BitbucketInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+			},
+		},
+		signature: emptyBodyHMACSignature,
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte(secretToken),
+			},
+		},
+		payload: emptyJSONBody,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
