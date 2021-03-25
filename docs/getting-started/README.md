@@ -1,198 +1,200 @@
-# Getting started with Triggers
+# Tutorial: Getting started with Tekton Triggers
 
-To get started with Triggers, let's put it to work building and deploying a real
-image. In the following guide, we will use `Triggers` to handle a real GitHub
-webhook request to kickoff a PipelineRun.
+The following tutorial walks you through building and deploying a Docker image using 
+Tekton Triggers to detect a GitHub webhook request and execute a `Pipeline`.
 
-## Install dependencies
+## Overview
 
-Before we can use the Triggers project, we need to get some dependencies out of
-the way.
+In this tutorial, you will:
 
-- [A Kubernetes Cluster](https://kubernetes.io/docs/setup/)
-  - This guide depends on an having access to a Kubernetes cluster which is
-    publicly reachable from the internet.
-  - The cluster also needs the ability to
-    [create ingress resources](https://kubernetes.io/docs/concepts/services-networking/ingress/).
-  - Most cloud providers k8s offerings work for this purpose...
-    - but ingress does not work out of the box for GKE clusters.
-    - For now, GKE users should consider using the
-      [nginx ingress](https://kubernetes.github.io/ingress-nginx/deploy/#gce-gke).
-- [Install Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#installing-tekton-pipelines)
-  - Pipelines is the backbone of Tekton and will allow us to accomplish the work
-    we plan to do.
-- [Install Triggers](../install.md)
-  - Of course we need to install our project as well, so we can accept and
-    process events into PipelineRuns!
-- Pick a GitHub repo with a Dockerfile as your build object (or you can fork
-  [this one](https://github.com/iancoffey/ulmaceae)).
-  - Clone this repo locally - we will come back to this repo later.
+1. Set up a [`Pipeline`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md) that builds a Docker image using
+   [kaniko](https://github.com/GoogleContainerTools/kaniko) and deploys it locally on your Kubernetes cluster. The workflow
+   in the `Pipeline` is as follows:
+   1. Retrieve the source code.
+   1. Build and push the source code into a Docker image.
+   1. Push the image to the specified repository.
+   1. Run the image locally.
 
-## Configure the cluster
+2. Set up an [`EventListener`](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md) that accepts and processes GitHub push events.
 
-Now that we have our cluster ready, we need to setup our getting-started
-namespace and RBAC. We will keep everything inside this single namespace for
-easy cleanup. In the unlikely event that you get stuck/flummoxed, the best
-course of action might be to just delete this namespace and start fresh.
-You should take note of the _ingress_ subdomain, or the external IP of
-your cluster, you will need this for your Webhook in later steps.
+3. Set up a [`TriggerTemplate`](https://github.com/tektoncd/triggers/blob/main/docs/triggertemplates.md) that instantiates a
+   [`PipelineResource`](https://github.com/tektoncd/pipeline/blob/main/docs/resources.md) and executes a [`PipelineRun`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineruns.md)
+   and its associated ['TaskRuns'](https://github.com/tektoncd/pipeline/blob/main/docs/taskruns.md) when the `EventListener` detects the push event from a GitHub repository.
 
-- Create the _getting-started_ namespace, where all our resources will live.
-  - `kubectl create namespace getting-started`
-- [Create the admin user, role and rolebinding](./rbac/admin-role.yaml)
-  - `kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml`
-- If you have a cluster secret for a Let's Encrypt cert already provisioned
-you will need to export it, and reimport it to the _getting-started_ namespace.
-The following is a general example of what you'd need to do.
-  - ```bash
+4. Run the completed stack to experience Tekton Triggers in action.
+
+## Prerequisites
+
+Before you begin, you must satisfy the following prerequisites:
+
+- [Set up a Kubernetes cluster](https://kubernetes.io/docs/setup/) that you can publicly access over the Internet.
+- [Install Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#installing-tekton-pipelines).
+  Tekton Triggers installs on top of Tekton Pipelines.
+- [Install Tekton Triggers](../install.md).
+- Have a GitHub repository and select a Dockerfile within that repository as your build object.
+  For this tutorial, you can fork our [example repo](https://github.com/iancoffey/ulmaceae).
+  You must clone the selected repository locally.
+
+## Configure your cluster
+
+Now that you have your Kubernetes cluster up and running, you must set up your namespace and RBAC.
+You will keep all of the artifacts for this tutorial within this namespace. This way, you can easily
+start over by deleting and recreating this namespace if necessary. 
+
+**Note:** Record your `ingress` sub-domain or the external IP address of your
+cluster as you will need it to create your GitHub webhook later in this tutorial.
+
+Configure your cluster as follows:
+
+1. Create a namespace named `getting-started` using the following command:
+
+   ```
+   kubectl create namespace getting-started
+   ```
+
+2. Create the [`admin` user, role, and rolebinding](./rbac/admin-role.yaml) using the following command:
+   
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml
+   ```
+3. (Optional) If you have already provisioned a cluster secret for a "Let's Encrypt" certificate,
+   you must export it and then import it into your `getting-started` namespace. For example:
+
+   ```bash
 	kubectl get secret <name> --namespace=<namespace> -o yaml |\
 	   grep -v '^\s*namespace:\s' |\
 	   kubectl apply --namespace=<new namespace> -f -
-	```
-- [Create the create-webhook user, role and rolebinding](./rbac/webhook-role.yaml)
-  - `kubectl -n getting-started apply -f ./docs/getting-started/rbac/webhook-role.yaml`
-  - This will allow our webhook to create the things it needs to.
+   ```
+4. Create the [`create-webhook` user, role, and rolebinding](./rbac/webhook-role.yaml) using the following command:
 
-## Install the Pipeline and Triggers
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/rbac/webhook-role.yaml
+   ```
+  This allows your webhook to work with Tekton Triggers.
 
-### [Install the Pipeline](./pipeline.yaml)
+5. (Optional) If your cluster doesn't have access to your Docker registry, you must add a secret to both your cluster
+   and the `pipeline.yaml` file in this tutorial as follows:
+   1. Add a secret to your cluster as described in [Configuring `Task` execution credentials](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md#configuring-task-execution-credentials).
+   2. Add the secret you created in the previous step to your `pipeline.yaml` file by adding the following to each `Task` within the file:
 
-Now we have to install the Pipeline we plan to use and also our Triggers
-resources.
+   ```
+     env:
+       - name: "DOCKER_CONFIG"
+         value: "/tekton/home/.docker/"
+   ```
 
-`kubectl -n getting-started apply -f ./docs/getting-started/pipeline.yaml`
+## Install the example resources
 
-Our Pipeline will do a few things.
+You are now ready to install the example resources to use in the tutorial:
 
-- Retrieve the source code
-- Build and push the source code into a Docker image
-- Push the image to the specified repository
-- Run the image locally
+ - A `Pipeline`
+ - A `TriggerTemplate`
+ - A `TriggerBinding`
+ - An `EventListener`
 
-If your cluster doesn't have access to your docker registry you may
-need to add the secret to your Kubernetes cluster and `pipeline.yaml`.
-For that please follow the instructions [here](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md#configuring-task-execution-credentials) and also add
+1. Install the example [`Pipeline`](./pipeline.yaml) using the following command:
+
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/pipeline.yaml
+   ```
+
+2. Install the example [Triggers resources](./triggers.yaml) as follows:
+   1. Update the `triggers.yaml` file with the repository to which you want your `Pipeline` to push
+      the Docker image binary by replacing the `DOCKERREPO-REPLACEME` placeholder string throughout
+      the file.
+   2. Apply the updated `triggers.yaml` file on your cluster using the following command:
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/triggers.yaml
+   ```
+
+Your Tekton stack is now configured to detect and respond to GitHub events.
+
+## Create and execute the ingress and webhook `Tasks`
+
+Now, you must create and execute the following `Tasks`:
+- Ingress `Task` - exposes the `EventListener` at a publicly accessible address to which
+  the GitHub webhook can send events.
+- Webhook `Task` - creates the Github webhook that sends events to your `EventListener`.
+
+1. Create the ingress `Task`:
+
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/create-ingress.yaml
+   ```
+
+2. Create the webhook `Task`: 
+
+   ```
+   kubectl -n getting-started apply -f ./docs/getting-started/create-webhook.yaml
+   ```
+
+3. Update the `TaskRun` for the ingress `Task`. At the minimum, you must update the `ExternalDomain`
+   field in the `docs/getting-started/ingress-run.yaml` file to match your DNS name. You might also
+   need to modify other settings as appropriate.
+
+4. Run the ingress `Task`:
+
+   ```
+   kubectl -n getting-started apply -f docs/getting-started/ingress-run.yaml
+   ```
+
+5. Create a [GitHub Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line#creating-a-token)
+   with the following access privileges:
+   - `public_repo`
+   - `admin:repo_hook`
+
+   This token can contain any plain text string.
+
+6. Add the token to the `docs/getting-started/secret.yaml` file. Do NOT `base64`-encode the token when adding it to the `secret.yaml` file.
+
+7. Create the required secret with the following command:
+   ```
+   kubectl -n getting-started apply -f docs/getting-started/secret.yaml
+   ```
+
+8. Update the `TaskRun` for the webhook `Task`. At the minimum, you must update the following fields
+   in the `docs/getting-started/webhook-run.yaml` file:
+   - `GitHubOrg` - the GitHub organization you're using for the namespace in this tutorial.
+   - `GitHubUser` - your GitHub username.
+   - `GitHubRepo` - the GitHub repository you're using for this tutorial.
+   - `ExternalDomain` - set this to a value appropriate to your environment.
+
+9. Run the webhook `Task`:
+   ``` 
+   kubectl -n getting-started apply -f docs/getting-started/webhook-run.yaml
+   ```
+
+## Run the completed Tekton Triggers stack
+
+You are now ready to experience Tekton Triggers in action! Do the following:
+
+1. Make an empty commit and push it to your repository:
+   ```
+   git commit -a -m "build commit" --allow-empty && git push origin mybranch
+   ```
+
+2. Monitor the execution of your `Tasks`:
+   - Monitor the image builder `Task` using the following command:
+     ```
+     kubectl logs -l somelabel=somekey --all-containers
+     ```
+   - Monitor the deployer `Task` using the following command:
+     ```
+     kubectl -n getting-started logs -l tekton.dev/pipeline=getting-started-pipeline --all-containers
+     ```
+     
+   You can see that the system is working and that pushing images to your repository results in
+   a running `Pod` using the following command:
+   ```	
+   kubectl -n getting-started logs tekton-triggers-built-me --all-containers
+   ```
+
+Congratulations! Your new image has been retrieved, tested, vetted, built, docker-pushed and pulled,
+and is now running on your cluster as a `Pod`.
+
+## Cleaning up
+
+To clean up, simply delete the `getting-started` namespace using the following command:
 ```
-  env:
-    - name: "DOCKER_CONFIG"
-      value: "/tekton/home/.docker/"
+kubectl delete namespace getting-started
 ```
-to the `pipeline.yaml` tasks similar to [this](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md#specifying-task-inputs-and-outputs) and re-apply
-the yaml file.
-
-#### What does it do?
-
-The Pipeline will build a Docker image with
-[kaniko](https://github.com/GoogleContainerTools/kaniko) and deploy it locally via kubectl
-image.
-
-### [Install the TriggerTemplate, TriggerBinding and EventListener](./triggers.yaml)
-
-The Triggers project will pickup from there.
-
-- We will setup an `EventListener` to accept and process GitHub Push events
-- A `TriggerTemplate` to create templated PipelineResource and PipelineRun
-  resources per event received by the `EventListener`.
-  - First, **update** the `triggers.yaml` file to reflect the Docker repository
-    you wish to push the image blob to.
-  - You will need to replace the `DOCKERREPO-REPLACEME` string everywhere it is
-    needed.
-  - Once you have updated the triggers file, you can apply it!
-    - `kubectl -n getting-started apply -f ./docs/getting-started/triggers.yaml`
-  - If that succeeded, your cluster is ready to start handling Events.
-
-## Add Ingress and GitHub-Webhook Tasks
-
-We will need an ingress to handle incoming webhooks and we will make use of our
-new ingress by configuring GitHub with our GitHub Task.
-
-First lets create our ingress Task.
-
-`kubectl -n getting-started apply -f ./docs/getting-started/create-ingress.yaml`
-
-Now lets create our webhook Task.
-
-`kubectl -n getting-started apply -f ./docs/getting-started/create-webhook.yaml`
-
-## Run Ingress Task
-
-### Update the Ingress TaskRun
-
-**Note**: If you are running on GKE, the default Ingress will not work. Instead,
-follow the instructions to use an Nginx Ingress
-[here](../exposing-eventlisteners.md#Using-Nginx-Ingress)
-
-Lets first update the TaskRun to make any needed changes
-
-Edit the `docs/getting-started/ingress-run.yaml` file to adjust the settings.
-
-At the minimum, you will need to update the ExternalDomain field to match your
-own DNS name.
-
-### Run the Ingress Task
-
-When you are ready, run the ingress Task.
-
-`kubectl -n getting-started apply -f docs/getting-started/ingress-run.yaml`
-
-## Run GitHub Webhook Task
-
-You will need to create a
-[GitHub Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line#creating-a-token)
-with the following access.
-
-
-- `public_repo`
-- `admin:repo_hook`
-
-Next, edit the `docs/getting-started/secret.yaml` file with the above access
-token.
-
-**NOTE**: You do NOT have to `base64` encode this access token, just copy paste it in.
-Also, the `secret` can be any string data. Examples: mordor-awaits, my-name-is-bill,
-tekton, tekton-1s-awes0me.
-
-Create the secret by running:
-
-`kubectl -n getting-started apply -f docs/getting-started/secret.yaml`
-
-### Update webhook task run
-
-Now lets update the GitHub Task run (`docs/getting-started/webhook-run.yaml`).
-
-There are a few fields to change, but these fields must be updated at the
-minimum.
-
-- GitHubOrg: The GitHub org you are using for this getting-started.
-- GitHubUser: Your GitHub username.
-- GitHubRepo: The repo we will be using for this example.
-- ExternalDomain: Update this to be the to something other then `demo.iancoffey.com`
-
-### Run the Webhook Task
-
-Now lets run our updated webhook task.
-
-`kubectl -n getting-started apply -f docs/getting-started/webhook-run.yaml`
-
-## Watch it work!
-
-- Commit and push an empty commit to your development repo.
-  - `git commit -a -m "build commit" --allow-empty && git push origin mybranch`
-- Now, you can follow the Task output in `kubectl logs`.
-  - First the image builder task.
-    - `kubectl logs -l somelabel=somekey --all-containers`
-  - Then our deployer task.
-    - `kubectl -n getting-started logs -l tekton.dev/pipeline=getting-started-pipeline --all-containers`
-- We can see now that our CI system is working! Images pushed to this repo
-  result in a running pod in our cluster.
-  - We can examine our pod like so.
-    - `kubectl -n getting-started logs tekton-triggers-built-me --all-containers`
-
-Now we can see our new image running our cluster, after having been retrieved,
-tested, vetted and built, docker pushed (and pulled) and finally ran on our
-cluster as a Pod.
-
-## Clean up
-
-- Delete the _getting-started_ namespace!
-  - `kubectl delete namespace getting-started`
