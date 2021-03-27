@@ -202,6 +202,21 @@ func Test_EventListenerValidate(t *testing.T) {
 					)),
 			)),
 	}, {
+		name: "Valid Replicas for EventListener",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(1),
+					},
+				},
+			},
+		},
+	}, {
 		name: "Valid EventListener with env for TLS connection",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
@@ -514,13 +529,28 @@ func TestEventListenerValidate_error(t *testing.T) {
 					bldr.EventListenerTriggerName("1234567890123456789012345678901234567890123456789012345678901234"),
 				))),
 	}, {
-		name: "user specify invalid replicas",
+		name: "user specify invalid deprecated replicas",
 		el: bldr.EventListener("name", "namespace",
 			bldr.EventListenerSpec(
 				bldr.EventListenerReplicas(-1),
 				bldr.EventListenerTrigger("tt", "v1alpha1",
 					bldr.EventListenerTriggerBinding("tb", "TriggerBinding", "v1alpha1"),
 				))),
+	}, {
+		name: "user specify invalid replicas",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(-1),
+					},
+				},
+			},
+		},
 	}, {
 		name: "user specify multiple containers",
 		el: bldr.EventListener("name", "namespace",

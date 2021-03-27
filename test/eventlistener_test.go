@@ -304,9 +304,9 @@ func TestEventListenerCreate(t *testing.T) {
 					}},
 				}},
 			}},
-			Replicas: ptr.Int32(3),
 			Resources: triggersv1.Resources{
 				KubernetesResource: &triggersv1.KubernetesResource{
+					Replicas: ptr.Int32(3),
 					WithPodSpec: duckv1.WithPodSpec{
 						Template: duckv1.PodSpecable{
 							Spec: corev1.PodSpec{

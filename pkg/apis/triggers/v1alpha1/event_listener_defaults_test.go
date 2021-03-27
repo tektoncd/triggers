@@ -76,16 +76,41 @@ func TestEventListenerSetDefaults(t *testing.T) {
 			},
 		},
 	}, {
-		name: "set replicas to 1 if provided replicas is 0 as part of eventlistener spec",
+		name: "set replicas to 1 if provided deprecated replicas is 0 as part of eventlistener spec",
 		in: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(0),
+				DeprecatedReplicas: ptr.Int32(0),
 			},
 		},
 		wc: v1alpha1.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(1),
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(1),
+					},
+				},
+			},
+		},
+	}, {
+		name: "set replicas to 1 if provided replicas is 0 as part of eventlistener kubernetesResources",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(0),
+					},
+				},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(1),
+					},
+				},
 			},
 		},
 	}, {
@@ -153,13 +178,38 @@ func TestEventListenerSetDefaults(t *testing.T) {
 		name: "different value for replicas other than 0",
 		in: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(2),
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(2),
+					},
+				},
 			},
 		},
 		wc: v1alpha1.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
-				Replicas: ptr.Int32(2),
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(2),
+					},
+				},
+			},
+		},
+	}, {
+		name: "different value for deprecated replicas other than 0",
+		in: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				DeprecatedReplicas: ptr.Int32(2),
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.EventListener{
+			Spec: v1alpha1.EventListenerSpec{
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						Replicas: ptr.Int32(2),
+					},
+				},
 			},
 		},
 	}, {
