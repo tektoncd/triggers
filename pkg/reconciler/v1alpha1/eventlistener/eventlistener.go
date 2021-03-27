@@ -278,11 +278,13 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
 		if *existingDeployment.Spec.Replicas != *deployment.Spec.Replicas {
-			if el.Spec.Replicas != nil {
-				existingDeployment.Spec.Replicas = deployment.Spec.Replicas
-				updated = true
+			if el.Spec.Resources.KubernetesResource != nil {
+				if el.Spec.Resources.KubernetesResource.Replicas != nil {
+					existingDeployment.Spec.Replicas = deployment.Spec.Replicas
+					updated = true
+				}
+				// if no replicas found as part of el.Spec then replicas from existingDeployment will be considered
 			}
-			// if no replicas found as part of el.Spec then replicas from existingDeployment will be considered
 		}
 		if existingDeployment.Spec.Selector != deployment.Spec.Selector {
 			existingDeployment.Spec.Selector = deployment.Spec.Selector
@@ -621,10 +623,6 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 }
 
 func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
-	var replicas = ptr.Int32(1)
-	if el.Spec.Replicas != nil {
-		replicas = el.Spec.Replicas
-	}
 	var (
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
@@ -672,7 +670,11 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 			})
 		}
 	}
+	var replicas = ptr.Int32(1)
 	if el.Spec.Resources.KubernetesResource != nil {
+		if el.Spec.Resources.KubernetesResource.Replicas != nil {
+			replicas = el.Spec.Resources.KubernetesResource.Replicas
+		}
 		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
 			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
 		}

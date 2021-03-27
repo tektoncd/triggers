@@ -18,15 +18,20 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/ptr"
 )
 
 // SetDefaults sets the defaults on the object.
 func (el *EventListener) SetDefaults(ctx context.Context) {
 	if IsUpgradeViaDefaulting(ctx) {
 		// set defaults
-		if el.Spec.Replicas != nil && *el.Spec.Replicas == 0 {
-			*el.Spec.Replicas = 1
+		if el.Spec.Resources.KubernetesResource != nil {
+			if el.Spec.Resources.KubernetesResource.Replicas != nil && *el.Spec.Resources.KubernetesResource.Replicas == 0 {
+				*el.Spec.Resources.KubernetesResource.Replicas = 1
+			}
 		}
+
 		for i, t := range el.Spec.Triggers {
 			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).defaultBindings()
 			for _, ti := range t.Interceptors {
@@ -37,6 +42,27 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 		// To be removed in a later release #904
 		el.Spec.updatePodTemplate()
 		el.Spec.updateServiceType()
+		// To be removed in a later release #1020
+		el.Spec.updateReplicas()
+	}
+}
+
+// To be Removed in a later release #1020
+func (spec *EventListenerSpec) updateReplicas() {
+	if spec.DeprecatedReplicas != nil {
+		if *spec.DeprecatedReplicas == 0 {
+			if spec.Resources.KubernetesResource == nil {
+				spec.Resources.KubernetesResource = &KubernetesResource{}
+			}
+			spec.Resources.KubernetesResource.Replicas = ptr.Int32(1)
+			spec.DeprecatedReplicas = nil
+		} else if *spec.DeprecatedReplicas > 0 {
+			if spec.Resources.KubernetesResource == nil {
+				spec.Resources.KubernetesResource = &KubernetesResource{}
+			}
+			spec.Resources.KubernetesResource.Replicas = spec.DeprecatedReplicas
+			spec.DeprecatedReplicas = nil
+		}
 	}
 }
 

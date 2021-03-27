@@ -102,7 +102,7 @@ func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 // EventListenerReplicas sets the specified Replicas of the EventListener.
 func EventListenerReplicas(replicas int32) EventListenerSpecOp {
 	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.Replicas = &replicas
+		spec.DeprecatedReplicas = &replicas
 	}
 }
 

@@ -602,7 +602,9 @@ func TestReconcile(t *testing.T) {
 	})
 
 	elWithReplicas := makeEL(withStatus, func(el *v1alpha1.EventListener) {
-		el.Spec.Replicas = ptr.Int32(2)
+		el.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+			Replicas: ptr.Int32(2),
+		}
 	})
 
 	elWithDeploymentReplicaFailure := makeEL(withStatus, func(el *v1alpha1.EventListener) {

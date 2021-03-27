@@ -23,6 +23,7 @@ using [Event Interceptors](#Interceptors).
     - [PodTemplate](#podtemplate)
     - [Resources](#resources)
       - [kubernetesResource](#kubernetesresource)
+        - [Replicas](#replicas)
       - [CustomResource](#customresource)
         - [Contract](#contract)
     - [Logging](#logging)
@@ -191,10 +192,7 @@ check out the guide on [exposing EventListeners](./exposing-eventlisteners.md).
 
 ### Replicas
 
-The `replicas` field is optional. By default, the number of replicas of EventListener is 1.
-If you want to deploy more than one pod, you can specify the number to `replicas` field.
-
-**Note:** If user sets `replicas` field while creating/updating eventlistener yaml then it won't respects replicas values edited by user manually on deployment or through any other mechanism (ex: HPA).
+The `spec.replicas` field has been moved to `spec.resources.kubernetesResource.replicas`.
 
 ### PodTemplate
 
@@ -262,6 +260,13 @@ spec:
 ```
 
 With the help of `kubernetesResource` user can specify [PodTemplateSpec](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L3704).
+
+##### Replicas
+
+The `replicas` field is optional. By default, the number of replicas for the EventListener is 1.
+If you want to deploy more than one pod, you can specify the amount with the `replicas` field.
+
+**Note:** If the user sets the `replicas` field while creating/updating the eventlistener yaml then it won't respect the replicas value edited by the user manually on deployment or through any other mechanism (ex: HPA).
 
 #### CustomResource
 A `CustomResource` object has one field that supports dynamic objects.

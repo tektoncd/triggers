@@ -52,14 +52,17 @@ func (e *EventListener) validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
-	if s.Replicas != nil {
-		if *s.Replicas < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(*s.Replicas, "spec.replicas"))
-		}
-	}
 	for i, trigger := range s.Triggers {
 		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}
+
+	// To be removed in a later release #1020
+	if s.DeprecatedReplicas != nil {
+		if *s.DeprecatedReplicas < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(*s.DeprecatedReplicas, "spec.replicas"))
+		}
+	}
+
 	// Both Kubernetes and Custom resource can't be present at the same time
 	if s.Resources.KubernetesResource != nil && s.Resources.CustomResource != nil {
 		return apis.ErrMultipleOneOf("spec.resources.kubernetesResource", "spec.resources.customResource")
@@ -101,6 +104,11 @@ func validateCustomObject(customData *CustomResource) (errs *apis.FieldError) {
 }
 
 func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) {
+	if orig.Replicas != nil {
+		if *orig.Replicas < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(*orig.Replicas, "spec.replicas"))
+		}
+	}
 	if len(orig.Template.Spec.Containers) > 1 {
 		errs = errs.Also(apis.ErrMultipleOneOf("containers").ViaField("spec.template.spec"))
 	}

@@ -5,7 +5,6 @@ metadata:
   name: listener-replicas
 spec:
   serviceAccountName: tekton-triggers-example-sa
-  replicas: 3
   triggers:
     - name: foo-trig
       bindings:
@@ -13,3 +12,6 @@ spec:
         - ref: message-binding
       template:
         ref: pipeline-template
+  resources:
+    kubernetesResource:
+      replicas: 3
