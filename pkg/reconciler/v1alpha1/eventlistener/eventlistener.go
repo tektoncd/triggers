@@ -479,6 +479,16 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Get(ctx, data.GetName(), metav1.GetOptions{})
 	switch {
 	case err == nil:
+		if _, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName); err == nil {
+			if err := r.KubeClientSet.AppsV1().Deployments(el.Namespace).Delete(ctx, el.Status.Configuration.GeneratedResourceName,
+				metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+			if err = r.KubeClientSet.CoreV1().Services(el.Namespace).Delete(ctx, el.Status.Configuration.GeneratedResourceName,
+				metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+		}
 		originalObject := &duckv1.WithPod{}
 		existingObject := &duckv1.WithPod{}
 		originalData, e := data.MarshalJSON()

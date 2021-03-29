@@ -1371,6 +1371,23 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 			WithPod:        []*duckv1.WithPod{annotationForCustomResource},
 		},
+	}, {
+		name: "eventlistener with cleanup test to ensure no k8s resource exist after upgrading to customresource",
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+			Deployments:    []*appsv1.Deployment{makeDeployment()},
+			Services:       []*corev1.Service{makeService()},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
+			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
+		},
 	},
 	}
 	for _, tt := range tests {
