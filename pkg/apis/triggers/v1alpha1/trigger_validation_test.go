@@ -172,6 +172,15 @@ func Test_TriggerValidate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "Trigger has triggerSelector without template",
+		tr: bldr.Trigger("name", "namespace", bldr.TriggerSpec(
+			bldr.TriggerLabelSelectorSpec(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"key": "value",
+				},
+			}),
+		)),
 	}}
 
 	for _, test := range tests {
@@ -471,6 +480,23 @@ func TestTriggerValidate_error(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "Trigger has missing label selector",
+		tr: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"},
+			Spec: v1alpha1.TriggerSpec{
+				TriggerSelector: &v1alpha1.TriggerSelectorSpec{},
+			},
+		},
+	}, {
+		name: "Trigger has invalid triggerSelector",
+		tr: bldr.Trigger("name", "namespace", bldr.TriggerSpec(
+			bldr.TriggerLabelSelectorSpec(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"my_key&": "value",
+				},
+			}),
+		)),
 	}}
 
 	for _, test := range tests {

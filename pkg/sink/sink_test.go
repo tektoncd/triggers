@@ -1194,7 +1194,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID)
+			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, nil)
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1265,7 +1265,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID); err == nil {
+	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID, nil); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1290,7 +1290,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID")
+	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", nil)
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1367,7 +1367,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), s.Logger, eventID)
+	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), s.Logger, eventID, nil)
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}

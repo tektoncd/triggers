@@ -24,6 +24,7 @@ import (
 	"github.com/google/cel-go/cel"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -33,17 +34,35 @@ func (t *Trigger) Validate(ctx context.Context) *apis.FieldError {
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
-func (t *TriggerSpec) validate(ctx context.Context) *apis.FieldError {
-	// Validate optional Bindings
-	errs := triggerSpecBindingArray(t.Bindings).validate(ctx)
-	// Validate required TriggerTemplate
-	errs = errs.Also(t.Template.validate(ctx))
-
+func (t *TriggerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
+	if t.Template == (TriggerSpecTemplate{}) && t.TriggerSelector == nil {
+		errs = errs.Also(apis.ErrMissingOneOf("template", "triggerSelector"))
+	}
+	if t.Template != (TriggerSpecTemplate{}) {
+		// Validate optional Bindings
+		errs = errs.Also(triggerSpecBindingArray(t.Bindings).validate(ctx))
+		// Validate required TriggerTemplate
+		errs = errs.Also(t.Template.validate(ctx))
+	}
+	if t.TriggerSelector != nil {
+		errs = errs.Also(t.TriggerSelector.validate(ctx))
+	}
 	// Validate optional Interceptors
 	for i, interceptor := range t.Interceptors {
 		errs = errs.Also(interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)))
 	}
 
+	return errs
+}
+
+func (t TriggerSelectorSpec) validate(ctx context.Context) (errs *apis.FieldError) {
+	if t.LabelSelector == nil {
+		errs = errs.Also(apis.ErrMissingField("triggerSelector.labelSelector"))
+	}
+	_, err := metav1.LabelSelectorAsSelector(t.LabelSelector)
+	if err != nil {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("failed to parse label selector: %s", err), "triggerSelector.labelSelector"))
+	}
 	return errs
 }
 

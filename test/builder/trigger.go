@@ -129,6 +129,14 @@ func TriggerSpecBinding(ref, kind, name, apiVersion string) TriggerSpecOp {
 	}
 }
 
+func TriggerLabelSelectorSpec(selector *metav1.LabelSelector) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		spec.TriggerSelector = &v1alpha1.TriggerSelectorSpec{
+			LabelSelector: selector,
+		}
+	}
+}
+
 func DynamicStaticTriggerSpecBinding(dynamicRef, ref, kind, name, apiVersion string) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
 		binding := &v1alpha1.TriggerSpecBinding{
