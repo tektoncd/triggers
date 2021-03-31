@@ -463,8 +463,10 @@ interceptors:
         value: "body.action in ['opened', 'reopened']"
 ```
 
-The following section describes the old and DEPRECATED way of configuring interceptors. While they continue to be 
-supported for now, they will be removed in a future release.
+**NOTE:** Previously, the core interceptors described in the following sections could also be configured 
+with a different syntax where the name of the interceptor is a field within `interceptors`. This syntax is DEPRECATED 
+and while it continues to work, it may be removed in a future release. Each core interceptor below has examples of 
+using both the new syntax and the old syntax.
 
 Interceptors can take several different forms:
 - [Webhook Interceptors](#Webhook-Interceptors)
@@ -573,6 +575,24 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 ```yaml
+ # New syntax
+  triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request"]
+```
+**DEPRECATED syntax**:
+```yaml
   triggers:
     - name: github-listener
       interceptors:
@@ -580,10 +600,8 @@ response.
             secretRef:
               secretName: github-secret
               secretKey: secretToken
-            eventTypes:
- 
+            eventTypes: ["pull_request"]
 ```
-
 
 Check out a full example of using GitHub Interceptor in [examples/github](../examples/github)
 
@@ -609,25 +627,27 @@ The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
 ```yaml
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: gitlab-listener-interceptor
-spec:
-  serviceAccountName: tekton-triggers-example-sa
-  triggers:
-    - name: foo-trig
-      interceptors:
-        - gitlab:
-            secretRef:
-              secretName: foo
-              secretKey: bar
-            eventTypes:
-              - Push Hook
-      bindings:
-        - ref: pipeline-binding
-      template:
-        ref: pipeline-template
+interceptors:
+- ref:
+    name: "gitlab"
+  params:
+  - name: "secretRef"
+    value:
+      secretName: foo
+      secretKey: bar
+  - name: "eventTypes"
+    value: ["Push Hook"]
+```
+
+**DEPRECATED syntax:** 
+```yaml
+interceptors:
+- gitlab:
+    secretRef:
+      secretName: foo
+      secretKey: bar
+    eventTypes:
+      - Push Hook
 ```
 
 ### Bitbucket Interceptors
@@ -647,32 +667,27 @@ accept to the `eventTypes` field. Valid values can be found in Bitbucket
 The body/header of the incoming request will be preserved in this Interceptor's
 response.
 
-<!-- FILE: examples/bitbucket/bitbucket-listener.yaml -->
-```YAML
----
-apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
-metadata:
-  name: bitbucket-listener
-spec:
-  serviceAccountName: tekton-triggers-example-sa
-  triggers:
-    - name: bitbucket-triggers
-      interceptors:
-        - ref:
-            name: "bitbucket"
-          params:
-            - name: secretRef
-              value:
-                secretName: bitbucket-secret
-                secretKey: secretToken
-            - name: eventTypes
-              value:
-                - repo:refs_changed
-      bindings:
-        - ref: bitbucket-binding
-      template:
-        ref: bitbucket-template
+```yaml
+interceptors:
+- ref:
+    name: "bitbucket"
+  params:
+    - name: secretRef
+      value:
+        secretName: bitbucket-secret
+        secretKey: secretToken
+    - name: eventTypes
+      value:
+        - repo:refs_changed
+```
+**DEPRECATED syntax:**
+```yaml
+interceptors:
+- bitbucket:
+    secretRef:
+      secretName: bitbucket-secret
+      secretKey: secretToken     
+    eventTypes: ["repo:refs_changed"]
 ```
 
 ### CEL Interceptors
@@ -689,7 +704,25 @@ The `cel-trig-with-matches` trigger below filters events that don't have an
 
 It also modifies the incoming event, adding an extra key to the JSON body,
 with a truncated string coming from the hook body.
+```yaml
+  triggers:
+    - name: cel-trig-with-matches
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+          - name: "filter"
+            value: "header.match('X-GitHub-Event', 'pull_request')"
+          - name: "overlays"
+            value:
+              - key: truncated_sha
+                expression: "body.pull_request.head.sha.truncate(7)"
+      bindings:
+      - name: sha
+        value: $(extensions.truncated_sha)
+```
 
+**DEPRECATED syntax:**
 ```yaml
   triggers:
     - name: cel-trig-with-matches
@@ -741,7 +774,22 @@ spec:
 
 The CEL interceptor supports "overlays", these are CEL expressions whose values are added to the incoming event under a 
 top-level `extensions` field  and are accessible by TriggerBindings.
+```yaml
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - ref:
+            name: cel
+          params:
+          - name: "overlays"
+            value:
+            - key: truncated_sha
+              expression: "body.pull_request.head.sha.truncate(7)"
+            - key: branch_name
+              expression: "body.ref.split('/')[2]"
+```
 
+**DEPRECATED syntax**:
 ```yaml
   triggers:
     - name: cel-trig
