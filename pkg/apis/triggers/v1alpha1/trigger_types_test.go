@@ -14,46 +14,44 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package v1alpha1
 
 import (
 	"testing"
-
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
 func TestGetName(t *testing.T) {
 	for _, tc := range []struct {
-		in   v1alpha1.TriggerInterceptor
+		in   TriggerInterceptor
 		want string
 	}{{
-		in: v1alpha1.TriggerInterceptor{
-			DeprecatedCEL: &v1alpha1.CELInterceptor{},
+		in: TriggerInterceptor{
+			DeprecatedCEL: &CELInterceptor{},
 		},
 		want: "cel",
 	}, {
-		in: v1alpha1.TriggerInterceptor{
-			DeprecatedGitLab: &v1alpha1.GitLabInterceptor{},
+		in: TriggerInterceptor{
+			DeprecatedGitLab: &GitLabInterceptor{},
 		},
 		want: "gitlab",
 	}, {
-		in: v1alpha1.TriggerInterceptor{
-			DeprecatedGitHub: &v1alpha1.GitHubInterceptor{},
+		in: TriggerInterceptor{
+			DeprecatedGitHub: &GitHubInterceptor{},
 		},
 		want: "github",
 	}, {
-		in: v1alpha1.TriggerInterceptor{
-			DeprecatedBitbucket: &v1alpha1.BitbucketInterceptor{},
+		in: TriggerInterceptor{
+			DeprecatedBitbucket: &BitbucketInterceptor{},
 		},
 		want: "bitbucket",
 	}, {
-		in: v1alpha1.TriggerInterceptor{
-			Webhook: &v1alpha1.WebhookInterceptor{},
+		in: TriggerInterceptor{
+			Webhook: &WebhookInterceptor{},
 		},
 		want: "",
 	}, {
-		in: v1alpha1.TriggerInterceptor{
-			Ref: v1alpha1.InterceptorRef{
+		in: TriggerInterceptor{
+			Ref: InterceptorRef{
 				Name: "pluggable-interceptor",
 			},
 		},
@@ -65,5 +63,13 @@ func TestGetName(t *testing.T) {
 				t.Fatalf("GetName() want: %s; got: %s", tc.want, got)
 			}
 		})
+	}
+}
+
+func TestUpdateCoreInterceptors_Error(t *testing.T) {
+	var ti *TriggerInterceptor
+
+	if err := ti.updateCoreInterceptors(); err != nil {
+		t.Fatalf("updateCoreInterceptors() unexpected error: %s", err)
 	}
 }

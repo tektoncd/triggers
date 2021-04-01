@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 )
 
 func TestTriggerSetDefaults(t *testing.T) {
@@ -95,6 +96,150 @@ func TestTriggerSetDefaults(t *testing.T) {
 						Name: "cel",
 						Kind: v1alpha1.ClusterInterceptorKind,
 					},
+				}},
+			},
+		},
+	}, {
+		name: "default deprecatedGithub to new ref/params",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					DeprecatedGitHub: &v1alpha1.GitHubInterceptor{
+						SecretRef: &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						},
+						EventTypes: []string{"push"},
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "github",
+						Kind: v1alpha1.ClusterInterceptorKind,
+					},
+					Params: []v1alpha1.InterceptorParams{{
+						Name: "secretRef",
+						Value: test.ToV1JSON(t, &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						}),
+					}, {
+						Name:  "eventTypes",
+						Value: test.ToV1JSON(t, []string{"push"}),
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "default deprecatedGitlab to new ref/params",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					DeprecatedGitLab: &v1alpha1.GitLabInterceptor{
+						SecretRef: &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						},
+						EventTypes: []string{"push"},
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "gitlab",
+						Kind: v1alpha1.ClusterInterceptorKind,
+					},
+					Params: []v1alpha1.InterceptorParams{{
+						Name: "secretRef",
+						Value: test.ToV1JSON(t, &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						}),
+					}, {
+						Name:  "eventTypes",
+						Value: test.ToV1JSON(t, []string{"push"}),
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "default deprecatedBitbucket to new ref/params",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					DeprecatedBitbucket: &v1alpha1.BitbucketInterceptor{
+						SecretRef: &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						},
+						EventTypes: []string{"push"},
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "bitbucket",
+						Kind: v1alpha1.ClusterInterceptorKind,
+					},
+					Params: []v1alpha1.InterceptorParams{{
+						Name: "secretRef",
+						Value: test.ToV1JSON(t, &v1alpha1.SecretRef{
+							SecretKey:  "key",
+							SecretName: "name",
+						}),
+					}, {
+						Name:  "eventTypes",
+						Value: test.ToV1JSON(t, []string{"push"}),
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "default deprecatedCEL to new ref/params",
+		in: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					DeprecatedCEL: &v1alpha1.CELInterceptor{
+						Filter: "body.foo == bar",
+						Overlays: []v1alpha1.CELOverlay{{
+							Key:        "abc",
+							Expression: "body.foo",
+						}},
+					},
+				}},
+			},
+		},
+		wc: v1alpha1.WithUpgradeViaDefaulting,
+		want: &v1alpha1.Trigger{
+			Spec: v1alpha1.TriggerSpec{
+				Interceptors: []*v1alpha1.TriggerInterceptor{{
+					Ref: v1alpha1.InterceptorRef{
+						Name: "cel",
+						Kind: v1alpha1.ClusterInterceptorKind,
+					},
+					Params: []v1alpha1.InterceptorParams{{
+						Name:  "filter",
+						Value: test.ToV1JSON(t, "body.foo == bar"),
+					}, {
+						Name: "overlays",
+						Value: test.ToV1JSON(t, []v1alpha1.CELOverlay{{
+							Key:        "abc",
+							Expression: "body.foo",
+						}}),
+					}},
 				}},
 			},
 		},

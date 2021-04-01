@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
 
@@ -36,6 +37,12 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).defaultBindings()
 			for _, ti := range t.Interceptors {
 				ti.defaultInterceptorKind()
+				if err := ti.updateCoreInterceptors(); err != nil {
+					// The err only happens due to malformed JSON and should never really happen
+					// We can't return an error here, so print out the error
+					logger := logging.FromContext(ctx)
+					logger.Errorf("failed to setDefaults for trigger: %s; err: %s", t.Name, err)
+				}
 			}
 		}
 		// Remove Deprecated Resource Fields
