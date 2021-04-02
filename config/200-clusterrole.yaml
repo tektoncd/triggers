@@ -54,3 +54,6 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["results.tekton.dev"]
+    resources: ["results", "records"]
+    verbs: ["create"]

@@ -55,3 +55,14 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "gitlab"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: results
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "results"
