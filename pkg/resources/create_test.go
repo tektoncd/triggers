@@ -299,10 +299,28 @@ func Test_AddLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := addLabels(tt.us, tt.labelsToAdd)
+			got, err := addLabels(tt.us, tt.labelsToAdd)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("addLabels(): -want +got: %s", diff)
 			}
 		})
 	}
+
+	t.Run("non-string label", func(t *testing.T) {
+		in := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"labels": map[string]interface{}{
+						"foo": 0,
+					},
+				},
+			},
+		}
+		if got, err := addLabels(in, map[string]string{"a": "b"}); err == nil {
+			t.Errorf("expected error, got: %v", got)
+		}
+	})
 }
