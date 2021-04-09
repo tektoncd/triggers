@@ -61,14 +61,9 @@ func rootRun(cmd *cobra.Command, args []string) {
 
 func evalBinding(w io.Writer, bindingPath, httpPath string) error {
 	// Read HTTP request.
-	r, err := readHTTP(httpPath)
+	r, body, err := readHTTP(httpPath)
 	if err != nil {
 		return fmt.Errorf("error reading HTTP file: %w", err)
-	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return fmt.Errorf("error reading HTTP body: %w", err)
 	}
 
 	// Read bindings.
@@ -131,14 +126,23 @@ func readBindings(path string) ([]*v1alpha1.TriggerBinding, error) {
 	return list, nil
 }
 
-func readHTTP(path string) (*http.Request, error) {
+func readHTTP(path string) (*http.Request, []byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
+		return nil, nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 
-	return http.ReadRequest(bufio.NewReader(f))
+	req, err := http.ReadRequest(bufio.NewReader(f))
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading request: %w", err)
+	}
+	defer req.Body.Close()
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading HTTP body: %w", err)
+	}
+	return req, body, nil
 }
 
 // Execute runs the command.
