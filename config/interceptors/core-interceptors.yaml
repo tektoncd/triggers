@@ -37,6 +37,17 @@ spec:
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
+  name: debug
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "debug"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
   name: github
 spec:
   clientConfig:

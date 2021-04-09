@@ -479,6 +479,7 @@ Interceptors can take several different forms:
 - [GitLab Interceptors](#GitLab-Interceptors)
 - [Bitbucket Interceptors](#Bitbucket-Interceptors)
 - [CEL Interceptors](#CEL-Interceptors)
+- [Debug Interceptor](#Debug-Interceptors)
 
 ### Webhook Interceptors
 
@@ -858,6 +859,49 @@ spec:
   - name: branch
     value: $(extensions.short_sha)
 ```
+
+### Debug Interceptors
+
+Debug interceptors can be a helpful debug/diagnosis tool for developing trigger interceptors
+and detecting data in the body of the request. Be aware that enabling this interceptor for a
+specific trigger can have a significant impact on the logs in the `tekton-pipelines` namespace
+and should be done carefully.
+
+At any point in Trigger processing, you can add a call to the debug trigger by invoking the
+ClusterInterceptor.
+
+<!-- FILE: examples/eventlisteners/cel-eventlistener-debug.yaml -->
+```YAML
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: cel-eventlistener-debug
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "overlays"
+              value:
+                - key: extensions.truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
+        - ref:
+            name: "debug"
+      bindings:
+      - ref: pipeline-binding
+      template:
+        ref: pipeline-template
+```
+
+In this example, the event body will be logged including any extensions set by previous interceptors. This
+enables point in time debugging for a challenging series of filters or expressions, but due to the amount
+of data it could print into the logs, please do so only temporarily.
+
+The debug interceptor logs will appear in one pod of the `tekton-triggers-core-interceptors` deployment. You
+may have to look across multiple pod logs if you have scaled this deployment more than a single pod.
 
 ### Chaining Interceptors
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
+	"github.com/tektoncd/triggers/pkg/interceptors/debug"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 
@@ -30,6 +31,7 @@ func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Ser
 	i := map[string]v1alpha1.InterceptorInterface{
 		"bitbucket": bitbucket.NewInterceptor(k, l),
 		"cel":       cel.NewInterceptor(k, l),
+		"debug":     debug.NewInterceptor(k, l),
 		"github":    github.NewInterceptor(k, l),
 		"gitlab":    gitlab.NewInterceptor(k, l),
 	}
