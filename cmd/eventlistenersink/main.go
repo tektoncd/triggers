@@ -121,7 +121,7 @@ func main() {
 	// Start and sync the informers before we start taking traffic
 	withTimeout, cancel := context.WithTimeout(ctx, cacheSyncTimeout)
 	defer cancel()
-	factory.Start(withTimeout.Done())
+	factory.Start(ctx.Done())
 	res := factory.WaitForCacheSync(withTimeout.Done())
 	for r, hasSynced := range res {
 		if !hasSynced {
