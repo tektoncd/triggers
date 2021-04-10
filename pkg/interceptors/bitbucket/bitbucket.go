@@ -27,8 +27,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
-
 type Interceptor struct {
 	SecretGetter interceptors.SecretGetter
 	Logger       *zap.SugaredLogger

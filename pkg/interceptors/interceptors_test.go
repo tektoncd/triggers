@@ -33,12 +33,15 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
+	"github.com/tektoncd/triggers/pkg/interceptors/sdk"
 	"github.com/tektoncd/triggers/test"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -425,7 +428,9 @@ func TestExecute(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+			coreInterceptors, err := sdk.NewWithInterceptors(nil, zaptest.NewLogger(t).Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+				"cel": cel.NewInterceptor,
+			})
 			if err != nil {
 				t.Fatalf("failed to initialize core interceptors: %v", err)
 			}
@@ -456,7 +461,9 @@ func TestExecute_Error(t *testing.T) {
 			"filter": `header.match("Content-Type", "application/json")`,
 		},
 	}
-	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+	coreInterceptors, err := sdk.NewWithInterceptors(nil, zaptest.NewLogger(t).Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+		"cel": cel.NewInterceptor,
+	})
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

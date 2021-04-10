@@ -27,8 +27,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
-
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
 

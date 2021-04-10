@@ -1,4 +1,4 @@
-package server
+package sdk
 
 import (
 	"bytes"
@@ -17,6 +17,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"go.uber.org/zap"
 )
 
@@ -25,30 +26,18 @@ type Server struct {
 	interceptors map[string]triggersv1.InterceptorInterface
 }
 
-// RegisterInterceptor sets up the interceptor to be served at the specfied path
-func (is *Server) RegisterInterceptor(path string, interceptor triggersv1.InterceptorInterface) {
-	if is.interceptors == nil {
-		is.interceptors = map[string]triggersv1.InterceptorInterface{}
-	}
-	is.interceptors[path] = interceptor
-}
+func NewWithInterceptors(k kubernetes.Interface, l *zap.SugaredLogger, i map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface) (*Server, error) {
 
-func NewWithCoreInterceptors(sg interceptors.SecretGetter, l *zap.SugaredLogger) (*Server, error) {
-	i := map[string]triggersv1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(sg, l),
-		"cel":       cel.NewInterceptor(sg, l),
-		"github":    github.NewInterceptor(sg, l),
-		"gitlab":    gitlab.NewInterceptor(sg, l),
-	}
-
-	for k, v := range i {
-		if v == nil {
+	interceptors := map[string]v1alpha1.InterceptorInterface{}
+	for key, v := range i {
+		interceptors[key] = v(k, l)
+		if interceptors[key] == nil {
 			return nil, fmt.Errorf("interceptor %s failed to initialize", k)
 		}
 	}
 	s := Server{
 		Logger:       l,
-		interceptors: i,
+		interceptors: interceptors,
 	}
 	return &s, nil
 }

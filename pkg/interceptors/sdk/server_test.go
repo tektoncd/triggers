@@ -1,4 +1,4 @@
-package server
+package sdk
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"google.golang.org/grpc/codes"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -79,7 +80,9 @@ func TestServer_ServeHTTP(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
+			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+				"cel": cel.NewInterceptor,
+			})
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -138,7 +141,9 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
+			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+				"cel": cel.NewInterceptor,
+			})
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}

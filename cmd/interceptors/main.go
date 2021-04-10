@@ -40,109 +40,32 @@ import (
 	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
+	"github.com/tektoncd/triggers/pkg/interceptors/github"
+	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
+	"github.com/tektoncd/triggers/pkg/interceptors/sdk"
+	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/signals"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
-const (
-	// HTTPSPort is the port where interceptor service listens on
-	HTTPSPort    = 8443
-	readTimeout  = 5 * time.Second
-	writeTimeout = 20 * time.Second
-	idleTimeout  = 60 * time.Second
-	decade       = 100 * 365 * 24 * time.Hour
-
-	keyFile  = "/tmp/server-key.pem"
-	certFile = "/tmp/server-cert.pem"
-)
-
 func main() {
-	// set up signals so we handle the first shutdown signal gracefully
-	ctx := signals.NewContext()
 
-	cfg := injection.ParseAndGetRESTConfigOrDie()
+	// Set up a signal context with our interceptor options
+	ctx := sdk.WithOptions(signals.NewContext(), sdk.Options{
+		Port: 8082,
+	})
 
-	ctx, startInformer := injection.EnableInjectionOrDie(ctx, cfg)
-
-	zap, err := zap.NewProduction()
-	if err != nil {
-		log.Fatalf("failed to initialize logger: %s", err)
-	}
-	logger := zap.Sugar()
-	ctx = logging.WithLogger(ctx, logger)
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			log.Fatalf("failed to sync the logger: %s", err)
-		}
-	}()
-
-	kubeClient, err := kubeclientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Errorf("failed to create new Clientset for the given config: %v", err)
-		return
-	}
-
-	secretLister := secretInformer.Get(ctx).Lister()
-	service, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(kubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger)
-	if err != nil {
-		logger.Errorf("failed to initialize core interceptors: %s", err)
-		return
-	}
-	startInformer()
-
-	mux := http.NewServeMux()
-	mux.Handle("/", service)
-	mux.HandleFunc("/ready", handler)
-
-	keyFile, certFile, caCert, err := getCerts(ctx, secretLister, kubeClient, logger)
-	if err != nil {
-		return
-	}
-
-	if err := updateCRDWithCaCert(ctx, cfg, caCert); err != nil {
-		return
-	}
-
-	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", HTTPSPort),
-		BaseContext: func(listener net.Listener) context.Context {
-			return ctx
-		},
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-		Handler:      mux,
-	}
-	logger.Infof("Listen and serve on port %d", HTTPSPort)
-	if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
-		logger.Fatalf("failed to start interceptors service: %v", err)
-	}
-
-}
-
-// updateCRDWithCaCert updates clusterinterceptor crd caBundle with caCert
-func updateCRDWithCaCert(ctx context.Context, cfg *rest.Config, caCert []byte) error {
-	tc, err := triggersclientset.NewForConfig(cfg)
-	if err != nil {
-		return err
-	}
-	clusterInterceptorList, err := tc.TriggersV1alpha1().ClusterInterceptors().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for i := range clusterInterceptorList.Items {
-		if bytes.Equal(clusterInterceptorList.Items[i].Spec.ClientConfig.CaBundle, []byte{}) {
-			clusterInterceptorList.Items[i].Spec.ClientConfig.CaBundle = caCert
-			if _, err := tc.TriggersV1alpha1().ClusterInterceptors().Update(ctx, &clusterInterceptorList.Items[i], metav1.UpdateOptions{}); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	// FIXME: call getCerts
+	sdk.InterceptorMainWithConfig(ctx, "interceptors", map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+		"bitbucket": bitbucket.NewInterceptor,
+		"cel":       cel.NewInterceptor,
+		"github":    github.NewInterceptor,
+		"gitlab":    gitlab.NewInterceptor,
+	})
 }
 
 // getCerts uses Knative pkg to generate certs for clusterinterceptor to run as https

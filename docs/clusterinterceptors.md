@@ -87,3 +87,13 @@ Triggers uses knative pkg to generate key, cert, cacert and fill caBundle for co
 Triggers now support writing custom interceptor for both `http` and `https`. Support of `http` for custom interceptor will be there for 1-2 releases, later it will be removed and only `https` will be supported. 
  
 End user who write `https` custom interceptor need to pass `caBundle` in order to make secure connection with eventlistener
+## Interceptor SDK
+
+The interceptor sdk allows you to easily create new interceptors for use with Tekton. The main SDK
+function can be found in [pkg/interceptors/sdk/sharedmain.go](pkg/interceptors/sdk/sharedmain.go). Invoke the
+function `sdk.InterceptorMainWithConfig` passing in a map with a key of the interceptor HTTP request
+path and the value as a function that takes a Kubernetes client and zap logger and returns an implementation
+of the `InterceptorInterface`.
+
+The interceptor SDK is used by the core interceptor deployment, so you can see how it is invoked
+at [cmd/interceptors/main.go](cmd/interceptors/main.go). This deployment contains multiple interceptors

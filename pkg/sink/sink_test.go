@@ -45,7 +45,10 @@ import (
 	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding"
 	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	bitbucketinterceptor "github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
+	celinterceptor "github.com/tektoncd/triggers/pkg/interceptors/cel"
+	githubinterceptor "github.com/tektoncd/triggers/pkg/interceptors/github"
+	"github.com/tektoncd/triggers/pkg/interceptors/sdk"
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap"
@@ -170,7 +173,11 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(k.CoreV1(), 1024, 5*time.Second), l)
+	coreInterceptors, err := sdk.NewWithInterceptors(k, l, map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+		"cel":       celinterceptor.NewInterceptor,
+		"bitbucket": bitbucketinterceptor.NewInterceptor,
+		"github":    githubinterceptor.NewInterceptor,
+	})
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

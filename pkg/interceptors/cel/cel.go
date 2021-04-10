@@ -40,8 +40,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
-
 // Interceptor implements a CEL based interceptor that uses CEL expressions
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
