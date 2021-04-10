@@ -17,11 +17,6 @@ Creates an EventListener that serve triggers in multiple namespaces.
    -l eventlistener=listener-sel) 8000
    ```
 
-   **Note**: Instead of port forwarding, you can set the
-   [`serviceType`](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md#serviceType)
-   to `LoadBalancer` to expose the EventListener with a public IP.
-   For this example, modify `02_eventlistener-sel.yaml`
-
 3. Create sample pipeline in namespace bar:
    ```bash
    kubectl apply -f examples/example-pipeline.yaml -n bar
