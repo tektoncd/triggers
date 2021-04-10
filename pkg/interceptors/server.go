@@ -1,4 +1,4 @@
-package server
+package interceptors
 
 import (
 	"bytes"
@@ -9,11 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
-	"github.com/tektoncd/triggers/pkg/interceptors/cel"
-	"github.com/tektoncd/triggers/pkg/interceptors/github"
-	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap"
@@ -26,23 +21,20 @@ type Server struct {
 	interceptors map[string]v1alpha1.InterceptorInterface
 }
 
-func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
-	i := map[string]v1alpha1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(k, l),
-		"cel":       cel.NewInterceptor(k, l),
-		"github":    github.NewInterceptor(k, l),
-		"gitlab":    gitlab.NewInterceptor(k, l),
-	}
+func NewWithInterceptors(ctx context.Context, k kubernetes.Interface, l *zap.SugaredLogger, i map[string]v1alpha1.InterceptorInterface) (*Server, error) {
 
-	for k, v := range i {
+	interceptors := map[string]v1alpha1.InterceptorInterface{}
+	for key, v := range i {
 		if v == nil {
-			return nil, fmt.Errorf("interceptor %s failed to initialize", k)
+			return nil, fmt.Errorf("invalid interceptor passed to initialize: %s", key)
 		}
+		interceptors[key] = v
+		v.InitializeContext(ctx)
 	}
 	s := Server{
 		KubeClient:   k,
 		Logger:       l,
-		interceptors: i,
+		interceptors: interceptors,
 	}
 	return &s, nil
 }

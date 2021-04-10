@@ -24,6 +24,7 @@ import (
 	"reflect"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"knative.dev/pkg/logging"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
@@ -42,8 +43,6 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
-
 // Interceptor implements a CEL based interceptor that uses CEL expressions
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
@@ -54,18 +53,17 @@ type Interceptor struct {
 	TriggerNamespace string
 }
 
+var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+
 var (
 	structType = reflect.TypeOf(&structpb.Value{})
 	listType   = reflect.TypeOf(&structpb.ListValue{})
 	mapType    = reflect.TypeOf(&structpb.Struct{})
 )
 
-// NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
-	return &Interceptor{
-		Logger:        l,
-		KubeClientSet: k,
-	}
+func (w *Interceptor) InitializeContext(ctx context.Context) {
+	w.Logger = logging.FromContext(ctx)
+	w.KubeClientSet = interceptors.GetKubeClient(ctx)
 }
 
 func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, error) {

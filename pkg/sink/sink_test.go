@@ -18,6 +18,7 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,7 +46,9 @@ import (
 	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding"
 	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	bitbucketinterceptor "github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
+	celinterceptor "github.com/tektoncd/triggers/pkg/interceptors/cel"
+	githubinterceptor "github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap"
@@ -63,6 +66,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -135,7 +139,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	// Setup a handler for core interceptors using httptest
-	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
+	httpClient := setupInterceptors(ctx, t, clients.Kube, logger.Sugar(), webhookInterceptor)
 
 	r := Sink{
 		EventListenerName:           elName,
@@ -159,10 +163,17 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 
 // setupInterceptors creates a httptest server with all coreInterceptors and any passed in webhook interceptor
 // It returns a http.Client that can be used to talk to these interceptors
-func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
+func setupInterceptors(ctx context.Context, t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
+	ctx = interceptors.WithKubeClient(ctx, k)
+	ctx = logging.WithLogger(ctx, l)
+
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := server.NewWithCoreInterceptors(k, l)
+	coreInterceptors, err := interceptors.NewWithInterceptors(ctx, k, l, map[string]triggersv1.InterceptorInterface{
+		"cel":       &celinterceptor.Interceptor{},
+		"bitbucket": &bitbucketinterceptor.Interceptor{},
+		"github":    &githubinterceptor.Interceptor{},
+	})
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}
@@ -1192,7 +1203,8 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 // that the last response is as expected.
 func TestExecuteInterceptor_Sequential(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	httpClient := setupInterceptors(t, nil, logger.Sugar(), &sequentialInterceptor{})
+	ctx, _ := rtesting.SetupFakeContext(t)
+	httpClient := setupInterceptors(ctx, t, nil, logger.Sugar(), &sequentialInterceptor{})
 
 	r := Sink{
 		HTTPClient: httpClient,
@@ -1267,7 +1279,8 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	r.MatcherFunc(match).Handler(&errorInterceptor{})
 	si := &sequentialInterceptor{}
 	r.Handle("/", si)
-	httpClient := setupInterceptors(t, nil, logger.Sugar(), r)
+	ctx, _ := rtesting.SetupFakeContext(t)
+	httpClient := setupInterceptors(ctx, t, nil, logger.Sugar(), r)
 
 	s := Sink{
 		HTTPClient: httpClient,

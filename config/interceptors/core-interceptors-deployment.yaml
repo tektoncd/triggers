@@ -65,6 +65,16 @@ spec:
           value: config-observability-triggers
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
+        livenessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /live
+            port: 8082
+            scheme: HTTP
+          periodSeconds: 10
+          initialDelaySeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
         securityContext:
           allowPrivilegeEscalation: false
           # User 65532 is the distroless nonroot user ID

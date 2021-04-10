@@ -17,75 +17,26 @@ limitations under the License.
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net"
-	"net/http"
-	"time"
-
-	"github.com/tektoncd/triggers/pkg/interceptors/server"
-	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"knative.dev/pkg/logging"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
+	"github.com/tektoncd/triggers/pkg/interceptors/github"
+	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 	"knative.dev/pkg/signals"
 )
 
-const (
-	// Port is the port that the port that interceptor service listens on
-	Port         = 8082
-	readTimeout  = 5 * time.Second
-	writeTimeout = 20 * time.Second
-	idleTimeout  = 60 * time.Second
-)
-
 func main() {
-	// set up signals so we handle the first shutdown signal gracefully
-	ctx := signals.NewContext()
 
-	clusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Failed to build config: %v", err)
-	}
+	// Set up a signal context with our interceptor options
+	ctx := interceptors.WithOptions(signals.NewContext(), interceptors.Options{
+		Port: 8082,
+	})
 
-	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the Kubernetes client set: %v", err)
-	}
-
-	zap, err := zap.NewProduction()
-	if err != nil {
-		log.Fatalf("failed to initialize logger: %s", err)
-	}
-	logger := zap.Sugar()
-	ctx = logging.WithLogger(ctx, logger)
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			log.Fatalf("failed to sync the logger: %s", err)
-		}
-	}()
-
-	service, err := server.NewWithCoreInterceptors(kubeClient, logger)
-	if err != nil {
-		log.Fatalf("failed to initialize core interceptors: %s", err)
-	}
-	mux := http.NewServeMux()
-	mux.Handle("/", service)
-
-	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", Port),
-		BaseContext: func(listener net.Listener) context.Context {
-			return ctx
-		},
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-		Handler:      mux,
-	}
-
-	logger.Infof("Listen and serve on port %d", Port)
-	if err := srv.ListenAndServe(); err != nil {
-		logger.Fatalf("failed to start interceptors service: %v", err)
-	}
+	interceptors.InterceptorMainWithConfig(ctx, "interceptors", map[string]v1alpha1.InterceptorInterface{
+		"bitbucket": &bitbucket.Interceptor{},
+		"cel":       &cel.Interceptor{},
+		"github":    &github.Interceptor{},
+		"gitlab":    &gitlab.Interceptor{},
+	})
 }
