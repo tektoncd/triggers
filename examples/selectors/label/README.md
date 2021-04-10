@@ -17,11 +17,6 @@ Creates an EventListener that serve triggers selected via a label selector.
    -l eventlistener=listener-label-selector) 8000
    ```
 
-   **Note**: Instead of port forwarding, you can set the
-   [`serviceType`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#serviceType)
-   to `LoadBalancer` to expose the EventListener with a public IP. 
-   For this example, modify `02_eventlistener-label-sel.yaml`
-
 3. Create sample pipeline in namespace `foo`:
    ```bash
    kubectl apply -f examples/example-pipeline.yaml -n foo

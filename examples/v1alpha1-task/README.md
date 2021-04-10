@@ -18,10 +18,6 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
      8080
    ```
 
-   **Note**: Instead of port forwarding, you can set the
-   [`serviceType`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#serviceType)
-   to `LoadBalancer` to expose the EventListener with a public IP.
-
 1. Test by sending the sample payload.
 
    ```shell script

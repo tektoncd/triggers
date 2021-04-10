@@ -21,8 +21,6 @@ or more [`Interceptors`](./interceptors.md).
 - [Structure of an `EventListener`](#structure-of-an-eventlistener)
 - [Specifying the Kubernetes service account](#specifiying-the-kubernetes-service-account)
 - [Specifying `Triggers`](#specifying-triggers)
-- [Specifying the Kubernetes service type](#specifying-the-kubernetes-service-type)
-- [Specifying a `PodTemplate`](#specifying-a-podtemplate)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
@@ -59,9 +57,7 @@ An `EventListener` definition consists of the following fields:
     - [`serviceAccountName`](#specifiying-the-kubernetes-service-account) - Specifies the `ServiceAccount` the `EventListener` will use to instantiate Tekton resources
 - Optional:
   - [`triggers`](#specifying-triggers) - specifies a list of `Triggers` to execute upon event detection
-  - [`serviceType`](#specifying-the-kubernetes-service-type) - specifies the type of service you want the `EventListener` to use to listen for events
   - [`replicas`](#specifying-a-kubernetesresource-object) - specifies the number of `EventListener` pods to create (only for `kubernetesResource` objects)
-  - [`podTemplate`](#specifying-a-podtemplate) - specifies the `PodTemplate` for your `EventListener` pod
   - [`resources`](#specifying-resources) - specifies the resources that will be available to the event listening service
   - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the 
     specified `Triggers` and stores the Tekton objects it instantiates upon event detection
@@ -166,39 +162,6 @@ rules:
   verbs: ["impersonate"]
 ```
 
-## Specifying the Kubernetes Service type
-
-**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
-
-You must specify a [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) type
-for your `EventListener` in the `serviceType` field. The default value is `ClusterIP` which allows all pods running on your Kubernetes cluster
-to access services using the cluster's DNS. You can also specify `NodePort` and `LoadBalancer` as the value. For information, see the Kubernetes
-Service documentation.
-
-If you want to allow external services, such as Github Webhooks, to connect to your cluster, see [Exposing an `EventListener` outside of the cluster](#exposing-an-event-listener-outside-of-the-cluster).
-
-### Specifying a `PodTemplate`
-
-**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
-
-The `podTemplate` field is optional. A PodTemplate is specifications for 
-creating EventListener pod. A PodTemplate consists of:
-- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
-This is needed only if you want to schedule EventListener pod to a tainted node.
-- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on. 
-
-```yaml
-spec:
-  podTemplate:
-    nodeSelector:
-      app: test
-    tolerations:
-    - key: key
-      value: value
-      operator: Equal
-      effect: NoSchedule
-```
-
 ## Specifying `Resources`
 
 You can optionally customize the sink deployment for your `EventListener` using the `resources` field. It accepts the following types of objects:
@@ -220,9 +183,6 @@ Resources
 VolumeMounts
 Env
 ```
-
-**Note:** The `resources` field is currently optional to ensure backward compatibility with the legacy behavior of the `podTemplate`, `serviceType`, and `serviceAccountName` fieds.
-We plan to deprecate the `serviceType` and `podTemplate` fields in a future release and replace them entirely with the `resources` field. See [TEP-0008](https://github.com/tektoncd/community/blob/master/teps/0008-support-knative-service-for-triggers-eventlistener-pod.md) for more information.
 
 ### Specifying a `kubernetesResource` object
 

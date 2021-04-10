@@ -105,7 +105,6 @@ spec:
       value: application/json
   pipelineRef:
     name: simple-pipeline
-  podTemplate: {}
   resources:
     - name: git-source
       resourceSpec:
