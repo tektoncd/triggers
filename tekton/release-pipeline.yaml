@@ -44,6 +44,12 @@ spec:
   - name: release-file-no-tag
     description: the URL of the release file
     value: $(tasks.report-bucket.results.release-no-tag)
+  - name: interceptors-file
+    description: the URL of the interceptors release file
+    value: $(tasks.report-bucket.results.interceptors)
+  - name: interceptors-file-no-tag
+    description: the URL of the interceptors release file
+    value: $(tasks.report-bucket.results.interceptors-no-tag)
   tasks:
   - name: git-clone
     taskRef:
@@ -177,9 +183,13 @@ spec:
       - name: versionTag
       results:
       - name: release
-        description: The full URL of the release file in the bucket
+        description: The full URL of the main release file in the bucket
       - name: release-no-tag
-        description: The full URL of the release file (no tag) in the bucket
+        description: The full URL of the main release file (no tag) in the bucket
+      - name: interceptors
+        description: The full URL of the interceptors release file in the bucket
+      - name: interceptors-no-tag
+        description: The full URL of the interceptors file (no tag) in the bucket
       steps:
       - name: create-results
         image: alpine
@@ -189,3 +199,5 @@ spec:
           BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
           echo "${BASE_URL}/release.yaml" > $(results.release.path)
           echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)
+          echo "${BASE_URL}/interceptors.yaml" > $(results.interceptors.path)
+          echo "${BASE_URL}/interceptors.notag.yaml" > $(results.interceptors-no-tag.path)
