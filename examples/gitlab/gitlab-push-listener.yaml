@@ -7,18 +7,12 @@ spec:
   triggers:
     - name: gitlab-push-events-trigger
       interceptors:
-        - name: "verify-gitlab-payload"
-          ref:
-            name: "gitlab"
-            kind: ClusterInterceptor
-          params:
-            - name: secretRef
-              value:
-                secretName: "gitlab-secret"
-                secretKey: "secretToken"
-            - name: eventTypes
-              value:
-                - "Push Hook"
+      - gitlab:
+          eventTypes:
+          - Push Hook
+          secretRef:
+            secretName: "gitlab-secret"
+            secretKey: "secretToken"
       bindings:
         - name: gitrevision
           value: $(body.checkout_sha)
