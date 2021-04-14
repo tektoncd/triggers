@@ -57,6 +57,8 @@ type EventListener struct {
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
+	// Trigger groups allow for centralized processing of an interceptor chain
+	TriggerGroups []EventListenerTriggerGroup `json:"triggerGroups"`
 	// To be removed in a later release #1020
 	DeprecatedReplicas *int32                `json:"replicas,omitempty"`
 	NamespaceSelector  NamespaceSelector     `json:"namespaceSelector,omitempty"`
@@ -98,6 +100,17 @@ type EventListenerTrigger struct {
 	// multi-tenant model based scenarios
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+}
+
+type EventListenerTriggerGroup struct {
+	Name            string                       `json:"name"`
+	Interceptors    []*TriggerInterceptor        `json:"interceptors"`
+	TriggerSelector EventListenerTriggerSelector `json:"triggerSelector"`
+}
+
+type EventListenerTriggerSelector struct {
+	NamespaceSelector NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelSelector     *metav1.LabelSelector `json:"labelSelector,omitempty"`
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events

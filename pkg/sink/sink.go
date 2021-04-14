@@ -95,49 +95,11 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
 	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with path %s, payload: %s and header: %v",
 		r.EventListenerName, r.EventListenerNamespace, eventID, request.URL.Path, string(event), request.Header)
-	var trItems []*triggersv1.Trigger
-	labelSelector := labels.Everything()
-	if el.Spec.LabelSelector != nil {
-		labelSelector, err = metav1.LabelSelectorAsSelector(el.Spec.LabelSelector)
-		if err != nil {
-			r.Logger.Errorf("Failed to create label selector: %s", err)
-			response.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-	var triggerFunc func() ([]*triggersv1.Trigger, error)
-	switch {
-	case len(el.Spec.NamespaceSelector.MatchNames) == 1 && el.Spec.NamespaceSelector.MatchNames[0] == "*":
-		triggerFunc = func() ([]*triggersv1.Trigger, error) {
-			return r.TriggerLister.List(labelSelector)
-		}
-	case len(el.Spec.NamespaceSelector.MatchNames) != 0:
-		triggerFunc = func() ([]*triggersv1.Trigger, error) {
-			var trList []*triggersv1.Trigger
-			for _, v := range el.Spec.NamespaceSelector.MatchNames {
-				trNsList, err := r.TriggerLister.Triggers(v).List(labelSelector)
-				if err != nil {
-					return nil, err
-				}
-				trList = append(trList, trNsList...)
-			}
-			return trList, nil
-		}
-	case len(el.Spec.NamespaceSelector.MatchNames) == 0:
-		if el.Spec.LabelSelector != nil {
-			triggerFunc = func() ([]*triggersv1.Trigger, error) {
-				return r.TriggerLister.Triggers(el.GetNamespace()).List(labelSelector)
-			}
-		}
-	}
-	if triggerFunc != nil {
-		trList, err := triggerFunc()
-		if err != nil {
-			r.Logger.Errorf("Error getting Triggers: %s", err)
-			response.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		trItems = append(trItems, trList...)
+	trItems, err := r.selectTriggers(el.Spec.NamespaceSelector, el.Spec.LabelSelector)
+	if err != nil {
+		r.Logger.Errorf("Unable to select configured triggers: %s", err)
+		response.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	triggers, err := r.merge(el.Spec.Triggers, trItems)
@@ -151,7 +113,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	for _, t := range triggers {
 		go func(t triggersv1.Trigger) {
 			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(t, localRequest, event, eventID, eventLog); err != nil {
+			if err := r.processTrigger(t, localRequest, event, eventID, eventLog, map[string]interface{}{}); err != nil {
 				if kerrors.IsUnauthorized(err) {
 					result <- http.StatusUnauthorized
 					return
@@ -167,10 +129,29 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}(*t)
 	}
 
-	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
+	for _, group := range el.Spec.TriggerGroups {
+		go func(g triggersv1.EventListenerTriggerGroup) {
+			localRequest := request.Clone(request.Context())
+			if err := r.processTriggerGroups(g, localRequest, event, eventID, eventLog); err != nil {
+				if kerrors.IsUnauthorized(err) {
+					result <- http.StatusUnauthorized
+					return
+				}
+				if kerrors.IsForbidden(err) {
+					result <- http.StatusForbidden
+					return
+				}
+				result <- http.StatusAccepted
+				return
+			}
+			result <- http.StatusCreated
+		}(group)
+	}
+
+	// The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
 	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
-	for i := 0; i < len(triggers); i++ {
+	for i := 0; i < len(triggers)+len(el.Spec.TriggerGroups); i++ {
 		thiscode := <-result
 		// current take - if someone is doing unauthorized stuff, we abort immediately;
 		// unauthorized should be the final status code vs. the less than comparison
@@ -226,10 +207,108 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 	return triggers, nil
 }
 
-func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+	log := eventLog.With(zap.String(triggersv1.TriggerGroupLabelKey, g.Name))
+	extensions := map[string]interface{}{}
+	_, _, resp, err := r.ExecuteInterceptors(g.Interceptors, request, event, log, eventID, fmt.Sprintf("namespaces/%s/triggerGroups/%s", r.EventListenerNamespace, g.Name), r.EventListenerNamespace, extensions)
+
+	if err != nil {
+		eventLog.Error(err)
+		return err
+	}
+	if resp != nil {
+		if resp.Extensions != nil {
+			for k, v := range resp.Extensions {
+				extensions[k] = v
+			}
+		}
+		if !resp.Continue {
+			eventLog.Infof("interceptor stopped trigger processing: %v", resp.Status.Err())
+			return resp.Status.Err()
+		}
+	}
+
+	trItems, err := r.selectTriggers(g.TriggerSelector.NamespaceSelector, g.TriggerSelector.LabelSelector)
+	if err != nil {
+		return err
+	}
+
+	result := make(chan error, len(trItems))
+	for _, t := range trItems {
+		go func(t triggersv1.Trigger) {
+			localRequest := request.Clone(request.Context())
+			if err := r.processTrigger(t, localRequest, event, eventID, log, extensions); err != nil {
+				result <- err
+			}
+			result <- nil
+		}(*t)
+	}
+	for i := 0; i < len(trItems); i++ {
+		err = <-result
+		if err == nil {
+			return nil
+		}
+		if kerrors.IsUnauthorized(err) {
+			return err
+		}
+		if kerrors.IsForbidden(err) {
+			return err
+		}
+	}
+	return err
+}
+
+func (r Sink) selectTriggers(namespaceSelector triggersv1.NamespaceSelector, labelSelector *metav1.LabelSelector) ([]*triggersv1.Trigger, error) {
+	var trItems []*triggersv1.Trigger
+	var err error
+	targetLabels := labels.Everything()
+	if labelSelector != nil {
+		targetLabels, err = metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			r.Logger.Errorf("Failed to create label selector: %w", err)
+			return nil, err
+		}
+	}
+	var triggerFunc func() ([]*triggersv1.Trigger, error)
+	switch {
+	case len(namespaceSelector.MatchNames) == 1 && namespaceSelector.MatchNames[0] == "*":
+		triggerFunc = func() ([]*triggersv1.Trigger, error) {
+			return r.TriggerLister.List(targetLabels)
+		}
+	case len(namespaceSelector.MatchNames) != 0:
+		triggerFunc = func() ([]*triggersv1.Trigger, error) {
+			var trList []*triggersv1.Trigger
+			for _, v := range namespaceSelector.MatchNames {
+				trNsList, err := r.TriggerLister.Triggers(v).List(targetLabels)
+				if err != nil {
+					return nil, err
+				}
+				trList = append(trList, trNsList...)
+			}
+			return trList, nil
+		}
+	case len(namespaceSelector.MatchNames) == 0:
+		if labelSelector != nil {
+			triggerFunc = func() ([]*triggersv1.Trigger, error) {
+				return r.TriggerLister.Triggers(r.EventListenerNamespace).List(targetLabels)
+			}
+		}
+	}
+	if triggerFunc != nil {
+		trList, err := triggerFunc()
+		if err != nil {
+			r.Logger.Errorf("Error getting Triggers: %s", err)
+			return nil, err
+		}
+		trItems = append(trItems, trList...)
+	}
+	return trItems, nil
+}
+
+func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger, extensions map[string]interface{}) error {
 	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
 
-	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
+	finalPayload, header, iresp, err := r.ExecuteTriggerInterceptors(t, request, event, log, eventID, extensions)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -250,7 +329,6 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 		log.Error(err)
 		return err
 	}
-	extensions := map[string]interface{}{}
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
@@ -269,10 +347,14 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 	return nil
 }
 
+func (r Sink) ExecuteTriggerInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, extensions map[string]interface{}) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+	return r.ExecuteInterceptors(t.Spec.Interceptors, in, event, log, eventID, fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), t.Namespace, extensions)
+}
+
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
 // When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
-func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
-	if len(t.Spec.Interceptors) == 0 {
+func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, triggerID string, namespace string, extensions map[string]interface{}) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+	if len(trInt) == 0 {
 		return event, in.Header, nil, nil
 	}
 
@@ -281,16 +363,16 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 	request := triggersv1.InterceptorRequest{
 		Body:       string(event),
 		Header:     in.Header.Clone(),
-		Extensions: map[string]interface{}{}, // Empty extensions for the first interceptor in chain
+		Extensions: extensions,
 		Context: &triggersv1.TriggerContext{
 			EventURL: in.URL.String(),
 			EventID:  eventID,
 			// t.Name might not be fully accurate until we get rid of triggers inlined within EventListener
-			TriggerID: fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), // TODO: t.Name might be wrong
+			TriggerID: triggerID,
 		},
 	}
 
-	for _, i := range t.Spec.Interceptors {
+	for _, i := range trInt {
 		if i.Webhook != nil { // Old style interceptor
 			body, err := extendBodyWithExtensions([]byte(request.Body), request.Extensions)
 			if err != nil {
@@ -302,7 +384,7 @@ func (r Sink) ExecuteInterceptors(t triggersv1.Trigger, in *http.Request, event 
 				URL:    in.URL,
 				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
 			}
-			interceptor := webhook.NewInterceptor(i.Webhook, r.HTTPClient, t.Namespace, log)
+			interceptor := webhook.NewInterceptor(i.Webhook, r.HTTPClient, namespace, log)
 			res, err := interceptor.ExecuteTrigger(req)
 			if err != nil {
 				return nil, nil, nil, err

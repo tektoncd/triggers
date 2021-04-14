@@ -29,8 +29,6 @@ import (
 	"sync"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
@@ -57,6 +55,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -881,6 +880,58 @@ func TestHandleEvent(t *testing.T) {
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
 		}},
+	}, {
+		name: "single trigger within EventListener triggerGroup",
+		resources: test.Resources{
+			Triggers: []*triggersv1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"foo": "bar",
+					},
+				},
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.TriggerSpecBinding{{
+						Ref:  "git-clone",
+						Kind: triggersv1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1.TriggerSpecTemplate{
+						Ref: ptr.String("git-clone"),
+					},
+				},
+			}},
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					TriggerGroups: []triggersv1.EventListenerTriggerGroup{{
+						Name: "filter-event",
+						Interceptors: []*triggersv1.TriggerInterceptor{{
+							Ref: triggersv1.InterceptorRef{Name: "cel"},
+							Params: []triggersv1.InterceptorParams{{
+								Name:  "filter",
+								Value: test.ToV1JSON(t, "has(body.head_commit)"),
+							}},
+						}},
+						TriggerSelector: triggersv1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
+							},
+						},
+					}},
+				},
+			}},
+			TriggerBindings:     []*triggersv1.TriggerBinding{gitCloneTB},
+			TriggerTemplates:    []*triggersv1.TriggerTemplate{gitCloneTT},
+			ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+		},
+		eventBody: eventBody,
+		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -945,43 +996,69 @@ func (r fakeAuth) OverrideAuthentication(sa string, _ string, _ *zap.SugaredLogg
 	return defaultDiscoverClient, dynamicSet, nil
 }
 
+type TriggerInvocationType string
+
+var Trigger TriggerInvocationType = "trigger"
+var TriggerGroup TriggerInvocationType = "triggerGroup"
+
 func TestHandleEvent_AuthOverride(t *testing.T) {
 	for _, testCase := range []struct {
 		userVal    string
 		statusCode int
+		invoke     TriggerInvocationType
 	}{{
 		userVal:    userWithoutPermissions,
 		statusCode: http.StatusUnauthorized,
+		invoke:     Trigger,
 	}, {
 		userVal:    userWithPermissions,
 		statusCode: http.StatusCreated,
+		invoke:     Trigger,
 	}, {
 		userVal:    userWithForbiddenAccess,
 		statusCode: http.StatusForbidden,
+		invoke:     Trigger,
 	},
+		{
+			userVal:    userWithoutPermissions,
+			statusCode: http.StatusUnauthorized,
+			invoke:     TriggerGroup,
+		}, {
+			userVal:    userWithPermissions,
+			statusCode: http.StatusCreated,
+			invoke:     TriggerGroup,
+		}, {
+			userVal:    userWithForbiddenAccess,
+			statusCode: http.StatusForbidden,
+			invoke:     TriggerGroup,
+		},
 	} {
 		t.Run(testCase.userVal, func(t *testing.T) {
 			eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}}`)
+			interceptor := &triggersv1.TriggerInterceptor{
+				Ref: triggersv1.InterceptorRef{Name: "github"},
+				Params: []triggersv1.InterceptorParams{{
+					Name: "secretRef",
+					Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+						SecretKey:  "secretKey",
+						SecretName: "secret",
+					}),
+				}, {
+					Name:  "eventTypes",
+					Value: test.ToV1JSON(t, []string{"pull_request"}),
+				}},
+			}
 			trigger := &triggersv1.Trigger{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
+					Labels: map[string]string{
+						"foo": "bar",
+					},
 				},
 				Spec: triggersv1.TriggerSpec{
 					ServiceAccountName: testCase.userVal,
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Ref: triggersv1.InterceptorRef{Name: "github"},
-						Params: []triggersv1.InterceptorParams{{
-							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
-								SecretKey:  "secretKey",
-								SecretName: "secret",
-							}),
-						}, {
-							Name:  "eventTypes",
-							Value: test.ToV1JSON(t, []string{"pull_request"}),
-						}},
-					}},
+					Interceptors:       []*triggersv1.EventInterceptor{},
 					Bindings: []*triggersv1.TriggerSpecBinding{{
 						Name:  "url",
 						Value: ptr.String("$(body.repository.url)"),
@@ -1001,6 +1078,9 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 						},
 					},
 				},
+			}
+			if testCase.invoke == Trigger {
+				trigger.Spec.Interceptors = append(trigger.Spec.Interceptors, interceptor)
 			}
 			authSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1033,8 +1113,24 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{TriggerRef: "git-clone-trigger"}},
+					Triggers:      []triggersv1.EventListenerTrigger{},
+					TriggerGroups: []triggersv1.EventListenerTriggerGroup{},
 				},
+			}
+			if testCase.invoke == Trigger {
+				el.Spec.Triggers = append(el.Spec.Triggers, triggersv1.EventListenerTrigger{TriggerRef: "git-clone-trigger"})
+			} else if testCase.invoke == TriggerGroup {
+				el.Spec.TriggerGroups = append(el.Spec.TriggerGroups, triggersv1.EventListenerTriggerGroup{
+					Name:         "my-group",
+					Interceptors: []*triggersv1.TriggerInterceptor{interceptor},
+					TriggerSelector: triggersv1.EventListenerTriggerSelector{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				})
 			}
 			secret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1229,7 +1325,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID)
+			resp, header, _, err := r.ExecuteTriggerInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, map[string]interface{}{})
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1300,7 +1396,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID); err == nil {
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1325,7 +1421,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID")
+	_, _, resp, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1402,7 +1498,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), s.Logger, eventID)
+	resp, _, iresp, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(body), s.Logger, eventID, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}
