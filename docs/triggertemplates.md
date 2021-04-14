@@ -98,7 +98,7 @@ A `TriggerTemplate` allows you to declare parameters supplied by the associated 
 * Tekton applies the value of the `default` field for each entry in the `params` array of your `TriggerTemplate` if it can't find a corresponding
   value in the associated `TriggerBinding` or cannot successfully extract the value from an HTTP header or body payload.
 
-* You can reference `tt.params` in the `resourceTemplates` section of your `TriggerTemplate` to make your `TriggerTemplate` reusable.
+* You can reference `tt.params` in the `resourcetemplates` section of your `TriggerTemplate` to make your `TriggerTemplate` reusable.
 
 * When you specify parameters in your resource template definitions, Tekton replaces the specified string with the parameter name, for example `$(tt.params.name)`.
   Therefore, simple string and number value replacements work fine directly in your YAML file. However, if a string has a numerical prefix, such as `123abcd`,
