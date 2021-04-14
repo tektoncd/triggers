@@ -1,0 +1,22 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: listener-triggergroup
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggerGroups:
+    - name: github-pr
+      interceptors:
+      - ref:
+          name: "cel"
+        params:
+          - name: "filter"
+            value: "header.match('X-GitHub-Event', 'pull_request')"
+          - name: "overlays"
+            value:
+              - key: truncated_sha
+                expression: "body.pull_request.head.sha.truncate(7)"
+      triggerSelector:
+        labelSelector:
+          matchLabels:
+            type: github-pr

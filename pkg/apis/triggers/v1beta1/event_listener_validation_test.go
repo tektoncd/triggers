@@ -482,7 +482,35 @@ func Test_EventListenerValidate(t *testing.T) {
 				}},
 			},
 		},
-	}}
+	}, {
+		name: "Valid event listener with TriggerGroup and namespaceSelector",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+					Name: "my-group",
+					Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{
+							Name: "cel",
+						},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name:  "filter",
+							Value: test.ToV1JSON(t, "has(body.repository)"),
+						}},
+					}},
+					TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+						NamespaceSelector: triggersv1beta1.NamespaceSelector{
+							MatchNames: []string{
+								"foobar",
+							},
+						},
+					},
+				}},
+			},
+		}}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1160,6 +1188,50 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.triggers[0].template or bindings or interceptors", "spec.triggers[0].triggerRef"),
+	}, {
+		name: "missing label and namespace selector",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+					Name: "my-group",
+					Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{
+							Name: "cel",
+						},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name:  "filter",
+							Value: test.ToV1JSON(t, "has(body.repository)"),
+						}},
+					}},
+				}},
+			},
+		},
+		wantErr: apis.ErrMissingOneOf("spec.triggerGroups[0].triggerSelector.labelSelector", "spec.triggerGroups[0].triggerSelector.namespaceSelector"),
+	}, {
+		name: "triggerGroup requires interceptor",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+					Name: "my-group",
+					TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrMissingField("spec.triggerGroups[0].interceptors"),
 	}}
 
 	for _, tc := range tests {

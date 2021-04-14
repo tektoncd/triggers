@@ -72,6 +72,20 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 	if s.Resources.CustomResource != nil {
 		errs = errs.Also(validateCustomObject(s.Resources.CustomResource).ViaField("spec.resources.customResource"))
 	}
+
+	for i, group := range s.TriggerGroups {
+		errs = errs.Also(group.validate(ctx).ViaField(fmt.Sprintf("spec.triggerGroups[%d]", i)))
+	}
+	return errs
+}
+
+func (g *EventListenerTriggerGroup) validate(ctx context.Context) (errs *apis.FieldError) {
+	if g.TriggerSelector.LabelSelector == nil && len(g.TriggerSelector.NamespaceSelector.MatchNames) == 0 {
+		errs = errs.Also(apis.ErrMissingOneOf("triggerSelector.labelSelector", "triggerSelector.namespaceSelector"))
+	}
+	if len(g.Interceptors) == 0 {
+		errs = errs.Also(apis.ErrMissingField("interceptors"))
+	}
 	return errs
 }
 

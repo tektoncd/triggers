@@ -59,9 +59,11 @@ var _ kmeta.OwnerRefable = (*EventListener)(nil)
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
-	NamespaceSelector  NamespaceSelector      `json:"namespaceSelector,omitempty"`
-	LabelSelector      *metav1.LabelSelector  `json:"labelSelector,omitempty"`
-	Resources          Resources              `json:"resources,omitempty"`
+	// Trigger groups allow for centralized processing of an interceptor chain
+	TriggerGroups     []EventListenerTriggerGroup `json:"triggerGroups"`
+	NamespaceSelector NamespaceSelector           `json:"namespaceSelector,omitempty"`
+	LabelSelector     *metav1.LabelSelector       `json:"labelSelector,omitempty"`
+	Resources         Resources                   `json:"resources,omitempty"`
 }
 
 type Resources struct {
@@ -112,6 +114,19 @@ type EventListenerTrigger struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
+// EventListenerTriggerGroup defines a group of Triggers that share a common set of interceptors
+type EventListenerTriggerGroup struct {
+	Name            string                       `json:"name"`
+	Interceptors    []*TriggerInterceptor        `json:"interceptors"`
+	TriggerSelector EventListenerTriggerSelector `json:"triggerSelector"`
+}
+
+// EventListenerTriggerSelector  defines ways to select a group of triggers using their metadata
+type EventListenerTriggerSelector struct {
+	NamespaceSelector NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelSelector     *metav1.LabelSelector `json:"labelSelector,omitempty"`
+}
+
 // EventInterceptor provides a hook to intercept and pre-process events
 type EventInterceptor = TriggerInterceptor
 
@@ -123,7 +138,7 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
-// EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBindingresource.
+// EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBinding resource.
 type EventListenerBinding = TriggerSpecBinding
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.
