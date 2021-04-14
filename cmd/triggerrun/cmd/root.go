@@ -196,7 +196,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 
 	log := eventLog.With(zap.String(triggers.TriggerLabelKey, r.EventListenerName))
 
-	finalPayload, header, iresp, err := r.ExecuteInterceptors(*tri, request, body, log, eventID)
+	finalPayload, header, iresp, err := r.ExecuteTriggerInterceptors(*tri, request, body, log, eventID, map[string]interface{}{})
 	if err != nil {
 		log.Error(err)
 		return nil, err

@@ -119,6 +119,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	}
 	is.Logger.Debugf("Interceptor Request is: %+v", ireq)
 	iresp := ii.Process(ctx, &ireq)
+	is.Logger.Infof("Interceptor response is: %+v", iresp)
 	respBytes, err := json.Marshal(iresp)
 	if err != nil {
 		return nil, internal(err)

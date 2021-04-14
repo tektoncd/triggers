@@ -889,6 +889,59 @@ func TestHandleEvent(t *testing.T) {
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
 		}},
+	}, {
+		name: "single trigger within EventListener triggerGroup",
+		resources: test.Resources{
+			Triggers: []*triggersv1beta1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-trigger",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"foo": "bar",
+					},
+				},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{
+						Ref:  "git-clone",
+						Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1beta1.TriggerSpecTemplate{
+						Ref: ptr.String("git-clone"),
+					},
+				},
+			}},
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+						Name: "filter-event",
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{Name: "cel"},
+							Params: []triggersv1beta1.InterceptorParams{{
+								Name:  "filter",
+								Value: test.ToV1JSON(t, "has(body.head_commit)"),
+							}},
+						}},
+						TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
+							},
+						},
+					}},
+				},
+			}},
+			TriggerBindings:     []*triggersv1beta1.TriggerBinding{gitCloneTB},
+			TriggerTemplates:    []*triggersv1beta1.TriggerTemplate{gitCloneTT},
+			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
+		},
+		eventBody: eventBody,
+		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -897,7 +950,7 @@ func TestHandleEvent(t *testing.T) {
 			sink, dynamicClient := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
 
 			metricsRecorder := &MetricsHandler{Handler: http.HandlerFunc(sink.HandleEvent)}
-			ts := httptest.NewServer(http.HandlerFunc(metricsRecorder.Intercept(sink.NewMetricsRecorderInterceptor())))
+			ts := httptest.NewServer(metricsRecorder.Intercept(sink.NewMetricsRecorderInterceptor()))
 			defer ts.Close()
 			req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(tc.eventBody))
 			if err != nil {
@@ -1073,7 +1126,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID)
+			resp, header, _, err := r.ExecuteTriggerInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, map[string]interface{}{})
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1144,7 +1197,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteInterceptors(trigger, req, nil, logger.Sugar(), eventID); err == nil {
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1169,7 +1222,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID")
+	_, _, resp, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1246,7 +1299,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteInterceptors(trigger, req, []byte(body), s.Logger, eventID)
+	resp, _, iresp, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(body), s.Logger, eventID, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}
