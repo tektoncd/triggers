@@ -8,6 +8,20 @@ the triggers repo, a terminal window and a text editor.
 
 1. `cd` to root of Triggers git checkout.
 
+1. 1. Make sure the release `Task` and `Pipeline` are up-to-date on the
+      cluster.
+
+   - [publish-operator-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
+
+     This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
+     ```shell script
+     kubectl apply -f tekton/publish.yaml
+     ```
+   - [operator-release](https://github.com/tektoncd/triggers/blob/main/tekton/release-pipeline.yaml)
+     ```shell script
+     kubectl apply -f tekton/release-pipeline.yaml
+     ```
+
 1. Select the commit you would like to build the release from, most likely the
    most recent commit at https://github.com/tektoncd/triggers/commits/main
    and note the commit's hash.
@@ -17,7 +31,6 @@ the triggers repo, a terminal window and a text editor.
     ```bash
     VERSION_TAG=# UPDATE THIS. Example: v0.6.2
     TRIGGERS_RELEASE_GIT_SHA=# SHA of the release to be released
-    TEKTON_IMAGE_REGISTRY=gcr.io/tekton-releases # only change if you want to publish to a different registry
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -45,10 +58,9 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     tkn --context dogfooding pipeline start triggers-release \
-      --serviceaccount=release-right-meow \
       --param=gitRevision="${TRIGGERS_RELEASE_GIT_SHA}" \
+      --param=versionTag="${VERSION_TAG}" \
       --param=serviceAccountPath=release.json \
-      --param=versionTag="${TEKTON_VERSION}" \
       --param=releaseBucket=gs://tekton-releases/triggers \
       --workspace name=release-secret,secret=release-secret \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
@@ -65,9 +77,11 @@ the triggers repo, a terminal window and a text editor.
    📝 Results
 
    NAME                    VALUE
-   ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-   ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/triggers/previous/v20210223-xyzxyz/release.yaml
-   ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/triggers/previous/v20210223-xyzxyz/release.notag.yaml
+   commit-sha                 6ea31d92a97420d4b7af94745c45b02447ceaa19
+   release-file               https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/release.yaml
+   release-file-no-tag        https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/release.notag.yaml
+   interceptors-file          https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/interceptors.yaml
+   interceptors-file-no-tag   https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/interceptors.notag.yaml
 
    (...)
    ```
@@ -91,7 +105,7 @@ the triggers repo, a terminal window and a text editor.
     apiVersion: tekton.dev/v1alpha1
     kind: PipelineResource
     metadata:
-      name: tekton-triggers-$(echo $TEKTON_VERSION | tr '.' '-')
+      name: tekton-triggers-$(echo $VERSION_TAG | tr '.' '-')
       namespace: default
     spec:
       type: git
@@ -107,11 +121,12 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     tkn --context dogfooding task start \
-      -i source="tekton-triggerss-$(echo $TEKTON_VERSION | tr '.' '-')" \
+      -i source="tekton-triggers-$(echo $VERSION_TAG | tr '.' '-')" \
       -i release-bucket=tekton-triggers-bucket \
-      -p package="${TEKTON_PACKAGE}" \
-      -p release-tag="${TRIGGERS_VERSION}" \
+      -p package=tektoncd/triggers \
+      -p release-tag="${VERSION_TAG}" \
       -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
+      -p release-name="Tekton Triggers" \
       create-draft-release
     ```
 
