@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	bldr "github.com/tektoncd/triggers/test/builder"
 )
@@ -37,7 +38,8 @@ func Test_TriggerBindingValidate(t *testing.T) {
 			bldr.TriggerBindingSpec(
 				bldr.TriggerBindingParam("param1", "$(body.input1)"),
 				bldr.TriggerBindingParam("param2", "$(body.input2)"),
-				bldr.TriggerBindingParam("param3", "$(body.input3)"),
+				bldr.TriggerBindingParam("param3", "$(body.(input3))"),
+				bldr.TriggerBindingParam("param4", "static-input"),
 			)),
 	}, {
 		name: "multiple params case sensitive",
@@ -46,6 +48,12 @@ func Test_TriggerBindingValidate(t *testing.T) {
 				bldr.TriggerBindingParam("param1", "$(body.input1)"),
 				bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
 				bldr.TriggerBindingParam("Param1", "$(body.input3)"),
+			)),
+	}, {
+		name: "multiple expressions in one body",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$(body.input1)-$(body.input2)"),
 			)),
 	}}
 	for _, tt := range tests {
@@ -59,8 +67,9 @@ func Test_TriggerBindingValidate(t *testing.T) {
 
 func Test_TriggerBindingValidate_error(t *testing.T) {
 	tests := []struct {
-		name string
-		tb   *v1alpha1.TriggerBinding
+		name   string
+		tb     *v1alpha1.TriggerBinding
+		errMsg string
 	}{{
 		name: "duplicate params",
 		tb: bldr.TriggerBinding("name", "namespace",
@@ -69,11 +78,37 @@ func Test_TriggerBindingValidate_error(t *testing.T) {
 				bldr.TriggerBindingParam("param1", "$(body.param1)"),
 				bldr.TriggerBindingParam("param3", "$(body.param1)"),
 			)),
+		errMsg: "expected exactly one, got both: spec.params[1].name",
+	}, {
+		name: "invalid parameter",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$($(body.param1))"),
+			)),
+		errMsg: "invalid value: $($(body.param1)): spec.params[0].value",
+	}, {
+		name: "invalid parameter further nested",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$(body.test-$(body.param1))"),
+			)),
+		errMsg: "invalid value: $(body.test-$(body.param1)): spec.params[0].value",
+	}, {
+		name: "invalid parameter triple nested",
+		tb: bldr.TriggerBinding("name", "namespace",
+			bldr.TriggerBindingSpec(
+				bldr.TriggerBindingParam("param1", "$($($(body.param1)))"),
+			)),
+		errMsg: "invalid value: $($($(body.param1))): spec.params[0].value",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.tb.Validate(context.Background()); err == nil {
+			err := tt.tb.Validate(context.Background())
+			if err == nil {
 				t.Errorf("TriggerBinding.Validate() expected error for TriggerBinding: %v", tt.tb)
+			}
+			if diff := cmp.Diff(tt.errMsg, err.Error()); diff != "" {
+				t.Errorf("-want +got: %s", diff)
 			}
 		})
 	}
