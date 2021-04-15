@@ -38,6 +38,7 @@ You must satisfy the following prerequisties to set up Tekton Triggers:
 
     ```bash
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
     ```
 
     To install a specific release of Tekton Triggers, replace `latest` with the desired version number as shown in the following example:
