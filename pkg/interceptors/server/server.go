@@ -14,6 +14,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
+	"github.com/tektoncd/triggers/pkg/interceptors/results"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap"
@@ -32,6 +33,7 @@ func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Ser
 		"cel":       cel.NewInterceptor(k, l),
 		"github":    github.NewInterceptor(k, l),
 		"gitlab":    gitlab.NewInterceptor(k, l),
+		"results":   results.NewInterceptor(k, l),
 	}
 
 	for k, v := range i {

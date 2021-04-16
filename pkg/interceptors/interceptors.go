@@ -129,6 +129,14 @@ func GetInterceptorParams(i *triggersv1.EventInterceptor) map[string]interface{}
 		for _, p := range i.Params {
 			ip[p.Name] = p.Value
 		}
+
+	case i.Results != nil:
+		if i.Results.APIAddr != "" {
+			ip["apiAddr"] = i.Results.APIAddr
+		}
+		if i.Results.Token != "" {
+			ip["token"] = i.Results.Token
+		}
 	}
 	return ip
 }

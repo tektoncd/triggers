@@ -102,6 +102,7 @@ type TriggerInterceptor struct {
 	DeprecatedGitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
 	DeprecatedCEL       *CELInterceptor       `json:"cel,omitempty"`
 	DeprecatedBitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
+	Results             *ResultsInterceptor   `json:"results,omitempty"`
 }
 
 // InterceptorParams defines a key-value pair that can be passed on an interceptor
@@ -224,6 +225,8 @@ func (ti *TriggerInterceptor) GetName() string {
 		name = "github"
 	case ti.DeprecatedGitLab != nil:
 		name = "gitlab"
+	case ti.Results != nil:
+		name = "results"
 	}
 	return name
 }
@@ -270,6 +273,12 @@ type CELInterceptor struct {
 type CELOverlay struct {
 	Key        string `json:"key,omitempty"`
 	Expression string `json:"expression,omitempty"`
+}
+
+// ResultsInterceptor provides a webhook to intercept and pre-process events
+type ResultsInterceptor struct {
+	APIAddr string `json:"apiAddr,omitempty"`
+	Token   string `json:"token,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

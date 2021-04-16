@@ -90,7 +90,7 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 }
 
 func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldError) {
-	if i.Webhook == nil && i.DeprecatedGitHub == nil && i.DeprecatedGitLab == nil && i.DeprecatedCEL == nil && i.DeprecatedBitbucket == nil {
+	if i.Webhook == nil && i.DeprecatedGitHub == nil && i.DeprecatedGitLab == nil && i.DeprecatedCEL == nil && i.DeprecatedBitbucket == nil && i.Results == nil {
 		if i.Ref.Name == "" { // Check to see if Interceptor referenced using Ref
 			errs = errs.Also(apis.ErrMissingField("interceptor"))
 		}
@@ -112,7 +112,7 @@ func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldErro
 	}
 
 	if numSet > 1 {
-		errs = errs.Also(apis.ErrMultipleOneOf("interceptor.webhook", "interceptor.github", "interceptor.gitlab"))
+		errs = errs.Also(apis.ErrMultipleOneOf("interceptor.webhook", "interceptor.github", "interceptor.gitlab", "interceptor.bitbucket"))
 	}
 
 	if i.Webhook != nil {

@@ -122,6 +122,18 @@ func TestGetInterceptorParams(t *testing.T) {
 			},
 		},
 	}, {
+		name: "results",
+		in: triggersv1.EventInterceptor{
+			Results: &triggersv1.ResultsInterceptor{
+				APIAddr: "localhost:50051",
+				Token:   "token",
+			},
+		},
+		want: map[string]interface{}{
+			"apiAddr": "localhost:50051",
+			"token": "token",
+		},
+	}, {
 		name: "webhook",
 		in: triggersv1.EventInterceptor{
 			Webhook: &triggersv1.WebhookInterceptor{

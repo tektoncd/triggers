@@ -46,6 +46,11 @@ func TestGetName(t *testing.T) {
 		want: "bitbucket",
 	}, {
 		in: TriggerInterceptor{
+			Results: &ResultsInterceptor{},
+		},
+		want: "results",
+	}, {
+		in: TriggerInterceptor{
 			Webhook: &WebhookInterceptor{},
 		},
 		want: "",
