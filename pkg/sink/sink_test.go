@@ -137,6 +137,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 	// Setup a handler for core interceptors using httptest
 	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
 
+	recorder, _ := NewRecorder()
 	r := Sink{
 		EventListenerName:           elName,
 		EventListenerNamespace:      namespace,
@@ -147,6 +148,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 		HTTPClient:                  httpClient,
 		Logger:                      logger.Sugar(),
 		Auth:                        DefaultAuthOverride{},
+		Recorder:                    recorder,
 		EventListenerLister:         eventlistenerinformer.Get(ctx).Lister(),
 		TriggerLister:               triggerinformer.Get(ctx).Lister(),
 		TriggerBindingLister:        triggerbindinginformer.Get(ctx).Lister(),
@@ -887,7 +889,9 @@ func TestHandleEvent(t *testing.T) {
 			// TODO: Do we ever support multiple eventListeners? Maybe change test.Resources to only accept one?
 			elName := tc.resources.EventListeners[0].Name
 			sink, dynamicClient := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
-			ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+
+			metricsRecorder := &MetricsHandler{Handler: http.HandlerFunc(sink.HandleEvent)}
+			ts := httptest.NewServer(http.HandlerFunc(metricsRecorder.Intercept(sink.NewMetricsRecorderInterceptor())))
 			defer ts.Close()
 			req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(tc.eventBody))
 			if err != nil {

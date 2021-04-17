@@ -49,6 +49,7 @@ import (
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -64,11 +65,15 @@ const (
 	eventListenerServiceTLSPortName = "https-listener"
 	// eventListenerContainerPort defines the port exposed by the EventListener Container
 	eventListenerContainerPort = 8000
+	// eventListenerMetricsPort defines the port exposed by the EventListener metrics endpoint
+	eventListenerMetricsPort = 9090
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
 
 	defaultConfig = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
+
+	triggersMetricsDomain = "tekton.dev/triggers"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -183,8 +188,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		Spec: corev1.ServiceSpec{
 			Selector: GenerateResourceLabels(el.Name, r.config.StaticResourceLabels),
 			Type:     serviceType,
-			Ports:    []corev1.ServicePort{servicePort},
-		},
+			Ports:    []corev1.ServicePort{servicePort}},
 	}
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
@@ -246,9 +250,26 @@ func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.Sug
 	return nil
 }
 
+func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
+		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
+			logger.Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
+			return err
+		}
+	} else if err != nil {
+		logger.Errorf("Error retrieving ConfigMap %q: %s", metrics.ConfigMapName(), err)
+		return err
+	}
+	return nil
+}
+
 func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
 	// check logging config, create if it doesn't exist
 	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
+		logger.Error(err)
+		return err
+	}
+	if err := r.reconcileObservabilityConfig(ctx, logger, el); err != nil {
 		logger.Error(err)
 		return err
 	}
@@ -264,6 +285,14 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 			FieldRef: &corev1.ObjectFieldSelector{
 				FieldPath: "metadata.namespace",
 			}},
+	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "CONFIG_OBSERVABILITY_NAME",
+		Value: metrics.ConfigMapName(),
+	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "METRICS_DOMAIN",
+		Value: triggersMetricsDomain,
 	})
 	container = addCertsForSecureConnection(container, r.config)
 
@@ -422,6 +451,14 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		// Cannot use FieldRef here because Knative Serving mask that field under feature gate
 		// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
 		Value: el.Namespace,
+	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "CONFIG_OBSERVABILITY_NAME",
+		Value: metrics.ConfigMapName(),
+	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "METRICS_DOMAIN",
+		Value: triggersMetricsDomain,
 	})
 
 	podlabels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
@@ -656,6 +693,15 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 				FieldPath: "metadata.namespace",
 			}},
 	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "CONFIG_OBSERVABILITY_NAME",
+		Value: metrics.ConfigMapName(),
+	})
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "METRICS_DOMAIN",
+		Value: triggersMetricsDomain,
+	})
+
 	container = addCertsForSecureConnection(container, c)
 	for _, v := range container.Env {
 		// If TLS related env are set then mount secret volume which will be used while starting the eventlistener.
@@ -804,6 +850,9 @@ func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) cor
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
+		}, {
+			ContainerPort: int32(eventListenerMetricsPort),
+			Protocol:      corev1.ProtocolTCP,
 		}},
 		Resources: resources,
 		Args: []string{
@@ -926,4 +975,14 @@ func mergeMaps(m1, m2 map[string]string) map[string]string {
 		merged[k] = v
 	}
 	return merged
+}
+
+func defaultObservabilityConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: metrics.ConfigMapName()},
+		Data: map[string]string{
+			//TODO: Better nonempty config
+			"_example": "See tekton-pipelines namespace for valid values",
+		},
+	}
 }

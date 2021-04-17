@@ -423,6 +423,22 @@ To access your `EventListener` logs, query your cluster for Pods whose `eventlis
 kubectl get pods --selector eventlistener=my-eventlistener
 ```
 
+## Configuring metrics for `EventListeners`
+
+The following pipeline metrics are available on the `eventlistener` Service on port `9090`.
+
+|  Name | Type | Labels/Tags | Status |
+| ---------- | ----------- | ----------- | ----------- |
+| `eventlistener_triggered_resources` | Counter | `kind`=&lt;kind&gt; | experimental |
+| `eventlistener_http_duration_seconds_[bucket, sum, count]` | Histogram | `status`=&lt;status&gt; <br> | experimental |
+
+Several kinds of exporters can be configured for an `EventListener`, including Prometheus, Google Stackdriver, and many others.
+You can configure metrics using the [`config-observability-triggers` config map](../config/config-observability.yaml) in the `EventListener` namespaces.
+There is a `config-observability-triggers` configmap in the `tekton-pipelines` namespace that can be configured for the operation of the Triggers
+webhook and controller components.
+
+See [the Knative documentation](https://github.com/knative/pkg/blob/main/metrics/README.md) for more information about available exporters and configuration values.
+
 ## Exposing an `EventListener` outside of the cluster
 
 By default, `ClusterIP` services such as `EventListeners` are only accessible within the cluster on which they are running. 
