@@ -53,6 +53,7 @@ type Sink struct {
 	EventListenerName      string
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
+	Recorder               *Recorder
 	Auth                   AuthOverride
 
 	// listers index properties about resources
@@ -262,10 +263,12 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
+
 	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
+	go r.recordResourceCreation(resources)
 	return nil
 }
 
