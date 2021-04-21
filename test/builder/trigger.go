@@ -70,6 +70,29 @@ func TriggerSpecTemplate(ttName, apiVersion string) TriggerSpecOp {
 	}
 }
 
+// DynamicTriggerSpecTemplate adds an TriggerTemplate to the TriggerSpec with DynamicRef.
+func DynamicTriggerSpecTemplate(ttDynamicRef, apiVersion string) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		tt := v1alpha1.TriggerSpecTemplate{
+			DynamicRef: &ttDynamicRef,
+			APIVersion: apiVersion,
+		}
+		spec.Template = tt
+	}
+}
+
+// DynamicTriggerSpecTemplate adds an TriggerTemplate to the TriggerSpec with DynamicRef.
+func DynamicStaticTriggerSpecTemplate(ttDynamicRef, ttRef, apiVersion string) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		tt := v1alpha1.TriggerSpecTemplate{
+			DynamicRef: &ttDynamicRef,
+			Ref:        &ttRef,
+			APIVersion: apiVersion,
+		}
+		spec.Template = tt
+	}
+}
+
 // TriggerSpecName adds a Name to the Trigger in TriggerSpec.
 func TriggerSpecName(name string) TriggerSpecOp {
 	return func(spec *v1alpha1.TriggerSpec) {
@@ -94,6 +117,49 @@ func TriggerSpecBinding(ref, kind, name, apiVersion string) TriggerSpecOp {
 
 		if len(ref) != 0 {
 			binding.Ref = ref
+			if kind == "ClusterTriggerBinding" {
+				binding.Kind = v1alpha1.ClusterTriggerBindingKind
+			}
+
+			if kind == "TriggerBinding" || kind == "" {
+				binding.Kind = v1alpha1.NamespacedTriggerBindingKind
+			}
+		}
+		spec.Bindings = append(spec.Bindings, binding)
+	}
+}
+
+func DynamicStaticTriggerSpecBinding(dynamicRef, ref, kind, name, apiVersion string) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		binding := &v1alpha1.TriggerSpecBinding{
+			Name:       name,
+			APIVersion: apiVersion,
+		}
+
+		if len(dynamicRef) != 0 || len(ref) != 0 {
+			binding.DynamicRef = dynamicRef
+			binding.Ref = ref
+			if kind == "ClusterTriggerBinding" {
+				binding.Kind = v1alpha1.ClusterTriggerBindingKind
+			}
+
+			if kind == "TriggerBinding" || kind == "" {
+				binding.Kind = v1alpha1.NamespacedTriggerBindingKind
+			}
+		}
+		spec.Bindings = append(spec.Bindings, binding)
+	}
+}
+
+func DynamicTriggerSpecBinding(dynamicRef, kind, name, apiVersion string) TriggerSpecOp {
+	return func(spec *v1alpha1.TriggerSpec) {
+		binding := &v1alpha1.TriggerSpecBinding{
+			Name:       name,
+			APIVersion: apiVersion,
+		}
+
+		if len(dynamicRef) != 0 {
+			binding.DynamicRef = dynamicRef
 			if kind == "ClusterTriggerBinding" {
 				binding.Kind = v1alpha1.ClusterTriggerBindingKind
 			}

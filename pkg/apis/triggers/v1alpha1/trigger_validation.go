@@ -56,14 +56,14 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 	}
 
 	switch {
-	case t.Spec != nil && t.Ref != nil:
+	case t.Spec != nil && (t.Ref != nil || t.DynamicRef != nil):
 		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.ref"))
-	case t.Spec == nil && t.Ref == nil:
-		errs = errs.Also(apis.ErrMissingOneOf("template.spec", "template.ref"))
+	case t.Spec == nil && t.Ref == nil && t.DynamicRef == nil:
+		errs = errs.Also(apis.ErrMissingOneOf("template.spec", "template.ref", "template.dynamicRef"))
 	case t.Spec != nil:
 		errs = errs.Also(t.Spec.validate(ctx))
-	case t.Ref == nil || *t.Ref == "":
-		errs = errs.Also(apis.ErrMissingField("template.ref"))
+	case (t.Ref == nil || *t.Ref == "") && (t.DynamicRef == nil || *t.DynamicRef == ""):
+		errs = errs.Also(apis.ErrMissingOneOf("template.ref", "template.dynamicRef"))
 	}
 	return errs
 }
@@ -71,7 +71,7 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.FieldError) {
 	for i, b := range t {
 		switch {
-		case b.Ref != "":
+		case b.Ref != "" || b.DynamicRef != "":
 			switch {
 			case b.Name != "": // Cannot specify both Ref and Name
 				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Name", i)))
@@ -83,7 +83,7 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("bindings[%d].Value", i)))
 			}
 		default:
-			errs = errs.Also(apis.ErrMissingOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Spec", i), fmt.Sprintf("bindings[%d].Name", i)))
+			errs = errs.Also(apis.ErrMissingOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].DynamicRef", i), fmt.Sprintf("bindings[%d].Spec", i), fmt.Sprintf("bindings[%d].Name", i)))
 		}
 	}
 	return errs

@@ -273,6 +273,73 @@ func TestTriggerBuilder(t *testing.T) {
 					TriggerSpecCELOverlay("value", "'testing'")),
 			),
 		),
+	}, {
+		name: "dynamic values",
+		normal: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Name:       "tb1",
+					Kind:       v1alpha1.ClusterTriggerBindingKind,
+					DynamicRef: "tb1-$(body.repository.login)",
+					APIVersion: "v1alpha1",
+				}, {
+					Name:       "tb2",
+					Kind:       v1alpha1.NamespacedTriggerBindingKind,
+					DynamicRef: "tb2-$(body.head.sha)",
+					Ref:        "tb2-default",
+					APIVersion: "v1alpha1",
+				}, {
+					Name:       "tb3",
+					Kind:       v1alpha1.ClusterTriggerBindingKind,
+					DynamicRef: "tb3-$(body.repository.default_branch)",
+					Ref:        "tb3-main",
+					APIVersion: "v1alpha1",
+				}},
+				Template: v1alpha1.TriggerSpecTemplate{
+					DynamicRef: ptr.String("tt1-$(header.X-Github-Event)"),
+					APIVersion: "v1alpha1",
+				},
+			},
+		},
+		builder: Trigger("name", "namespace",
+			TriggerSpec(
+				DynamicTriggerSpecTemplate("tt1-$(header.X-Github-Event)", "v1alpha1"),
+				DynamicTriggerSpecBinding("tb1-$(body.repository.login)", "ClusterTriggerBinding", "tb1", "v1alpha1"),
+				DynamicStaticTriggerSpecBinding("tb2-$(body.head.sha)", "tb2-default", "", "tb2", "v1alpha1"),
+				DynamicStaticTriggerSpecBinding("tb3-$(body.repository.default_branch)", "tb3-main", "ClusterTriggerBinding", "tb3", "v1alpha1"),
+			),
+		),
+	}, {
+		name: "fallback template value",
+		normal: &v1alpha1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.TriggerSpec{
+				Bindings: []*v1alpha1.TriggerSpecBinding{{
+					Name:       "tb1",
+					Kind:       v1alpha1.NamespacedTriggerBindingKind,
+					DynamicRef: "tb1-$(body.repository.login)",
+					APIVersion: "v1alpha1",
+				}},
+				Template: v1alpha1.TriggerSpecTemplate{
+					DynamicRef: ptr.String("tt1-$(header.X-Github-Event)"),
+					Ref:        ptr.String("tt1-pull_request"),
+					APIVersion: "v1alpha1",
+				},
+			},
+		},
+		builder: Trigger("name", "namespace",
+			TriggerSpec(
+				DynamicTriggerSpecBinding("tb1-$(body.repository.login)", "", "tb1", "v1alpha1"),
+				DynamicStaticTriggerSpecTemplate("tt1-$(header.X-Github-Event)", "tt1-pull_request", "v1alpha1"),
+			),
+		),
 	},
 	}
 	for _, tt := range tests {

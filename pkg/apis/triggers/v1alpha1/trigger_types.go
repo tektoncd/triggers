@@ -45,6 +45,7 @@ type TriggerSpec struct {
 
 type TriggerSpecTemplate struct {
 	Ref        *string              `json:"ref,omitempty"`
+	DynamicRef *string              `json:"dynamicRef,omitempty"`
 	APIVersion string               `json:"apiversion,omitempty"`
 	Spec       *TriggerTemplateSpec `json:"spec,omitempty"`
 }
@@ -61,6 +62,11 @@ type TriggerSpecBinding struct {
 	// Ref is a reference to a TriggerBinding kind.
 	// Mutually exclusive with Name
 	Ref string `json:"ref,omitempty"`
+
+	// DynamicRef is a reference to a TriggerBinding that resolves with the current
+	// event context
+	// Shares the same exclusivity as Ref, falls back to ref if unresolved
+	DynamicRef string `json:"dynamicRef,omitempty"`
 
 	// Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
 	Kind TriggerBindingKind `json:"kind,omitempty"`

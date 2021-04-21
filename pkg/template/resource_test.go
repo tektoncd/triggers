@@ -27,7 +27,9 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/ptr"
 )
 
@@ -275,19 +277,19 @@ var (
 		if v, ok := triggerBindings[name]; ok {
 			return v, nil
 		}
-		return nil, fmt.Errorf("error invalid name: %s", name)
+		return nil, errors.NewNotFound(schema.GroupResource{Group: triggersv1.SchemeGroupVersion.Group, Resource: "triggerbindings"}, name)
 	}
 	getCTB = func(name string) (*triggersv1.ClusterTriggerBinding, error) {
 		if v, ok := clusterTriggerBindings[name]; ok {
 			return v, nil
 		}
-		return nil, fmt.Errorf("error invalid name: %s", name)
+		return nil, errors.NewNotFound(schema.GroupResource{Group: triggersv1.SchemeGroupVersion.Group, Resource: "clustertriggerbindings"}, name)
 	}
 	getTT = func(name string) (*triggersv1.TriggerTemplate, error) {
 		if name == "my-triggertemplate" {
 			return &tt, nil
 		}
-		return nil, fmt.Errorf("error invalid name: %s", name)
+		return nil, errors.NewNotFound(schema.GroupResource{Group: triggersv1.SchemeGroupVersion.Group, Resource: "triggertemplates"}, name)
 	}
 )
 
@@ -317,12 +319,50 @@ func Test_ResolveTrigger(t *testing.T) {
 			},
 		},
 		{
+			name: "1 dynamic template",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						Ref:  "my-triggerbinding",
+						Kind: triggersv1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						DynamicRef: ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			want: ResolvedTrigger{
+				TriggerTemplate: &tt,
+				BindingParams:   []triggersv1.Param{},
+			},
+		},
+		{
 			name: "1 clustertype binding",
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Bindings: []*triggersv1.EventListenerBinding{{
 						Ref:  "my-clustertriggerbinding",
 						Kind: triggersv1.ClusterTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			want: ResolvedTrigger{
+				TriggerTemplate: &tt,
+				BindingParams:   []triggersv1.Param{},
+			},
+		},
+		{
+			name: "1 clustertype dynamic binding",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "my-clustertriggerbinding",
+						Kind:       triggersv1.ClusterTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
 						Ref:        ptr.String("my-triggertemplate"),
@@ -368,6 +408,27 @@ func Test_ResolveTrigger(t *testing.T) {
 				},
 			},
 			want: ResolvedTrigger{BindingParams: []triggersv1.Param{}, TriggerTemplate: &tt},
+		},
+		{
+			name: "binding and template fallsback to ref",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "non-existant-binding",
+						Ref:        "my-triggerbinding",
+						Kind:       triggersv1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						DynamicRef: ptr.String("dynamic-non-existant-tt"),
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			want: ResolvedTrigger{
+				TriggerTemplate: &tt,
+				BindingParams:   []triggersv1.Param{},
+			},
 		},
 		{
 			name: "concise bindings",
@@ -509,6 +570,9 @@ func Test_ResolveTrigger(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "binding and template fallsback to ref" {
+				t.Logf("Here")
+			}
 			got, err := ResolveTrigger(tc.trigger, getTB, getCTB, getTT)
 			if err != nil {
 				t.Errorf("ResolveTrigger() returned unexpected error: %s", err)
@@ -546,12 +610,126 @@ func Test_ResolveTrigger_error(t *testing.T) {
 			getTT:  getTT,
 		},
 		{
+			name: "dynamic triggerbinding not found",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "invalid-tb-name",
+						Kind:       triggersv1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB:  getTB,
+			getCTB: getCTB,
+			getTT:  getTT,
+		},
+		{
+			name: "dynamic triggerbinding unexpected error",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "invalid-tb-name",
+						Kind:       triggersv1.NamespacedTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB: func(name string) (*triggersv1.TriggerBinding, error) {
+				return nil, fmt.Errorf("unexpected error")
+			},
+			getCTB: getCTB,
+			getTT:  getTT,
+		},
+		{
+			name: "dynamic clustertriggerbinding unexpected error",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "invalid-tb-name",
+						Kind:       triggersv1.ClusterTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB: getTB,
+			getCTB: func(name string) (*triggersv1.ClusterTriggerBinding, error) {
+				return nil, fmt.Errorf("unexpected error")
+			},
+			getTT: getTT,
+		},
+		{
 			name: "clustertriggerbinding not found",
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
 					Bindings: []*triggersv1.EventListenerBinding{{
 						Ref:  "invalid-ctb-name",
 						Kind: triggersv1.ClusterTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB:  getTB,
+			getCTB: getCTB,
+			getTT:  getTT,
+		},
+		{
+			name: "clustertriggerbinding not found after fallthrough",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						Ref:        "invalid-ctb-name",
+						DynamicRef: "invalid-ctb-name",
+						Kind:       triggersv1.ClusterTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB:  getTB,
+			getCTB: getCTB,
+			getTT:  getTT,
+		},
+		{
+			name: "dynamic clustertriggerbinding not found",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						DynamicRef: "invalid-ctb-name",
+						Kind:       triggersv1.ClusterTriggerBindingKind,
+					}},
+					Template: triggersv1.EventListenerTemplate{
+						Ref:        ptr.String("my-triggertemplate"),
+						APIVersion: "v1alpha1",
+					},
+				},
+			},
+			getTB:  getTB,
+			getCTB: getCTB,
+			getTT:  getTT,
+		},
+		{
+			name: "triggerbinding not found after fallthrough",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Bindings: []*triggersv1.EventListenerBinding{{
+						Ref:        "invalid-ctb-name",
+						DynamicRef: "invalid-ctb-name",
+						Kind:       triggersv1.NamespacedTriggerBindingKind,
 					}},
 					Template: triggersv1.EventListenerTemplate{
 						Ref:        ptr.String("my-triggertemplate"),
@@ -611,6 +789,35 @@ func Test_ResolveTrigger_error(t *testing.T) {
 			getTT: getTT,
 		},
 		{
+			name: "trigger template fails to resolve and no ref",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Template: triggersv1.EventListenerTemplate{
+						DynamicRef: ptr.String("invalid"),
+					},
+				},
+			},
+			getTT: getTT,
+		},
+		{
+			name: "dynamic trigger template unexpected error",
+			trigger: triggersv1.Trigger{
+				Spec: triggersv1.TriggerSpec{
+					Template: triggersv1.EventListenerTemplate{
+						DynamicRef: ptr.String("invalid"),
+					},
+				},
+			},
+			getTT: func(name string) (*triggersv1.TriggerTemplate, error) {
+				return nil, fmt.Errorf("Unexpected error")
+			},
+		},
+		{
+			name:    "trigger template invalid",
+			trigger: triggersv1.Trigger{},
+			getTT:   getTT,
+		},
+		{
 			name: "invalid trigger binding",
 			trigger: triggersv1.Trigger{
 				Spec: triggersv1.TriggerSpec{
@@ -642,6 +849,9 @@ func Test_ResolveTrigger_error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "dynamic triggerbinding not found" {
+				t.Logf("Here")
+			}
 			if _, err := ResolveTrigger(tt.trigger, tt.getTB, tt.getCTB, tt.getTT); err == nil {
 				t.Error("ResolveTrigger() did not return error when expected")
 			}

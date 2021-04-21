@@ -203,6 +203,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	if iresp != nil {
 		if !iresp.Continue {
 			log.Errorf("interceptor stoppped trigger processing: %w", iresp.Status.Err())
+			return nil, iresp.Status.Err()
 		}
 	}
 
@@ -210,7 +211,12 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		tri.Namespace = "default"
 	}
 
-	rt, err := template.ResolveTrigger(*tri,
+	extensions := map[string]interface{}{}
+	if iresp != nil && iresp.Extensions != nil {
+		extensions = iresp.Extensions
+	}
+
+	resources, err := template.Resolve(*tri,
 		func(name string) (*triggersv1.TriggerBinding, error) {
 			return client.TriggersV1alpha1().TriggerBindings(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
 		},
@@ -219,23 +225,13 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		},
 		func(name string) (*triggersv1.TriggerTemplate, error) {
 			return client.TriggersV1alpha1().TriggerTemplates(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
-		})
-	if err != nil {
-		log.Error("Failed to resolve Trigger: ", err)
-		return nil, err
-	}
-	extensions := map[string]interface{}{}
-	if iresp != nil && iresp.Extensions != nil {
-		extensions = iresp.Extensions
-	}
-	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
-	if err != nil {
-		log.Error("Failed to resolve parameters", err)
-		return nil, err
-	}
-	log.Infof("ResolvedParams : %+v", params)
+		},
+		finalPayload, header, extensions)
 
-	resources := template.ResolveResources(rt.TriggerTemplate, params)
+	if err != nil {
+		log.Error("Failed to resolve trigger resources", err)
+		return nil, err
+	}
 
 	return resources, nil
 }

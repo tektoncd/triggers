@@ -1,0 +1,15 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: trigger
+spec:
+  interceptors:
+    - cel:
+        overlays:
+        - key: extensions.truncated_sha
+          expression: "body.pull_request.head.sha.truncate(7)"
+  bindings:
+  - dynamicRef: pipeline-$(body.repository.owner.login)-binding
+  template:
+    dynamicRef: pipeline-$(header.X-GitHub-Event)-trigger
+    ref: pipeline-default-trigger

@@ -301,7 +301,9 @@ interceptor.
      This parses a string that contains a YAML body into a map which which can be subsequently used in other expressions.
     </td>
     <td>
-     <pre>'key1: value1\nkey2: value2\n'.parseYAML().key1 == "value"</pre>
+     <pre>'key1: value1
+key2: value2
+'.parseYAML().key1 == "value"</pre>
     </td>
   </tr>
   <tr>

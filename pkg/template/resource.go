@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,24 +52,37 @@ func ResolveTrigger(trigger triggersv1.Trigger, getTB getTriggerBinding, getCTB 
 		return ResolvedTrigger{}, fmt.Errorf("failed to resolve bindings: %w", err)
 	}
 
-	var resolvedTT *triggersv1.TriggerTemplate
 	if trigger.Spec.Template.Spec != nil {
-		resolvedTT = &triggersv1.TriggerTemplate{
+		resolvedTT := &triggersv1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{}, // Unused. TODO: Just return Specs from here.
 			Spec:       *trigger.Spec.Template.Spec,
 		}
-	} else {
-		var ttName string
-		if trigger.Spec.Template.Ref != nil {
-			ttName = *trigger.Spec.Template.Ref
+		return ResolvedTrigger{TriggerTemplate: resolvedTT, BindingParams: bp}, nil
+	}
+	switch {
+	case trigger.Spec.Template.DynamicRef != nil:
+		resolvedTT, err := getTT(*trigger.Spec.Template.DynamicRef)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return ResolvedTrigger{}, fmt.Errorf("error getting dynamic TriggerTemplate %s: %w", *trigger.Spec.Template.DynamicRef, err)
+			} else if trigger.Spec.Template.Ref == nil {
+				return ResolvedTrigger{}, fmt.Errorf("dynamic TriggerTemplate %s not found and no fallback provided", *trigger.Spec.Template.DynamicRef)
+			}
+		} else {
+			return ResolvedTrigger{TriggerTemplate: resolvedTT, BindingParams: bp}, nil
 		}
-		resolvedTT, err = getTT(ttName)
+		// dynamic ref failed resolution and fallback provided, so fallthrough
+		fallthrough
+	case trigger.Spec.Template.Ref != nil:
+		ttName := *trigger.Spec.Template.Ref
+		resolvedTT, err := getTT(ttName)
 		if err != nil {
 			return ResolvedTrigger{}, fmt.Errorf("error getting TriggerTemplate %s: %w", ttName, err)
 		}
+		return ResolvedTrigger{TriggerTemplate: resolvedTT, BindingParams: bp}, nil
+	default:
+		return ResolvedTrigger{}, fmt.Errorf("invalid trigger template")
 	}
-
-	return ResolvedTrigger{TriggerTemplate: resolvedTT, BindingParams: bp}, nil
 }
 
 // resolveBindingsToParams takes in both embedded bindings and references and returns a list of resolved Param values.ResolveBindingsToParams
@@ -81,7 +95,28 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 				Name:  b.Name,
 				Value: *b.Value,
 			})
-
+		case b.DynamicRef != "" && b.Kind == triggersv1.ClusterTriggerBindingKind:
+			ctb, err := getCTB(b.DynamicRef)
+			if errors.IsNotFound(err) && b.Ref != "" {
+				ctb, err = getCTB(b.Ref)
+				if err != nil {
+					return nil, fmt.Errorf("error getting ClusterTriggerBinding %s: %w", b.Ref, err)
+				}
+			} else if err != nil {
+				return nil, fmt.Errorf("error getting dynamic resolved ClusterTriggerBinding %s: %w", b.DynamicRef, err)
+			}
+			bindingParams = append(bindingParams, ctb.Spec.Params...)
+		case b.DynamicRef != "": // dynamic resolution with default kind
+			tb, err := getTB(b.DynamicRef)
+			if errors.IsNotFound(err) && b.Ref != "" {
+				tb, err = getTB(b.Ref)
+				if err != nil {
+					return nil, fmt.Errorf("error getting TriggerBinding %s: %w", b.Ref, err)
+				}
+			} else if err != nil {
+				return nil, fmt.Errorf("error getting dynamic resolved TriggerBinding %s: %w", b.DynamicRef, err)
+			}
+			bindingParams = append(bindingParams, tb.Spec.Params...)
 		case b.Ref != "" && b.Kind == triggersv1.ClusterTriggerBindingKind:
 			ctb, err := getCTB(b.Ref)
 			if err != nil {

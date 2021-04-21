@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
@@ -36,20 +37,97 @@ const (
 	OldEscapeAnnotation = "triggers.tekton.dev/old-escape-quotes"
 )
 
+// Resolve completes the end to end process of taking an event after it has completed processing
+// It completes binding the triggerbinding and triggertemplate ref to resolved names and building
+// the templated resource to submit after binding params to values in the template
+func Resolve(trigger triggersv1.Trigger, getTB getTriggerBinding, getCTB getClusterTriggerBinding, getTT getTriggerTemplate, body []byte, header http.Header, extensions map[string]interface{}) ([]json.RawMessage, error) {
+
+	event, err := newEvent(body, header, extensions)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal event: %w", err)
+	}
+
+	trigger, err = resolveResourceNames(trigger, event)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to resolve resource refs for trigger %s: %w", trigger.GetName(), err)
+	}
+
+	rt, err := ResolveTrigger(trigger, getTB, getCTB, getTT)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to resolve trigger %s: %w", trigger.GetName(), err)
+	}
+
+	params, err := resolveParams(rt, event)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to resolve parameters for trigger %s: %w", trigger.GetName(), err)
+	}
+
+	return ResolveResources(rt.TriggerTemplate, params), nil
+}
+
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
 func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}) ([]triggersv1.Param, error) {
+	event, err := newEvent(body, header, extensions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal event: %w", err)
+	}
+	return resolveParams(rt, event)
+}
+
+func resolveParams(rt ResolvedTrigger, event *event) ([]triggersv1.Param, error) {
+
 	var ttParams []triggersv1.ParamSpec
 	if rt.TriggerTemplate != nil {
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	out, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams)
+	out, err := applyEventValuesToParams(rt.BindingParams, event, ttParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
 
 	return out, nil
+}
+
+func resolveResourceNames(trigger triggersv1.Trigger, event *event) (triggersv1.Trigger, error) {
+	if trigger.Spec.Bindings != nil {
+		var targetBindings = make([]*triggersv1.TriggerSpecBinding, len(trigger.Spec.Bindings))
+		for i, binding := range trigger.Spec.Bindings {
+			if binding.DynamicRef != "" {
+				tb := &triggersv1.TriggerSpecBinding{Ref: binding.Ref}
+				resolvedBindingRef, err := resolveExpressionVal(binding.DynamicRef, event)
+				if err != nil {
+					if binding.Ref == "" {
+						return trigger, fmt.Errorf("Failed to resolve triggerbinding expression %s, no fallback provided: %w", binding.DynamicRef, err)
+					}
+				}
+				tb.DynamicRef = resolvedBindingRef
+				if string(binding.Kind) != "" {
+					tb.Kind = binding.Kind
+				}
+				if string(binding.APIVersion) != "" {
+					tb.APIVersion = binding.APIVersion
+				}
+				targetBindings[i] = tb
+			} else {
+				targetBindings[i] = trigger.Spec.Bindings[i]
+			}
+		}
+		trigger.Spec.Bindings = targetBindings
+	}
+	if trigger.Spec.Template.DynamicRef != nil && *trigger.Spec.Template.DynamicRef != "" {
+		resolvedTriggerRef, err := resolveExpressionVal(*trigger.Spec.Template.DynamicRef, event)
+		if err != nil {
+			if trigger.Spec.Template.Ref == nil || *trigger.Spec.Template.Ref == "" {
+				return trigger, fmt.Errorf("Failed to resolve triggertemplate expression %s: %w", *trigger.Spec.Template.Ref, err)
+			}
+			trigger.Spec.Template.DynamicRef = nil
+		} else {
+			trigger.Spec.Template.DynamicRef = ptr.String(resolvedTriggerRef)
+		}
+	}
+	return trigger, nil
 }
 
 // ResolveResources resolves a templated resource by replacing params with their values.
@@ -94,13 +172,9 @@ func newEvent(body []byte, headers http.Header, extensions map[string]interface{
 }
 
 // applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
-// with values from the event body, headers, and extensions.
-func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header, extensions map[string]interface{},
+// with values from the event.
+func applyEventValuesToParams(params []triggersv1.Param, event *event,
 	defaults []triggersv1.ParamSpec) ([]triggersv1.Param, error) {
-	event, err := newEvent(body, header, extensions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal event: %w", err)
-	}
 
 	allParamsMap := map[string]string{}
 	for _, paramSpec := range defaults {
@@ -111,24 +185,32 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 
 	for _, p := range params {
 		pValue := p.Value
-		// Find all expressions wrapped in $() from the value
-		expressions, originals := findTektonExpressions(pValue)
-		for i, expr := range expressions {
-			val, err := parseJSONPath(event, expr)
-			if defaults != nil && err != nil {
-				// if the header or body was not supplied or was malformed, go with a default if it exists
-				v, ok := allParamsMap[p.Name]
-				if ok {
-					val = v
-					err = nil
-				}
+		result, err := resolveExpressionVal(pValue, event)
+		if defaults != nil && err != nil {
+			// if the header or body was not supplied or was malformed, go with a default if it exists
+			v, ok := allParamsMap[p.Name]
+			if ok {
+				result = v
+				err = nil
 			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
-			}
-			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
-		allParamsMap[p.Name] = pValue
+		if err != nil {
+			return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
+		}
+		allParamsMap[p.Name] = result
 	}
 	return convertParamMapToArray(allParamsMap), nil
+}
+
+func resolveExpressionVal(value string, event *event) (string, error) {
+	// Find all expressions wrapped in $() from the value
+	expressions, originals := findTektonExpressions(value)
+	for i, expr := range expressions {
+		val, err := parseJSONPath(event, expr)
+		if err != nil {
+			return "", fmt.Errorf("failed to replace JSONPath value for expression %s: %w", expr, err)
+		}
+		value = strings.ReplaceAll(value, originals[i], val)
+	}
+	return value, nil
 }
