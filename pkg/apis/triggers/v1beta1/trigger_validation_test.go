@@ -23,10 +23,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
-	bldr "github.com/tektoncd/triggers/test/builder"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"knative.dev/pkg/ptr"
 )
 
@@ -36,32 +33,83 @@ func Test_TriggerValidate(t *testing.T) {
 		tr   *v1beta1.Trigger
 	}{{
 		name: "Valid Trigger No TriggerBinding",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"))),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Valid Trigger with TriggerBinding",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "TriggerBinding", "", "v1beta1"),
-			)),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Bindings: []*v1beta1.TriggerSpecBinding{{
+					Ref:        "tb",
+					Kind:       v1beta1.NamespacedTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}},
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Valid Trigger with ClusterTriggerBinding",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "", "v1beta1"),
-			)),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Bindings: []*v1beta1.TriggerSpecBinding{{
+					Ref:        "tb",
+					Kind:       v1beta1.ClusterTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}},
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Valid Trigger with multiple TriggerBindings",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "ClusterTriggerBinding", "", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "TriggerBinding", "", "v1beta1"),
-				bldr.TriggerSpecBinding("tb3", "", "", "v1beta1"),
-			)),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Bindings: []*v1beta1.TriggerSpecBinding{{
+					Ref:        "tb",
+					Kind:       v1beta1.NamespacedTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}, {
+					Ref:        "tb",
+					Kind:       v1beta1.ClusterTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}, {
+					Ref:        "tb2",
+					Kind:       v1beta1.NamespacedTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}},
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Trigger with new embedded TriggerBindings",
 		tr: &v1beta1.Trigger{
@@ -85,57 +133,53 @@ func Test_TriggerValidate(t *testing.T) {
 		},
 	}, {
 		name: "Valid Trigger Interceptor",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace"),
-			)),
-	}, {
-		name: "Valid Trigger Interceptor With Header",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace",
-					bldr.TriggerSpecInterceptorParam("Valid-Header-Key", "valid value"),
-				),
-			)),
-	}, {
-		name: "Valid Trigger Interceptor With Headers",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-				bldr.TriggerSpecInterceptor("svc", "v1", "Service", "namespace",
-					bldr.TriggerSpecInterceptorParam("Valid-Header-Key1", "valid value1"),
-					bldr.TriggerSpecInterceptorParam("Valid-Header-Key1", "valid value2"),
-					bldr.TriggerSpecInterceptorParam("Valid-Header-Key2", "valid value"),
-				),
-			)),
-	}, {
-		name: "Valid Trigger with CEL interceptor",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-				bldr.TriggerSpecCELInterceptor("body.value == 'test'"),
-			)),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Interceptors: []*v1beta1.TriggerInterceptor{{
+					Ref: v1beta1.InterceptorRef{
+						Name:       "cel",
+						Kind:       v1beta1.ClusterInterceptorKind,
+						APIVersion: "v1beta1",
+					},
+					Params: []v1beta1.InterceptorParams{{
+						Name:  "filter",
+						Value: test.ToV1JSON(t, "body.value == test"),
+					}, {
+						Name: "overlays",
+						Value: test.ToV1JSON(t, []v1beta1.CELOverlay{{
+							Key:        "value",
+							Expression: "testing",
+						}}),
+					}},
+				}},
+				Bindings: []*v1beta1.TriggerSpecBinding{{
+					Ref:        "tb",
+					Kind:       v1beta1.ClusterTriggerBindingKind,
+					APIVersion: "v1beta1",
+				}},
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Valid Trigger with no trigger name",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-			)),
-	}, {
-		name: "Valid Trigger with CEL overlays",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "", "v1beta1"),
-				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing'")),
-			)),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerSpec{
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
+			},
+		},
 	}, {
 		name: "Trigger with embedded Template",
 		tr: &v1beta1.Trigger{
@@ -190,7 +234,12 @@ func TestTriggerValidate_error(t *testing.T) {
 		tr   *v1beta1.Trigger
 	}{{
 		name: "TriggerBinding with no spec",
-		tr:   bldr.Trigger("name", "namespace"),
+		tr: &v1beta1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+		},
 	}, {
 		name: "Bindings missing ref",
 		tr: &v1beta1.Trigger{
@@ -276,146 +325,24 @@ func TestTriggerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "Interceptor Name only",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("svc", "", "", ""),
-			)),
-	}, {
-		name: "Interceptor Missing ObjectRef",
-		tr: &v1beta1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.TriggerSpec{
-				Bindings:     []*v1beta1.TriggerSpecBinding{{Name: "tb", Kind: v1beta1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1beta1"}},
-				Template:     v1beta1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "v1beta1"},
-				Interceptors: []*v1beta1.TriggerInterceptor{{}},
-			},
-		},
-	}, {
-		name: "Interceptor Empty ObjectRef",
-		tr: &v1beta1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.TriggerSpec{
-				Bindings: []*v1beta1.TriggerSpecBinding{{Name: "tb", Kind: v1beta1.NamespacedTriggerBindingKind, Ref: "tb", APIVersion: "v1beta1"}},
-				Template: v1beta1.TriggerSpecTemplate{Ref: ptr.String("tt"), APIVersion: "v1beta1"},
-				Interceptors: []*v1beta1.TriggerInterceptor{{
-					Webhook: &v1beta1.WebhookInterceptor{
-						ObjectRef: &corev1.ObjectReference{
-							Name: "",
-						},
-					},
-				}},
-			},
-		},
-	}, {
 		name: "Valid Trigger with invalid TriggerBinding",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "NamespaceTriggerBinding", "tb", "v1beta1"),
-			)),
-	}, {
-		name: "Interceptor Wrong APIVersion",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("foo", "v3", "Service", ""),
-			)),
-	}, {
-		name: "Interceptor Wrong Kind",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("foo", "v1", "Deployment", ""),
-			)),
-	}, {
-		name: "Interceptor Non-Canonical Header",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("foo", "v1", "Deployment", "",
-					bldr.TriggerSpecInterceptorParam("non-canonical-header-key", "valid value"),
-				),
-			)),
-	}, {
-		name: "Interceptor Empty Header Name",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("foo", "v1", "Deployment", "",
-					bldr.TriggerSpecInterceptorParam("", "valid value"),
-				),
-			)),
-	}, {
-		name: "Interceptor Empty Header Value",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecInterceptor("foo", "v1", "Deployment", "",
-					bldr.TriggerSpecInterceptorParam("Valid-Header-Key", ""),
-				),
-			)),
-	}, {
-		name: "Multiple interceptors set",
 		tr: &v1beta1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
 				Namespace: "namespace",
 			},
 			Spec: v1beta1.TriggerSpec{
-				Bindings: []*v1beta1.TriggerSpecBinding{{Name: "tb", Kind: v1beta1.NamespacedTriggerBindingKind, Ref: "tb"}},
-				Template: v1beta1.TriggerSpecTemplate{Ref: ptr.String("tt")},
-				Interceptors: []*v1beta1.TriggerInterceptor{{
-					DeprecatedGitHub:    &v1beta1.GitHubInterceptor{},
-					DeprecatedGitLab:    &v1beta1.GitLabInterceptor{},
-					DeprecatedBitbucket: &v1beta1.BitbucketInterceptor{},
+				Bindings: []*v1beta1.TriggerSpecBinding{{
+					Ref:        "tb",
+					Kind:       "BADBINDINGKIND",
+					APIVersion: "v1beta1",
 				}},
+				Template: v1beta1.TriggerSpecTemplate{
+					Ref:        ptr.String("tt"),
+					APIVersion: "v1beta1",
+				},
 			},
 		},
-	}, {
-		name: "CEL interceptor with no filter or overlays",
-		tr: &v1beta1.Trigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.TriggerSpec{
-				Bindings: []*v1beta1.TriggerSpecBinding{{Name: "tb", Kind: v1beta1.NamespacedTriggerBindingKind, Ref: "tb"}},
-				Template: v1beta1.TriggerSpecTemplate{Ref: ptr.String("tt")},
-				Interceptors: []*v1beta1.TriggerInterceptor{{
-					DeprecatedCEL: &v1beta1.CELInterceptor{},
-				}},
-			},
-		},
-	}, {
-		name: "CEL interceptor with bad filter expression",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecCELInterceptor("body.value == 'test')"),
-			)),
-	}, {
-		name: "CEL interceptor with bad overlay expression",
-		tr: bldr.Trigger("name", "namespace",
-			bldr.TriggerSpec(
-				bldr.TriggerSpecTemplate("tt", "v1beta1"),
-				bldr.TriggerSpecBinding("tb", "", "tb", "v1beta1"),
-				bldr.TriggerSpecCELInterceptor("", bldr.TriggerSpecCELOverlay("body.value", "'testing')")),
-			)),
 	}, {
 		name: "Trigger template with both ref and spec",
 		tr: &v1beta1.Trigger{

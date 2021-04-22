@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	bldr "github.com/tektoncd/triggers/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_TriggerBindingValidate(t *testing.T) {
@@ -30,23 +30,52 @@ func Test_TriggerBindingValidate(t *testing.T) {
 		tb   *v1beta1.TriggerBinding
 	}{{
 		name: "empty",
-		tb:   bldr.TriggerBinding("name", "namespace"),
+		tb: &v1beta1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+		},
 	}, {
 		name: "multiple params",
-		tb: bldr.TriggerBinding("name", "namespace",
-			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.input1)"),
-				bldr.TriggerBindingParam("param2", "$(body.input2)"),
-				bldr.TriggerBindingParam("param3", "$(body.input3)"),
-			)),
+		tb: &v1beta1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerBindingSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "param2",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}, {
 		name: "multiple params case sensitive",
-		tb: bldr.TriggerBinding("name", "namespace",
-			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.input1)"),
-				bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
-				bldr.TriggerBindingParam("Param1", "$(body.input3)"),
-			)),
+		tb: &v1beta1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerBindingSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "PARAM1",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,12 +92,24 @@ func Test_TriggerBindingValidate_error(t *testing.T) {
 		tb   *v1beta1.TriggerBinding
 	}{{
 		name: "duplicate params",
-		tb: bldr.TriggerBinding("name", "namespace",
-			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.param1)"),
-				bldr.TriggerBindingParam("param1", "$(body.param1)"),
-				bldr.TriggerBindingParam("param3", "$(body.param1)"),
-			)),
+		tb: &v1beta1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1beta1.TriggerBindingSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "param1",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

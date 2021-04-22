@@ -24,11 +24,10 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	b "github.com/tektoncd/triggers/test/builder"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 )
@@ -96,134 +95,293 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		name     string
 		template *v1beta1.TriggerTemplate
 		want     *apis.FieldError
-	}{
-		{
-			name: "invalid objectmetadata, name with dot",
-			template: b.TriggerTemplate("t.t", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(simpleResourceTemplate(t)))),
-			want: &apis.FieldError{
-				Message: "Invalid resource name: special character . must not be present",
-				Paths:   []string{"metadata.name"},
+	}{{
+		name: "invalid objectmetadata, name with dot",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "t.t",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: simpleResourceTemplate(t),
+				}},
 			},
 		},
-		{
-			name: "invalid objectmetadata, name too long",
-			template: b.TriggerTemplate(
-				"ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
-				"foo", b.TriggerTemplateSpec(
-					b.TriggerTemplateParam("foo", "desc", "val"),
-					b.TriggerResourceTemplate(simpleResourceTemplate(t)))),
-			want: &apis.FieldError{
-				Message: "Invalid resource name: length must be no more than 63 characters",
-				Paths:   []string{"metadata.name"},
+		want: &apis.FieldError{
+			Message: "Invalid resource name: special character . must not be present",
+			Paths:   []string{"metadata.name"},
+		},
+	}, {
+		name: "invalid objectmetadata, name too long",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: simpleResourceTemplate(t),
+				}},
 			},
 		},
-		{
-			name: "valid template",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(simpleResourceTemplate(t)))),
-			want: nil,
-		}, {
-			name: "valid v1beta1 template",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(v1beta1ResourceTemplate(t)))),
-			want: nil,
-		}, {
-			name: "missing resource template",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"))),
-			want: &apis.FieldError{
-				Message: "missing field(s)",
-				Paths:   []string{"spec.resourcetemplates"},
+		want: &apis.FieldError{
+			Message: "Invalid resource name: length must be no more than 63 characters",
+			Paths:   []string{"metadata.name"},
+		},
+	}, {
+		name: "valid template",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
 			},
-		}, {
-			name: "resource template missing kind",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(test.RawExtension(t, pipelinev1alpha1.PipelineRun{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-					},
-				})))),
-			want: &apis.FieldError{
-				Message: "missing field(s)",
-				Paths:   []string{"spec.resourcetemplates[0].kind"},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: simpleResourceTemplate(t),
+				}},
 			},
-		}, {
-			name: "resource template missing apiVersion",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(test.RawExtension(t, pipelinev1alpha1.PipelineRun{
-					TypeMeta: metav1.TypeMeta{
-						Kind: "PipelineRun",
-					},
-				})))),
-			want: &apis.FieldError{
-				Message: "missing field(s)",
-				Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
+		},
+		want: nil,
+	}, {
+		name: "valid v1beta1 template",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
 			},
-		}, {
-			name: "resource template invalid apiVersion",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(test.RawExtension(t, pipelinev1alpha1.PipelineRun{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "foobar",
-						Kind:       "pipelinerun",
-					},
-				})))),
-			want: &apis.FieldError{
-				Message: `invalid value: no kind "pipelinerun" is registered for version "foobar"`,
-				Paths:   []string{"spec.resourcetemplates[0]"},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: v1beta1ResourceTemplate(t),
+				}},
 			},
-		}, {
-			name: "resource template invalid kind",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(test.RawExtension(t, pipelinev1alpha1.PipelineRun{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "foo",
-						Kind:       "tekton.dev/v1beta1",
-					},
-				})))),
-			want: &apis.FieldError{
-				Message: `invalid value: no kind "tekton.dev/v1beta1" is registered for version "foo"`,
-				Paths:   []string{"spec.resourcetemplates[0]"},
+		},
+		want: nil,
+	}, {
+		name: "missing resource template",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
 			},
-		}, {
-			name: "tt.params used in resource template are declared",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(paramResourceTemplate(t)))),
-			want: nil,
-		}, {
-			name: "tt.params used in resource template are not declared",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerResourceTemplate(paramResourceTemplate(t)))),
-			want: &apis.FieldError{
-				Message: "invalid value: undeclared param '$(tt.params.foo)'",
-				Paths:   []string{"spec.resourcetemplates[0]"},
-				Details: "'$(tt.params.foo)' must be declared in spec.params",
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
 			},
-		}, {
-			name: "invalid params used in resource template are not declared",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerResourceTemplate(invalidParamResourceTemplate(t)))),
-			want: nil,
-		}, {
-			name: "invalid params used in resource template are declared",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec(
-				b.TriggerTemplateParam("foo", "desc", "val"),
-				b.TriggerResourceTemplate(invalidParamResourceTemplate(t)))),
-			want: nil,
-		}, {
-			name:     "no spec to triggertemplate",
-			template: b.TriggerTemplate("tt", "foo", b.TriggerTemplateSpec()),
-			want:     apis.ErrMissingField("spec", "spec.resourcetemplates"),
-		}}
+		},
+		want: &apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"spec.resourcetemplates"},
+		},
+	}, {
+		name: "resource template missing kind",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "tekton.dev/v1beta1",
+						},
+					}),
+				}},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"spec.resourcetemplates[0].kind"},
+		},
+	}, {
+		name: "resource template missing apiVersion",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+						TypeMeta: metav1.TypeMeta{
+							Kind: "PipelineRun",
+						},
+					}),
+				}},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
+		},
+	}, {
+		name: "resource template invalid apiVersion",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "foobar",
+							Kind:       "pipelinerun",
+						},
+					}),
+				}},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `invalid value: no kind "pipelinerun" is registered for version "foobar"`,
+			Paths:   []string{"spec.resourcetemplates[0]"},
+		},
+	}, {
+		name: "resource template invalid kind",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "foo",
+							Kind:       "tekton.dev/v1beta1",
+						},
+					}),
+				}},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `invalid value: no kind "tekton.dev/v1beta1" is registered for version "foo"`,
+			Paths:   []string{"spec.resourcetemplates[0]"},
+		},
+	}, {
+		name: "tt.params used in resource template are declared",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: paramResourceTemplate(t),
+				}},
+			},
+		},
+		want: nil,
+	}, {
+		name: "tt.params used in resource template are not declared",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: paramResourceTemplate(t),
+				}},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: undeclared param '$(tt.params.foo)'",
+			Paths:   []string{"spec.resourcetemplates[0]"},
+			Details: "'$(tt.params.foo)' must be declared in spec.params",
+		},
+	}, {
+		name: "invalid params used in resource template are not declared",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: invalidParamResourceTemplate(t),
+				}},
+			},
+		},
+		want: nil,
+	}, {
+		name: "invalid params used in resource template are declared",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.TriggerTemplateSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:        "foo",
+					Description: "desc",
+					Default:     ptr.String("val"),
+				}},
+				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+					RawExtension: invalidParamResourceTemplate(t),
+				}},
+			},
+		},
+		want: nil,
+	}, {
+		name: "no spec to triggertemplate",
+		template: &v1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+		},
+		want: apis.ErrMissingField("spec", "spec.resourcetemplates"),
+	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
