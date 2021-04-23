@@ -1,0 +1,57 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: gitlab-listener
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: gitlab-push-events-trigger
+      interceptors:
+        - name: "verify-gitlab-payload"
+          ref:
+            name: "gitlab"
+            kind: ClusterInterceptor
+          params:
+            - name: secretRef
+              value:
+                secretName: "gitlab-secret"
+                secretKey: "secretToken"
+            - name: eventTypes
+              value:
+                - "Push Hook"
+      bindings:
+        - name: gitrevision
+          value: $(body.checkout_sha)
+        - name: gitrepositoryurl
+          value: $(body.repository.git_http_url)
+      template:
+        spec:
+          params:
+            - name: gitrevision
+            - name: gitrepositoryurl
+          resourcetemplates:
+            - apiVersion: tekton.dev/v1alpha1
+              kind: TaskRun
+              metadata:
+                generateName: gitlab-run-
+              spec:
+                taskSpec:
+                  inputs:
+                    resources:
+                      - name: source
+                        type: git
+                  steps:
+                    - image: ubuntu
+                      script: |
+                        #! /bin/bash
+                        ls -al $(inputs.resources.source.path)
+                inputs:
+                  resources:
+                    - name: source
+                      resourceSpec:
+                        type: git
+                        params:
+                          - name: revision
+                            value: $(tt.params.gitrevision)
+                          - name: url
+                            value: $(tt.params.gitrepositoryurl)
