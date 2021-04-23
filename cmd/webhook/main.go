@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -43,6 +44,12 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):        &v1alpha1.TriggerBinding{},
 	v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"):       &v1alpha1.TriggerTemplate{},
 	v1alpha1.SchemeGroupVersion.WithKind("Trigger"):               &v1alpha1.Trigger{},
+
+	v1beta1.SchemeGroupVersion.WithKind("ClusterTriggerBinding"): &v1beta1.ClusterTriggerBinding{},
+	v1beta1.SchemeGroupVersion.WithKind("EventListener"):         &v1beta1.EventListener{},
+	v1beta1.SchemeGroupVersion.WithKind("TriggerBinding"):        &v1beta1.TriggerBinding{},
+	v1beta1.SchemeGroupVersion.WithKind("TriggerTemplate"):       &v1beta1.TriggerTemplate{},
+	v1beta1.SchemeGroupVersion.WithKind("Trigger"):               &v1beta1.Trigger{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
