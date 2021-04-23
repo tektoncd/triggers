@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	bldr "github.com/tektoncd/triggers/test/builder"
@@ -272,6 +273,43 @@ func Test_EventListenerValidate(t *testing.T) {
 						RawExtension: getValidRawData(t),
 					},
 				},
+			},
+		},
+	}, {
+		name: "valid EventListener with embedded TriggerTemplate",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Bindings: []*v1alpha1.EventListenerBinding{{
+						Ref:        "tb",
+						Kind:       v1alpha1.NamespacedTriggerBindingKind,
+						APIVersion: "v1alpha1", // TODO: APIVersions seem wrong?
+					}},
+					Template: &v1alpha1.EventListenerTemplate{
+						Spec: &v1alpha1.TriggerTemplateSpec{
+							Params: []v1alpha1.ParamSpec{{
+								Name:        "foo",
+								Description: "desc",
+								Default:     ptr.String("val"),
+							}},
+							ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+								RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+									TypeMeta: metav1.TypeMeta{
+										APIVersion: "tekton.dev/v1alpha1",
+										Kind:       "TaskRun",
+									},
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "$(tt.params.foo)",
+									},
+								}),
+							}},
+						},
+					},
+				}},
 			},
 		},
 	}}
