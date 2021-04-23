@@ -20,11 +20,10 @@ import (
 	"context"
 	"testing"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -36,52 +35,429 @@ func Test_EventListenerValidate(t *testing.T) {
 		name string
 		el   *v1beta1.EventListener
 	}{{
-		name: "TriggerTemplate Does Not Exist",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Template: &v1beta1.EventListenerTemplate{
-						Ref:        ptr.String("dne"),
-						APIVersion: "v1beta1", // TODO: test with v1alpha1 version as well.
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener No TriggerBinding",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Template: &v1beta1.EventListenerTemplate{
-						Ref:        ptr.String("tt"),
-						APIVersion: "v1beta1", // TODO: test with v1alpha1 version as well.
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with TriggerRef",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					TriggerRef: "tt",
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with TriggerBinding",
+		//	name: "TriggerTemplate Does Not Exist",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref:        ptr.String("dne"),
+		//					APIVersion: "v1beta1", // TODO: test with v1alpha1 version as well.
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener No TriggerBinding",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref:        ptr.String("tt"),
+		//					APIVersion: "v1beta1", // TODO: test with v1alpha1 version as well.
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with TriggerRef",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				TriggerRef: "tt",
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with TriggerBinding",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with ClusterTriggerBinding",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.ClusterTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with multiple TriggerBindings",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb1",
+		//					Kind:       v1beta1.ClusterTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}, {
+		//					Ref:        "tb2",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}, {
+		//					Ref:        "tb3",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener Webhook Interceptor",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Interceptors: []*v1beta1.EventInterceptor{{
+		//					Webhook: &v1beta1.WebhookInterceptor{
+		//						ObjectRef: &corev1.ObjectReference{
+		//							Name:       "svc",
+		//							Kind:       "Service",
+		//							APIVersion: "v1",
+		//							Namespace:  "namespace",
+		//						},
+		//					},
+		//				}},
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener Interceptor With Header",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Interceptors: []*v1beta1.EventInterceptor{{
+		//					Webhook: &v1beta1.WebhookInterceptor{
+		//						Header: []pipelinev1.Param{{
+		//							Name: "Valid-Header-Key",
+		//							Value: pipelinev1.ArrayOrString{
+		//								Type:      pipelinev1.ParamTypeString,
+		//								StringVal: "valid-value",
+		//							},
+		//						}, {
+		//							Name: "Valid-Header-Key2",
+		//							Value: pipelinev1.ArrayOrString{
+		//								Type:      pipelinev1.ParamTypeString,
+		//								StringVal: "valid value 2",
+		//							},
+		//						}},
+		//						ObjectRef: &corev1.ObjectReference{
+		//							Name:       "svc",
+		//							Kind:       "Service",
+		//							APIVersion: "v1",
+		//							Namespace:  "namespace",
+		//						},
+		//					},
+		//				}},
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener Two Triggers",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt"),
+		//				},
+		//			}, {
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt2"),
+		//				},
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with CEL interceptor",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Interceptors: []*v1beta1.EventInterceptor{{
+		//					Ref: v1beta1.InterceptorRef{
+		//						Name:       "cel",
+		//						Kind:       v1beta1.ClusterInterceptorKind,
+		//						APIVersion: "triggers.tekton.dev/v1beta1",
+		//					},
+		//					Params: []v1beta1.InterceptorParams{{
+		//						Name:  "filter",
+		//						Value: test.ToV1JSON(t, "body.value == test"),
+		//					}, {
+		//						Name: "overlays",
+		//						Value: test.ToV1JSON(t, []v1beta1.CELOverlay{{
+		//							Key:        "value",
+		//							Expression: "testing",
+		//						}}),
+		//					}},
+		//				}},
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with no trigger name",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       v1beta1.NamespacedTriggerBindingKind,
+		//					APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
+		//				}},
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt"),
+		//				},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Namespace selector with label selector",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			NamespaceSelector: v1beta1.NamespaceSelector{
+		//				MatchNames: []string{"foo"},
+		//			},
+		//			LabelSelector: &metav1.LabelSelector{
+		//				MatchLabels: map[string]string{
+		//					"foo": "bar",
+		//				},
+		//			},
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{Ref: "bindingRef", Kind: v1beta1.NamespacedTriggerBindingKind}},
+		//				Template: &v1beta1.EventListenerTemplate{Ref: ptr.String("tt")},
+		//			}},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with kubernetes env for podspec",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt"),
+		//				},
+		//			}},
+		//			Resources: v1beta1.Resources{
+		//				KubernetesResource: &v1beta1.KubernetesResource{
+		//					WithPodSpec: duckv1.WithPodSpec{
+		//						Template: duckv1.PodSpecable{
+		//							Spec: corev1.PodSpec{
+		//								ServiceAccountName: "k8sresource",
+		//								Tolerations: []corev1.Toleration{{
+		//									Key:      "key",
+		//									Operator: "Equal",
+		//									Value:    "value",
+		//									Effect:   "NoSchedule",
+		//								}},
+		//								NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
+		//								Containers: []corev1.Container{{
+		//									Resources: corev1.ResourceRequirements{
+		//										Limits: corev1.ResourceList{
+		//											corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+		//											corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+		//										},
+		//										Requests: corev1.ResourceList{
+		//											corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+		//											corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+		//										},
+		//									},
+		//								}},
+		//							},
+		//						},
+		//					},
+		//				},
+		//			},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid Replicas for EventListener",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Resources: v1beta1.Resources{
+		//				KubernetesResource: &v1beta1.KubernetesResource{
+		//					Replicas: ptr.Int32(1),
+		//				},
+		//			},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with env for TLS connection",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Template: &v1beta1.EventListenerTemplate{
+		//					Ref: ptr.String("tt"),
+		//				},
+		//			}},
+		//			Resources: v1beta1.Resources{
+		//				KubernetesResource: &v1beta1.KubernetesResource{
+		//					WithPodSpec: duckv1.WithPodSpec{
+		//						Template: duckv1.PodSpecable{
+		//							Spec: corev1.PodSpec{
+		//								ServiceAccountName: "k8sresource",
+		//								Containers: []corev1.Container{{
+		//									Env: []corev1.EnvVar{{
+		//										Name: "TLS_CERT",
+		//										ValueFrom: &corev1.EnvVarSource{
+		//											SecretKeyRef: &corev1.SecretKeySelector{
+		//												LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
+		//												Key:                  "tls.crt",
+		//											},
+		//										},
+		//									}, {
+		//										Name: "TLS_KEY",
+		//										ValueFrom: &corev1.EnvVarSource{
+		//											SecretKeyRef: &corev1.SecretKeySelector{
+		//												LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
+		//												Key:                  "tls.key",
+		//											},
+		//										},
+		//									}},
+		//								}},
+		//							},
+		//						},
+		//					},
+		//				},
+		//			},
+		//		},
+		//	},
+		//}, {
+		//	name: "Valid EventListener with custom resources",
+		//	el: &v1beta1.EventListener{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "name",
+		//			Namespace: "namespace",
+		//		},
+		//		Spec: v1beta1.EventListenerSpec{
+		//			Triggers: []v1beta1.EventListenerTrigger{{
+		//				Bindings: []*v1beta1.EventListenerBinding{{
+		//					Ref:        "tb",
+		//					Kind:       "TriggerBinding",
+		//					APIVersion: "v1beta1",
+		//				}},
+		//				TriggerRef: "triggerref",
+		//			}},
+		//			Resources: v1beta1.Resources{
+		//				CustomResource: &v1beta1.CustomResource{
+		//					RawExtension: getValidRawData(t),
+		//				},
+		//			},
+		//		},
+		//	},
+		//}, {
+		name: "valid EventListener with embedded TriggerTemplate",
 		el: &v1beta1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -95,366 +471,26 @@ func Test_EventListenerValidate(t *testing.T) {
 						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
 					}},
 					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with ClusterTriggerBinding",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.ClusterTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with multiple TriggerBindings",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb1",
-						Kind:       v1beta1.ClusterTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}, {
-						Ref:        "tb2",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}, {
-						Ref:        "tb3",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener Webhook Interceptor",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Interceptors: []*v1beta1.EventInterceptor{{
-						Webhook: &v1beta1.WebhookInterceptor{
-							ObjectRef: &corev1.ObjectReference{
-								Name:       "svc",
-								Kind:       "Service",
-								APIVersion: "v1",
-								Namespace:  "namespace",
-							},
-						},
-					}},
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener Interceptor With Header",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Interceptors: []*v1beta1.EventInterceptor{{
-						Webhook: &v1beta1.WebhookInterceptor{
-							Header: []pipelinev1.Param{{
-								Name: "Valid-Header-Key",
-								Value: pipelinev1.ArrayOrString{
-									Type:      pipelinev1.ParamTypeString,
-									StringVal: "valid-value",
-								},
-							}, {
-								Name: "Valid-Header-Key2",
-								Value: pipelinev1.ArrayOrString{
-									Type:      pipelinev1.ParamTypeString,
-									StringVal: "valid value 2",
-								},
+						Spec: &v1beta1.TriggerTemplateSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name:        "foo",
+								Description: "desc",
+								Default:     ptr.String("val"),
 							}},
-							ObjectRef: &corev1.ObjectReference{
-								Name:       "svc",
-								Kind:       "Service",
-								APIVersion: "v1",
-								Namespace:  "namespace",
-							},
-						},
-					}},
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener Two Triggers",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
-				}, {
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt2"),
-					},
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with CEL interceptor",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Interceptors: []*v1beta1.EventInterceptor{{
-						Ref: v1beta1.InterceptorRef{
-							Name:       "cel",
-							Kind:       v1beta1.ClusterInterceptorKind,
-							APIVersion: "triggers.tekton.dev/v1beta1",
-						},
-						Params: []v1beta1.InterceptorParams{{
-							Name:  "filter",
-							Value: test.ToV1JSON(t, "body.value == test"),
-						}, {
-							Name: "overlays",
-							Value: test.ToV1JSON(t, []v1beta1.CELOverlay{{
-								Key:        "value",
-								Expression: "testing",
-							}}),
-						}},
-					}},
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with no trigger name",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       v1beta1.NamespacedTriggerBindingKind,
-						APIVersion: "v1beta1", // TODO: APIVersions seem wrong?
-					}},
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
-				}},
-			},
-		},
-	}, {
-		name: "Namespace selector with label selector",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				NamespaceSelector: v1beta1.NamespaceSelector{
-					MatchNames: []string{"foo"},
-				},
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"foo": "bar",
-					},
-				},
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{Ref: "bindingRef", Kind: v1beta1.NamespacedTriggerBindingKind}},
-					Template: &v1beta1.EventListenerTemplate{Ref: ptr.String("tt")},
-				}},
-			},
-		},
-	}, {
-		name: "Valid EventListener with kubernetes env for podspec",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
-				}},
-				Resources: v1beta1.Resources{
-					KubernetesResource: &v1beta1.KubernetesResource{
-						WithPodSpec: duckv1.WithPodSpec{
-							Template: duckv1.PodSpecable{
-								Spec: corev1.PodSpec{
-									ServiceAccountName: "k8sresource",
-									Tolerations: []corev1.Toleration{{
-										Key:      "key",
-										Operator: "Equal",
-										Value:    "value",
-										Effect:   "NoSchedule",
-									}},
-									NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
-									Containers: []corev1.Container{{
-										Resources: corev1.ResourceRequirements{
-											Limits: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
-												corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
-											},
-											Requests: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
-												corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
-											},
-										},
-									}},
-								},
-							},
+							ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
+								RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+									TypeMeta: metav1.TypeMeta{
+										APIVersion: "tekton.dev/v1alpha1",
+										Kind:       "TaskRun",
+									},
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "$(tt.params.foo)",
+									},
+								}),
+							}},
 						},
 					},
-				},
-			},
-		},
-	}, {
-		name: "Valid Replicas for EventListener",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Resources: v1beta1.Resources{
-					KubernetesResource: &v1beta1.KubernetesResource{
-						Replicas: ptr.Int32(1),
-					},
-				},
-			},
-		},
-	}, {
-		name: "Valid EventListener with env for TLS connection",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Template: &v1beta1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
 				}},
-				Resources: v1beta1.Resources{
-					KubernetesResource: &v1beta1.KubernetesResource{
-						WithPodSpec: duckv1.WithPodSpec{
-							Template: duckv1.PodSpecable{
-								Spec: corev1.PodSpec{
-									ServiceAccountName: "k8sresource",
-									Containers: []corev1.Container{{
-										Env: []corev1.EnvVar{{
-											Name: "TLS_CERT",
-											ValueFrom: &corev1.EnvVarSource{
-												SecretKeyRef: &corev1.SecretKeySelector{
-													LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
-													Key:                  "tls.crt",
-												},
-											},
-										}, {
-											Name: "TLS_KEY",
-											ValueFrom: &corev1.EnvVarSource{
-												SecretKeyRef: &corev1.SecretKeySelector{
-													LocalObjectReference: corev1.LocalObjectReference{Name: "secret-name"},
-													Key:                  "tls.key",
-												},
-											},
-										}},
-									}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, {
-		name: "Valid EventListener with custom resources",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1beta1.EventListenerSpec{
-				Triggers: []v1beta1.EventListenerTrigger{{
-					Bindings: []*v1beta1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       "TriggerBinding",
-						APIVersion: "v1beta1",
-					}},
-					TriggerRef: "triggerref",
-				}},
-				Resources: v1beta1.Resources{
-					CustomResource: &v1beta1.CustomResource{
-						RawExtension: getValidRawData(t),
-					},
-				},
 			},
 		},
 	}}

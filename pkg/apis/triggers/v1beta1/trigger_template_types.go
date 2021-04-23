@@ -83,9 +83,15 @@ type TriggerTemplateList struct {
 	Items           []TriggerTemplate `json:"items"`
 }
 
-// IsAllowedType returns true if the resourceTemplate has an apiVersion
-// and kind field set to one of the allowed ones.
 func (trt *TriggerResourceTemplate) IsAllowedType() error {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(pipelinev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(pipelinev1beta1.AddToScheme(scheme))
+	codec := serializer.NewCodecFactory(scheme)
+	Decoder = codec.UniversalDecoder(
+		pipelinev1alpha1.SchemeGroupVersion,
+		pipelinev1beta1.SchemeGroupVersion,
+	)
 	_, err := runtime.Decode(Decoder, trt.RawExtension.Raw)
 	return err
 }

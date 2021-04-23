@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -53,7 +54,7 @@ func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldErr
 
 func validateResourceTemplates(templates []TriggerResourceTemplate) (errs *apis.FieldError) {
 	for i, trt := range templates {
-		if err := trt.IsAllowedType(); err != nil {
+		if err := config.IsAllowedType(trt.RawExtension); err != nil {
 			if runtime.IsMissingVersion(err) {
 				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i)))
 			}
