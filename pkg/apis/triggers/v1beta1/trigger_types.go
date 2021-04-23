@@ -131,13 +131,10 @@ func (ti *TriggerInterceptor) defaultInterceptorKind() {
 
 // GetName returns the name for the given interceptor
 func (ti *TriggerInterceptor) GetName() string {
-	// This is temporary until we implement #869
-	name := ""
-	switch {
-	case ti.Ref.Name != "":
-		name = ti.Ref.Name
+	if ti.Ref.Name != "" {
+		return ti.Ref.Name
 	}
-	return name
+	return ""
 }
 
 // WebhookInterceptor provides a webhook to intercept and pre-process events
@@ -178,7 +175,7 @@ type CELInterceptor struct {
 	Overlays []CELOverlay `json:"overlays,omitempty"`
 }
 
-// CELOverlay provides a way to modify the request body using DeprecatedCEL expressions
+// CELOverlay provides a way to modify the request body using CEL expressions
 type CELOverlay struct {
 	Key        string `json:"key,omitempty"`
 	Expression string `json:"expression,omitempty"`
