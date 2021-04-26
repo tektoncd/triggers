@@ -21,7 +21,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -1210,7 +1210,7 @@ func (in *WebhookInterceptor) DeepCopyInto(out *WebhookInterceptor) {
 	}
 	if in.Header != nil {
 		in, out := &in.Header, &out.Header
-		*out = make([]v1beta1.Param, len(*in))
+		*out = make([]pipelinev1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
