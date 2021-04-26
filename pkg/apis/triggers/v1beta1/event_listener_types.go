@@ -27,7 +27,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/apis/duck/v1beta1"
-	duckv1alpha1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -150,7 +149,7 @@ type EventListenerStatus struct {
 
 	// EventListener is Addressable. It currently exposes the service DNS
 	// address of the the EventListener sink
-	duckv1alpha1.AddressStatus `json:",inline"`
+	v1beta1.AddressStatus `json:",inline"`
 
 	// Configuration stores configuration for the EventListener service
 	Configuration EventListenerConfig `json:"configuration"`
@@ -292,7 +291,7 @@ func (el *EventListener) GetOwnerReference() *metav1.OwnerReference {
 // SetAddress sets the address (as part of Addressable contract) and marks the correct condition.
 func (els *EventListenerStatus) SetAddress(hostname string) {
 	if els.Address == nil {
-		els.Address = &duckv1alpha1.Addressable{}
+		els.Address = &v1beta1.Addressable{}
 	}
 	if hostname != "" {
 		els.Address.URL = &apis.URL{
