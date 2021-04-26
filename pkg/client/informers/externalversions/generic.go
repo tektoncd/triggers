@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -65,6 +66,18 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().TriggerBindings().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("triggertemplates"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1alpha1().TriggerTemplates().Informer()}, nil
+
+		// Group=triggers.tekton.dev, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("clustertriggerbindings"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1beta1().ClusterTriggerBindings().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("eventlisteners"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1beta1().EventListeners().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("triggers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1beta1().Triggers().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("triggerbindings"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1beta1().TriggerBindings().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("triggertemplates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Triggers().V1beta1().TriggerTemplates().Informer()}, nil
 
 	}
 
