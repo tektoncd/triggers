@@ -19,14 +19,14 @@ import (
 	"flag"
 	"os"
 
-	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/clusterinterceptor"
+	"github.com/tektoncd/triggers/pkg/reconciler/clusterinterceptor"
 
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 
-	"github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
+	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 )
 
 const (
