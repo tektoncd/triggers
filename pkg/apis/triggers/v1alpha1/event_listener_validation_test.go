@@ -486,7 +486,7 @@ func Test_EventListenerValidate(t *testing.T) {
 					Bindings: []*v1alpha1.EventListenerBinding{{
 						Ref:        "tb",
 						Kind:       v1alpha1.NamespacedTriggerBindingKind,
-						APIVersion: "v1alpha1", // TODO: APIVersions seem wrong?
+						APIVersion: "v1alpha1",
 					}},
 					Template: &v1alpha1.EventListenerTemplate{
 						Spec: &v1alpha1.TriggerTemplateSpec{
