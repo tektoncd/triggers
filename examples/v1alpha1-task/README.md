@@ -15,7 +15,7 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
    ```shell script
    kubectl port-forward \
     "$(kubectl get pod --selector=eventlistener=v1alpha1-task-listener -oname)" \
-     8080
+     8000
    ```
 
 1. Test by sending the sample payload.
@@ -24,7 +24,7 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
    curl -v \
    -H 'Content-Type: application/json' \
    --data "{}" \
-   http://localhost:8080
+   http://localhost:8000
    ```
 
    The response status code should be `202 Accepted`

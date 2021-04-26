@@ -15,7 +15,7 @@ Creates an EventListener that listens for GitLab webhook events.
    ```bash
    kubectl port-forward \
     "$(kubectl get pod --selector=eventlistener=gitlab-listener -oname)" \
-     8080
+     8000
    ```
 
 1. Test by sending the sample payload.
@@ -26,7 +26,7 @@ Creates an EventListener that listens for GitLab webhook events.
    -H 'X-Gitlab-Event: Push Hook' \
    -H 'Content-Type: application/json' \
    --data-binary "@examples/gitlab/gitlab-push-event.json" \
-   http://localhost:8080
+   http://localhost:8000
    ```
 
    The response status code should be `202 Accepted`

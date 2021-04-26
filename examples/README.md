@@ -54,14 +54,14 @@ parameters.
 
 4. Send a payload to the listener
 
-Assuming we have a listener available at `localhost:8080` (and port-forwarded
+Assuming we have a listener available at `localhost:8000` (and port-forwarded
 for this example, with
-`kubectl port-forward $(kubectl get pod -o=name -l eventlistener=listener) 8080`),
+`kubectl port-forward $(kubectl get pod -o=name -l eventlistener=listener) 8000`),
 run the following command in your shell of choice or using Postman:
 
 ```bash
 curl -X POST \
-  http://localhost:8080 \
+  http://localhost:8000 \
   -H 'Content-Type: application/json' \
   -H 'X-Hub-Signature: sha1=2da37dcb9404ff17b714ee7a505c384758ddeb7b' \
   -d '{
