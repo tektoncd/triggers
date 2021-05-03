@@ -260,11 +260,6 @@ func Test_EventListenerValidate(t *testing.T) {
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
-					Bindings: []*v1alpha1.EventListenerBinding{{
-						Ref:        "tb",
-						Kind:       "TriggerBinding",
-						APIVersion: "v1alpha1",
-					}},
 					TriggerRef: "triggerref",
 				}},
 				Resources: v1alpha1.Resources{
@@ -695,6 +690,27 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Resources: v1alpha1.Resources{
 					CustomResource: &v1alpha1.CustomResource{
 						RawExtension: getRawData(t),
+					},
+				},
+			},
+		},
+	}, {
+		name: "Specify TriggerTemplate along with TriggerRef",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Template: &v1alpha1.EventListenerTemplate{
+						Ref: ptr.String("tt"),
+					},
+					TriggerRef: "triggerref",
+				}},
+				Resources: v1alpha1.Resources{
+					CustomResource: &v1alpha1.CustomResource{
+						RawExtension: getValidRawData(t),
 					},
 				},
 			},
