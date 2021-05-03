@@ -272,6 +272,10 @@ func (t *EventListenerTrigger) validate(ctx context.Context) (errs *apis.FieldEr
 		errs = errs.Also(apis.ErrMissingOneOf("template", "triggerRef"))
 	}
 
+	if t.TriggerRef != "" && (t.Template != nil || t.Bindings != nil || t.Interceptors != nil) {
+		errs = errs.Also(apis.ErrMultipleOneOf("triggerRef", "template or bindings or interceptors"))
+	}
+
 	// Validate optional Bindings
 	errs = errs.Also(triggerSpecBindingArray(t.Bindings).validate(ctx))
 	if t.Template != nil {
