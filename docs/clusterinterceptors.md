@@ -11,7 +11,7 @@ Tekton Triggers ships with the `ClusterInterceptor` Custom Resource Definition (
 A `ClusterInterceptor` specifies an external Kubernetes v1 Service running custom business logic that receives the event payload from the
 `EventListener` via an HTTP request and returns a processed version of the payload along with an HTTP 200 response. The `ClusterInterceptor` can also
 halt processing if the event payload does not meet criteria you have configured as well as add extra fields that are accessible in the `EventListener's`
-top-level `extensions` field to other `Interceptors` and `ClusterInterceptors` chained with it and the associated `TriggerBinding`.
+top-level `extensions` field to other [`Interceptors`](interceptors.md) and `ClusterInterceptors` chained with it and the associated `TriggerBinding`.
 
 ## Structure of a `ClusterInterceptor`
 
