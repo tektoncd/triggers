@@ -25,9 +25,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
 	"github.com/tektoncd/triggers/pkg/resources"

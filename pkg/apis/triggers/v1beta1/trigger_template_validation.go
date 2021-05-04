@@ -54,7 +54,7 @@ func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldErr
 
 func validateResourceTemplates(templates []TriggerResourceTemplate) (errs *apis.FieldError) {
 	for i, trt := range templates {
-		if err := config.IsAllowedType(trt.RawExtension); err != nil {
+		if err := config.EnsureAllowedType(trt.RawExtension); err != nil {
 			if runtime.IsMissingVersion(err) {
 				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i)))
 			}

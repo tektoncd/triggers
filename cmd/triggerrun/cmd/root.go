@@ -30,8 +30,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
@@ -138,16 +137,16 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 	return nil
 }
 
-func readTrigger(path string) ([]*v1alpha1.Trigger, error) {
+func readTrigger(path string) ([]*triggersv1.Trigger, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading trigger file: %w", err)
 	}
 	defer f.Close()
 
-	var list []*v1alpha1.Trigger
+	var list []*triggersv1.Trigger
 	decoder := streaming.NewDecoder(f, scheme.Codecs.UniversalDecoder())
-	b := new(v1alpha1.Trigger)
+	b := new(triggersv1.Trigger)
 	for err == nil {
 		_, _, err = decoder.Decode(nil, b)
 		if err != nil {
@@ -212,13 +211,13 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 
 	rt, err := template.ResolveTrigger(*tri,
 		func(name string) (*triggersv1.TriggerBinding, error) {
-			return client.TriggersV1alpha1().TriggerBindings(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
+			return client.TriggersV1beta1().TriggerBindings(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
 		},
 		func(name string) (*triggersv1.ClusterTriggerBinding, error) {
-			return client.TriggersV1alpha1().ClusterTriggerBindings().Get(context.Background(), name, metav1.GetOptions{})
+			return client.TriggersV1beta1().ClusterTriggerBindings().Get(context.Background(), name, metav1.GetOptions{})
 		},
 		func(name string) (*triggersv1.TriggerTemplate, error) {
-			return client.TriggersV1alpha1().TriggerTemplates(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
+			return client.TriggersV1beta1().TriggerTemplates(tri.Namespace).Get(context.Background(), name, metav1.GetOptions{})
 		})
 	if err != nil {
 		log.Error("Failed to resolve Trigger: ", err)

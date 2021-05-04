@@ -132,12 +132,12 @@ func main() {
 		Recorder:               recorder,
 		Auth:                   sink.DefaultAuthOverride{},
 		// Register all the listers we'll need
-		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
-		TriggerLister:               factory.Triggers().V1alpha1().Triggers().Lister(),
-		TriggerBindingLister:        factory.Triggers().V1alpha1().TriggerBindings().Lister(),
-		ClusterTriggerBindingLister: factory.Triggers().V1alpha1().ClusterTriggerBindings().Lister(),
-		TriggerTemplateLister:       factory.Triggers().V1alpha1().TriggerTemplates().Lister(),
-		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
+		EventListenerLister:         factory.Triggers().V1beta1().EventListeners().Lister(),
+		TriggerLister:               factory.Triggers().V1beta1().Triggers().Lister(),
+		TriggerBindingLister:        factory.Triggers().V1beta1().TriggerBindings().Lister(),
+		ClusterTriggerBindingLister: factory.Triggers().V1beta1().ClusterTriggerBindings().Lister(),
+		TriggerTemplateLister:       factory.Triggers().V1beta1().TriggerTemplates().Lister(),
+		ClusterInterceptorLister:    factory.Triggers().V1beta1().ClusterInterceptors().Lister(),
 	}
 
 	startInformers()

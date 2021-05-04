@@ -21,14 +21,11 @@ import (
 	"crypto/subtle"
 	"fmt"
 
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tektoncd/triggers/pkg/interceptors"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-
-	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 )
 

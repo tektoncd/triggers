@@ -21,11 +21,9 @@ import (
 	"net/http"
 	"testing"
 
-	"go.uber.org/zap/zaptest"
-
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"

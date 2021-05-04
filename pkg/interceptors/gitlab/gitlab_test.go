@@ -21,9 +21,9 @@ import (
 	"net/http"
 	"testing"
 
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap/zaptest"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -97,7 +97,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
-			req := &triggersv1.InterceptorRequest{
+			req := &interceptors.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -106,7 +106,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 					"eventTypes": tt.interceptorParams.EventTypes,
 					"secretRef":  tt.interceptorParams.SecretRef,
 				},
-				Context: &triggersv1.TriggerContext{
+				Context: &interceptors.TriggerContext{
 					EventURL:  "https://testing.example.com",
 					EventID:   "abcde",
 					TriggerID: "namespaces/default/triggers/example-trigger",
@@ -251,7 +251,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
 			kubeClient := fakekubeclient.Get(ctx)
-			req := &triggersv1.InterceptorRequest{
+			req := &interceptors.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -260,7 +260,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 					"eventTypes": tt.interceptorParams.EventTypes,
 					"secretRef":  tt.interceptorParams.SecretRef,
 				},
-				Context: &triggersv1.TriggerContext{
+				Context: &interceptors.TriggerContext{
 					EventURL:  "https://testing.example.com",
 					EventID:   "abcde",
 					TriggerID: "namespaces/default/triggers/example-trigger",
@@ -299,7 +299,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 		Logger:        logger.Sugar(),
 	}
 
-	req := &triggersv1.InterceptorRequest{
+	req := &interceptors.InterceptorRequest{
 		Body: `{}`,
 		Header: http.Header{
 			"Content-Type": []string{"application/json"},
@@ -307,7 +307,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 		InterceptorParams: map[string]interface{}{
 			"blah": func() {},
 		},
-		Context: &triggersv1.TriggerContext{
+		Context: &interceptors.TriggerContext{
 			EventURL:  "https://testing.example.com",
 			EventID:   "abcde",
 			TriggerID: "namespaces/default/triggers/example-trigger",

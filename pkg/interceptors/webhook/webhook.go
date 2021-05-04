@@ -27,8 +27,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 
 	"go.uber.org/zap"
 )
@@ -85,7 +84,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 }
 
 // getURI retrieves the ObjectReference to URI.
-func getURI(webhook *v1alpha1.WebhookInterceptor, ns string) (*url.URL, error) {
+func getURI(webhook *triggersv1.WebhookInterceptor, ns string) (*url.URL, error) {
 	// TODO: This should work for any Addressable.
 	// Use something like https://github.com/knative/eventing-contrib/blob/7c0fc5cfa8bd44da0767d9e7b250264ea6eb7d8d/pkg/controller/sinks/sinks.go#L32
 	switch {

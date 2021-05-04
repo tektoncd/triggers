@@ -420,19 +420,19 @@ func TestExecute(t *testing.T) {
 	defaultHeader := http.Header(map[string][]string{
 		"Content-Type": {"application/json"},
 	})
-	defaultTriggerContext := &triggersv1.TriggerContext{
+	defaultTriggerContext := &interceptors.TriggerContext{
 		EventURL:  "http://someurl.com",
 		EventID:   "abcde",
 		TriggerID: "namespaces/default/triggers/test-trigger",
 	}
 	for _, tc := range []struct {
 		name string
-		req  *triggersv1.InterceptorRequest
+		req  *interceptors.InterceptorRequest
 		url  string
-		want *triggersv1.InterceptorResponse
+		want *interceptors.InterceptorResponse
 	}{{
 		name: "cel filter pass",
-		req: &triggersv1.InterceptorRequest{
+		req: &interceptors.InterceptorRequest{
 			Header: defaultHeader,
 			InterceptorParams: map[string]interface{}{
 				"filter": `header.match("Content-Type", "application/json")`,
@@ -440,12 +440,12 @@ func TestExecute(t *testing.T) {
 			Context: defaultTriggerContext,
 		},
 		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
-		want: &triggersv1.InterceptorResponse{
+		want: &interceptors.InterceptorResponse{
 			Continue: true,
 		},
 	}, {
 		name: "cel filter fail",
-		req: &triggersv1.InterceptorRequest{
+		req: &interceptors.InterceptorRequest{
 			Header: defaultHeader,
 			InterceptorParams: map[string]interface{}{
 				"filter": `header.match("Content-Type", "application/xml")`,
@@ -453,9 +453,9 @@ func TestExecute(t *testing.T) {
 			Context: defaultTriggerContext,
 		},
 		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
-		want: &triggersv1.InterceptorResponse{
+		want: &interceptors.InterceptorResponse{
 			Continue: false,
-			Status: triggersv1.Status{
+			Status: interceptors.Status{
 				Code:    codes.FailedPrecondition,
 				Message: `expression header.match("Content-Type", "application/xml") did not return true`,
 			},
@@ -479,12 +479,12 @@ func TestExecute(t *testing.T) {
 }
 
 func TestExecute_Error(t *testing.T) {
-	defaultReq := &triggersv1.InterceptorRequest{
+	defaultReq := &interceptors.InterceptorRequest{
 		Body: `{}`,
 		Header: http.Header(map[string][]string{
 			"Content-Type": {"application/json"},
 		}),
-		Context: &triggersv1.TriggerContext{
+		Context: &interceptors.TriggerContext{
 			EventURL:  "http://someurl.com",
 			EventID:   "abcde",
 			TriggerID: "namespaces/default/triggers/test-trigger",
@@ -499,7 +499,7 @@ func TestExecute_Error(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name string
-		req  *triggersv1.InterceptorRequest
+		req  *interceptors.InterceptorRequest
 		url  string
 		svr  http.Handler
 	}{{

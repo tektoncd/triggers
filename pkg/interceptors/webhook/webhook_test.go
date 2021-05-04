@@ -28,7 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
@@ -68,7 +68,7 @@ func TestWebHookInterceptor(t *testing.T) {
 			Proxy: http.ProxyURL(interceptorURL),
 		},
 	}
-	webhook := &v1alpha1.WebhookInterceptor{
+	webhook := &v1beta1.WebhookInterceptor{
 		ObjectRef: &corev1.ObjectReference{
 			APIVersion: "v1",
 			Kind:       "Service",
@@ -127,7 +127,7 @@ func TestWebHookInterceptor_NotOK(t *testing.T) {
 			Proxy: http.ProxyURL(interceptorURL),
 		},
 	}
-	webhook := &v1alpha1.WebhookInterceptor{
+	webhook := &v1beta1.WebhookInterceptor{
 		ObjectRef: &corev1.ObjectReference{
 			APIVersion: "v1",
 			Kind:       "Service",
@@ -149,12 +149,12 @@ func TestGetURI(t *testing.T) {
 	var eventListenerNs = "default"
 	tcs := []struct {
 		name     string
-		ref      v1alpha1.WebhookInterceptor
+		ref      v1beta1.WebhookInterceptor
 		expected string
 		wantErr  bool
 	}{{
 		name: "namespace specified",
-		ref: v1alpha1.WebhookInterceptor{
+		ref: v1beta1.WebhookInterceptor{
 			ObjectRef: &corev1.ObjectReference{
 				Kind:       "Service",
 				Name:       "foo",
@@ -165,7 +165,7 @@ func TestGetURI(t *testing.T) {
 		wantErr:  false,
 	}, {
 		name: "no namespace",
-		ref: v1alpha1.WebhookInterceptor{
+		ref: v1beta1.WebhookInterceptor{
 			ObjectRef: &corev1.ObjectReference{
 				Kind:       "Service",
 				Name:       "foo",
@@ -175,7 +175,7 @@ func TestGetURI(t *testing.T) {
 		wantErr:  false,
 	}, {
 		name: "non services",
-		ref: v1alpha1.WebhookInterceptor{
+		ref: v1beta1.WebhookInterceptor{
 			ObjectRef: &corev1.ObjectReference{
 				Kind:       "Blah",
 				Name:       "foo",
@@ -185,7 +185,7 @@ func TestGetURI(t *testing.T) {
 		wantErr:  true,
 	}, {
 		name: "webhook interceptor with url",
-		ref: v1alpha1.WebhookInterceptor{
+		ref: v1beta1.WebhookInterceptor{
 			URL: apis.HTTP("foo.default.svc"),
 		},
 		expected: "http://foo.default.svc",
