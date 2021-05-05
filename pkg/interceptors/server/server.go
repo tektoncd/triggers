@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
-
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 )
@@ -23,11 +22,11 @@ import (
 type Server struct {
 	KubeClient   kubernetes.Interface
 	Logger       *zap.SugaredLogger
-	interceptors map[string]v1alpha1.InterceptorInterface
+	interceptors map[string]v1beta1.InterceptorInterface
 }
 
 func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
-	i := map[string]v1alpha1.InterceptorInterface{
+	i := map[string]v1beta1.InterceptorInterface{
 		"bitbucket": bitbucket.NewInterceptor(k, l),
 		"cel":       cel.NewInterceptor(k, l),
 		"github":    github.NewInterceptor(k, l),
@@ -97,7 +96,7 @@ func internal(err error) HTTPError {
 }
 
 func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
-	var ii v1alpha1.InterceptorInterface
+	var ii v1beta1.InterceptorInterface
 
 	// Find correct interceptor
 	ii, ok := is.interceptors[strings.TrimPrefix(strings.ToLower(r.URL.Path), "/")]
@@ -114,7 +113,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	if _, err := io.Copy(&body, r.Body); err != nil {
 		return nil, internal(fmt.Errorf("failed to read body: %w", err))
 	}
-	var ireq v1alpha1.InterceptorRequest
+	var ireq v1beta1.InterceptorRequest
 	if err := json.Unmarshal(body.Bytes(), &ireq); err != nil {
 		return nil, badRequest(fmt.Errorf("failed to parse body as InterceptorRequest: %w", err))
 	}

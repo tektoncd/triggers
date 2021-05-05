@@ -28,7 +28,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/test"
@@ -332,9 +333,9 @@ func TestResolveToURL(t *testing.T) {
 		want   string
 	}{{
 		name: "ClusterInterceptor has status.address.url",
-		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Status: triggersv1.ClusterInterceptorStatus{
+		getter: func(n string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Status: v1alpha1.ClusterInterceptorStatus{
 					AddressStatus: duckv1.AddressStatus{
 						Address: &duckv1.Addressable{
 							URL: &apis.URL{
@@ -351,10 +352,10 @@ func TestResolveToURL(t *testing.T) {
 		want:  "http://some-host/cel",
 	}, {
 		name: "ClusterInterceptor does not have a status",
-		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Spec: triggersv1.ClusterInterceptorSpec{
-					ClientConfig: triggersv1.ClientConfig{
+		getter: func(n string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Spec: v1alpha1.ClusterInterceptorSpec{
+					ClientConfig: v1alpha1.ClientConfig{
 						URL: &apis.URL{
 							Scheme: "http",
 							Host:   "some-host",
@@ -381,17 +382,17 @@ func TestResolveToURL(t *testing.T) {
 	}
 
 	t.Run("interceptor has no URL", func(t *testing.T) {
-		fakeGetter := func(name string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Spec: triggersv1.ClusterInterceptorSpec{
-					ClientConfig: triggersv1.ClientConfig{
+		fakeGetter := func(name string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Spec: v1alpha1.ClusterInterceptorSpec{
+					ClientConfig: v1alpha1.ClientConfig{
 						URL: nil,
 					},
 				},
 			}, nil
 		}
 		_, err := interceptors.ResolveToURL(fakeGetter, "cel")
-		if !errors.Is(err, triggersv1.ErrNilURL) {
+		if !errors.Is(err, v1alpha1.ErrNilURL) {
 			t.Fatalf("ResolveToURL expected error to be %s but got %s", triggersv1.ErrNilURL, err)
 		}
 	})
@@ -420,19 +421,19 @@ func TestExecute(t *testing.T) {
 	defaultHeader := http.Header(map[string][]string{
 		"Content-Type": {"application/json"},
 	})
-	defaultTriggerContext := &interceptors.TriggerContext{
+	defaultTriggerContext := &triggersv1.TriggerContext{
 		EventURL:  "http://someurl.com",
 		EventID:   "abcde",
 		TriggerID: "namespaces/default/triggers/test-trigger",
 	}
 	for _, tc := range []struct {
 		name string
-		req  *interceptors.InterceptorRequest
+		req  *triggersv1.InterceptorRequest
 		url  string
-		want *interceptors.InterceptorResponse
+		want *triggersv1.InterceptorResponse
 	}{{
 		name: "cel filter pass",
-		req: &interceptors.InterceptorRequest{
+		req: &triggersv1.InterceptorRequest{
 			Header: defaultHeader,
 			InterceptorParams: map[string]interface{}{
 				"filter": `header.match("Content-Type", "application/json")`,
@@ -440,22 +441,22 @@ func TestExecute(t *testing.T) {
 			Context: defaultTriggerContext,
 		},
 		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
-		want: &interceptors.InterceptorResponse{
+		want: &triggersv1.InterceptorResponse{
 			Continue: true,
 		},
 	}, {
 		name: "cel filter fail",
-		req: &interceptors.InterceptorRequest{
+		req: &triggersv1.InterceptorRequest{
 			Header: defaultHeader,
 			InterceptorParams: map[string]interface{}{
 				"filter": `header.match("Content-Type", "application/xml")`,
 			},
 			Context: defaultTriggerContext,
 		},
-		url: "http://tekton-triggers-core-interceptors.knative-test.svc/cel",
-		want: &interceptors.InterceptorResponse{
+		url: "http://tekton-triggers-core-triggersv1.knative-test.svc/cel",
+		want: &triggersv1.InterceptorResponse{
 			Continue: false,
-			Status: interceptors.Status{
+			Status: triggersv1.Status{
 				Code:    codes.FailedPrecondition,
 				Message: `expression header.match("Content-Type", "application/xml") did not return true`,
 			},
@@ -479,12 +480,12 @@ func TestExecute(t *testing.T) {
 }
 
 func TestExecute_Error(t *testing.T) {
-	defaultReq := &interceptors.InterceptorRequest{
+	defaultReq := &triggersv1.InterceptorRequest{
 		Body: `{}`,
 		Header: http.Header(map[string][]string{
 			"Content-Type": {"application/json"},
 		}),
-		Context: &interceptors.TriggerContext{
+		Context: &triggersv1.TriggerContext{
 			EventURL:  "http://someurl.com",
 			EventID:   "abcde",
 			TriggerID: "namespaces/default/triggers/test-trigger",
@@ -499,7 +500,7 @@ func TestExecute_Error(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name string
-		req  *interceptors.InterceptorRequest
+		req  *triggersv1.InterceptorRequest
 		url  string
 		svr  http.Handler
 	}{{

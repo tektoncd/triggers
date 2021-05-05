@@ -137,7 +137,7 @@ func main() {
 		TriggerBindingLister:        factory.Triggers().V1beta1().TriggerBindings().Lister(),
 		ClusterTriggerBindingLister: factory.Triggers().V1beta1().ClusterTriggerBindings().Lister(),
 		TriggerTemplateLister:       factory.Triggers().V1beta1().TriggerTemplates().Lister(),
-		ClusterInterceptorLister:    factory.Triggers().V1beta1().ClusterInterceptors().Lister(),
+		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
 	}
 
 	startInformers()

@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"knative.dev/pkg/apis"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -172,7 +173,7 @@ func UnmarshalParams(ip map[string]interface{}, p interface{}) error {
 	return nil
 }
 
-type InterceptorGetter func(name string) (*triggersv1.ClusterInterceptor, error)
+type InterceptorGetter func(name string) (*v1alpha1.ClusterInterceptor, error)
 
 // ResolveToURL finds an Interceptor's URL.
 func ResolveToURL(getter InterceptorGetter, name string) (*apis.URL, error) {

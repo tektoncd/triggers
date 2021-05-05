@@ -35,19 +35,21 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	interceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
-	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding"
-	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
-	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger"
-	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding"
-	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate"
+	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding"
+	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
+	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/trigger"
+	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding"
+	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/pkg/template"
-	"github.com/tektoncd/triggers/test"
+	testv1 "github.com/tektoncd/triggers/test"
+	test "github.com/tektoncd/triggers/test/v1beta1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -78,12 +80,12 @@ func init() {
 }
 
 var (
-	github = &triggersv1.ClusterInterceptor{
+	github = &v1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "github",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: v1alpha1.ClusterInterceptorSpec{
+			ClientConfig: v1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -92,12 +94,12 @@ var (
 			},
 		},
 	}
-	cel = &triggersv1.ClusterInterceptor{
+	cel = &v1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "cel",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: v1alpha1.ClusterInterceptorSpec{
+			ClientConfig: v1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -106,12 +108,12 @@ var (
 			},
 		},
 	}
-	bitbucket = &triggersv1.ClusterInterceptor{
+	bitbucket = &v1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "bitbucket",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: v1alpha1.ClusterInterceptorSpec{
+			ClientConfig: v1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -232,7 +234,7 @@ func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 
 // trResourceTemplate returns a resourceTemplate for a git-clone taskRun
 func trResourceTemplate(t testing.TB) runtime.RawExtension {
-	return test.RawExtension(t, pipelinev1.TaskRun{
+	return testv1.RawExtension(t, pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "TaskRun",
@@ -673,7 +675,7 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
-			ClusterInterceptors: []*triggersv1.ClusterInterceptor{github, cel},
+			ClusterInterceptors: []*v1alpha1.ClusterInterceptor{github, cel},
 			Triggers: []*triggersv1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
@@ -684,13 +686,13 @@ func TestHandleEvent(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "github"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: test.ToV1JSON(t, []string{"pull_request"}),
+							Value: testv1.ToV1JSON(t, []string{"pull_request"}),
 						}},
 					}, {
 						DeprecatedCEL: &triggersv1.CELInterceptor{
@@ -719,7 +721,7 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		headers: map[string][]string{
 			"X-GitHub-Event":  {"pull_request"},
-			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody)},
+			"X-Hub-Signature": {testv1.HMACHeader(t, "secret", eventBody)},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
@@ -734,7 +736,7 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
-			ClusterInterceptors: []*triggersv1.ClusterInterceptor{bitbucket},
+			ClusterInterceptors: []*v1alpha1.ClusterInterceptor{bitbucket},
 			Triggers: []*triggersv1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
@@ -745,13 +747,13 @@ func TestHandleEvent(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "bitbucket"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: test.ToV1JSON(t, []string{"repo:refs_changed"}),
+							Value: testv1.ToV1JSON(t, []string{"repo:refs_changed"}),
 						}},
 					}},
 					Bindings: gitCloneTBSpec,
@@ -773,7 +775,7 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		headers: map[string][]string{
 			"X-Event-Key":     {"repo:refs_changed"},
-			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody)},
+			"X-Hub-Signature": {testv1.HMACHeader(t, "secret", eventBody)},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
@@ -977,13 +979,13 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "github"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: test.ToV1JSON(t, []string{"pull_request"}),
+							Value: testv1.ToV1JSON(t, []string{"pull_request"}),
 						}},
 					}},
 					Bindings: []*triggersv1.TriggerSpecBinding{{
@@ -1050,7 +1052,7 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 				},
 			}
 			resources := test.Resources{
-				ClusterInterceptors: []*triggersv1.ClusterInterceptor{github},
+				ClusterInterceptors: []*v1alpha1.ClusterInterceptor{github},
 				Triggers:            []*triggersv1.Trigger{trigger},
 				EventListeners:      []*triggersv1.EventListener{el},
 				Secrets:             []*corev1.Secret{secret, authSecret},
@@ -1073,7 +1075,7 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 			}
 			req.Header.Add("Content-Type", "application/json")
 			req.Header.Add("X-Github-Event", "pull_request")
-			req.Header.Add("X-Hub-Signature", test.HMACHeader(t, "secret", eventBody))
+			req.Header.Add("X-Hub-Signature", testv1.HMACHeader(t, "secret", eventBody))
 
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -1315,7 +1317,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 
 func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	resources := test.Resources{
-		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+		ClusterInterceptors: []*v1alpha1.ClusterInterceptor{cel},
 	}
 	s, _ := getSinkAssets(t, resources, "el-name", nil)
 	trigger := triggersv1.Trigger{
@@ -1324,7 +1326,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name:  "filter",
-					Value: test.ToV1JSON(t, `body.head == "abcde"`),
+					Value: testv1.ToV1JSON(t, `body.head == "abcde"`),
 				}},
 			}}},
 	}
@@ -1366,7 +1368,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	webhookInterceptorName := "foo"
 	echoServer := &echoInterceptor{}
 	resources := test.Resources{
-		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+		ClusterInterceptors: []*v1alpha1.ClusterInterceptor{cel},
 	}
 	s, _ := getSinkAssets(t, resources, "", echoServer)
 
@@ -1378,7 +1380,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name: "overlays",
-					Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
+					Value: testv1.ToV1JSON(t, []triggersv1.CELOverlay{{
 						Key:        "truncated_sha",
 						Expression: "body.sha.truncate(5)",
 					}}),
@@ -1395,7 +1397,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name:  "filter",
-					Value: test.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
+					Value: testv1.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
 				}},
 			}},
 		},

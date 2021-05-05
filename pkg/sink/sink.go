@@ -27,6 +27,7 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	listersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
@@ -62,7 +63,7 @@ type Sink struct {
 	TriggerBindingLister        listers.TriggerBindingLister
 	ClusterTriggerBindingLister listers.ClusterTriggerBindingLister
 	TriggerTemplateLister       listers.TriggerTemplateLister
-	ClusterInterceptorLister    listers.ClusterInterceptorLister
+	ClusterInterceptorLister    listersv1alpha1.ClusterInterceptorLister
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
