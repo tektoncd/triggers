@@ -18,8 +18,6 @@ limitations under the License.
 
 package v1beta1
 
-type ClusterInterceptorExpansion interface{}
-
 type ClusterTriggerBindingExpansion interface{}
 
 type EventListenerExpansion interface{}

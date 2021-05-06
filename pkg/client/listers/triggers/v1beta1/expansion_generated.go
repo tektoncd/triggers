@@ -18,10 +18,6 @@ limitations under the License.
 
 package v1beta1
 
-// ClusterInterceptorListerExpansion allows custom methods to be added to
-// ClusterInterceptorLister.
-type ClusterInterceptorListerExpansion interface{}
-
 // ClusterTriggerBindingListerExpansion allows custom methods to be added to
 // ClusterTriggerBindingLister.
 type ClusterTriggerBindingListerExpansion interface{}

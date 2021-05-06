@@ -28,10 +28,6 @@ type FakeTriggersV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeTriggersV1beta1) ClusterInterceptors() v1beta1.ClusterInterceptorInterface {
-	return &FakeClusterInterceptors{c}
-}
-
 func (c *FakeTriggersV1beta1) ClusterTriggerBindings() v1beta1.ClusterTriggerBindingInterface {
 	return &FakeClusterTriggerBindings{c}
 }
