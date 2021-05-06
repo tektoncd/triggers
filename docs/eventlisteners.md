@@ -21,6 +21,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Structure of an `EventListener`](#structure-of-an-eventlistener)
 - [Specifying the Kubernetes service account](#specifiying-the-kubernetes-service-account)
 - [Specifying `Triggers`](#specifying-triggers)
+- [Specifying `TriggerGroups`](#specifying-trigger-groups)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
@@ -160,6 +161,123 @@ rules:
 - apiGroups: [""]
   resources: ["serviceaccounts"]
   verbs: ["impersonate"]
+```
+
+## Specifying `TriggerGroups`
+
+`TriggerGroups` is an alpha feature that allows you to specify a set of interceptors that will process before a set of 
+`Trigger` resources are processed by the eventlistener. The goal of this feature is described in 
+[TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). As described previously
+in this document, an `EventListener` is able to convert a qualifying event into invocation of Kubernetes resources for
+Tekton Pipelines. `TriggerGroups` allow for a common set of interceptors to be defined inline in the `EventListenerSpec`
+before `Triggers` are invoked.
+
+
+You can optionally specify one or more `Triggers` that define the actions to take when the `EventListener` detects a qualifying event. You can specify *either* a reference to an
+external `Trigger` object *or* reference/define the `TriggerBindings`, `TriggerTemplates`, and `Interceptors` in the `Trigger` definition. A `TriggerGroup` definition specifies the following fields:
+
+- `name` - (optional) a valid [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set) that uniquely identifies the `TriggerGroup`
+- `interceptors` - a list of [`Interceptors`](#specifying-interceptors) that will process event payload data before passing it to the downstream `Triggers`
+- `triggerSelector` - a combination of a Kubernetes `labelSelector` and a `namespaceSelector` as defined later [in this document](#constraining-eventlisteners-to-specific-namespaces). These two fields work together to define the `Triggers` that will be processed once `Interceptors` processing completes.
+
+Below is an example EventListener that defines an inline `triggerGroup`:
+
+```yaml
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: eventlistener
+spec:
+  triggerGroups:
+  - name: github-pr-group
+    interceptors:
+    - name: "validate GitHub payload and filter on eventType"
+      ref:
+        name: "github"
+      params:
+      - name: "secretRef"
+        value:
+          secretName: github-secret
+          secretKey: secretToken
+      - name: "eventTypes"
+        value: ["pull_request"]
+    triggerSelector:
+      labelSelector:
+        matchLabels:
+          type: github-pr
+```
+
+This configuration would first process any event that is sent to the `EventListener` and determine if it matches
+the outlined conditions. If it passes these conditions, it will use the `triggerSelector` matching criteria to determine
+the target `Trigger` resources to continue processing.
+
+Any `extensions` fields added during `triggerGroup` processing are passed to the downstream `Trigger` execution. This allows
+for shared data across all Triggers that are processed after group execution completes. As an example, `extensions.myfield` would
+be available to all `Trigger` resources matched by this group:
+
+```yaml
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: eventlistener
+spec:
+  triggerGroups:
+  - name: cel-filter-group
+    interceptors:
+    - name: "validate body and add field"
+      ref:
+        name: "cel"
+      params:
+      - name: "filter"
+        value: "body.action in ['opened', 'reopened']"
+      - name: "overlays"
+        value:
+        - key: myfield
+          expression: "body.pull_request.head.sha.truncate(7)"
+    triggerSelector:
+      namespaceSelector:
+        matchNames:
+        - foo
+      labelSelector:
+        matchLabels:
+          type: cel-preprocessed
+```
+
+At this time, each `TriggerGroup` determines its own downstream Triggers, so if two separate groups select the same
+downstream `Trigger` resources, it may be executed multiple times. If you use this feature, ensure that `Trigger` resources
+are labeled to be queried by the appropriate set of `TriggerGroups`.
+
+## Specifying the Kubernetes Service type
+
+**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
+
+You must specify a [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) type
+for your `EventListener` in the `serviceType` field. The default value is `ClusterIP` which allows all pods running on your Kubernetes cluster
+to access services using the cluster's DNS. You can also specify `NodePort` and `LoadBalancer` as the value. For information, see the Kubernetes
+Service documentation.
+
+If you want to allow external services, such as Github Webhooks, to connect to your cluster, see [Exposing an `EventListener` outside of the cluster](#exposing-an-event-listener-outside-of-the-cluster).
+
+### Specifying a `PodTemplate`
+
+**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
+
+The `podTemplate` field is optional. A PodTemplate is specifications for 
+creating EventListener pod. A PodTemplate consists of:
+- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
+This is needed only if you want to schedule EventListener pod to a tainted node.
+- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on. 
+
+```yaml
+spec:
+  podTemplate:
+    nodeSelector:
+      app: test
+    tolerations:
+    - key: key
+      value: value
+      operator: Equal
+      effect: NoSchedule
 ```
 
 ## Specifying `Resources`

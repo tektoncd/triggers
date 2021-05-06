@@ -594,6 +594,49 @@ func TestEventListenerBuilder(t *testing.T) {
 			),
 		),
 	},
+		{
+			name: "TriggerGroup",
+			normal: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: v1alpha1.EventListenerSpec{
+					TriggerGroups: []v1alpha1.EventListenerTriggerGroup{{
+						Interceptors: []*v1alpha1.TriggerInterceptor{{
+							Ref: v1alpha1.InterceptorRef{Name: "test"},
+						}},
+						TriggerSelector: v1alpha1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
+							},
+						},
+					}},
+				},
+			},
+			builder: &v1alpha1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: v1alpha1.EventListenerSpec{
+					TriggerGroups: []v1alpha1.EventListenerTriggerGroup{{
+						Interceptors: []*v1alpha1.TriggerInterceptor{{
+							Ref: v1alpha1.InterceptorRef{Name: "test"},
+						}},
+						TriggerSelector: v1alpha1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

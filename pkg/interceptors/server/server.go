@@ -118,8 +118,9 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	if err := json.Unmarshal(body.Bytes(), &ireq); err != nil {
 		return nil, badRequest(fmt.Errorf("failed to parse body as InterceptorRequest: %w", err))
 	}
-	is.Logger.Debugf("Interceptor Request is: %+v", ireq)
+	is.Logger.Infof("Interceptor Request is: %+v", ireq)
 	iresp := ii.Process(ctx, &ireq)
+	is.Logger.Infof("Interceptor response is: %+v", iresp)
 	respBytes, err := json.Marshal(iresp)
 	if err != nil {
 		return nil, internal(err)

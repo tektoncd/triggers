@@ -1,0 +1,11 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: trigger
+  labels:
+    type: github-pr
+spec:
+  bindings:
+  - ref: pipeline-binding
+  template:
+    ref: pipeline-template
