@@ -24,9 +24,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
-	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -692,19 +691,39 @@ func TestMergeBindingParams(t *testing.T) {
 	}{{
 		name:            "empty bindings",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec()),
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec()),
+		bindings: []*triggersv1.TriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "",
+				Namespace: "",
+			},
+			Spec: triggersv1.TriggerBindingSpec{},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "",
+				Namespace: "",
+			},
+			Spec: triggersv1.TriggerBindingSpec{},
+		},
 		},
 		want: []triggersv1.Param{},
 	}, {
 		name:            "single binding with multiple params",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value1"),
-				bldr.TriggerBindingParam("param2", "value2"),
-			)),
+		bindings: []*triggersv1.TriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "",
+				Namespace: "",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}, {
+					Name:  "param2",
+					Value: "value2",
+				}},
+			},
+		},
 		},
 		want: []triggersv1.Param{{
 			Name:  "param1",
@@ -715,12 +734,20 @@ func TestMergeBindingParams(t *testing.T) {
 		}},
 	}, {
 		name: "single cluster type binding with multiple params",
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{
-			bldr.ClusterTriggerBinding("", bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value1"),
-				bldr.TriggerBindingParam("param2", "value2"),
-			)),
-		},
+		clusterBindings: []*triggersv1.ClusterTriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ctb",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}, {
+					Name:  "param2",
+					Value: "value2",
+				}},
+			},
+		}},
 		bindings: []*triggersv1.TriggerBinding{},
 		want: []triggersv1.Param{{
 			Name:  "param1",
@@ -731,22 +758,49 @@ func TestMergeBindingParams(t *testing.T) {
 		}},
 	}, {
 		name: "multiple bindings each with multiple params",
-		clusterBindings: []*triggersv1.ClusterTriggerBinding{
-			bldr.ClusterTriggerBinding("", bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("param5", "value1"),
-				bldr.TriggerBindingParam("param6", "value2"),
-			)),
-		},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value1"),
-				bldr.TriggerBindingParam("param2", "value2"),
-			)),
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param3", "value3"),
-				bldr.TriggerBindingParam("param4", "value4"),
-			)),
-		},
+		clusterBindings: []*triggersv1.ClusterTriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ctb",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param5",
+					Value: "value1",
+				}, {
+					Name:  "param6",
+					Value: "value2",
+				}},
+			},
+		}},
+		bindings: []*triggersv1.TriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tb",
+				Namespace: "ns",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}, {
+					Name:  "param2",
+					Value: "value2",
+				}},
+			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "",
+				Namespace: "",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param3",
+					Value: "value3",
+				}, {
+					Name:  "param4",
+					Value: "value4",
+				}},
+			},
+		}},
 		want: []triggersv1.Param{{
 			Name:  "param1",
 			Value: "value1",
@@ -769,24 +823,52 @@ func TestMergeBindingParams(t *testing.T) {
 	}, {
 		name:            "multiple bindings with duplicate params",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value1"),
-			)),
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value3"),
-				bldr.TriggerBindingParam("param4", "value4"),
-			)),
+		bindings: []*triggersv1.TriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tb",
+				Namespace: "ns",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}},
+			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tb",
+				Namespace: "ns",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}, {
+					Name:  "param4",
+					Value: "value4",
+				}},
+			},
+		},
 		},
 		wantErr: true,
 	}, {
 		name:            "single binding with duplicate params",
 		clusterBindings: []*triggersv1.ClusterTriggerBinding{},
-		bindings: []*triggersv1.TriggerBinding{
-			bldr.TriggerBinding("", "", bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "value1"),
-				bldr.TriggerBindingParam("param1", "value3"),
-			)),
+		bindings: []*triggersv1.TriggerBinding{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tb",
+				Namespace: "ns",
+			},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{{
+					Name:  "param1",
+					Value: "value1",
+				}, {
+					Name:  "param1",
+					Value: "value3",
+				}},
+			},
+		},
 		},
 		wantErr: true,
 	}}

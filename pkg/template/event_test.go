@@ -28,7 +28,6 @@ import (
 	"github.com/google/uuid"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
-	bldr "github.com/tektoncd/triggers/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
@@ -361,14 +360,21 @@ func TestResolveParams(t *testing.T) {
 	}{{
 		name:          "add default values for params with missing values",
 		bindingParams: []triggersv1.Param{{Name: "p1", Value: "val1"}},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tt-name",
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:        "p2",
+					Description: "",
+					Default:     ptr.String("defaultVal"),
+				}},
+			},
+		},
 		want: []triggersv1.Param{
-			{Name: "p1", Value: "val1"},
 			{Name: "p2", Value: "defaultVal"},
+			{Name: "p1", Value: "val1"},
 		},
 	}, {
 		name: "add default values if param missing from body",
@@ -376,23 +382,39 @@ func TestResolveParams(t *testing.T) {
 			{Name: "p1", Value: "val1"},
 			{Name: "p2", Value: "$(body.p2)"},
 		},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:        "p2",
+					Description: "",
+					Default:     ptr.String("defaultVal"),
+				}},
+			},
+		},
 		want: []triggersv1.Param{
-			{Name: "p1", Value: "val1"},
 			{Name: "p2", Value: "defaultVal"},
+			{Name: "p1", Value: "val1"},
 		},
 	}, {
 		name:          "default values do not override event values",
 		bindingParams: []triggersv1.Param{{Name: "p1", Value: "val1"}},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p1", "", "defaultVal"),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:        "p1",
+					Description: "",
+					Default:     ptr.String("defaultVal"),
+				}},
+			},
+		},
 		want: []triggersv1.Param{{Name: "p1", Value: "val1"}},
 	}, {
 		name: "combination of static values and JSONPath expressions",
@@ -400,19 +422,36 @@ func TestResolveParams(t *testing.T) {
 		bindingParams: []triggersv1.Param{
 			{Name: "p1", Value: "Event values are - foo: $(body.foo); bar: $(body.bar)"},
 		},
-		template: bldr.TriggerTemplate("tt", ns),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{},
+		},
 		want: []triggersv1.Param{
 			{Name: "p1", Value: "Event values are - foo: fooValue; bar: barValue"},
 		},
 	}, {
 		name: "values with newlines",
 		body: json.RawMessage(`{"foo": "bar\r\nbaz"}`),
-		template: bldr.TriggerTemplate("tt-name", "",
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("param1", "", ""),
-				bldr.TriggerTemplateParam("param2", "", ""),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:        "param1",
+					Description: "",
+					Default:     ptr.String(""),
+				}, {
+					Name:        "param2",
+					Description: "",
+					Default:     ptr.String(""),
+				}},
+			},
+		},
 		bindingParams: []triggersv1.Param{
 			{Name: "param1", Value: "qux"},
 			{Name: "param2", Value: "$(body.foo)"},
@@ -532,7 +571,7 @@ func TestResolveResources(t *testing.T) {
 					Default:     ptr.String(""),
 				}},
 				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
-					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)-$(tt.params.p2)"}`)},
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)"}`)},
 				}},
 			},
 		},
@@ -593,6 +632,8 @@ func TestResolveResources(t *testing.T) {
 			Spec: triggersv1.TriggerTemplateSpec{
 				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
 					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)},
+				}, {
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt2": "$(uid)"}`)},
 				}},
 			},
 		},
