@@ -11,13 +11,13 @@ the triggers repo, a terminal window and a text editor.
 1. 1. Make sure the release `Task` and `Pipeline` are up-to-date on the
       cluster.
 
-   - [publish-operator-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
+   - [publish-triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
 
      This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
      ```shell script
      kubectl apply -f tekton/publish.yaml
      ```
-   - [operator-release](https://github.com/tektoncd/triggers/blob/main/tekton/release-pipeline.yaml)
+   - [triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/release-pipeline.yaml)
      ```shell script
      kubectl apply -f tekton/release-pipeline.yaml
      ```
