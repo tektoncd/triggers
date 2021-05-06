@@ -14,6 +14,8 @@ type InterceptorInterface interface {
 	// see if processing should continue and InterceptorResponse.Status.Code to distinguish between the kinds of errors
 	// (i.e user errors vs system errors)
 	Process(ctx context.Context, r *InterceptorRequest) *InterceptorResponse
+
+	InitializeContext(ctx context.Context)
 }
 
 // Do not generate DeepCopy(). See #827

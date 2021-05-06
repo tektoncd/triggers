@@ -22,6 +22,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/logging"
 
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -29,8 +30,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 )
-
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
@@ -40,11 +39,11 @@ type Interceptor struct {
 	Logger        *zap.SugaredLogger
 }
 
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
-	return &Interceptor{
-		Logger:        l,
-		KubeClientSet: k,
-	}
+var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+
+func (w *Interceptor) InitializeContext(ctx context.Context) {
+	w.Logger = logging.FromContext(ctx)
+	w.KubeClientSet = interceptors.GetKubeClient(ctx)
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {

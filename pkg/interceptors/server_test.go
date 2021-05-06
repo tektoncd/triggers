@@ -1,7 +1,8 @@
-package server
+package interceptors
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -35,15 +36,15 @@ func TestServer_ServeHTTP(t *testing.T) {
 		want *v1alpha1.InterceptorResponse
 	}{{
 		name: "valid request that should continue",
-		path: "/cel",
+		path: "/test",
 		req: &v1alpha1.InterceptorRequest{
-			Body: `{}`,
-			Header: map[string][]string{
-				"X-Event-Type": {"push"},
-			},
-			InterceptorParams: map[string]interface{}{
-				"filter": "header.canonical(\"X-Event-Type\") == \"push\"",
-			},
+			Body: func() string {
+				out, _ := json.Marshal(&v1alpha1.InterceptorResponse{
+					Continue: true,
+				})
+				return string(out)
+			}(),
+			Header:  map[string][]string{},
 			Context: testTriggerContext,
 		},
 		want: &v1alpha1.InterceptorResponse{
@@ -51,22 +52,27 @@ func TestServer_ServeHTTP(t *testing.T) {
 		},
 	}, {
 		name: "valid request that should not continue",
-		path: "/cel",
+		path: "/test",
 		req: &v1alpha1.InterceptorRequest{
-			Body: `{}`,
-			Header: map[string][]string{
-				"X-Event-Type": {"push"},
-			},
-			InterceptorParams: map[string]interface{}{
-				"filter": "header.canonical(\"X-Event-Type\") == \"pull\"",
-			},
-			Context: testTriggerContext,
+			Body: func() string {
+				out, _ := json.Marshal(&v1alpha1.InterceptorResponse{
+					Continue: false,
+					Status: v1alpha1.Status{
+						Code:    codes.FailedPrecondition,
+						Message: `failed response`,
+					},
+				})
+				return string(out)
+			}(),
+			Header:            map[string][]string{},
+			InterceptorParams: map[string]interface{}{},
+			Context:           testTriggerContext,
 		},
 		want: &v1alpha1.InterceptorResponse{
 			Continue: false,
 			Status: v1alpha1.Status{
 				Code:    codes.FailedPrecondition,
-				Message: `expression header.canonical("X-Event-Type") == "pull" did not return true`,
+				Message: `failed response`,
 			},
 		},
 	}}
@@ -76,7 +82,9 @@ func TestServer_ServeHTTP(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
 
-			server, err := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			server, err := NewWithInterceptors(ctx, kubeClient, logger.Sugar(), map[string]v1alpha1.InterceptorInterface{
+				"test": &FakeInterceptor{},
+			})
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -125,7 +133,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 		wantResponseBody: "path did not match any interceptors",
 	}, {
 		name:             "invalid body",
-		path:             "/cel",
+		path:             "/test",
 		req:              json.RawMessage(`{}`),
 		wantResponseCode: 400,
 		wantResponseBody: "failed to parse body as InterceptorRequest",
@@ -136,7 +144,9 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			kubeClient := fakekubeclient.Get(ctx)
 
-			server, err := NewWithCoreInterceptors(kubeClient, logger.Sugar())
+			server, err := NewWithInterceptors(ctx, kubeClient, logger.Sugar(), map[string]v1alpha1.InterceptorInterface{
+				"test": &FakeInterceptor{},
+			})
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -160,3 +170,22 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 		})
 	}
 }
+
+type FakeInterceptor struct{}
+
+func (w *FakeInterceptor) Process(ctx context.Context, r *v1alpha1.InterceptorRequest) *v1alpha1.InterceptorResponse {
+	response := &v1alpha1.InterceptorResponse{}
+	err := json.Unmarshal([]byte(r.Body), response)
+	if err != nil {
+		return &v1alpha1.InterceptorResponse{
+			Continue: false,
+			Status: v1alpha1.Status{
+				Message: err.Error(),
+				Code:    codes.FailedPrecondition,
+			},
+		}
+	}
+	return response
+}
+
+func (w *FakeInterceptor) InitializeContext(ctx context.Context) {}

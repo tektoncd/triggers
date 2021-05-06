@@ -30,15 +30,17 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -462,7 +464,13 @@ func TestExecute(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+			ctx, _ := rtesting.SetupFakeContext(t)
+			logger := zaptest.NewLogger(t).Sugar()
+			logging.WithLogger(ctx, logger)
+			ctx = interceptors.WithKubeClient(ctx, fake.NewSimpleClientset())
+			coreInterceptors, err := interceptors.NewWithInterceptors(ctx, nil, zaptest.NewLogger(t).Sugar(), map[string]triggersv1.InterceptorInterface{
+				"cel": &cel.Interceptor{},
+			})
 			if err != nil {
 				t.Fatalf("failed to initialize core interceptors: %v", err)
 			}
@@ -493,7 +501,14 @@ func TestExecute_Error(t *testing.T) {
 			"filter": `header.match("Content-Type", "application/json")`,
 		},
 	}
-	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+	ctx, _ := rtesting.SetupFakeContext(t)
+	logger := zaptest.NewLogger(t).Sugar()
+	logging.WithLogger(ctx, logger)
+	ctx = interceptors.WithKubeClient(ctx, fake.NewSimpleClientset())
+
+	coreInterceptors, err := interceptors.NewWithInterceptors(ctx, nil, zaptest.NewLogger(t).Sugar(), map[string]triggersv1.InterceptorInterface{
+		"cel": &cel.Interceptor{},
+	})
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

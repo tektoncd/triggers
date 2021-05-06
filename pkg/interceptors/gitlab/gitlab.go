@@ -23,6 +23,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/logging"
 
 	"github.com/tektoncd/triggers/pkg/interceptors"
 
@@ -32,18 +33,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
-
 type Interceptor struct {
 	KubeClientSet kubernetes.Interface
 	Logger        *zap.SugaredLogger
 }
 
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
-	return &Interceptor{
-		Logger:        l,
-		KubeClientSet: k,
-	}
+var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+
+func (w *Interceptor) InitializeContext(ctx context.Context) {
+	w.Logger = logging.FromContext(ctx)
+	w.KubeClientSet = interceptors.GetKubeClient(ctx)
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {

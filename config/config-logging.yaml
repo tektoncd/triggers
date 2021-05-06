@@ -52,3 +52,4 @@ data:
   loglevel.controller: "info"
   loglevel.webhook: "info"
   loglevel.eventlistener: "info"
+  loglevel.interceptors: "info"

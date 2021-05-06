@@ -47,6 +47,7 @@ type Interceptor struct {
 	Webhook          *triggersv1.WebhookInterceptor
 }
 
+// Old format invocation - new instance created for every interceptor run
 func NewInterceptor(wh *triggersv1.WebhookInterceptor, c *http.Client, ns string, l *zap.SugaredLogger) interceptors.Interceptor {
 	timeoutClient := &http.Client{
 		Transport: c.Transport,
