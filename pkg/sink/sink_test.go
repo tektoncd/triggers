@@ -48,8 +48,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/pkg/template"
-	testv1 "github.com/tektoncd/triggers/test"
-	test "github.com/tektoncd/triggers/test/v1beta1"
+	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -234,7 +233,7 @@ func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 
 // trResourceTemplate returns a resourceTemplate for a git-clone taskRun
 func trResourceTemplate(t testing.TB) runtime.RawExtension {
-	return testv1.RawExtension(t, pipelinev1.TaskRun{
+	return test.RawExtension(t, pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "TaskRun",
@@ -686,13 +685,13 @@ func TestHandleEvent(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "github"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: testv1.ToV1JSON(t, []string{"pull_request"}),
+							Value: test.ToV1JSON(t, []string{"pull_request"}),
 						}},
 					}, {
 						DeprecatedCEL: &triggersv1.CELInterceptor{
@@ -721,7 +720,7 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		headers: map[string][]string{
 			"X-GitHub-Event":  {"pull_request"},
-			"X-Hub-Signature": {testv1.HMACHeader(t, "secret", eventBody)},
+			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody)},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
@@ -747,13 +746,13 @@ func TestHandleEvent(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "bitbucket"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: testv1.ToV1JSON(t, []string{"repo:refs_changed"}),
+							Value: test.ToV1JSON(t, []string{"repo:refs_changed"}),
 						}},
 					}},
 					Bindings: gitCloneTBSpec,
@@ -775,7 +774,7 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		headers: map[string][]string{
 			"X-Event-Key":     {"repo:refs_changed"},
-			"X-Hub-Signature": {testv1.HMACHeader(t, "secret", eventBody)},
+			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody)},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
@@ -979,13 +978,13 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 						Ref: triggersv1.InterceptorRef{Name: "github"},
 						Params: []triggersv1.InterceptorParams{{
 							Name: "secretRef",
-							Value: testv1.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
 						}, {
 							Name:  "eventTypes",
-							Value: testv1.ToV1JSON(t, []string{"pull_request"}),
+							Value: test.ToV1JSON(t, []string{"pull_request"}),
 						}},
 					}},
 					Bindings: []*triggersv1.TriggerSpecBinding{{
@@ -1075,7 +1074,7 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 			}
 			req.Header.Add("Content-Type", "application/json")
 			req.Header.Add("X-Github-Event", "pull_request")
-			req.Header.Add("X-Hub-Signature", testv1.HMACHeader(t, "secret", eventBody))
+			req.Header.Add("X-Hub-Signature", test.HMACHeader(t, "secret", eventBody))
 
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -1326,7 +1325,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name:  "filter",
-					Value: testv1.ToV1JSON(t, `body.head == "abcde"`),
+					Value: test.ToV1JSON(t, `body.head == "abcde"`),
 				}},
 			}}},
 	}
@@ -1380,7 +1379,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name: "overlays",
-					Value: testv1.ToV1JSON(t, []triggersv1.CELOverlay{{
+					Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
 						Key:        "truncated_sha",
 						Expression: "body.sha.truncate(5)",
 					}}),
@@ -1397,7 +1396,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				Ref: triggersv1.InterceptorRef{Name: "cel"},
 				Params: []triggersv1.InterceptorParams{{
 					Name:  "filter",
-					Value: testv1.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
+					Value: test.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
 				}},
 			}},
 		},

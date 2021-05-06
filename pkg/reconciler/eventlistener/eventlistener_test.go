@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/system"
 	"github.com/tektoncd/triggers/test"
-	testv1beta1 "github.com/tektoncd/triggers/test/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -101,7 +100,7 @@ var (
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
 // given test.Resources r where r represents the state of the system
-func getEventListenerTestAssets(t *testing.T, r testv1beta1.Resources, c *Config) (testv1beta1.Assets, context.CancelFunc) {
+func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
@@ -121,12 +120,12 @@ func getEventListenerTestAssets(t *testing.T, r testv1beta1.Resources, c *Config
 			// Pass modified resource and react using the default catch all reactor
 			return kubeClient.ReactionChain[len(kubeClient.ReactionChain)-1].React(action)
 		})
-	clients := testv1beta1.SeedResources(t, ctx, r)
+	clients := test.SeedResources(t, ctx, r)
 	cmw := cminformer.NewInformedWatcher(clients.Kube, system.GetNamespace())
 	if c == nil {
 		c = makeConfig()
 	}
-	testAssets := testv1beta1.Assets{
+	testAssets := test.Assets{
 		Controller: NewController(*c)(ctx, cmw),
 		Clients:    clients,
 	}
@@ -998,17 +997,17 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config               // Config of the reconciler
-		startResources testv1beta1.Resources // State of the world before we call Reconcile
-		endResources   testv1beta1.Resources // Expected State of the world after calling Reconcile
+		config         *Config        // Config of the reconciler
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{{
 		name: "eventlistener creation",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL()},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
@@ -1019,7 +1018,7 @@ func TestReconcile(t *testing.T) {
 		name: "eventlistener with additional label",
 		key:  reconcileKey,
 		// Resources before reconcile starts: EL has extra label that deployment/svc does not
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, withAddedLabels)},
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
@@ -1028,7 +1027,7 @@ func TestReconcile(t *testing.T) {
 		// We expect the deployment and services to propagate the extra label
 		// but the selectors in both Service and deployment should have the same
 		// label
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, withAddedLabels)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
@@ -1039,14 +1038,14 @@ func TestReconcile(t *testing.T) {
 		name: "eventlistener with additional annotation",
 		key:  reconcileKey,
 		// Resources before reconcile starts: EL has annotation that deployment/svc does not
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, withAddedAnnotations)},
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
 			Services:       []*corev1.Service{makeService()},
 		},
 		// We expect the deployment and services to propagate the annotations
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, withAddedAnnotations)},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
@@ -1056,13 +1055,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with updated service account",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithUpdatedSA},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithUpdatedSA},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithUpdatedSA},
@@ -1072,13 +1071,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added tolerations",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithTolerations},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithTolerations},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithTolerations},
@@ -1088,13 +1087,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added NodeSelector",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodeSelector},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodeSelector},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithNodeSelector},
@@ -1104,13 +1103,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with NodePort service",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elServiceWithLabels},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1121,13 +1120,13 @@ func TestReconcile(t *testing.T) {
 		// Check that if a user manually updates the labels for a service, we revert the change.
 		name: "eventlistener with labels added to service",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elServiceWithLabels},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elService}, // We expect the service to drop the user added labels
@@ -1138,13 +1137,13 @@ func TestReconcile(t *testing.T) {
 		// Check that if a user manually updates the annotations for a service, we do not revert the change.
 		name: "eventlistener with annotations added to service",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elServiceWithAnnotation},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Services:       []*corev1.Service{elServiceWithAnnotation},
@@ -1155,13 +1154,13 @@ func TestReconcile(t *testing.T) {
 		// Checks that EL reconciler does not overwrite NodePort set by k8s (see #167)
 		name: "eventlistener with updated NodePort service",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			Services:       []*corev1.Service{elServiceWithUpdatedNodePort},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithNodePortServiceType},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1171,13 +1170,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with labels applied to deployment",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithLabels},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1188,13 +1187,13 @@ func TestReconcile(t *testing.T) {
 		// Check that if a user manually updates the annotations for a deployment, we do not revert the change.
 		name: "eventlistener with annotations applied to deployment",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
@@ -1205,13 +1204,13 @@ func TestReconcile(t *testing.T) {
 		// Updating replicas on deployment itself is success because no replicas provided as part of eventlistener spec
 		name: "eventlistener with updated replicas on deployment",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
@@ -1221,13 +1220,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with failed update to deployment replicas",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithDeploymentReplicaFailure},
 			Services:       []*corev1.Service{elService},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1237,12 +1236,12 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with updated config volumes",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{deploymentMissingVolumes},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withStatus)},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1253,13 +1252,13 @@ func TestReconcile(t *testing.T) {
 		// Checks that we do not overwrite replicas changed on the deployment itself when replicas provided as part of eventlistener spec
 		name: "eventlistener with updated replicas",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithReplicas},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicas},
 			Services:       []*corev1.Service{elService},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithReplicas},
 			Deployments:    []*appsv1.Deployment{deploymentWithUpdatedReplicasNotConsidered},
@@ -1269,7 +1268,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with kubernetes resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithKubernetesResource},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1284,7 +1283,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with kubernetes resource for podtemplate objectmeta",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1299,7 +1298,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with TLS connection",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1314,13 +1313,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with security context",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1331,13 +1330,13 @@ func TestReconcile(t *testing.T) {
 		name:   "eventlistener with SetSecurityContext false",
 		key:    reconcileKey,
 		config: configWithSetSecurityContextFalse,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
@@ -1348,13 +1347,13 @@ func TestReconcile(t *testing.T) {
 		name:   "eventlistener with port set in config",
 		key:    reconcileKey,
 		config: configWithPortSet,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithPortSet},
 			Deployments:    []*appsv1.Deployment{elDeployment},
@@ -1364,7 +1363,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added env for custome resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1378,13 +1377,13 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added NodeSelector for custom resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1393,7 +1392,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added Args for custom resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1407,7 +1406,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with added Image for custom resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1421,7 +1420,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with annotation for custom resource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForAnnotation},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1435,7 +1434,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name: "eventlistener with cleanup test to ensure no k8s resource exist after upgrading to customresource",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1443,7 +1442,7 @@ func TestReconcile(t *testing.T) {
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
 			Services:       []*corev1.Service{makeService()},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
@@ -1463,7 +1462,7 @@ func TestReconcile(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := testv1beta1.GetResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1596,20 +1595,20 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config               // Config of the reconciler
-		startResources testv1beta1.Resources // State of the world before we call Reconcile
-		endResources   testv1beta1.Resources // Expected State of the world after calling Reconcile
+		config         *Config        // Config of the reconciler
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{
 		{
 			name: "eventlistener with custome resource",
 			key:  reconcileKey,
-			startResources: testv1beta1.Resources{
+			startResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1beta1.EventListener{elWithCustomResource},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
 				WithPod:        []*duckv1.WithPod{customResource},
 			},
-			endResources: testv1beta1.Resources{
+			endResources: test.Resources{
 				Namespaces:     []*corev1.Namespace{namespaceResource},
 				EventListeners: []*v1beta1.EventListener{elWithCustomResource},
 				ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap},
@@ -1629,7 +1628,7 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := testv1beta1.GetResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1647,13 +1646,13 @@ func TestReconcile_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config               // Config of the reconciler
-		startResources testv1beta1.Resources // State of the world before we call Reconcile
-		endResources   testv1beta1.Resources // Expected State of the world after calling Reconcile
+		config         *Config        // Config of the reconciler
+		startResources test.Resources // State of the world before we call Reconcile
+		endResources   test.Resources // Expected State of the world after calling Reconcile
 	}{{
 		name: "delete eventlistener with remaining eventlisteners",
 		key:  fmt.Sprintf("%s/%s", namespace, "el-2"),
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces: []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{
 				makeEL(),
@@ -1661,7 +1660,7 @@ func TestReconcile_Delete(t *testing.T) {
 				makeEL(withFinalizer, withDeletionTimestamp, func(el *v1beta1.EventListener) { el.Name = "el-2" })},
 			ConfigMaps: []*corev1.ConfigMap{logConfig(namespace)},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces: []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{
 				makeEL(withFinalizerRemoved, withDeletionTimestamp, func(el *v1beta1.EventListener) { el.Name = "el-2" }),
@@ -1672,12 +1671,12 @@ func TestReconcile_Delete(t *testing.T) {
 	}, {
 		name: "delete last eventlistener in reconciler namespace",
 		key:  fmt.Sprintf("%s/%s", reconcilerNamespace, eventListenerName),
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{reconcilerNamespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withControllerNamespace, withFinalizer, withDeletionTimestamp)},
 			ConfigMaps:     []*corev1.ConfigMap{logConfig(reconcilerNamespace)},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{reconcilerNamespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withControllerNamespace, withDeletionTimestamp, withFinalizerRemoved)},
 			ConfigMaps:     []*corev1.ConfigMap{logConfig(reconcilerNamespace)}, // We should not delete the logging configMap
@@ -1685,23 +1684,23 @@ func TestReconcile_Delete(t *testing.T) {
 	}, {
 		name: "delete last eventlistener in namespace",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withFinalizer, withDeletionTimestamp)},
 			ConfigMaps:     []*corev1.ConfigMap{logConfig(namespace)},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withDeletionTimestamp, withFinalizerRemoved)},
 		},
 	}, {
 		name: "delete last eventlistener in namespace with no logging config",
 		key:  reconcileKey,
-		startResources: testv1beta1.Resources{
+		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withFinalizer, withDeletionTimestamp)},
 		},
-		endResources: testv1beta1.Resources{
+		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{makeEL(withDeletionTimestamp, withFinalizerRemoved)},
 		},
@@ -1719,7 +1718,7 @@ func TestReconcile_Delete(t *testing.T) {
 				return
 			}
 			// Grab test resource results
-			actualEndResources, err := testv1beta1.GetResourcesFromClients(testAssets.Clients)
+			actualEndResources, err := test.GetResourcesFromClients(testAssets.Clients)
 			if err != nil {
 				t.Fatal(err)
 			}

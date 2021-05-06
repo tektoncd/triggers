@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	test "github.com/tektoncd/triggers/test/v1beta1"
+	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
