@@ -1275,7 +1275,7 @@ func TestReconcile(t *testing.T) {
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResource},
+			EventListeners: []*v1beta1.EventListener{elWithKubernetesResource},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResource},
 			Services:       []*corev1.Service{elServiceTypeNodePort},
@@ -1285,12 +1285,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
+			EventListeners: []*v1beta1.EventListener{elWithKubernetesResourceForObjectMeta},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithKubernetesResourceForObjectMeta},
+			EventListeners: []*v1beta1.EventListener{elWithKubernetesResourceForObjectMeta},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentForKubernetesResourceObjectMeta},
 			Services:       []*corev1.Service{elService},
@@ -1300,12 +1300,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
+			EventListeners: []*v1beta1.EventListener{elWithTLSConnection},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithTLSConnection},
+			EventListeners: []*v1beta1.EventListener{elWithTLSConnection},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			Deployments:    []*appsv1.Deployment{deploymentWithTLSConnection},
 			Services:       []*corev1.Service{elServiceWithTLSConnection},
@@ -1365,12 +1365,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForEnv},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForEnv},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForEnv},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{envForCustomResource},
 		},
@@ -1379,13 +1379,13 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
@@ -1394,12 +1394,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForArgs},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{argsForCustomResource},
 		},
@@ -1408,12 +1408,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForImage},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForImage},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForImage},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{imageForCustomResource},
 		},
@@ -1422,12 +1422,12 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForAnnotation},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForAnnotation},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForAnnotation},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForAnnotation},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{annotationForCustomResource},
 		},
@@ -1436,7 +1436,7 @@ func TestReconcile(t *testing.T) {
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 			Deployments:    []*appsv1.Deployment{makeDeployment()},
@@ -1444,7 +1444,7 @@ func TestReconcile(t *testing.T) {
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
-			EventListeners: []*v1alpha1.EventListener{elWithCustomResourceForNodeSelector},
+			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForNodeSelector},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},

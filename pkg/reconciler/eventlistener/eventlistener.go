@@ -250,7 +250,7 @@ func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.Sug
 	return nil
 }
 
-func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
 			logger.Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
@@ -263,7 +263,7 @@ func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *z
 	return nil
 }
 
-func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	// check logging config, create if it doesn't exist
 	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
 		logger.Error(err)

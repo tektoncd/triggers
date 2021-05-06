@@ -393,7 +393,7 @@ func TestResolveToURL(t *testing.T) {
 		}
 		_, err := interceptors.ResolveToURL(fakeGetter, "cel")
 		if !errors.Is(err, v1alpha1.ErrNilURL) {
-			t.Fatalf("ResolveToURL expected error to be %s but got %s", triggersv1.ErrNilURL, err)
+			t.Fatalf("ResolveToURL expected error to be %s but got %s", v1alpha1.ErrNilURL, err)
 		}
 	})
 }
