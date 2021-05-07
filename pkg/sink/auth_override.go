@@ -28,10 +28,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-//AuthOverride is an interface that constructs a discovery client for the ServerResourceInterface
-//and a dynamic client for the Tekton Resources, using the token provide as the bearer token in the
-//REST config used to build those client.  The other non-credential related parameters for the
-//REST client used are copied from the in cluster config of the event sink.
+// AuthOverride is an interface that constructs a discovery client for the ServerResourceInterface
+// and a dynamic client for the Tekton Resources, using the token provide as the bearer token in the
+// REST config used to build those client.  The other non-credential related parameters for the
+// REST client used are copied from the in cluster config of the event sink.
 type AuthOverride interface {
 	OverrideAuthentication(sa string,
 		namespace string,

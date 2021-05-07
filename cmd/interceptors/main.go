@@ -68,7 +68,8 @@ func main() {
 
 	service, err := server.NewWithCoreInterceptors(kubeClient, logger)
 	if err != nil {
-		log.Fatalf("failed to initialize core interceptors: %s", err)
+		log.Printf("failed to initialize core interceptors: %s", err)
+		return
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", service)
