@@ -43,7 +43,7 @@ import (
 )
 
 func TestTrigger_Error(t *testing.T) {
-	//error case for show feature
+	// error case for show feature
 	buf := new(bytes.Buffer)
 	err := trigger("../testdata/trigger.yaml", "../testdata/http.txt", "show", "BAD_KUBECONFIG", buf)
 

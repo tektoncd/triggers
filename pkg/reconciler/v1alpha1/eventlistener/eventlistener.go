@@ -565,7 +565,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 			}
 		}
 
-		//if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
+		// if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
 		if updated {
 			existingMarshaledData, err := json.Marshal(existingObject)
 			if err != nil {
