@@ -23,6 +23,7 @@ import (
 	"net/http/httputil"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -233,8 +234,9 @@ func Test_processTriggerSpec(t *testing.T) {
 			logger := zaptest.NewLogger(t).Sugar()
 			kubeClient, triggerClient := getFakeTriggersClient(t, tt.args.resources)
 			s := sink.Sink{
-				KubeClientSet: kubeClient,
-				HTTPClient:    http.DefaultClient,
+				KubeClientSet:     kubeClient,
+				HTTPClient:        http.DefaultClient,
+				WGProcessTriggers: &sync.WaitGroup{},
 			}
 			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, logger, s)
 			if (err != nil) != tt.wantErr {

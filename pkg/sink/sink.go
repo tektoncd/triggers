@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -36,7 +37,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	discoveryclient "k8s.io/client-go/discovery"
@@ -57,6 +57,10 @@ type Sink struct {
 	Logger                 *zap.SugaredLogger
 	Recorder               *Recorder
 	Auth                   AuthOverride
+
+	// WGProcessTriggers keeps track of triggers currently being processed
+	// Currently only used in tests to wait for all triggers to finish processing
+	WGProcessTriggers *sync.WaitGroup
 
 	// listers index properties about resources
 	EventListenerLister         listers.EventListenerLister
@@ -158,45 +162,17 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	result := make(chan int, 10)
 	// Execute each Trigger
+	r.WGProcessTriggers.Add(len(triggers))
 	for _, t := range triggers {
 		go func(t triggersv1.Trigger) {
+			defer r.WGProcessTriggers.Done()
 			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(t, localRequest, event, eventID, log); err != nil {
-				if kerrors.IsUnauthorized(err) {
-					result <- http.StatusUnauthorized
-					return
-				}
-				if kerrors.IsForbidden(err) {
-					result <- http.StatusForbidden
-					return
-				}
-				result <- http.StatusAccepted
-				return
-			}
-			result <- http.StatusCreated
+			r.processTrigger(t, localRequest, event, eventID, log)
 		}(*t)
 	}
 
-	// The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
-	// only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
-	code := http.StatusAccepted
-	for i := 0; i < len(triggers); i++ {
-		thiscode := <-result
-		// current take - if someone is doing unauthorized stuff, we abort immediately;
-		// unauthorized should be the final status code vs. the less than comparison
-		// below around accepted vs. created
-		if thiscode == http.StatusUnauthorized || thiscode == http.StatusForbidden {
-			code = thiscode
-			break
-		}
-		if thiscode < code {
-			code = thiscode
-		}
-	}
-
-	response.WriteHeader(code)
+	response.WriteHeader(http.StatusAccepted)
 	response.Header().Set("Content-Type", "application/json")
 	body := Response{
 		EventListener:    r.EventListenerName,
@@ -239,19 +215,19 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 	return triggers, nil
 }
 
-func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
+func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) {
 	log := eventLog.With(zap.String(triggers.TriggerLabelKey, t.Name))
 
 	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
 	if err != nil {
 		log.Error(err)
-		return err
+		return
 	}
 
 	if iresp != nil {
 		if !iresp.Continue {
 			log.Infof("interceptor stopped trigger processing: %v", iresp.Status.Err())
-			return iresp.Status.Err()
+			return
 		}
 	}
 
@@ -261,7 +237,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 		r.TriggerTemplateLister.TriggerTemplates(t.Namespace).Get)
 	if err != nil {
 		log.Error(err)
-		return err
+		return
 	}
 	extensions := map[string]interface{}{}
 	if iresp != nil && iresp.Extensions != nil {
@@ -270,7 +246,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
 	if err != nil {
 		log.Error(err)
-		return err
+		return
 	}
 
 	log.Infof("ResolvedParams : %+v", params)
@@ -278,10 +254,9 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
-		return err
+		return
 	}
 	go r.recordResourceCreation(resources)
-	return nil
 }
 
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
