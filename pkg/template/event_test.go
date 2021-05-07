@@ -28,8 +28,9 @@ import (
 	"github.com/google/uuid"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
-	bldr "github.com/tektoncd/triggers/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -150,126 +151,126 @@ func TestApplyEventValuesToParams(t *testing.T) {
 		extensions map[string]interface{}
 	}{{
 		name:   "header with single values",
-		params: []triggersv1.Param{bldr.Param("foo", "$(header)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(header)"}},
 		header: map[string][]string{
 			"Header-One": {"val1", "val2"},
 		},
-		want: []triggersv1.Param{bldr.Param("foo", `{"Header-One":"val1,val2"}`)},
+		want: []triggersv1.Param{{Name: "foo", Value: `{"Header-One":"val1,val2"}`}},
 	}, {
 		name:   "header keys miss-match case",
-		params: []triggersv1.Param{bldr.Param("foo", "$(header.header-one)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(header.header-one)"}},
 		header: map[string][]string{
 			"Header-One": {"val1"},
 		},
-		want: []triggersv1.Param{bldr.Param("foo", "val1")},
+		want: []triggersv1.Param{{Name: "foo", Value: "val1"}},
 	}, {
 		name:   "header keys match case",
-		params: []triggersv1.Param{bldr.Param("foo", "$(header.Header-One)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(header.Header-One)"}},
 		header: map[string][]string{
 			"Header-One": {"val1"},
 		},
-		want: []triggersv1.Param{bldr.Param("foo", "val1")},
+		want: []triggersv1.Param{{Name: "foo", Value: "val1"}},
 	}, {
 		name:   "headers - multiple values joined by comma",
-		params: []triggersv1.Param{bldr.Param("foo", "$(header.header-one)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(header.header-one)"}},
 		header: map[string][]string{
 			"Header-One": {"val1", "val2"},
 		},
-		want: []triggersv1.Param{bldr.Param("foo", "val1,val2")},
+		want: []triggersv1.Param{{Name: "foo", Value: "val1,val2"}},
 	}, {
 		name:   "header values",
-		params: []triggersv1.Param{bldr.Param("foo", "$(header)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(header)"}},
 		header: map[string][]string{
 			"Header-One": {"val1", "val2"},
 		},
-		want: []triggersv1.Param{bldr.Param("foo", `{"Header-One":"val1,val2"}`)},
+		want: []triggersv1.Param{{Name: "foo", Value: `{"Header-One":"val1,val2"}`}},
 	}, {
 		name:   "no body",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   []byte{},
-		want:   []triggersv1.Param{bldr.Param("foo", "null")},
+		want:   []triggersv1.Param{{Name: "foo", Value: "null"}},
 	}, {
 		name:   "empty body",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   json.RawMessage(`{}`),
-		want:   []triggersv1.Param{bldr.Param("foo", "{}")},
+		want:   []triggersv1.Param{{Name: "foo", Value: "{}"}},
 	}, {
 		name:   "entire body",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   json.RawMessage(objects),
-		want:   []triggersv1.Param{bldr.Param("foo", strings.ReplaceAll(objects, " ", ""))},
+		want:   []triggersv1.Param{{Name: "foo", Value: strings.ReplaceAll(objects, " ", "")}},
 	}, {
 		name:   "entire array body",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   json.RawMessage(arrays),
-		want:   []triggersv1.Param{bldr.Param("foo", strings.ReplaceAll(arrays, " ", ""))},
+		want:   []triggersv1.Param{{Name: "foo", Value: strings.ReplaceAll(arrays, " ", "")}},
 	}, {
 		name:   "array key",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.a[1])")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.a[1])"}},
 		body:   json.RawMessage(`{"a": [{"k": 1}, {"k": 2}, {"k": 3}]}`),
-		want:   []triggersv1.Param{bldr.Param("foo", `{"k":2}`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `{"k":2}`}},
 	}, {
 		name:   "array last key",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.a[-1:])")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.a[-1:])"}},
 		body:   json.RawMessage(`{"a": [{"k": 1}, {"k": 2}, {"k": 3}]}`),
-		want:   []triggersv1.Param{bldr.Param("foo", `{"k":3}`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `{"k":3}`}},
 	}, {
 		name:   "body - key with string val",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.a)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.a)"}},
 		body:   json.RawMessage(objects),
-		want:   []triggersv1.Param{bldr.Param("foo", "v")},
+		want:   []triggersv1.Param{{Name: "foo", Value: "v"}},
 	}, {
 		name:   "body - key with object val",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.c)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.c)"}},
 		body:   json.RawMessage(objects),
-		want:   []triggersv1.Param{bldr.Param("foo", `{"d":"e"}`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `{"d":"e"}`}},
 	}, {
 		name:   "body with special chars",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   json.RawMessage(`{"a": "v\r\n烈"}`),
-		want:   []triggersv1.Param{bldr.Param("foo", `{"a":"v\r\n烈"}`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `{"a":"v\r\n烈"}`}},
 	}, {
 		name:   "param contains multiple JSONPath expressions",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.a): $(body.b)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.a): $(body.b)"}},
 		body:   json.RawMessage(`{"a": "val1", "b": "val2"}`),
-		want:   []triggersv1.Param{bldr.Param("foo", `val1: val2`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `val1: val2`}},
 	}, {
 		name:   "param contains both static values and JSONPath expressions",
-		params: []triggersv1.Param{bldr.Param("foo", "body.a is: $(body.a)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "body.a is: $(body.a)"}},
 		body:   json.RawMessage(`{"a": "val1"}`),
-		want:   []triggersv1.Param{bldr.Param("foo", `body.a is: val1`)},
+		want:   []triggersv1.Param{{Name: "foo", Value: `body.a is: val1`}},
 	}, {
 		name: "multiple params",
 		params: []triggersv1.Param{
-			bldr.Param("foo", "$(body.a)"),
-			bldr.Param("bar", "$(header.header-1)"),
+			{Name: "foo", Value: "$(body.a)"},
+			{Name: "bar", Value: "$(header.header-1)"},
 		},
 		body: json.RawMessage(`{"a": "val1"}`),
 		header: map[string][]string{
 			"Header-1": {"val2"},
 		},
 		want: []triggersv1.Param{
-			bldr.Param("foo", `val1`),
-			bldr.Param("bar", `val2`),
+			{Name: "foo", Value: `val1`},
+			{Name: "bar", Value: `val2`},
 		},
 	}, {
 		name:   "Array filters",
 		body:   json.RawMessage(`{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}`),
-		params: []triggersv1.Param{bldr.Param("a", "$(body.child[?(@.a == 'd')].w)")},
-		want:   []triggersv1.Param{bldr.Param("a", "3")},
+		params: []triggersv1.Param{{Name: "a", Value: "$(body.child[?(@.a == 'd')].w)"}},
+		want:   []triggersv1.Param{{Name: "a", Value: "3"}},
 	}, {
 		name:   "filters + multiple JSONPath expressions",
 		body:   json.RawMessage(`{"child":[{"a": "b", "w": "1"}, {"a": "c", "w": "2"}, {"a": "d", "w": "3"}]}`),
-		params: []triggersv1.Param{bldr.Param("a", "$(body.child[?(@.a == 'd')].w) : $(body.child[0].a)")},
-		want:   []triggersv1.Param{bldr.Param("a", "3 : b")},
+		params: []triggersv1.Param{{Name: "a", Value: "$(body.child[?(@.a == 'd')].w) : $(body.child[0].a)"}},
+		want:   []triggersv1.Param{{Name: "a", Value: "3 : b"}},
 	}, {
 		name: "extensions",
 		body: []byte{},
 		extensions: map[string]interface{}{
 			"foo": "bar",
 		},
-		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo)")},
-		want:   []triggersv1.Param{bldr.Param("a", "bar")},
+		params: []triggersv1.Param{{Name: "a", Value: "$(extensions.foo)"}},
+		want:   []triggersv1.Param{{Name: "a", Value: "bar"}},
 	}, {
 		name: "extensions - extract single value from JSON body",
 		body: []byte{},
@@ -278,8 +279,8 @@ func TestApplyEventValuesToParams(t *testing.T) {
 				"bar": []interface{}{"a", "b", "c"},
 			},
 		},
-		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo.bar[1])")},
-		want:   []triggersv1.Param{bldr.Param("a", "b")},
+		params: []triggersv1.Param{{Name: "a", Value: "$(extensions.foo.bar[1])"}},
+		want:   []triggersv1.Param{{Name: "a", Value: "b"}},
 	}, {
 		name: "extensions - extract JSON values",
 		body: []byte{},
@@ -293,8 +294,8 @@ func TestApplyEventValuesToParams(t *testing.T) {
 				},
 			},
 		},
-		params: []triggersv1.Param{bldr.Param("a", "$(extensions.foo)")},
-		want:   []triggersv1.Param{bldr.Param("a", `[{"a":"1"},{"b":"2"}]`)},
+		params: []triggersv1.Param{{Name: "a", Value: "$(extensions.foo)"}},
+		want:   []triggersv1.Param{{Name: "a", Value: `[{"a":"1"},{"b":"2"}]`}},
 	}}
 
 	for _, tt := range tests {
@@ -319,19 +320,19 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 		extensions map[string]interface{}
 	}{{
 		name:   "missing key",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.missing)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.missing)"}},
 		body:   json.RawMessage(`{}`),
 	}, {
 		name:   "non JSON body",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body)"}},
 		body:   json.RawMessage(`{blahblah}`),
 	}, {
 		name:   "invalid expression(s)",
-		params: []triggersv1.Param{bldr.Param("foo", "$(body.[0])")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(body.[0])"}},
 		body:   json.RawMessage(`["a", "b"]`),
 	}, {
 		name:   "invalid extension",
-		params: []triggersv1.Param{bldr.Param("foo", "$(extensions.missing)")},
+		params: []triggersv1.Param{{Name: "foo", Value: "$(extensions.missing)"}},
 		body:   json.RawMessage(`{}`),
 		extensions: map[string]interface{}{
 			"foo": "bar",
@@ -357,73 +358,102 @@ func TestResolveParams(t *testing.T) {
 		template      *triggersv1.TriggerTemplate
 		want          []triggersv1.Param
 	}{{
-		name: "add default values for params with missing values",
-		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
+		name:          "add default values for params with missing values",
+		bindingParams: []triggersv1.Param{{Name: "p1", Value: "val1"}},
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tt-name",
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:    "p2",
+					Default: ptr.String("defaultVal"),
+				}},
+			},
 		},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
-			),
-		),
 		want: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "defaultVal"),
+			{Name: "p2", Value: "defaultVal"},
+			{Name: "p1", Value: "val1"},
 		},
 	}, {
 		name: "add default values if param missing from body",
 		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "$(body.p2)"),
+			{Name: "p1", Value: "val1"},
+			{Name: "p2", Value: "$(body.p2)"},
 		},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p2", "", "defaultVal"),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:    "p2",
+					Default: ptr.String("defaultVal"),
+				}},
+			},
+		},
 		want: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "defaultVal"),
+			{Name: "p2", Value: "defaultVal"},
+			{Name: "p1", Value: "val1"},
 		},
 	}, {
-		name: "default values do not override event values",
-		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
+		name:          "default values do not override event values",
+		bindingParams: []triggersv1.Param{{Name: "p1", Value: "val1"}},
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:    "p1",
+					Default: ptr.String("defaultVal"),
+				}},
+			},
 		},
-		template: bldr.TriggerTemplate("tt-name", ns,
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("p1", "", "defaultVal"),
-			),
-		),
-		want: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-		},
+		want: []triggersv1.Param{{Name: "p1", Value: "val1"}},
 	}, {
 		name: "combination of static values and JSONPath expressions",
 		body: json.RawMessage(`{"foo": "fooValue", "bar": "barValue"}`),
 		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "Event values are - foo: $(body.foo); bar: $(body.bar)"),
+			{Name: "p1", Value: "Event values are - foo: $(body.foo); bar: $(body.bar)"},
 		},
-		template: bldr.TriggerTemplate("tt", ns),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{},
+		},
 		want: []triggersv1.Param{
-			bldr.Param("p1", "Event values are - foo: fooValue; bar: barValue"),
+			{Name: "p1", Value: "Event values are - foo: fooValue; bar: barValue"},
 		},
 	}, {
 		name: "values with newlines",
 		body: json.RawMessage(`{"foo": "bar\r\nbaz"}`),
-		template: bldr.TriggerTemplate("tt-name", "",
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("param1", "", ""),
-				bldr.TriggerTemplateParam("param2", "", ""),
-			),
-		),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt-name",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name:    "param1",
+					Default: ptr.String(""),
+				}, {
+					Name:    "param2",
+					Default: ptr.String(""),
+				}},
+			},
+		},
 		bindingParams: []triggersv1.Param{
-			bldr.Param("param1", "qux"),
-			bldr.Param("param2", "$(body.foo)"),
+			{Name: "param1", Value: "qux"},
+			{Name: "param2", Value: "$(body.foo)"},
 		},
 		want: []triggersv1.Param{
-			bldr.Param("param1", "qux"),
-			bldr.Param("param2", "bar\\r\\nbaz"),
+			{Name: "param1", Value: "qux"},
+			{Name: "param2", Value: "bar\\r\\nbaz"},
 		},
 	}}
 
@@ -453,13 +483,13 @@ func TestResolveParams_Error(t *testing.T) {
 	}{{
 		name: "invalid body",
 		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
+			{Name: "p1", Value: "val1"},
 		},
 		body: json.RawMessage(`{`),
 	}, {
 		name: "invalid expression",
 		bindingParams: []triggersv1.Param{
-			bldr.Param("p1", "$(header.[)"),
+			{Name: "p1", Value: "$(header.[)"},
 		},
 	}}
 
@@ -488,15 +518,27 @@ func TestResolveResources(t *testing.T) {
 		want     []json.RawMessage
 	}{{
 		name: "replace single values in templates",
-		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerTemplateParam("p1", "desc", ""),
-			bldr.TriggerTemplateParam("p2", "desc", ""),
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)-$(tt.params.p2)"}`)}),
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "$(tt.params.p1)-$(tt.params.p2)"}`)}),
-		)),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name: "p1",
+				}, {
+					Name: "p2",
+				}},
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)-$(tt.params.p2)"}`)},
+				}, {
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt2": "$(tt.params.p1)-$(tt.params.p2)"}`)},
+				}},
+			},
+		},
 		params: []triggersv1.Param{
-			bldr.Param("p1", "val1"),
-			bldr.Param("p2", "42"),
+			{Name: "p1", Value: "val1"},
+			{Name: "p2", Value: "42"},
 		},
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "val1-42"}`),
@@ -504,12 +546,24 @@ func TestResolveResources(t *testing.T) {
 		},
 	}, {
 		name: "replace JSON string in templates",
-		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerTemplateParam("p1", "desc", ""),
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)"}`)}),
-		)),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name: "p1",
+				}, {
+					Name: "p2",
+				}},
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)"}`)},
+				}},
+			},
+		},
 		params: []triggersv1.Param{
-			bldr.Param("p1", `{"a": "b"}`),
+			{Name: "p1", Value: `{"a": "b"}`},
 		},
 		want: []json.RawMessage{
 			// json objects get inserted as a valid JSON string
@@ -517,30 +571,57 @@ func TestResolveResources(t *testing.T) {
 		},
 	}, {
 		name: "replace JSON string with special chars in templates",
-		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerTemplateParam("p1", "desc", ""),
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)"}`)}),
-		)),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{{
+					Name: "p1",
+				}},
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(tt.params.p1)"}`)},
+				}},
+			},
+		},
 		params: []triggersv1.Param{
-			bldr.Param("p1", `{"a": "v\\r\\n烈"}`),
+			{Name: "p1", Value: `{"a": "v\\r\\n烈"}`},
 		},
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "{\"a\": \"v\\r\\n烈\"}"}`),
 		},
 	}, {
 		name: "$(uid) gets replaced with a string",
-		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)}),
-		)),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)},
+				}},
+			},
+		},
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "31313131-3131-4131-b131-313131313131"}`),
 		},
 	}, {
 		name: "uid replacement is consistent across multiple templates",
-		template: bldr.TriggerTemplate("tt", ns, bldr.TriggerTemplateSpec(
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)}),
-			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: []byte(`{"rt2": "$(uid)"}`)}),
-		)),
+		template: &triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: ns,
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt1": "$(uid)"}`)},
+				}, {
+					RawExtension: runtime.RawExtension{Raw: []byte(`{"rt2": "$(uid)"}`)},
+				}},
+			},
+		},
 		want: []json.RawMessage{
 			json.RawMessage(`{"rt1": "31313131-3131-4131-b131-313131313131"}`),
 			json.RawMessage(`{"rt2": "31313131-3131-4131-b131-313131313131"}`),

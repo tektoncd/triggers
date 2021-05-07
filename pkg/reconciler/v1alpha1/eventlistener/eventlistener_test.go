@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/system"
 	"github.com/tektoncd/triggers/test"
-	bldr "github.com/tektoncd/triggers/test/builder"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,6 +39,8 @@ import (
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/ptr"
@@ -163,11 +164,15 @@ func makeConfig(ops ...func(d *Config)) *Config {
 // It generates a base EventListener that can then be modified by the passed in op function
 // If no ops are specified, it generates a base EventListener with no triggers and no Status
 func makeEL(ops ...func(el *v1alpha1.EventListener)) *v1alpha1.EventListener {
-	e := bldr.EventListener(eventListenerName, namespace,
-		bldr.EventListenerSpec(
-			bldr.EventListenerServiceAccount("sa"),
-		),
-	)
+	e := &v1alpha1.EventListener{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eventListenerName,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.EventListenerSpec{
+			ServiceAccountName: "sa",
+		},
+	}
 	for _, op := range ops {
 		op(e)
 	}
@@ -508,50 +513,68 @@ func logConfig(ns string) *corev1.ConfigMap {
 	return lc
 }
 
-var withTLSPort = bldr.EventListenerStatus(
-	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, 8443)),
-)
+func withTLSPort(el *v1alpha1.EventListener) {
+	el.Status.Address = &duckv1alpha1.Addressable{
+		Addressable: duckv1beta1.Addressable{
+			URL: &apis.URL{
+				Scheme: "http",
+				Host:   listenerHostname(generatedResourceName, namespace, 8443),
+			},
+		},
+	}
+}
 
-var withKnativeStatus = bldr.EventListenerStatus(
-	bldr.EventListenerCondition(
-		v1alpha1.ServiceExists,
-		corev1.ConditionFalse,
-		"", "",
-	),
-	bldr.EventListenerCondition(
-		v1alpha1.DeploymentExists,
-		corev1.ConditionFalse,
-		"", "",
-	),
-)
+func withKnativeStatus(el *v1alpha1.EventListener) {
+	el.Status.Status = duckv1.Status{
+		Conditions: []apis.Condition{{
+			Type:   v1alpha1.ServiceExists,
+			Status: corev1.ConditionFalse,
+		}, {
+			Type:   v1alpha1.DeploymentExists,
+			Status: corev1.ConditionFalse,
+		}},
+	}
+}
 
-var withStatus = bldr.EventListenerStatus(
-	bldr.EventListenerConfig(generatedResourceName),
-	bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, DefaultPort)),
-	bldr.EventListenerCondition(
-		v1alpha1.ServiceExists,
-		corev1.ConditionTrue,
-		"Service exists", "",
-	),
-	bldr.EventListenerCondition(
-		v1alpha1.DeploymentExists,
-		corev1.ConditionTrue,
-		"Deployment exists", "",
-	),
-	bldr.EventListenerCondition(
-		apis.ConditionType(appsv1.DeploymentAvailable),
-		corev1.ConditionTrue,
-		"Deployment has minimum availability",
-		"MinimumReplicasAvailable",
-	),
-	bldr.EventListenerCondition(
-		apis.ConditionType(appsv1.DeploymentProgressing),
-		corev1.ConditionTrue,
-		fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
-		"NewReplicaSetAvailable",
-	),
-)
+func withStatus(el *v1alpha1.EventListener) {
+	el.Status = v1alpha1.EventListenerStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+				Status:  corev1.ConditionTrue,
+				Message: "Deployment has minimum availability",
+				Reason:  "MinimumReplicasAvailable",
+			}, {
+				Type:    v1alpha1.DeploymentExists,
+				Status:  corev1.ConditionTrue,
+				Message: "Deployment exists",
+			}, {
+				Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+				Status:  corev1.ConditionTrue,
+				Message: fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
+				Reason:  "NewReplicaSetAvailable",
+			}, {
+				Type:    v1alpha1.ServiceExists,
+				Status:  corev1.ConditionTrue,
+				Message: "Service exists",
+			}},
+		},
+		AddressStatus: duckv1alpha1.AddressStatus{
+			Address: &duckv1alpha1.Addressable{
+				Addressable: duckv1beta1.Addressable{
+					URL: &apis.URL{
+						Scheme: "http",
+						Host:   listenerHostname(generatedResourceName, namespace, DefaultPort),
+					},
+				},
+			},
+		},
+		Configuration: v1alpha1.EventListenerConfig{
+			GeneratedResourceName: generatedResourceName,
+		},
+	}
 
+}
 func withAddedLabels(el *v1alpha1.EventListener) {
 	el.Labels = updateLabel
 }
@@ -824,9 +847,16 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
-	elWithPortSet := makeEL(withStatus, bldr.EventListenerStatus(
-		bldr.EventListenerAddress(listenerHostname(generatedResourceName, namespace, customPort)),
-	))
+	elWithPortSet := makeEL(withStatus, func(el *v1alpha1.EventListener) {
+		el.Status.Address = &duckv1alpha1.Addressable{
+			Addressable: duckv1beta1.Addressable{
+				URL: &apis.URL{
+					Scheme: "http",
+					Host:   listenerHostname(generatedResourceName, namespace, customPort),
+				},
+			},
+		}
+	})
 
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
@@ -1847,7 +1877,12 @@ func Test_generateObjectMeta(t *testing.T) {
 		expectedObjectMeta metav1.ObjectMeta
 	}{{
 		name: "Empty EventListener",
-		el:   bldr.EventListener(eventListenerName, ""),
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      eventListenerName,
+				Namespace: "",
+			},
+		},
 		expectedObjectMeta: metav1.ObjectMeta{
 			Namespace: "",
 			Name:      "",
@@ -1863,11 +1898,18 @@ func Test_generateObjectMeta(t *testing.T) {
 		},
 	}, {
 		name: "EventListener with Configuration",
-		el: bldr.EventListener(eventListenerName, "",
-			bldr.EventListenerStatus(
-				bldr.EventListenerConfig("generatedName"),
-			),
-		),
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      eventListenerName,
+				Namespace: "",
+			},
+			Status: v1alpha1.EventListenerStatus{
+				Configuration: v1alpha1.EventListenerConfig{
+					GeneratedResourceName: "generatedName",
+				},
+			},
+		},
+
 		expectedObjectMeta: metav1.ObjectMeta{
 			Namespace: "",
 			Name:      "generatedName",
@@ -1883,11 +1925,15 @@ func Test_generateObjectMeta(t *testing.T) {
 		},
 	}, {
 		name: "EventListener with Labels",
-		el: bldr.EventListener(eventListenerName, "",
-			bldr.EventListenerMeta(
-				bldr.Label("k", "v"),
-			),
-		),
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      eventListenerName,
+				Namespace: "",
+				Labels: map[string]string{
+					"k": "v",
+				},
+			},
+		},
 		expectedObjectMeta: metav1.ObjectMeta{
 			Namespace: "",
 			Name:      "",
@@ -1903,11 +1949,15 @@ func Test_generateObjectMeta(t *testing.T) {
 		},
 	}, {
 		name: "EventListener with Annotation",
-		el: bldr.EventListener(eventListenerName, "",
-			bldr.EventListenerMeta(
-				bldr.Annotation("k", "v"),
-			),
-		),
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      eventListenerName,
+				Namespace: "",
+				Annotations: map[string]string{
+					"k": "v",
+				},
+			},
+		},
 		expectedObjectMeta: metav1.ObjectMeta{
 			Namespace: "",
 			Name:      "",
