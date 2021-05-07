@@ -37,7 +37,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		//TODO: We should probably send over the EL eventID as a X-Tekton-Event-Id header as well
+		// TODO: We should probably send over the EL eventID as a X-Tekton-Event-Id header as well
 		payload, err := github.ValidatePayload(request, []byte(secretToken))
 		id := github.DeliveryID(request)
 		if err != nil {

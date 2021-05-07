@@ -167,8 +167,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}(*t)
 	}
 
-	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
-	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
+	// The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
+	// only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
 	for i := 0; i < len(triggers); i++ {
 		thiscode := <-result
