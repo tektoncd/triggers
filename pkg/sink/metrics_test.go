@@ -3,6 +3,7 @@ package sink
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"testing"
 
 	"go.opencensus.io/stats/view"
@@ -67,7 +68,8 @@ func TestRecordResourceCreation(t *testing.T) {
 			}
 			r, _ := NewRecorder()
 			s := &Sink{
-				Recorder: r,
+				Recorder:          r,
+				WGProcessTriggers: &sync.WaitGroup{},
 			}
 			s.recordResourceCreation(test.resources)
 			rows, err := view.RetrieveData("triggered_resources")

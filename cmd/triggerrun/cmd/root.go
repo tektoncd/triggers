@@ -28,6 +28,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
@@ -261,6 +262,7 @@ func newSink(config *rest.Config, sugerLogger *zap.SugaredLogger) sink.Sink {
 		KubeClientSet:          kubeClient,
 		HTTPClient:             http.DefaultClient,
 		Auth:                   sink.DefaultAuthOverride{},
+		WGProcessTriggers:      &sync.WaitGroup{},
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		DynamicClient:          dynamicCS,
 		Logger:                 sugerLogger,

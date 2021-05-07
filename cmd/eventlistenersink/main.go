@@ -22,6 +22,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -151,6 +152,7 @@ func main() {
 		Logger:                 logger,
 		Recorder:               recorder,
 		Auth:                   sink.DefaultAuthOverride{},
+		WGProcessTriggers:      &sync.WaitGroup{},
 		// Register all the listers we'll need
 		EventListenerLister:         factory.Triggers().V1beta1().EventListeners().Lister(),
 		TriggerLister:               factory.Triggers().V1beta1().Triggers().Lister(),
