@@ -129,10 +129,10 @@ func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, ol
 	// Escape quotes so that that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
 	if oldEscape {
-		paramValue := strings.Replace(param.Value, `"`, `\"`, -1)
-		return bytes.Replace(rt, []byte(paramVariable), []byte(paramValue), -1)
+		paramValue := strings.ReplaceAll(param.Value, `"`, `\"`)
+		return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(paramValue))
 	}
-	return bytes.Replace(rt, []byte(paramVariable), []byte(param.Value), -1)
+	return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(param.Value))
 }
 
 // UUID generates a Universally Unique IDentifier following RFC 4122.
@@ -141,7 +141,7 @@ var UUID = func() string { return uuid.New().String() }
 // applyUIDToResourceTemplate returns the TriggerResourceTemplate after uid replacement
 // The same uid should be used per trigger to properly address resources throughout the TriggerTemplate.
 func applyUIDToResourceTemplate(rt json.RawMessage, uid string) json.RawMessage {
-	return bytes.Replace(rt, uidMatch, []byte(uid), -1)
+	return bytes.ReplaceAll(rt, uidMatch, []byte(uid))
 }
 
 func convertParamMapToArray(paramMap map[string]string) []triggersv1.Param {

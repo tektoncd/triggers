@@ -90,7 +90,7 @@ func TestRecordResourceCreation(t *testing.T) {
 				}
 			}
 			v := view.Find("triggered_resources")
-			//need to unregister the view so the counts reset
+			// need to unregister the view so the counts reset
 			view.Unregister(v)
 		})
 	}
