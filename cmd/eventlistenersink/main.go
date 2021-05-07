@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -131,6 +132,7 @@ func main() {
 		Logger:                 logger,
 		Recorder:               recorder,
 		Auth:                   sink.DefaultAuthOverride{},
+		WaitGroup:              &sync.WaitGroup{},
 		// Register all the listers we'll need
 		EventListenerLister:         factory.Triggers().V1alpha1().EventListeners().Lister(),
 		TriggerLister:               factory.Triggers().V1alpha1().Triggers().Lister(),

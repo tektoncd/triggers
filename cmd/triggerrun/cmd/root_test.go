@@ -23,6 +23,7 @@ import (
 	"net/http/httputil"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"go.uber.org/zap/zaptest"
@@ -237,6 +238,7 @@ func Test_processTriggerSpec(t *testing.T) {
 			s := sink.Sink{
 				KubeClientSet: kubeClient,
 				HTTPClient:    http.DefaultClient,
+				WaitGroup:     &sync.WaitGroup{},
 			}
 			got, err := processTriggerSpec(kubeClient, triggerClient, tt.args.t, tt.args.request, tt.args.event, eventID, logger, s)
 			if (err != nil) != tt.wantErr {

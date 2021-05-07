@@ -19,7 +19,6 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -28,8 +27,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -53,12 +50,9 @@ import (
 	"go.uber.org/zap/zaptest"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	discoveryclient "k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
@@ -148,6 +142,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 		HTTPClient:                  httpClient,
 		Logger:                      logger.Sugar(),
 		Auth:                        DefaultAuthOverride{},
+		WaitGroup:                   &sync.WaitGroup{},
 		Recorder:                    recorder,
 		EventListenerLister:         eventlistenerinformer.Get(ctx).Lister(),
 		TriggerLister:               triggerinformer.Get(ctx).Lister(),
@@ -209,12 +204,12 @@ func toTaskRun(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
 	return trs
 }
 
-// checkSinkResponse checks that the sink response status code is 201 and that
+// checkSinkResponse checks that the sink response status code is 202 and that
 // the body returns the EventListener, namespace, and eventID.
 func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 	t.Helper()
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected response code 201 but got: %v", resp.Status)
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("expected response code 202 but got: %v", resp.Status)
 	}
 	var gotBody Response
 	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
@@ -906,6 +901,7 @@ func TestHandleEvent(t *testing.T) {
 				t.Fatalf("error sending request: %s", err)
 			}
 			checkSinkResponse(t, resp, elName)
+			sink.WaitGroup.Wait()
 			// Check right resources were created.
 			got := toTaskRun(t, dynamicClient.Actions())
 
@@ -915,173 +911,6 @@ func TestHandleEvent(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, got, cmpopts.SortSlices(compareTaskRuns)); diff != "" {
 				t.Errorf("Created resources mismatch (-want + got): %s", diff)
-			}
-		})
-	}
-}
-
-// Setup for TestHandleEvent_AuthOverride
-const userWithPermissions = "user-with-permissions"
-const userWithoutPermissions = "user-with-no-permissions"
-const userWithForbiddenAccess = "user-forbidden"
-
-var triggerAuthWG sync.WaitGroup
-
-type fakeAuth struct {
-}
-
-func (r fakeAuth) OverrideAuthentication(sa string, _ string, _ *zap.SugaredLogger, defaultDiscoverClient discoveryclient.ServerResourcesInterface,
-	defaultDynamicClient dynamic.Interface) (discoveryclient.ServerResourcesInterface, dynamic.Interface, error) {
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-	switch sa {
-	case userWithoutPermissions:
-		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-			defer triggerAuthWG.Done()
-			return true, nil, kerrors.NewUnauthorized(sa + " unauthorized")
-		})
-	case userWithForbiddenAccess:
-		dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-			defer triggerAuthWG.Done()
-			return true, nil, kerrors.NewForbidden(schema.GroupResource{}, sa, errors.New("action not Allowed"))
-		})
-	}
-	return defaultDiscoverClient, dynamicSet, nil
-}
-
-func TestHandleEvent_AuthOverride(t *testing.T) {
-	for _, testCase := range []struct {
-		userVal    string
-		statusCode int
-	}{{
-		userVal:    userWithoutPermissions,
-		statusCode: http.StatusUnauthorized,
-	}, {
-		userVal:    userWithPermissions,
-		statusCode: http.StatusCreated,
-	}, {
-		userVal:    userWithForbiddenAccess,
-		statusCode: http.StatusForbidden,
-	},
-	} {
-		t.Run(testCase.userVal, func(t *testing.T) {
-			eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}}`)
-			trigger := &triggersv1.Trigger{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "git-clone-trigger",
-					Namespace: namespace,
-				},
-				Spec: triggersv1.TriggerSpec{
-					ServiceAccountName: testCase.userVal,
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Ref: triggersv1.InterceptorRef{Name: "github"},
-						Params: []triggersv1.InterceptorParams{{
-							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
-								SecretKey:  "secretKey",
-								SecretName: "secret",
-							}),
-						}, {
-							Name:  "eventTypes",
-							Value: test.ToV1JSON(t, []string{"pull_request"}),
-						}},
-					}},
-					Bindings: []*triggersv1.TriggerSpecBinding{{
-						Name:  "url",
-						Value: ptr.String("$(body.repository.url)"),
-					}},
-					Template: triggersv1.TriggerSpecTemplate{
-						Spec: &triggersv1.TriggerTemplateSpec{
-							Params: []triggersv1.ParamSpec{
-								{Name: "url"},
-								{Name: "revision", Default: ptr.String("master")},
-								{Name: "name", Default: ptr.String("git-clone-test-run")},
-								{Name: "app", Default: ptr.String("triggers")},
-								{Name: "type", Default: ptr.String("bar")},
-							},
-							ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
-								RawExtension: trResourceTemplate(t),
-							}},
-						},
-					},
-				},
-			}
-			authSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      testCase.userVal,
-					Namespace: testCase.userVal,
-					Annotations: map[string]string{
-						corev1.ServiceAccountNameKey: testCase.userVal,
-						corev1.ServiceAccountUIDKey:  testCase.userVal,
-					},
-				},
-				Type: corev1.SecretTypeServiceAccountToken,
-				Data: map[string][]byte{
-					corev1.ServiceAccountTokenKey: []byte(testCase.userVal),
-				},
-			}
-			authSA := &corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      testCase.userVal,
-					Namespace: testCase.userVal,
-				},
-				Secrets: []corev1.ObjectReference{{
-					Name:      testCase.userVal,
-					Namespace: testCase.userVal,
-				}},
-			}
-
-			el := &triggersv1.EventListener{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "el",
-					Namespace: namespace,
-				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{TriggerRef: "git-clone-trigger"}},
-				},
-			}
-			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret",
-					Namespace: namespace,
-				},
-				Data: map[string][]byte{
-					"secretKey": []byte("secret"),
-				},
-			}
-			resources := test.Resources{
-				ClusterInterceptors: []*triggersv1.ClusterInterceptor{github},
-				Triggers:            []*triggersv1.Trigger{trigger},
-				EventListeners:      []*triggersv1.EventListener{el},
-				Secrets:             []*corev1.Secret{secret, authSecret},
-				ServiceAccounts:     []*corev1.ServiceAccount{authSA},
-			}
-			sink, dynamicClient := getSinkAssets(t, resources, el.Name, nil)
-			sink.Auth = fakeAuth{}
-			ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
-			defer ts.Close()
-
-			triggerAuthWG.Add(1)
-			dynamicClient.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-				defer triggerAuthWG.Done()
-				return false, nil, nil
-			})
-
-			req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(eventBody))
-			if err != nil {
-				t.Fatalf("Error creating Post request: %s", err)
-			}
-			req.Header.Add("Content-Type", "application/json")
-			req.Header.Add("X-Github-Event", "pull_request")
-			req.Header.Add("X-Hub-Signature", test.HMACHeader(t, "secret", eventBody))
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Fatalf("Error sending Post request: %v", err)
-			}
-
-			if resp.StatusCode != testCase.statusCode {
-				t.Fatalf("response code doesn't match: expected %d vs. actual %d, entire status %v", testCase.statusCode, resp.StatusCode, resp.Status)
 			}
 		})
 	}

@@ -27,7 +27,7 @@ Creates an EventListener that creates a v1alpha1 TaskRun.
    http://localhost:8080
    ```
 
-   The response status code should be `201 Created`
+   The response status code should be `202 Accepted`
 
 1. You should see a new TaskRun that got created:
 

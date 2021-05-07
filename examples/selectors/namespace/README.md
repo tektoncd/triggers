@@ -31,7 +31,7 @@ Creates an EventListener that serve triggers in multiple namespaces.
        -H 'Content-Type: application/json' \
        -d '{"head_commit":{"id":"28911bbb5a3e2ea034daf1f6be0a822d50e31e73"},"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git", "url":"https://github.com/tektoncd/triggers.git"}}' http://localhost:8000   ```
 
-   The response status code should be `201 Created`
+   The response status code should be `202 Accepted`
 
 4. You should see a new Pipelinerun that got created:
 

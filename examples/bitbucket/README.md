@@ -28,7 +28,7 @@ Creates an EventListener that listens for Bitbucket webhook events.
    http://localhost:8080
    ```
 
-   The response status code should be `201 Created`
+   The response status code should be `202 Accepted`
 
    [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
 

@@ -370,8 +370,9 @@ metadata:
 
 ## Understanding `EventListener` response
 
-An `EventListener` responds with a `201 CREATED` HTTP response when at least one specified `Trigger` executes successfully.
-Otherwise, it responds with a `202 ACCEPTED` HTTP response. 
+An `EventListener` responds with a `202 ACCEPTED` HTTP response when the `EventListener`
+has been able to process the request and selected the appropriate triggers to process
+based off the `EventListener` configuration. 
 
 After detecting an event, the `EventListener` responds with the following message:
 
