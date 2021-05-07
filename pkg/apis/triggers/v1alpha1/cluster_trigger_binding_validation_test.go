@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	bldr "github.com/tektoncd/triggers/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_ClusterTriggerBindingValidate(t *testing.T) {
@@ -30,23 +30,49 @@ func Test_ClusterTriggerBindingValidate(t *testing.T) {
 		tb   *v1alpha1.ClusterTriggerBinding
 	}{{
 		name: "empty",
-		tb:   bldr.ClusterTriggerBinding("name"),
+		tb: &v1alpha1.ClusterTriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "name",
+			},
+		},
 	}, {
 		name: "multiple params",
-		tb: bldr.ClusterTriggerBinding("name",
-			bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.input1)"),
-				bldr.TriggerBindingParam("param2", "$(body.input2)"),
-				bldr.TriggerBindingParam("param3", "$(body.input3)"),
-			)),
+		tb: &v1alpha1.ClusterTriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "name",
+			},
+			Spec: v1alpha1.TriggerBindingSpec{
+				Params: []v1alpha1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "param2",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}, {
 		name: "multiple params case sensitive",
-		tb: bldr.ClusterTriggerBinding("name",
-			bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.input1)"),
-				bldr.TriggerBindingParam("PARAM1", "$(body.input2)"),
-				bldr.TriggerBindingParam("Param1", "$(body.input3)"),
-			)),
+		tb: &v1alpha1.ClusterTriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "name",
+			},
+			Spec: v1alpha1.TriggerBindingSpec{
+				Params: []v1alpha1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "PARAM1",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,12 +89,23 @@ func Test_ClusterTriggerBindingValidate_error(t *testing.T) {
 		tb   *v1alpha1.ClusterTriggerBinding
 	}{{
 		name: "duplicate params",
-		tb: bldr.ClusterTriggerBinding("name",
-			bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("param1", "$(body.param1)"),
-				bldr.TriggerBindingParam("param1", "$(body.param1)"),
-				bldr.TriggerBindingParam("param3", "$(body.param1)"),
-			)),
+		tb: &v1alpha1.ClusterTriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "name",
+			},
+			Spec: v1alpha1.TriggerBindingSpec{
+				Params: []v1alpha1.Param{{
+					Name:  "param1",
+					Value: "$(body.input1)",
+				}, {
+					Name:  "param1",
+					Value: "$(body.input2)",
+				}, {
+					Name:  "param3",
+					Value: "$(body.input3)",
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
