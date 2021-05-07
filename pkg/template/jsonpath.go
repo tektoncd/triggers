@@ -46,7 +46,7 @@ func parseJSONPath(input interface{}, expr string) (string, error) {
 	j := jsonpath.New("").AllowMissingKeys(false)
 	buf := new(bytes.Buffer)
 
-	//First turn the expression into fully valid JSONPath
+	// First turn the expression into fully valid JSONPath
 	expr, err := tektonJSONPathExpression(expr)
 	if err != nil {
 		return "", err

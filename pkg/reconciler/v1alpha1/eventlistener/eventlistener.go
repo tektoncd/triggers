@@ -613,7 +613,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 			}
 		}
 
-		//if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
+		// if dynamicduck.ReconcileCustomObject(existingCustomObject, data) {
 		if updated {
 			existingMarshaledData, err := json.Marshal(existingObject)
 			if err != nil {
@@ -981,7 +981,7 @@ func defaultObservabilityConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: metrics.ConfigMapName()},
 		Data: map[string]string{
-			//TODO: Better nonempty config
+			// TODO: Better nonempty config
 			"_example": "See tekton-pipelines namespace for valid values",
 		},
 	}
