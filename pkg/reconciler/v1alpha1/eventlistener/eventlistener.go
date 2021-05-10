@@ -124,7 +124,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 	}
 	deploymentReconcileError := r.reconcileDeployment(ctx, logger, el)
 	serviceReconcileError := r.reconcileService(ctx, logger, el)
-
+	if el.Spec.Resources.CustomResource == nil {
+		el.Status.SetReadyCondition()
+	}
 	return wrapError(serviceReconcileError, deploymentReconcileError)
 }
 
