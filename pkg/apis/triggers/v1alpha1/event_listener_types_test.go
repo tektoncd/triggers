@@ -284,6 +284,20 @@ func TestSetConditionsForDynamicObjects(t *testing.T) {
 		Reason:  "Reason",
 		Message: "Message",
 	}})
+	expected := EventListenerStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionReady,
+				Status:  corev1.ConditionTrue,
+				Reason:  "Reason",
+				Message: "Message",
+			}},
+		},
+	}
+	if diff := cmp.Diff(expected, status, cmpopts.IgnoreTypes(
+		apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
+		t.Fatalf("SetConditionsForDynamicObjects() error. Diff (-want/+got) : %s", diff)
+	}
 }
 
 func TestEventListenerStatus_SetReadyCondition(t *testing.T) {
