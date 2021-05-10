@@ -99,6 +99,11 @@ var (
 	replicas int32 = 1
 )
 
+// compareCondition compares two conditions based on their Type field.
+func compareCondition(x, y apis.Condition) bool {
+	return x.Type < y.Type
+}
+
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
 // given test.Resources r where r represents the state of the system
 func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test.Assets, context.CancelFunc) {
@@ -532,6 +537,9 @@ func withKnativeStatus(el *v1alpha1.EventListener) {
 		}, {
 			Type:   v1alpha1.DeploymentExists,
 			Status: corev1.ConditionFalse,
+		}, {
+			Type:   apis.ConditionReady,
+			Status: corev1.ConditionFalse,
 		}},
 	}
 }
@@ -553,6 +561,10 @@ func withStatus(el *v1alpha1.EventListener) {
 				Status:  corev1.ConditionTrue,
 				Message: fmt.Sprintf("ReplicaSet \"%s\" has successfully progressed.", eventListenerName),
 				Reason:  "NewReplicaSetAvailable",
+			}, {
+				Type:    apis.ConditionReady,
+				Status:  corev1.ConditionTrue,
+				Message: "EventListener is ready",
 			}, {
 				Type:    v1alpha1.ServiceExists,
 				Status:  corev1.ConditionTrue,
@@ -1368,7 +1380,7 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 	}, {
-		name: "eventlistener with added env for custome resource",
+		name: "eventlistener with added env for custom resource",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -1476,7 +1488,7 @@ func TestReconcile(t *testing.T) {
 			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
 				apis.Condition{}.LastTransitionTime.Inner.Time,
 				metav1.ObjectMeta{}.Finalizers,
-			)); diff != "" {
+			), cmpopts.SortSlices(compareCondition)); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
@@ -1642,7 +1654,7 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
 				apis.Condition{}.LastTransitionTime.Inner.Time,
 				metav1.ObjectMeta{}.Finalizers,
-			)); diff == "" {
+			), cmpopts.SortSlices(compareCondition)); diff == "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})

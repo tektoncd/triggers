@@ -177,7 +177,10 @@ const (
 	ClusterTriggerBindingKind TriggerBindingKind = "ClusterTriggerBinding"
 )
 
-var eventListenerCondSet = apis.NewLivingConditionSet(ServiceExists, DeploymentExists)
+var eventListenerCondSet = apis.NewLivingConditionSet(
+	ServiceExists,
+	DeploymentExists,
+)
 
 // GetCondition returns the Condition matching the given type.
 func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
@@ -189,8 +192,32 @@ func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Conditi
 // K8s API elsewhere.
 func (els *EventListenerStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
+		// TODO: Should the ConditionManager be set somewhere?
 		eventListenerCondSet.Manage(els).SetCondition(*newCond)
 	}
+}
+
+func (els *EventListenerStatus) SetReadyCondition() {
+	for _, ct := range []apis.ConditionType{
+		ServiceExists,
+		DeploymentExists,
+		apis.ConditionType(appsv1.DeploymentProgressing),
+		apis.ConditionType(appsv1.DeploymentAvailable)} {
+		sc := els.GetCondition(ct)
+		if sc.Status != corev1.ConditionTrue {
+			els.SetCondition(&apis.Condition{
+				Type:    apis.ConditionReady,
+				Status:  corev1.ConditionFalse,
+				Message: fmt.Sprintf("Condition %s has status: %s with message: %s", sc.Type, sc.Status, sc.Message),
+			})
+			return
+		}
+	}
+	els.SetCondition(&apis.Condition{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Message: "EventListener is ready",
+	})
 }
 
 // SetDeploymentConditions sets the Deployment conditions on the EventListener,
@@ -255,6 +282,7 @@ func (els *EventListenerStatus) InitializeConditions() {
 	for _, condition := range []apis.ConditionType{
 		ServiceExists,
 		DeploymentExists,
+		apis.ConditionReady,
 	} {
 		els.SetCondition(&apis.Condition{
 			Type:   condition,
