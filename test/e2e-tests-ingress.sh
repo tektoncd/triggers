@@ -64,20 +64,6 @@ function wait_until_pod_started() {
   exit 1
 }
 
-# Parameters: $1 - EventListener name
-function get_eventlistener_service() {
-  echo "Getting ServiceName for EventListener $1"
-  for i in {1..150}; do  # timeout after 5 minutes
-    SERVICE_NAME=$(kubectl get eventlistener $1 -o=jsonpath='{.status.configuration.generatedName}')
-    if [[ -z "$SERVICE_NAME" ]]
-    then
-      sleep 2
-    else
-      break
-    fi
-  done
-}
-
 # Parameters: $1 - Service name
 function get_service_uid() {
   echo "Getting UID for Service $1"
@@ -134,7 +120,7 @@ DONE
 INGRESS_TASKRUN_NAME="create-ingress-taskrun"
 CERTIFICATE_KEY_PASSPHRASE="pass1"
 CERTIFICATE_SECRET_NAME="secret1"
-get_eventlistener_service ${EVENTLISTENER_NAME}
+SERVICE_NAME="el-${EVENTLISTENER_NAME}"
 get_service_uid ${SERVICE_NAME}
 EXTERNAL_DOMAIN="${SERVICE_NAME}.192.168.0.1.nip.io"
 
