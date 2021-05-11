@@ -27,7 +27,7 @@ NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT
 el-listener                   ClusterIP      10.100.151.220   <none>        8080/TCP         48s  <--- this will receive the event
 tekton-pipelines-controller   ClusterIP      10.103.144.96    <none>        9090/TCP         8m34s
 tekton-pipelines-webhook      ClusterIP      10.96.198.4      <none>        443/TCP          8m34s
-tekton-triggers-controller    ClusterIP      10.102.221.96    <none>        9090/TCP         7m56s
+tekton-triggers-controller    ClusterIP      10.102.221.96    <none>        9000/TCP         7m56s
 tekton-triggers-webhook       ClusterIP      10.99.59.231     <none>        443/TCP          7m56s
 ```
 

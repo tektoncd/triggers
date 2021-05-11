@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -65,8 +66,6 @@ const (
 	eventListenerServiceTLSPortName = "https-listener"
 	// eventListenerContainerPort defines the port exposed by the EventListener Container
 	eventListenerContainerPort = 8000
-	// eventListenerMetricsPort defines the port exposed by the EventListener metrics endpoint
-	eventListenerMetricsPort = 9090
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -276,7 +275,18 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		return err
 	}
 
+	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+	// env METRICS_PROMETHEUS_PORT set by controller
+	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
 	container := getContainer(el, r.config, nil)
+	container.Ports = append(container.Ports, corev1.ContainerPort{
+		ContainerPort: int32(metricsPort),
+		Protocol:      corev1.ProtocolTCP,
+	})
 	container.VolumeMounts = []corev1.VolumeMount{{
 		Name:      "config-logging",
 		MountPath: "/etc/config-logging",
@@ -296,9 +306,15 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		Name:  "METRICS_DOMAIN",
 		Value: triggersMetricsDomain,
 	})
+	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+	// env METRICS_PROMETHEUS_PORT set by controller
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "METRICS_PROMETHEUS_PORT",
+		Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+	})
 	container = addCertsForSecureConnection(container, r.config)
 
-	deployment := getDeployment(el, r.config)
+	deployment := getDeployment(el, container, r.config)
 
 	existingDeployment, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
@@ -461,6 +477,12 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	container.Env = append(container.Env, corev1.EnvVar{
 		Name:  "METRICS_DOMAIN",
 		Value: triggersMetricsDomain,
+	})
+	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+	// env METRICS_PROMETHEUS_PORT set by controller
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  "METRICS_PROMETHEUS_PORT",
+		Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
 	})
 
 	podlabels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
@@ -661,7 +683,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	return nil
 }
 
-func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
+func getDeployment(el *v1alpha1.EventListener, container corev1.Container, c Config) *appsv1.Deployment {
 	var (
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
@@ -683,28 +705,6 @@ func getDeployment(el *v1alpha1.EventListener, c Config) *appsv1.Deployment {
 		},
 	}}
 
-	container := getContainer(el, c, nil)
-	container.VolumeMounts = []corev1.VolumeMount{{
-		Name:      "config-logging",
-		MountPath: "/etc/config-logging",
-	}}
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name: "SYSTEM_NAMESPACE",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
-			}},
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "CONFIG_OBSERVABILITY_NAME",
-		Value: metrics.ConfigMapName(),
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "METRICS_DOMAIN",
-		Value: triggersMetricsDomain,
-	})
-
-	container = addCertsForSecureConnection(container, c)
 	for _, v := range container.Env {
 		// If TLS related env are set then mount secret volume which will be used while starting the eventlistener.
 		if v.Name == "TLS_CERT" {
@@ -851,9 +851,6 @@ func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) cor
 		Image: *c.Image,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(eventListenerContainerPort),
-			Protocol:      corev1.ProtocolTCP,
-		}, {
-			ContainerPort: int32(eventListenerMetricsPort),
 			Protocol:      corev1.ProtocolTCP,
 		}},
 		Resources: resources,
