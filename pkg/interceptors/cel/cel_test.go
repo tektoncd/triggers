@@ -156,7 +156,7 @@ func TestInterceptor_Process(t *testing.T) {
 			},
 		},
 		body: json.RawMessage(`{"value":"test"}`),
-		// TODO: Fix extensions iff key contains ., use sjson to m	erge
+		// TODO: Fix extensions if key contains ., use sjson to merge
 		wantExtensions: map[string]interface{}{
 			"test": map[string]interface{}{
 				"two": "test",
@@ -259,8 +259,23 @@ func TestInterceptor_Process(t *testing.T) {
 		wantExtensions: map[string]interface{}{
 			"one": "bar",
 		},
-	},
-	}
+	}, {
+		name: "decode with cel extension to a field",
+		CEL: &triggersv1.CELInterceptor{
+			Overlays: []triggersv1.CELOverlay{
+				{Key: "value", Expression: "base64.decode(body.b64value) == b'hello'"},
+				{Key: "compare_string", Expression: "base64.decode(body.b64value) == bytes('hello')"},
+				{Key: "decoded", Expression: "base64.decode(body.b64value)"},
+				{Key: "decoded_string", Expression: "string(base64.decode(body.b64value))"},
+			},
+		},
+		body: json.RawMessage(`{"b64value":"aGVsbG8=","test":"hello"}`),
+		wantExtensions: map[string]interface{}{
+			"value":          true,
+			"compare_string": true,
+			"decoded":        "aGVsbG8=",
+			"decoded_string": "hello"},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			logger := zaptest.NewLogger(t)
@@ -432,7 +447,10 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 }
 
 func TestExpressionEvaluation(t *testing.T) {
-	reg := types.NewRegistry()
+	reg, err := types.NewRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
 	testSHA := "ec26c3e57ca3a959ca5aad62de7213c562f8c821"
 	testRef := "refs/heads/master"
 	jsonMap := map[string]interface{}{
@@ -496,12 +514,12 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name: "split a string on a character",
 			expr: "body.ref.split('/')",
-			want: types.NewStringList(types.NewRegistry(), refParts),
+			want: types.NewStringList(reg, refParts),
 		},
 		{
 			name: "extract a branch from a non refs string",
 			expr: "body.value.split('/')",
-			want: types.NewStringList(types.NewRegistry(), []string{"testing"}),
+			want: types.NewStringList(reg, []string{"testing"}),
 		},
 		{
 			name: "combine split and truncate",
@@ -591,13 +609,25 @@ func TestExpressionEvaluation(t *testing.T) {
 			expr: "body.jsonArray.marshalJSON()",
 			want: types.String(`["one","two"]`),
 		},
+		{
+			name: "extension base64 decoding",
+			expr: "base64.decode(body.b64value)",
+			want: types.Bytes("example"),
+		},
+		{
+			name: "extension base64 encoding",
+			expr: "base64.encode(b'example')",
+			want: types.String("ZXhhbXBsZQ=="),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(rt)
 			kubeClient := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
-				if _, err := kubeClient.CoreV1().Secrets(tt.secret.ObjectMeta.Namespace).Create(ctx, tt.secret, metav1.CreateOptions{}); err != nil {
+				if _, err := kubeClient.CoreV1().
+					Secrets(tt.secret.ObjectMeta.Namespace).
+					Create(ctx, tt.secret, metav1.CreateOptions{}); err != nil {
 					rt.Error(err)
 				}
 			}
@@ -615,7 +645,11 @@ func TestExpressionEvaluation(t *testing.T) {
 				rt.Errorf("error evaluating expression: %s", got)
 				return
 			}
-			if !got.Equal(tt.want).(types.Bool) {
+			v, ok := got.Equal(tt.want).(types.Bool)
+			if !ok {
+				rt.Errorf("failed to compare got %v, want %v", got, tt.want)
+			}
+			if ok && v != types.True {
 				rt.Errorf("evaluate() = %s, wantMsg %s", got, tt.want)
 			}
 		})

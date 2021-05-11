@@ -148,11 +148,10 @@ github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
-github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/google/cel-go v0.6.0
+# github.com/google/cel-go v0.7.3
 ## explicit
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
@@ -273,6 +272,8 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
+# github.com/stoewer/go-strcase v1.2.0
+github.com/stoewer/go-strcase
 # github.com/tektoncd/pipeline v0.20.1-0.20210203144343-1b7a37f0d21d
 ## explicit
 github.com/tektoncd/pipeline/pkg/apis/config
@@ -573,6 +574,7 @@ google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
+google.golang.org/protobuf/types/dynamicpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb

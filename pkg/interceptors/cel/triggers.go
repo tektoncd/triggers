@@ -344,7 +344,11 @@ func parseJSONString(val ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("failed to decode '%v' in parseJSON: %w", str, err)
 	}
-	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
+	r, err := types.NewRegistry()
+	if err != nil {
+		return types.NewErr("failed to create a new registry in parseJSON: %w", err)
+	}
+	return types.NewDynamicMap(r, decodedVal)
 }
 
 func parseYAMLString(val ref.Val) ref.Val {
@@ -357,7 +361,11 @@ func parseYAMLString(val ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("failed to decode '%v' in parseYAML: %w", str, err)
 	}
-	return types.NewDynamicMap(types.NewRegistry(), decodedVal)
+	r, err := types.NewRegistry()
+	if err != nil {
+		return types.NewErr("failed to create a new registry in parseJSON: %w", err)
+	}
+	return types.NewDynamicMap(r, decodedVal)
 }
 
 func parseURLString(val ref.Val) ref.Val {
@@ -370,8 +378,11 @@ func parseURLString(val ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("failed to decode '%v' in parseURL: %w", str, err)
 	}
-
-	return types.NewDynamicMap(types.NewRegistry(), urlToMap(parsed))
+	r, err := types.NewRegistry()
+	if err != nil {
+		return types.NewErr("failed to create a new registry in parseJSON: %w", err)
+	}
+	return types.NewDynamicMap(r, urlToMap(parsed))
 }
 
 func marshalJSON(val ref.Val) ref.Val {
