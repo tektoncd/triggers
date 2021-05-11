@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -70,6 +71,7 @@ import (
 const (
 	eventID   = "12345"
 	namespace = "foo"
+	elUID     = "el-uid"
 )
 
 func init() {
@@ -221,9 +223,10 @@ func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 		t.Fatalf("Error reading response body: %s", err)
 	}
 	wantBody := Response{
-		EventListener: elName,
-		Namespace:     namespace,
-		EventID:       eventID,
+		EventListener:    elName,
+		EventListenerUID: elUID,
+		Namespace:        namespace,
+		EventID:          eventID,
 	}
 	if diff := cmp.Diff(wantBody, gotBody); diff != "" {
 		t.Errorf("did not get expected response back -want,+got: %s", diff)
@@ -389,6 +392,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{
@@ -452,6 +456,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					NamespaceSelector: triggersv1.NamespaceSelector{
@@ -521,6 +526,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					NamespaceSelector: triggersv1.NamespaceSelector{
@@ -594,6 +600,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					LabelSelector: &metav1.LabelSelector{
@@ -624,6 +631,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{
@@ -651,6 +659,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{
@@ -708,6 +717,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{
@@ -762,6 +772,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{
@@ -783,6 +794,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					NamespaceSelector: triggersv1.NamespaceSelector{
@@ -831,6 +843,7 @@ func TestHandleEvent(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
+					UID:       types.UID(elUID),
 				},
 				Spec: triggersv1.EventListenerSpec{
 					Triggers: []triggersv1.EventListenerTrigger{{

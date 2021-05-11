@@ -450,8 +450,9 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Errorf("sink did not return 2xx response. Got status code: %d", resp.StatusCode)
 	}
 	wantBody := sink.Response{
-		EventListener: "my-eventlistener",
-		Namespace:     namespace,
+		EventListener:    "my-eventlistener",
+		Namespace:        namespace,
+		EventListenerUID: string(el.GetUID()),
 	}
 	var gotBody sink.Response
 	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {
