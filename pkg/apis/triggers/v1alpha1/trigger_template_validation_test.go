@@ -89,6 +89,26 @@ func invalidParamResourceTemplate(t *testing.T) runtime.RawExtension {
 	})
 }
 
+func TestTriggerTemplate_Validate_OnDelete(t *testing.T) {
+	tt := &v1alpha1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tt",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TriggerTemplateSpec{
+			Params: []v1alpha1.ParamSpec{{
+				Name:        "foo",
+				Description: "desc",
+				Default:     ptr.String("val"),
+			}},
+		},
+	}
+	err := tt.Validate(apis.WithinDelete(context.Background()))
+	if err != nil {
+		t.Errorf("TriggerTemplate.Validate() on Delete expected no error, but got one, TriggerTemplate: %v, error: %v", tt, err)
+	}
+}
+
 func TestTriggerTemplate_Validate(t *testing.T) {
 	tcs := []struct {
 		name     string
