@@ -375,12 +375,24 @@ Otherwise, it responds with a `202 ACCEPTED` HTTP response.
 
 After detecting an event, the `EventListener` responds with the following message:
 
-```JSON
-{"eventListener":"listener","namespace":"default","eventID":"h2bb7"}
+```json
+{
+  "eventListener": "listener",
+  "namespace": "default",
+  "eventListenerUID": "ea71a6e4-9531-43a1-94fe-6136515d938c",
+  "eventID": "14a657c3-6816-45bf-b214-4afdaefc4ebd"
+}
 ```
-- `eventListener` - name of the target EventListener
-- `namespace` - namespace of the target EventListener
+
+- `eventListenerUID` - [UID](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids) of the target EventListener.
 - `eventID` - UID assigned to this event request
+
+### Deprecated Fields
+
+These fields are included in `EventListener` responses, but will be removed in a future release.
+
+- `eventListener` - name of the target EventListener. Use `eventListenerUID` instead.
+- `namespace` - namespace of the target EventListener. Use `eventListenerUID` instead.
 
 ## TLS HTTPS support in `EventListeners`
 
