@@ -27,6 +27,9 @@ import (
 
 // Validate TriggerBinding.
 func (tb *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return tb.Spec.Validate(ctx).ViaField("spec")
 }
 

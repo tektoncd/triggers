@@ -22,7 +22,29 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
+
+func Test_ClusterTriggerBindingValidate_OnDelete(t *testing.T) {
+	tb := &v1alpha1.ClusterTriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "name",
+		},
+		Spec: v1alpha1.TriggerBindingSpec{
+			Params: []v1alpha1.Param{{
+				Name:  "param1",
+				Value: "$(body.input1)",
+			}, {
+				Name:  "param2",
+				Value: "$(body.input2)",
+			}},
+		},
+	}
+	err := tb.Validate(apis.WithinDelete(context.Background()))
+	if err != nil {
+		t.Errorf("TriggerBinding.Validate() on Delete expected no error, but got one, TriggerBinding: %v, error: %v", tb, err)
+	}
+}
 
 func Test_ClusterTriggerBindingValidate(t *testing.T) {
 	tests := []struct {

@@ -38,17 +38,15 @@ var (
 
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	errs := e.validate(ctx)
-	errs = errs.Also(e.Spec.validate(ctx))
-	return errs
-}
-
-func (e *EventListener) validate(ctx context.Context) (errs *apis.FieldError) {
+	var errs *apis.FieldError
 	if len(e.ObjectMeta.Name) > 60 {
 		// Since `el-` is added as the prefix of EventListener services, the name of EventListener must be no more than 60 characters long.
 		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("eventListener name '%s' must be no more than 60 characters long", e.ObjectMeta.Name), "metadata.name"))
 	}
-	return errs
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
+	return errs.Also(e.Spec.validate(ctx))
 }
 
 func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {

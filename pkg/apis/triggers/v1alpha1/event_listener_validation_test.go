@@ -28,9 +28,30 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/ptr"
 )
+
+func Test_EventListenerValidate_OnDelete(t *testing.T) {
+	el := &v1alpha1.EventListener{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.EventListenerSpec{
+			Triggers: []v1alpha1.EventListenerTrigger{{
+				Template: &v1alpha1.EventListenerTemplate{
+					Ref: ptr.String(""),
+				},
+			}},
+		},
+	}
+	err := el.Validate(apis.WithinDelete(context.Background()))
+	if err != nil {
+		t.Errorf("EventListener.Validate() on Delete expected no error, but got one, EventListener: %v, error: %v", el, err)
+	}
+}
 
 func Test_EventListenerValidate(t *testing.T) {
 	tests := []struct {

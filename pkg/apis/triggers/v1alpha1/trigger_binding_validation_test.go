@@ -23,7 +23,30 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
+
+func Test_TriggerBindingValidate_OnDelete(t *testing.T) {
+	tb := &v1alpha1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.TriggerBindingSpec{
+			Params: []v1alpha1.Param{{
+				Name:  "param1",
+				Value: "$(body.input1)",
+			}, {
+				Name:  "param1",
+				Value: "$(body.input2)",
+			}},
+		},
+	}
+	err := tb.Validate(apis.WithinDelete(context.Background()))
+	if err != nil {
+		t.Errorf("TriggerBinding.Validate() on Delete expected no error, but got one, TriggerBinding: %v, error: %v", tb, err)
+	}
+}
 
 func Test_TriggerBindingValidate(t *testing.T) {
 	tests := []struct {
