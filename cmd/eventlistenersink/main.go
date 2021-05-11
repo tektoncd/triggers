@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -30,6 +31,8 @@ import (
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/system"
 	"go.uber.org/zap"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -83,7 +86,24 @@ func main() {
 	profilingServer := profiling.NewServer(profilingHandler)
 	metrics.MemStatsOrDie(ctx)
 
-	sharedmain.WatchObservabilityConfigOrDie(ctx, configMapWatcher, profilingHandler, logger, EventListenerLogKey)
+	exp := metrics.ExporterOptions{
+		Component: strings.ReplaceAll(EventListenerLogKey, "-", "_"),
+		ConfigMap: nil,
+		Secrets:   sharedmain.SecretFetcher(ctx),
+	}
+	cmData, err := metrics.UpdateExporterFromConfigMapWithOpts(ctx, exp, logger)
+	if err != nil {
+		logger.Fatalw("Error in update exporter from ConfigMap ", zap.Error(err))
+	}
+	if _, err := kubeClient.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, metrics.ConfigMapName(),
+		metav1.GetOptions{}); err == nil {
+		configMapWatcher.Watch(metrics.ConfigMapName(),
+			cmData,
+			profilingHandler.UpdateFromConfigMap)
+	} else if !apierrors.IsNotFound(err) {
+		logger.Fatalw("Error reading ConfigMap "+metrics.ConfigMapName(), zap.Error(err))
+	}
+
 	logger.Info("Starting configuration manager...")
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		logger.Fatalw("Failed to start configuration manager", zap.Error(err))

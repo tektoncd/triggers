@@ -29,9 +29,9 @@ metadata:
 spec:
   ports:
   - name: http-metrics
-    port: 9090
+    port: 9000
     protocol: TCP
-    targetPort: 9090
+    targetPort: 9000
   selector:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller

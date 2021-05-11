@@ -425,7 +425,7 @@ kubectl get pods --selector eventlistener=my-eventlistener
 
 ## Configuring metrics for `EventListeners`
 
-The following pipeline metrics are available on the `eventlistener` Service on port `9090`.
+The following pipeline metrics are available on the `eventlistener` Service on port `9000`.
 
 |  Name | Type | Labels/Tags | Status |
 | ---------- | ----------- | ----------- | ----------- |

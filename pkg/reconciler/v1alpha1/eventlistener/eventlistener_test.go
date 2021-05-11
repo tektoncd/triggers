@@ -206,7 +206,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							ContainerPort: int32(eventListenerContainerPort),
 							Protocol:      corev1.ProtocolTCP,
 						}, {
-							ContainerPort: int32(eventListenerMetricsPort),
+							ContainerPort: int32(9000),
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						LivenessProbe: &corev1.Probe{
@@ -257,6 +257,9 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						}, {
 							Name:  "METRICS_DOMAIN",
 							Value: "tekton.dev/triggers",
+						}, {
+							Name:  "METRICS_PROMETHEUS_PORT",
+							Value: "9000",
 						}},
 					}},
 					Volumes: []corev1.Volume{{
@@ -298,7 +301,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
 		}, {
-			ContainerPort: int32(eventListenerMetricsPort),
+			ContainerPort: int32(9000),
 			Protocol:      corev1.ProtocolTCP,
 		}},
 		LivenessProbe: &corev1.Probe{
@@ -371,6 +374,9 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 		}, {
 			Name:  "METRICS_DOMAIN",
 			Value: "tekton.dev/triggers",
+		}, {
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: "9000",
 		}},
 	}}
 	d.Spec.Template.Spec.Volumes = []corev1.Volume{{
@@ -419,9 +425,6 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: int32(eventListenerContainerPort),
 							Protocol:      corev1.ProtocolTCP,
-						}, {
-							ContainerPort: int32(eventListenerMetricsPort),
-							Protocol:      corev1.ProtocolTCP,
 						}},
 						Args: []string{
 							"--el-name=" + eventListenerName,
@@ -447,6 +450,9 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						}, {
 							Name:  "METRICS_DOMAIN",
 							Value: "tekton.dev/triggers",
+						}, {
+							Name:  "METRICS_PROMETHEUS_PORT",
+							Value: "9000",
 						}},
 					}},
 					Volumes: []corev1.Volume{{
@@ -577,7 +583,11 @@ func withDeletionTimestamp(el *v1alpha1.EventListener) {
 }
 
 func TestReconcile(t *testing.T) {
-	err := os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	err := os.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -932,6 +942,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "METRICS_DOMAIN",
 			Value: "tekton.dev/triggers",
+		}, {
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: "9000",
 		}}
 	})
 
