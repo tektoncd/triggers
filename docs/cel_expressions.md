@@ -96,8 +96,34 @@ because there's no automatic conversion.
 
 ## cel-go extensions
 
-All the functionality from the cel-go project's [String extension](https://github.com/google/cel-go/tree/master/ext) is available in
+All the functionality from the cel-go project's [CEL extension](https://github.com/google/cel-go/tree/master/ext) is available in
 your CEL expressions.
+
+### cel-go Bytes
+
+The cel-go project function `base64.decode` returns a [CEL `Bytes`](https://github.com/google/cel-spec/blob/master/doc/langdef.md#string-and-bytes-values) value.
+
+To compare this to a string, you will need to convert it to a Bytes type:
+
+```
+base64.decode(body.b64value) == b'hello' # compare to Bytes literal
+base64.decode(body.b64value) == bytes('hello') # convert to bytes.
+```
+
+### Returning Bytes
+
+Confusingly, if you decode a base64 string with the cel-go base64 decoder, it will
+appear in the extension as a base64 encoded string, you will need to explicitly
+convert it to a CEL string.
+
+```yaml
+interceptors:
+  - cel:
+      overlays:
+        - key: base64_decoded
+          expression: "string(base64.decode(body.b64Value))"
+```
+This will correctly appear in the extension as the decoded version.
 
 ## List of extensions
 
@@ -235,7 +261,7 @@ interceptor.
   </tr>
   <tr>
     <th>
-      decodeb64
+      decodeb64 **deprecated: please use base64.decode**
     </th>
     <td>
       <pre>&lt;string&gt;.decodeb64() -> string</pre>

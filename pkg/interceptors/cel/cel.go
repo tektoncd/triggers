@@ -96,6 +96,7 @@ func makeCelEnv(ns string, k kubernetes.Interface) (*cel.Env, error) {
 	return cel.NewEnv(
 		Triggers(ns, k),
 		celext.Strings(),
+		celext.Encoders(),
 		cel.Declarations(
 			decls.NewVar("body", mapStrDyn),
 			decls.NewVar("header", mapStrDyn),
@@ -165,15 +166,21 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		var b []byte
 
 		switch val.(type) {
-		case types.String:
+		// this causes types.Bytes to be rendered as a Base64 string this is
+		// because the Go JSON Encoder encodes []bytes this way, see
+		// https://golang.org/pkg/encoding/json/#Marshal
+		//
+		// An alternative might be to return " + val + " for types.Bytes to
+		// simulate the the JSON encoding.
+		case types.String, types.Bytes:
 			raw, err = val.ConvertToNative(structType)
 			if err == nil {
-				b, err = json.Marshal(raw.(*structpb.Value).GetStringValue())
+				b, err = raw.(*structpb.Value).MarshalJSON()
 			}
 		case types.Double, types.Int:
 			raw, err = val.ConvertToNative(structType)
 			if err == nil {
-				b, err = json.Marshal(raw.(*structpb.Value).GetNumberValue())
+				b, err = raw.(*structpb.Value).MarshalJSON()
 			}
 		case traits.Lister:
 			raw, err = val.ConvertToNative(listType)
@@ -212,7 +219,6 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			extensions = []byte("{}")
 		}
 		extensions, err = sjson.SetRawBytes(extensions, u.Key, b)
-
 		if err != nil {
 			return interceptors.Failf(codes.Internal, "failed to sjson for key '%s' to '%s': %v", u.Key, val, err)
 		}
@@ -228,7 +234,6 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	if err := json.Unmarshal(extensions, &extensionsMap); err != nil {
 		return interceptors.Failf(codes.Internal, "failed to unmarshal extensions into map: %v", err)
 	}
-
 	return &triggersv1.InterceptorResponse{
 		Continue:   true,
 		Extensions: extensionsMap,

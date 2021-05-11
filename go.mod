@@ -6,7 +6,7 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/golang/protobuf v1.4.3
-	github.com/google/cel-go v0.6.0
+	github.com/google/cel-go v0.7.3
 	github.com/google/go-cmp v0.5.4
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.2.0

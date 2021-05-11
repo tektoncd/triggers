@@ -22,20 +22,6 @@ import (
 
 // function invocation guards for common call signatures within extension functions.
 
-func callInBytesOutBytes(fn func([]byte) ([]byte, error)) functions.UnaryOp {
-	return func(val ref.Val) ref.Val {
-		vVal, ok := val.(types.Bytes)
-		if !ok {
-			return types.MaybeNoSuchOverloadErr(val)
-		}
-		byt, err := fn([]byte(vVal))
-		if err != nil {
-			return types.NewErr(err.Error())
-		}
-		return types.Bytes(byt)
-	}
-}
-
 func callInBytesOutString(fn func([]byte) (string, error)) functions.UnaryOp {
 	return func(val ref.Val) ref.Val {
 		vVal, ok := val.(types.Bytes)
