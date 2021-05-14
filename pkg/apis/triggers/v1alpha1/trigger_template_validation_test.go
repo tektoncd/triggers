@@ -115,28 +115,6 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		template *v1alpha1.TriggerTemplate
 		want     *apis.FieldError
 	}{{
-		name: "invalid objectmetadata, name with dot",
-		template: &v1alpha1.TriggerTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "t.t",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TriggerTemplateSpec{
-				Params: []v1alpha1.ParamSpec{{
-					Name:        "foo",
-					Description: "desc",
-					Default:     ptr.String("val"),
-				}},
-				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: simpleResourceTemplate(t),
-				}},
-			},
-		},
-		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
-			Paths:   []string{"metadata.name"},
-		},
-	}, {
 		name: "invalid objectmetadata, name too long",
 		template: &v1alpha1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{

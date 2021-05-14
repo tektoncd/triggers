@@ -191,6 +191,7 @@ func Test_TriggerValidate(t *testing.T) {
 		tr: &v1alpha1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "namespace",
+				Name:      "name",
 			},
 			Spec: v1alpha1.TriggerSpec{
 				Template: v1alpha1.TriggerSpecTemplate{
