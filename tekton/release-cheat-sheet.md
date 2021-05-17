@@ -178,7 +178,7 @@ Congratulations, you're done!
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfoodin
+   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
    ```
 
 ## Important: Switch `kubectl` back to your own cluster by default.
