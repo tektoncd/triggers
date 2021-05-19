@@ -836,6 +836,8 @@ github.com/tektoncd/pipeline v0.20.1-0.20210203144343-1b7a37f0d21d h1:JIWiB3J5au
 github.com/tektoncd/pipeline v0.20.1-0.20210203144343-1b7a37f0d21d/go.mod h1:GwdfGGt/5VhZL8JvJu8kFz8friKufcJ/TJkJmK6uc0U=
 github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5 h1:Y2Gd3X79zqvCd6AdiWyi/pnSewSkLxKygpvXNFXwscg=
 github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5/go.mod h1:WTWwsg91xgm+jPOKoyKVK/yRYxnVDlUYeDlypB1lDdQ=
+github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5 h1:tY3t38AFNwlSWALhulEHryANpQ53Hfjp9jM5zl8ImSQ=
+github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5/go.mod h1:WTWwsg91xgm+jPOKoyKVK/yRYxnVDlUYeDlypB1lDdQ=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
 github.com/tidwall/match v1.0.1 h1:PnKP62LPNxHKTwvHHZZzdOAOCtsJTjo6dZLCwpKm5xc=
