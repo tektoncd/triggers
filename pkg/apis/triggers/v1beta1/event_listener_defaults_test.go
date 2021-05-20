@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -54,7 +55,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Triggers: []v1beta1.EventListenerTrigger{{
@@ -82,7 +83,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				DeprecatedReplicas: ptr.Int32(0),
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -103,7 +104,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -122,7 +123,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -144,7 +145,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				DeprecatedPodTemplate: &v1beta1.PodTemplate{Tolerations: []corev1.Toleration{{Key: "key"}}},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -168,7 +169,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -185,7 +186,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				DeprecatedReplicas: ptr.Int32(2),
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Resources: v1beta1.Resources{
@@ -208,7 +209,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1beta1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
 				Triggers: []v1beta1.EventListenerTrigger{{
