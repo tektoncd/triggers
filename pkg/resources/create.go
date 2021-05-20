@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/client-go/dynamic"
 
 	"go.uber.org/zap"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -71,9 +71,9 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	}
 
 	data, err := addLabels(data, map[string]string{
-		triggersv1.EventListenerLabelKey: elName,
-		triggersv1.EventIDLabelKey:       eventID,
-		triggersv1.TriggerLabelKey:       triggerName,
+		triggers.EventListenerLabelKey: elName,
+		triggers.EventIDLabelKey:       eventID,
+		triggers.TriggerLabelKey:       triggerName,
 	})
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func addLabels(us *unstructured.Unstructured, labelsToAdd map[string]string) (*u
 		labels = make(map[string]string)
 	}
 	for k, v := range labelsToAdd {
-		l := fmt.Sprintf("%s/%s", triggersv1.GroupName, strings.TrimLeft(k, "/"))
+		l := fmt.Sprintf("%s/%s", triggers.GroupName, strings.TrimLeft(k, "/"))
 		labels[l] = v
 	}
 

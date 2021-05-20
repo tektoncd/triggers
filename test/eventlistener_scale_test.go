@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -117,7 +118,7 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-role"},
 			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{triggersv1.GroupName},
+				APIGroups: []string{triggers.GroupName},
 				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "triggers"},
 				Verbs:     []string{"get", "list", "watch"},
 			}, {
@@ -153,7 +154,7 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-clusterrole"},
 			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{triggersv1.GroupName},
+				APIGroups: []string{triggers.GroupName},
 				Resources: []string{"clustertriggerbindings", "clusterinterceptors"},
 				Verbs:     []string{"get", "list", "watch"},
 			}},
