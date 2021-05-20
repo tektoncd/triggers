@@ -19,6 +19,7 @@ package clusterinterceptor
 import (
 	"context"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	interceptorreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/clusterinterceptor"
 	v1 "knative.dev/pkg/apis/duck/v1"
@@ -42,7 +43,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, it *v1alpha1.ClusterInte
 	if it.Status.Address == nil { // Initialize Address if needed
 		it.Status.Address = &v1.Addressable{}
 	}
-	if v1alpha1.IsUpgradeViaDefaulting(ctx) { // Set defaults
+	if contexts.IsUpgradeViaDefaulting(ctx) { // Set defaults
 		it.SetDefaults(ctx)
 	}
 	url, err := it.ResolveAddress()

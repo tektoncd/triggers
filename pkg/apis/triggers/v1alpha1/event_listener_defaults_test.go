@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"knative.dev/pkg/ptr"
 )
@@ -52,7 +53,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
@@ -84,7 +85,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
 				Resources: v1alpha1.Resources{
@@ -105,7 +106,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
 				Resources: v1alpha1.Resources{
@@ -128,7 +129,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.EventListener{
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{

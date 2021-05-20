@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 )
@@ -46,7 +47,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Bindings: []*v1alpha1.TriggerSpecBinding{{
@@ -88,7 +89,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
@@ -114,7 +115,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
@@ -150,7 +151,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
@@ -186,7 +187,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
@@ -222,7 +223,7 @@ func TestTriggerSetDefaults(t *testing.T) {
 				}},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1alpha1.Trigger{
 			Spec: v1alpha1.TriggerSpec{
 				Interceptors: []*v1alpha1.TriggerInterceptor{{
