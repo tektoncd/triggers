@@ -21,6 +21,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Structure of an `EventListener`](#structure-of-an-eventlistener)
 - [Specifying the Kubernetes service account](#specifiying-the-kubernetes-service-account)
 - [Specifying `Triggers`](#specifying-triggers)
+- [Specifying a `PodTemplate`](#specifying-a-podtemplate)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
@@ -58,6 +59,7 @@ An `EventListener` definition consists of the following fields:
 - Optional:
   - [`triggers`](#specifying-triggers) - specifies a list of `Triggers` to execute upon event detection
   - [`replicas`](#specifying-a-kubernetesresource-object) - specifies the number of `EventListener` pods to create (only for `kubernetesResource` objects)
+  - [`podTemplate`](#specifying-a-podtemplate) - specifies the `PodTemplate` for your `EventListener` pod
   - [`resources`](#specifying-resources) - specifies the resources that will be available to the event listening service
   - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the 
     specified `Triggers` and stores the Tekton objects it instantiates upon event detection
@@ -160,6 +162,28 @@ rules:
 - apiGroups: [""]
   resources: ["serviceaccounts"]
   verbs: ["impersonate"]
+```
+
+### Specifying a `PodTemplate`
+**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
+
+The `podTemplate` field is optional. A PodTemplate is specifications for creating EventListener pod.
+
+A PodTemplate consists of:
+- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
+This is needed only if you want to schedule EventListener pod to a tainted node.
+- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on.
+
+```yaml
+spec:
+  podTemplate:
+    nodeSelector:
+      app: test
+    tolerations:
+    - key: key
+      value: value
+      operator: Equal
+      effect: NoSchedule
 ```
 
 ## Specifying `Resources`
