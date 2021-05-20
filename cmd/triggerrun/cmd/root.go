@@ -30,6 +30,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -85,10 +86,10 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 		return fmt.Errorf("error reading HTTP txt file: %w", err)
 	}
 
-	// Read triggers.
-	triggers, err := readTrigger(triggerFile)
+	// Read triggerConfigs.
+	triggerConfigs, err := readTrigger(triggerFile)
 	if err != nil {
-		return fmt.Errorf("error reading triggers: %w", err)
+		return fmt.Errorf("error reading triggerConfigs: %w", err)
 	}
 
 	kubeClient, triggerClient, err := getKubeClient(kubeconfig)
@@ -105,8 +106,8 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 	sugerLogger := logger.Sugar()
 	eventID := template.UUID()
 	r := newSink(config, sugerLogger)
-	eventLog := sugerLogger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
-	for _, tri := range triggers {
+	eventLog := sugerLogger.With(zap.String(triggers.EventIDLabelKey, eventID))
+	for _, tri := range triggerConfigs {
 		resources, err := processTriggerSpec(kubeClient, triggerClient, tri,
 			request, body, eventID, eventLog, r)
 		if err != nil {
@@ -193,7 +194,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 		return nil, errors.New("trigger is not defined")
 	}
 
-	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, r.EventListenerName))
+	log := eventLog.With(zap.String(triggers.TriggerLabelKey, r.EventListenerName))
 
 	finalPayload, header, iresp, err := r.ExecuteInterceptors(*tri, request, body, log, eventID)
 	if err != nil {

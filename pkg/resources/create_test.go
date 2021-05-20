@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"go.uber.org/zap/zaptest"
 
 	"github.com/google/go-cmp/cmp"
 	resourcev1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/test"
@@ -39,9 +39,9 @@ import (
 )
 
 const (
-	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
-	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
+	resourceLabel = triggers.GroupName + triggers.EventListenerLabelKey
+	triggerLabel  = triggers.GroupName + triggers.TriggerLabelKey
+	eventIDLabel  = triggers.GroupName + triggers.EventIDLabelKey
 
 	triggerName = "trigger"
 	eventID     = "12345"
