@@ -73,6 +73,7 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", service)
+	mux.HandleFunc("/ready", handler)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", Port),
@@ -89,4 +90,8 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		logger.Fatalf("failed to start interceptors service: %v", err)
 	}
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
