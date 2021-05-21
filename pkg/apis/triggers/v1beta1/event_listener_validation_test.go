@@ -842,81 +842,6 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "Multiple interceptors set",
-		el: &triggersv1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: triggersv1beta1.EventListenerSpec{
-				Triggers: []triggersv1beta1.EventListenerTrigger{{
-					Bindings: []*triggersv1beta1.EventListenerBinding{{Kind: triggersv1beta1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &triggersv1beta1.EventListenerTemplate{Ref: ptr.String("tt")},
-					Interceptors: []*triggersv1beta1.EventInterceptor{{
-						DeprecatedGitHub:    &triggersv1beta1.GitHubInterceptor{},
-						DeprecatedGitLab:    &triggersv1beta1.GitLabInterceptor{},
-						DeprecatedBitbucket: &triggersv1beta1.BitbucketInterceptor{},
-					}},
-				}},
-			},
-		},
-	}, {
-		name: "CEL interceptor with no filter or overlays",
-		el: &triggersv1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: triggersv1beta1.EventListenerSpec{
-				Triggers: []triggersv1beta1.EventListenerTrigger{{
-					Bindings: []*triggersv1beta1.EventListenerBinding{{Kind: triggersv1beta1.NamespacedTriggerBindingKind, Ref: "tb"}},
-					Template: &triggersv1beta1.EventListenerTemplate{Ref: ptr.String("tt")},
-					Interceptors: []*triggersv1beta1.EventInterceptor{{
-						DeprecatedCEL: &triggersv1beta1.CELInterceptor{},
-					}},
-				}},
-			},
-		},
-	}, {
-		name: "CEL interceptor with bad filter expression",
-		el: &triggersv1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: triggersv1beta1.EventListenerSpec{
-				Triggers: []triggersv1beta1.EventListenerTrigger{{
-					Interceptors: []*triggersv1beta1.EventInterceptor{{
-						DeprecatedCEL: &triggersv1beta1.CELInterceptor{
-							Filter: "body.value == 'test'",
-						},
-					}},
-					Template: &triggersv1beta1.EventListenerTemplate{Ref: ptr.String(""), APIVersion: "triggersv1beta1"},
-				}},
-			},
-		},
-	}, {
-		name: "CEL interceptor with bad overlay expression",
-		el: &triggersv1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: triggersv1beta1.EventListenerSpec{
-				Triggers: []triggersv1beta1.EventListenerTrigger{{
-					Interceptors: []*triggersv1beta1.EventInterceptor{{
-						DeprecatedCEL: &triggersv1beta1.CELInterceptor{
-							Overlays: []triggersv1beta1.CELOverlay{{
-								Key:        "value",
-								Expression: "'testing')",
-							}},
-						},
-					}},
-					Template: &triggersv1beta1.EventListenerTemplate{Ref: ptr.String(""), APIVersion: "triggersv1beta1"},
-				}},
-			},
-		},
-	}, {
 		name: "Triggers name has invalid label characters",
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -959,7 +884,6 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Ref: ptr.String("tt"),
 					},
 				}},
-				DeprecatedReplicas: ptr.Int32(-1),
 				Resources: triggersv1beta1.Resources{
 					KubernetesResource: &triggersv1beta1.KubernetesResource{
 						Replicas: ptr.Int32(-1),

@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
-	"knative.dev/pkg/logging"
 )
 
 type triggerSpecBindingArray []*TriggerSpecBinding
@@ -33,12 +32,6 @@ func (t *Trigger) SetDefaults(ctx context.Context) {
 	triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
 	for _, ti := range t.Spec.Interceptors {
 		ti.defaultInterceptorKind()
-		if err := ti.updateCoreInterceptors(); err != nil {
-			// The err only happens due to malformed JSON and should never really happen
-			// We can't return an error here, so print out the error
-			logger := logging.FromContext(ctx)
-			logger.Errorf("failed to setDefaults for trigger: %s; err: %s", t.Name, err)
-		}
 	}
 }
 

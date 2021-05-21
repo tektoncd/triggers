@@ -54,13 +54,6 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}
 
-	// To be removed in a later release #1020
-	if s.DeprecatedReplicas != nil {
-		if *s.DeprecatedReplicas < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(*s.DeprecatedReplicas, "spec.replicas"))
-		}
-	}
-
 	// Both Kubernetes and Custom resource can't be present at the same time
 	if s.Resources.KubernetesResource != nil && s.Resources.CustomResource != nil {
 		return apis.ErrMultipleOneOf("spec.resources.kubernetesResource", "spec.resources.customResource")
