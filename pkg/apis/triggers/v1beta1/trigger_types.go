@@ -17,9 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -96,12 +93,6 @@ type TriggerInterceptor struct {
 
 	// WebhookInterceptor refers to an old style webhook interceptor service
 	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
-
-	// Deprecated old fields below
-	DeprecatedGitHub    *GitHubInterceptor    `json:"github,omitempty"`
-	DeprecatedGitLab    *GitLabInterceptor    `json:"gitlab,omitempty"`
-	DeprecatedCEL       *CELInterceptor       `json:"cel,omitempty"`
-	DeprecatedBitbucket *BitbucketInterceptor `json:"bitbucket,omitempty"`
 }
 
 // InterceptorParams defines a key-value pair that can be passed on an interceptor
@@ -138,77 +129,6 @@ func (ti *TriggerInterceptor) defaultInterceptorKind() {
 	}
 }
 
-func (ti *TriggerInterceptor) updateCoreInterceptors() error {
-	if ti == nil {
-		return nil
-	}
-	if ti.Ref.Name != "" {
-		return nil
-	}
-	ti.Ref.Name = ti.GetName()
-	ti.Params = []InterceptorParams{}
-	switch ti.Ref.Name {
-	case "bitbucket":
-		if err := addToParams(&ti.Params, "secretRef", ti.DeprecatedBitbucket.SecretRef); err != nil {
-			return err
-		}
-		if err := addToParams(&ti.Params, "eventTypes", ti.DeprecatedBitbucket.EventTypes); err != nil {
-			return err
-		}
-		ti.DeprecatedBitbucket = nil
-	case "gitlab":
-		if err := addToParams(&ti.Params, "secretRef", ti.DeprecatedGitLab.SecretRef); err != nil {
-			return err
-		}
-		if err := addToParams(&ti.Params, "eventTypes", ti.DeprecatedGitLab.EventTypes); err != nil {
-			return err
-		}
-		ti.DeprecatedGitLab = nil
-	case "github":
-		if err := addToParams(&ti.Params, "secretRef", ti.DeprecatedGitHub.SecretRef); err != nil {
-			return err
-		}
-		if err := addToParams(&ti.Params, "eventTypes", ti.DeprecatedGitHub.EventTypes); err != nil {
-			return err
-		}
-		ti.DeprecatedGitHub = nil
-	case "cel":
-		if err := addToParams(&ti.Params, "filter", ti.DeprecatedCEL.Filter); err != nil {
-			return err
-		}
-		if err := addToParams(&ti.Params, "overlays", ti.DeprecatedCEL.Overlays); err != nil {
-			return err
-		}
-		ti.DeprecatedCEL = nil
-	}
-	return nil
-}
-
-func addToParams(params *[]InterceptorParams, name string, val interface{}) error {
-	if val == nil {
-		return nil
-	}
-	v, err := toV1JSON(val)
-	if err != nil {
-		return err
-	}
-	*params = append(*params, InterceptorParams{
-		Name:  name,
-		Value: v,
-	})
-	return nil
-}
-
-func toV1JSON(v interface{}) (apiextensionsv1.JSON, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return apiextensionsv1.JSON{}, fmt.Errorf("json.Marshal() failed: %s", err)
-	}
-	return apiextensionsv1.JSON{
-		Raw: b,
-	}, nil
-}
-
 // GetName returns the name for the given interceptor
 func (ti *TriggerInterceptor) GetName() string {
 	// This is temporary until we implement #869
@@ -216,14 +136,6 @@ func (ti *TriggerInterceptor) GetName() string {
 	switch {
 	case ti.Ref.Name != "":
 		name = ti.Ref.Name
-	case ti.DeprecatedBitbucket != nil:
-		name = "bitbucket"
-	case ti.DeprecatedCEL != nil:
-		name = "cel"
-	case ti.DeprecatedGitHub != nil:
-		name = "github"
-	case ti.DeprecatedGitLab != nil:
-		name = "gitlab"
 	}
 	return name
 }

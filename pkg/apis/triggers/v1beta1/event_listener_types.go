@@ -57,12 +57,9 @@ type EventListener struct {
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
-	// To be removed in a later release #1020
-	DeprecatedReplicas    *int32                `json:"replicas,omitempty"`
-	DeprecatedPodTemplate *PodTemplate          `json:"podTemplate,omitempty"`
-	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
-	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
-	Resources             Resources             `json:"resources,omitempty"`
+	NamespaceSelector  NamespaceSelector      `json:"namespaceSelector,omitempty"`
+	LabelSelector      *metav1.LabelSelector  `json:"labelSelector,omitempty"`
+	Resources          Resources              `json:"resources,omitempty"`
 }
 
 type Resources struct {

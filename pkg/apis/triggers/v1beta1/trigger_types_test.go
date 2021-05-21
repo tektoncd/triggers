@@ -26,26 +26,6 @@ func TestGetName(t *testing.T) {
 		want string
 	}{{
 		in: TriggerInterceptor{
-			DeprecatedCEL: &CELInterceptor{},
-		},
-		want: "cel",
-	}, {
-		in: TriggerInterceptor{
-			DeprecatedGitLab: &GitLabInterceptor{},
-		},
-		want: "gitlab",
-	}, {
-		in: TriggerInterceptor{
-			DeprecatedGitHub: &GitHubInterceptor{},
-		},
-		want: "github",
-	}, {
-		in: TriggerInterceptor{
-			DeprecatedBitbucket: &BitbucketInterceptor{},
-		},
-		want: "bitbucket",
-	}, {
-		in: TriggerInterceptor{
 			Webhook: &WebhookInterceptor{},
 		},
 		want: "",
@@ -63,13 +43,5 @@ func TestGetName(t *testing.T) {
 				t.Fatalf("GetName() want: %s; got: %s", tc.want, got)
 			}
 		})
-	}
-}
-
-func TestUpdateCoreInterceptors_Error(t *testing.T) {
-	var ti *TriggerInterceptor
-
-	if err := ti.updateCoreInterceptors(); err != nil {
-		t.Fatalf("updateCoreInterceptors() unexpected error: %s", err)
 	}
 }

@@ -256,16 +256,6 @@ func (in *EventListenerSpec) DeepCopyInto(out *EventListenerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.DeprecatedReplicas != nil {
-		in, out := &in.DeprecatedReplicas, &out.DeprecatedReplicas
-		*out = new(int32)
-		**out = **in
-	}
-	if in.DeprecatedPodTemplate != nil {
-		in, out := &in.DeprecatedPodTemplate, &out.DeprecatedPodTemplate
-		*out = new(PodTemplate)
-		(*in).DeepCopyInto(*out)
-	}
 	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
 	if in.LabelSelector != nil {
 		in, out := &in.LabelSelector, &out.LabelSelector
@@ -778,26 +768,6 @@ func (in *TriggerInterceptor) DeepCopyInto(out *TriggerInterceptor) {
 	if in.Webhook != nil {
 		in, out := &in.Webhook, &out.Webhook
 		*out = new(WebhookInterceptor)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.DeprecatedGitHub != nil {
-		in, out := &in.DeprecatedGitHub, &out.DeprecatedGitHub
-		*out = new(GitHubInterceptor)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.DeprecatedGitLab != nil {
-		in, out := &in.DeprecatedGitLab, &out.DeprecatedGitLab
-		*out = new(GitLabInterceptor)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.DeprecatedCEL != nil {
-		in, out := &in.DeprecatedCEL, &out.DeprecatedCEL
-		*out = new(CELInterceptor)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.DeprecatedBitbucket != nil {
-		in, out := &in.DeprecatedBitbucket, &out.DeprecatedBitbucket
-		*out = new(BitbucketInterceptor)
 		(*in).DeepCopyInto(*out)
 	}
 	return
