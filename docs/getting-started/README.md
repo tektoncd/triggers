@@ -52,16 +52,13 @@ Configure your cluster as follows:
    kubectl create namespace getting-started
    ```
 
-2. Create the [`admin` user, role, and rolebinding](./rbac/admin-role.yaml) 
-
-   1. Edit `./docs/getting-started/rbac/admin-role.yaml`. In the decleration for `ClusterRoleBinding`, replace `namespace: default` with `namespace: getting-started`
-
-   2. Apply it using the following command:  
-
-     ```
-     kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml
-     ```
-
+2. Create the [`admin` user, role, and rolebinding](./rbac/admin-role.yaml) using the following command:
+   
+   ```
+   kubectl -n getting-started apply \
+   -f ./docs/getting-started/rbac/admin-role.yaml \
+   -f ./docs/getting-started/rbac/cluster-role-binding.yaml
+   ```
 3. (Optional) If you have already provisioned a cluster secret for a "Let's Encrypt" certificate,
    you must export it and then import it into your `getting-started` namespace. For example:
 
