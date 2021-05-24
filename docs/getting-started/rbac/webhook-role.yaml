@@ -49,6 +49,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: tekton-triggers-createwebhook
+    namespace: getting-started
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

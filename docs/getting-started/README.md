@@ -55,7 +55,8 @@ Configure your cluster as follows:
 2. Create the [`admin` user, role, and rolebinding](./rbac/admin-role.yaml) using the following command:
    
    ```
-   kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml
+   kubectl -n getting-started apply -f ./docs/getting-started/rbac/admin-role.yaml \
+               -f ./docs/getting-started/rbac/clusterrolebinding.yaml
    ```
 3. (Optional) If you have already provisioned a cluster secret for a "Let's Encrypt" certificate,
    you must export it and then import it into your `getting-started` namespace. For example:
