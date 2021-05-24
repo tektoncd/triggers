@@ -387,9 +387,9 @@ metadata:
 spec:
   params:
   - name: gitrevision
-    value: $(extensions.branch_name)
-  - name: branch
     value: $(extensions.short_sha)
+  - name: branch
+    value: $(extensions.branch_name)
 ```
 
 In the example CEL `Interceptor` definition below, the `cel-trig-with-matches` `Trigger`
