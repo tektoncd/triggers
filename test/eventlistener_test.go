@@ -39,7 +39,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/v1alpha1/eventlistener"
+	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 	"github.com/tektoncd/triggers/pkg/sink"
 	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -450,8 +450,9 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Errorf("sink did not return 2xx response. Got status code: %d", resp.StatusCode)
 	}
 	wantBody := sink.Response{
-		EventListener: "my-eventlistener",
-		Namespace:     namespace,
+		EventListener:    "my-eventlistener",
+		Namespace:        namespace,
+		EventListenerUID: string(el.GetUID()),
 	}
 	var gotBody sink.Response
 	if err := json.NewDecoder(resp.Body).Decode(&gotBody); err != nil {

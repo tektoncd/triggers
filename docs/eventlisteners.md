@@ -21,6 +21,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Structure of an `EventListener`](#structure-of-an-eventlistener)
 - [Specifying the Kubernetes service account](#specifiying-the-kubernetes-service-account)
 - [Specifying `Triggers`](#specifying-triggers)
+- [Specifying a `PodTemplate`](#specifying-a-podtemplate)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
@@ -58,6 +59,7 @@ An `EventListener` definition consists of the following fields:
 - Optional:
   - [`triggers`](#specifying-triggers) - specifies a list of `Triggers` to execute upon event detection
   - [`replicas`](#specifying-a-kubernetesresource-object) - specifies the number of `EventListener` pods to create (only for `kubernetesResource` objects)
+  - [`podTemplate`](#specifying-a-podtemplate) - specifies the `PodTemplate` for your `EventListener` pod
   - [`resources`](#specifying-resources) - specifies the resources that will be available to the event listening service
   - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the 
     specified `Triggers` and stores the Tekton objects it instantiates upon event detection
@@ -160,6 +162,28 @@ rules:
 - apiGroups: [""]
   resources: ["serviceaccounts"]
   verbs: ["impersonate"]
+```
+
+### Specifying a `PodTemplate`
+**Note:** This field has been deprecated; use the `Resources` field instead. The legacy documentation below is presented for reference only.
+
+The `podTemplate` field is optional. A PodTemplate is specifications for creating EventListener pod.
+
+A PodTemplate consists of:
+- `tolerations` - list of toleration which allows pods to schedule onto the nodes with matching taints.
+This is needed only if you want to schedule EventListener pod to a tainted node.
+- `nodeSelector` - key-value labels the node has which an EventListener pod should be scheduled on.
+
+```yaml
+spec:
+  podTemplate:
+    nodeSelector:
+      app: test
+    tolerations:
+    - key: key
+      value: value
+      operator: Equal
+      effect: NoSchedule
 ```
 
 ## Specifying `Resources`
@@ -375,12 +399,24 @@ Otherwise, it responds with a `202 ACCEPTED` HTTP response.
 
 After detecting an event, the `EventListener` responds with the following message:
 
-```JSON
-{"eventListener":"listener","namespace":"default","eventID":"h2bb7"}
+```json
+{
+  "eventListener": "listener",
+  "namespace": "default",
+  "eventListenerUID": "ea71a6e4-9531-43a1-94fe-6136515d938c",
+  "eventID": "14a657c3-6816-45bf-b214-4afdaefc4ebd"
+}
 ```
-- `eventListener` - name of the target EventListener
-- `namespace` - namespace of the target EventListener
+
+- `eventListenerUID` - [UID](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids) of the target EventListener.
 - `eventID` - UID assigned to this event request
+
+### Deprecated Fields
+
+These fields are included in `EventListener` responses, but will be removed in a future release.
+
+- `eventListener` - name of the target EventListener. Use `eventListenerUID` instead.
+- `namespace` - namespace of the target EventListener. Use `eventListenerUID` instead.
 
 ## TLS HTTPS support in `EventListeners`
 
@@ -422,6 +458,22 @@ To access your `EventListener` logs, query your cluster for Pods whose `eventlis
 ```shell
 kubectl get pods --selector eventlistener=my-eventlistener
 ```
+
+## Configuring metrics for `EventListeners`
+
+The following pipeline metrics are available on the `eventlistener` Service on port `9000`.
+
+|  Name | Type | Labels/Tags | Status |
+| ---------- | ----------- | ----------- | ----------- |
+| `eventlistener_triggered_resources` | Counter | `kind`=&lt;kind&gt; | experimental |
+| `eventlistener_http_duration_seconds_[bucket, sum, count]` | Histogram | `status`=&lt;status&gt; <br> | experimental |
+
+Several kinds of exporters can be configured for an `EventListener`, including Prometheus, Google Stackdriver, and many others.
+You can configure metrics using the [`config-observability-triggers` config map](../config/config-observability.yaml) in the `EventListener` namespaces.
+There is a `config-observability-triggers` configmap in the `tekton-pipelines` namespace that can be configured for the operation of the Triggers
+webhook and controller components.
+
+See [the Knative documentation](https://github.com/knative/pkg/blob/main/metrics/README.md) for more information about available exporters and configuration values.
 
 ## Exposing an `EventListener` outside of the cluster
 

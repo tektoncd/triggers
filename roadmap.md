@@ -1,24 +1,38 @@
 # Tekton Triggers Roadmap
 
-In 2019 we created a simple system for creating instances of Tekton resources, triggered
-by json payloads sent to HTTP endpoints (Tekton Triggers).
+In 2021, we'd like to get the Triggers APIs to a beta level of stability, add popular 
+feature requests, and plan for a v1 release.
 
-In 2020 we would like to add missing features and then push for a `beta` release in the
-same year.
+## H1 2021:
+* Get to Beta!
+    * [Trigger Templates - JSON escaping, validation, and templating](https://github.com/tektoncd/triggers/issues/697) 
+    * Trigger CRD - Path based Triggers
+    * v1beta1 version upgrade
+    * Beta docs/examples overhaul
 
-We are targeting improving the experience for both end users and operators:
+* Operator features:
+    * [RBAC/Permission setup for multi-tenant usage](https://github.com/tektoncd/triggers/issues/77)
+    * Customizable EventListeners
+        * Scale to Zero (Knative) EventListener
+        * More podTemplate customization options
+        
+* Performance
+    * Define SLIs/SLOs
+    * Metrics for EventListeners
+    
+* TriggerInvocations/Results integration (store incoming events in Results)
 
-* For end users:
-  * [Pluggable core interceptors](https://github.com/tektoncd/triggers/issues/271)
-  * [Increased expression support in TriggerBindings](https://github.com/tektoncd/triggers/issues/367)
-  * [Using TriggerTemplates outside the context of an event](https://github.com/tektoncd/triggers/issues/200)
-  * [Routing to multiple interceptors](https://github.com/tektoncd/triggers/issues/205)
-  * [Dynamic TriggerTemplate parameters](https://github.com/tektoncd/triggers/issues/87)
-  * Support for poll-based triggering (e.g. when a repo changes state)
-  * Support for additional expression languages
-  * [GitHub App support](https://github.com/tektoncd/triggers/issues/189)
-* For operators:
-  * [Improved support for many EventListeners](https://github.com/tektoncd/triggers/issues/370)
-  * Increased traceability (e.g. why did my interceptor reject the event?)
-  * [Performant Triggers](https://github.com/tektoncd/triggers/issues/406)
-  * A scale-to-zero `EventListener`
+## H2:
+* Post Beta End User features
+    * Polling support
+    * Config as Code support
+    * [Alternate ways of running Triggers](https://github.com/tektoncd/triggers/issues/504)
+        * Less verbose way to doing common things e.g. cron/git
+        * Easier setup e.g. setup webhooks automatically
+        * Make the CLI part of tkn surface (tkn trigger run)
+    * Catalog support story
+        * Define what should be reusable 
+
+* Notifications Integration
+
+* Plan for v1!

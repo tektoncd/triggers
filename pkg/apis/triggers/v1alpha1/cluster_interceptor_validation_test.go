@@ -11,6 +11,27 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+func TestClusterInterceptorValidate_OnDelete(t *testing.T) {
+	ci := triggersv1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "github",
+		},
+		Spec: triggersv1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1.ClientConfig{
+				Service: &triggersv1.ServiceReference{
+					Namespace: "",
+					Name:      "github-svc",
+				},
+			},
+		},
+	}
+
+	err := ci.Validate(apis.WithinDelete(context.Background()))
+	if err != nil {
+		t.Errorf("ClusterInterceptor.Validate() on Delete expected no error, but got one, ClusterInterceptor: %v, error: %v", ci, err)
+	}
+}
+
 func TestClusterInterceptorValidate(t *testing.T) {
 	tests := []struct {
 		name               string

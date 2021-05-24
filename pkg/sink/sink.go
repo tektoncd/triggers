@@ -53,6 +53,7 @@ type Sink struct {
 	EventListenerName      string
 	EventListenerNamespace string
 	Logger                 *zap.SugaredLogger
+	Recorder               *Recorder
 	Auth                   AuthOverride
 
 	// listers index properties about resources
@@ -66,10 +67,14 @@ type Sink struct {
 
 // Response defines the HTTP body that the Sink responds to events with.
 type Response struct {
-	// EventListener is the name of the eventListener
+	// EventListener is the name of the eventListener.
+	// Deprecated: use EventListenerUID instead.
 	EventListener string `json:"eventListener"`
-	// Namespace is the namespace that the eventListener is running in
+	// Namespace is the namespace that the eventListener is running in.
+	// Deprecated: use EventListenerUID instead.
 	Namespace string `json:"namespace,omitempty"`
+	// EventListenerUID is the UID of the EventListener
+	EventListenerUID string `json:"eventListenerUID"`
 	// EventID is a uniqueID that gets assigned to each incoming request
 	EventID string `json:"eventID,omitempty"`
 	// ErrorMessage gives message about Error which occurs during event processing
@@ -78,23 +83,28 @@ type Response struct {
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
+	log := r.Logger.With(
+		zap.String("eventlistener", r.EventListenerName),
+		zap.String("namespace", r.EventListenerNamespace),
+	)
 	el, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName)
 	if err != nil {
-		r.Logger.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+		log.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	elUID := string(el.GetUID())
+	log = log.With(zap.String("eventlistenerUID", elUID))
 	event, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		r.Logger.Errorf("Error reading event body: %s", err)
+		log.Errorf("Error reading event body: %s", err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	eventID := template.UUID()
-	eventLog := r.Logger.With(zap.String(triggersv1.EventIDLabelKey, eventID))
-	eventLog.Debugf("EventListener: %s in Namespace: %s handling event (EventID: %s) with path %s, payload: %s and header: %v",
-		r.EventListenerName, r.EventListenerNamespace, eventID, request.URL.Path, string(event), request.Header)
+	log = log.With(zap.String(triggersv1.EventIDLabelKey, eventID))
+	log.Debugf("handling event with path %s, payload: %s and header: %v", request.URL.Path, string(event), request.Header)
 	var trItems []*triggersv1.Trigger
 	labelSelector := labels.Everything()
 	if el.Spec.LabelSelector != nil {
@@ -133,7 +143,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	if triggerFunc != nil {
 		trList, err := triggerFunc()
 		if err != nil {
-			r.Logger.Errorf("Error getting Triggers: %s", err)
+			log.Errorf("Error getting Triggers: %s", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -142,7 +152,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 
 	triggers, err := r.merge(el.Spec.Triggers, trItems)
 	if err != nil {
-		r.Logger.Errorf("Error merging Triggers: %s", err)
+		log.Errorf("Error merging Triggers: %s", err)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -151,7 +161,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	for _, t := range triggers {
 		go func(t triggersv1.Trigger) {
 			localRequest := request.Clone(request.Context())
-			if err := r.processTrigger(t, localRequest, event, eventID, eventLog); err != nil {
+			if err := r.processTrigger(t, localRequest, event, eventID, log); err != nil {
 				if kerrors.IsUnauthorized(err) {
 					result <- http.StatusUnauthorized
 					return
@@ -167,8 +177,8 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}(*t)
 	}
 
-	//The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
-	//only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
+	// The eventlistener waits until all the trigger executions (up-to the creation of the resources) and
+	// only when at least one of the execution completed successfully, it returns response code 201(Created) otherwise it returns 202 (Accepted).
 	code := http.StatusAccepted
 	for i := 0; i < len(triggers); i++ {
 		thiscode := <-result
@@ -187,12 +197,13 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	response.WriteHeader(code)
 	response.Header().Set("Content-Type", "application/json")
 	body := Response{
-		EventListener: r.EventListenerName,
-		Namespace:     r.EventListenerNamespace,
-		EventID:       eventID,
+		EventListener:    r.EventListenerName,
+		EventListenerUID: elUID,
+		Namespace:        r.EventListenerNamespace,
+		EventID:          eventID,
 	}
 	if err := json.NewEncoder(response).Encode(body); err != nil {
-		eventLog.Errorf("failed to write back sink response: %v", err)
+		log.Errorf("failed to write back sink response: %v", err)
 	}
 }
 
@@ -262,10 +273,12 @@ func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event 
 
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
+
 	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
 		log.Error(err)
 		return err
 	}
+	go r.recordResourceCreation(resources)
 	return nil
 }
 

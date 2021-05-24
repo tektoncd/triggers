@@ -68,10 +68,12 @@ func main() {
 
 	service, err := server.NewWithCoreInterceptors(kubeClient, logger)
 	if err != nil {
-		log.Fatalf("failed to initialize core interceptors: %s", err)
+		log.Printf("failed to initialize core interceptors: %s", err)
+		return
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", service)
+	mux.HandleFunc("/ready", handler)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", Port),
@@ -88,4 +90,8 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		logger.Fatalf("failed to start interceptors service: %v", err)
 	}
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

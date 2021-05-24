@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -101,6 +102,7 @@ func TestInitializeConditions(t *testing.T) {
 	var conditionTypes = []apis.ConditionType{
 		ServiceExists,
 		DeploymentExists,
+		apis.ConditionReady,
 	}
 	els := &EventListenerStatus{}
 	els.InitializeConditions()
@@ -282,4 +284,132 @@ func TestSetConditionsForDynamicObjects(t *testing.T) {
 		Reason:  "Reason",
 		Message: "Message",
 	}})
+	expected := EventListenerStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionReady,
+				Status:  corev1.ConditionTrue,
+				Reason:  "Reason",
+				Message: "Message",
+			}},
+		},
+	}
+	if diff := cmp.Diff(expected, status, cmpopts.IgnoreTypes(
+		apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
+		t.Fatalf("SetConditionsForDynamicObjects() error. Diff (-want/+got) : %s", diff)
+	}
+}
+
+func TestEventListenerStatus_SetReadyCondition(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		initial *EventListenerStatus
+		want    *EventListenerStatus
+	}{{
+		name: "set Ready to true when all dependent conditions are true",
+		initial: &EventListenerStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:    DeploymentExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment Exists",
+				}, {
+					Type:    ServiceExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Service Exists",
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+					Status:  corev1.ConditionTrue,
+					Message: `ReplicaSet "el-example-655bf689f" has successfully progressed.`,
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment has minimum availability.",
+				}},
+			},
+		},
+		want: &EventListenerStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:    DeploymentExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment Exists",
+				}, {
+					Type:    ServiceExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Service Exists",
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+					Status:  corev1.ConditionTrue,
+					Message: `ReplicaSet "el-example-655bf689f" has successfully progressed.`,
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment has minimum availability.",
+				}, {
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionTrue,
+					Message: "EventListener is ready",
+				}},
+			},
+		},
+	}, {
+		name: "set Ready to false when at least one dependent condition is false",
+		initial: &EventListenerStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:    DeploymentExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment Exists",
+				}, {
+					Type:    ServiceExists,
+					Status:  corev1.ConditionFalse,
+					Message: "Service does not exist",
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+					Status:  corev1.ConditionTrue,
+					Message: `ReplicaSet "el-example-655bf689f" has successfully progressed.`,
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment has minimum availability.",
+				}},
+			},
+		},
+		want: &EventListenerStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:    DeploymentExists,
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment Exists",
+				}, {
+					Type:    ServiceExists,
+					Status:  corev1.ConditionFalse,
+					Message: "Service does not exist",
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentProgressing),
+					Status:  corev1.ConditionTrue,
+					Message: `ReplicaSet "el-example-655bf689f" has successfully progressed.`,
+				}, {
+					Type:    apis.ConditionType(appsv1.DeploymentAvailable),
+					Status:  corev1.ConditionTrue,
+					Message: "Deployment has minimum availability.",
+				}, {
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionFalse,
+					Message: "Condition Service has status: False with message: Service does not exist",
+				}},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.initial.SetReadyCondition()
+			if diff := cmp.Diff(tc.want, tc.initial, cmpopts.IgnoreTypes(
+				apis.Condition{}.LastTransitionTime.Inner.Time), cmpopts.SortSlices(func(x, y apis.Condition) bool {
+				return x.Type < y.Type
+			})); diff != "" {
+				t.Fatalf("SetReadyCondition() mismatch. -want/+got: %s", diff)
+			}
+		})
+	}
 }

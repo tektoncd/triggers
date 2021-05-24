@@ -116,7 +116,7 @@ func TestParseJSONPath(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseJSONPath() error = %v", err)
 			}
-			if diff := cmp.Diff(strings.Replace(tt.want, " ", "", -1), got); diff != "" {
+			if diff := cmp.Diff(strings.ReplaceAll(tt.want, " ", ""), got); diff != "" {
 				t.Errorf("parseJSONPath() -want,+got: %s", diff)
 			}
 		})
