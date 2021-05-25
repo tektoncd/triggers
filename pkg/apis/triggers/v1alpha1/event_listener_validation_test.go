@@ -947,27 +947,6 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
-		name: "user specify invalid deprecated replicas",
-		el: &v1alpha1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{{
-					Template: &v1alpha1.EventListenerTemplate{
-						Ref: ptr.String("tt"),
-					},
-				}},
-				DeprecatedReplicas: ptr.Int32(-1),
-				Resources: v1alpha1.Resources{
-					KubernetesResource: &v1alpha1.KubernetesResource{
-						Replicas: ptr.Int32(-1),
-					},
-				},
-			},
-		},
-	}, {
 		name: "user specify invalid replicas",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{

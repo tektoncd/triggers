@@ -378,11 +378,6 @@ func (in *EventListenerSpec) DeepCopyInto(out *EventListenerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.DeprecatedReplicas != nil {
-		in, out := &in.DeprecatedReplicas, &out.DeprecatedReplicas
-		*out = new(int32)
-		**out = **in
-	}
 	if in.DeprecatedPodTemplate != nil {
 		in, out := &in.DeprecatedPodTemplate, &out.DeprecatedPodTemplate
 		*out = new(PodTemplate)

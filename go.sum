@@ -375,7 +375,6 @@ github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.3/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
@@ -669,7 +668,6 @@ github.com/prometheus/common v0.4.1/go.mod h1:TNfzLD0ON7rHzMJeJkieUDPYmFC7Snx/y8
 github.com/prometheus/common v0.6.0/go.mod h1:eBmuwkDJBwy6iBfxCBob6t6dR6ENT/y+J+Zk0j9GMYc=
 github.com/prometheus/common v0.7.0/go.mod h1:DjGbpBbp5NYNiECxcL/VnbXCCaQpKd3tt26CguLLsqA=
 github.com/prometheus/common v0.10.0/go.mod h1:Tlit/dnDKsSWFlCLTWaA1cyBgKHSMdTB80sz/V91rCo=
-github.com/prometheus/common v0.15.0 h1:4fgOnadei3EZvgRwxJ7RMpG1k1pOZth5Pc13tyspaKM=
 github.com/prometheus/common v0.15.0/go.mod h1:U+gB1OBLb1lF3O42bTCL+FK18tX9Oar16Clt/msog/s=
 github.com/prometheus/common v0.19.0 h1:Itb4+NjG9wRdkAWgVucbM/adyIXxEhbw0866e0uZE6A=
 github.com/prometheus/common v0.19.0/go.mod h1:U+gB1OBLb1lF3O42bTCL+FK18tX9Oar16Clt/msog/s=
@@ -748,7 +746,6 @@ github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/tektoncd/pipeline v0.24.1 h1:c+Odgmf8dkUVRdQ5NVbOliwFB8608kM9i+18t5QDO+g=
 github.com/tektoncd/pipeline v0.24.1/go.mod h1:ChFD/vfu14VOtCVlLWdtlvOwXfBfVotULoNV6yz+CKY=
-github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9 h1:ZLPo8/vilaxvpdvvdd9ZgIhhQJPkHyS5GeKK8UH4/Yo=
 github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9/go.mod h1:WTWwsg91xgm+jPOKoyKVK/yRYxnVDlUYeDlypB1lDdQ=
 github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5 h1:tY3t38AFNwlSWALhulEHryANpQ53Hfjp9jM5zl8ImSQ=
 github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5/go.mod h1:WTWwsg91xgm+jPOKoyKVK/yRYxnVDlUYeDlypB1lDdQ=
