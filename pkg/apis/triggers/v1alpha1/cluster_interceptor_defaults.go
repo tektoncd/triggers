@@ -18,11 +18,13 @@ package v1alpha1
 
 import (
 	"context"
+
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 )
 
 // SetDefaults sets the defaults on the object.
 func (it *ClusterInterceptor) SetDefaults(ctx context.Context) {
-	if IsUpgradeViaDefaulting(ctx) {
+	if contexts.IsUpgradeViaDefaulting(ctx) {
 		if svc := it.Spec.ClientConfig.Service; svc != nil {
 			if svc.Port == nil {
 				svc.Port = &defaultPort

@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
@@ -115,7 +116,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
-	el.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+	el.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	if el.Spec.Resources.CustomResource != nil {
 		kError := r.reconcileCustomObject(ctx, logger, el)

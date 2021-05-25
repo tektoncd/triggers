@@ -30,13 +30,13 @@ GOFLAGS="-mod=vendor"
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/tektoncd/triggers/pkg/client github.com/tektoncd/triggers/pkg/apis \
-  triggers:v1alpha1 \
+  "triggers:v1alpha1,v1beta1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Knative Injection
 bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
   github.com/tektoncd/triggers/pkg/client github.com/tektoncd/triggers/pkg/apis \
-  "triggers:v1alpha1" \
+  "triggers:v1alpha1,v1beta1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 GOFLAGS="${OLDGOFLAGS}"
 

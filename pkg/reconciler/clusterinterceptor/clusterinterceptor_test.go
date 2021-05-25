@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -120,7 +121,7 @@ func TestReconcileKind(t *testing.T) {
 
 	for _, tc := range tests {
 		r := Reconciler{}
-		context := triggersv1.WithUpgradeViaDefaulting(logtesting.TestContextWithLogger(t))
+		context := contexts.WithUpgradeViaDefaulting(logtesting.TestContextWithLogger(t))
 		err := r.ReconcileKind(context, tc.initial)
 		if err != nil {
 			t.Fatalf("ReconcileKind() unexpected error: %v", err)

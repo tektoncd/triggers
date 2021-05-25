@@ -31,6 +31,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"knative.dev/pkg/ptr"
 
 	"k8s.io/client-go/kubernetes"
@@ -57,9 +58,9 @@ import (
 )
 
 const (
-	resourceLabel = triggersv1.GroupName + triggersv1.EventListenerLabelKey
-	triggerLabel  = triggersv1.GroupName + triggersv1.TriggerLabelKey
-	eventIDLabel  = triggersv1.GroupName + triggersv1.EventIDLabelKey
+	resourceLabel = triggers.GroupName + triggers.EventListenerLabelKey
+	triggerLabel  = triggers.GroupName + triggers.TriggerLabelKey
+	eventIDLabel  = triggers.GroupName + triggers.EventIDLabelKey
 
 	examplePRJsonFilename = "pr.json"
 )
@@ -241,7 +242,7 @@ func TestEventListenerCreate(t *testing.T) {
 		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
 			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{triggersv1.GroupName},
+				APIGroups: []string{triggers.GroupName},
 				Resources: []string{"clustertriggerbindings", "eventlisteners", "clusterinterceptors", "triggerbindings", "triggertemplates", "triggers"},
 				Verbs:     []string{"get", "list", "watch"},
 			}, {

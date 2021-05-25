@@ -66,3 +66,22 @@ You are now ready to configure Tekton Triggers for your workflow. For instructio
 
 - [Tekton Triggers Getting Started Guide](./getting-started/)
 - [Tekton Triggers code examples](https://github.com/tektoncd/triggers/tree/main/examples)
+
+## Customizing the Triggers Controller behavior
+
+To customize the behavior of the Triggers Controller, modify the ConfigMap `feature-flags` as follows:
+
+- `enable-api-fields`: set this flag to "stable" to allow only the
+most stable features to be used. Set it to "alpha" to allow alpha
+features to be used.
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+data:
+  enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
+```

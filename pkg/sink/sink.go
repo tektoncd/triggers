@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
@@ -103,7 +104,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 
 	eventID := template.UUID()
-	log = log.With(zap.String(triggersv1.EventIDLabelKey, eventID))
+	log = log.With(zap.String(triggers.EventIDLabelKey, eventID))
 	log.Debugf("handling event with path %s, payload: %s and header: %v", request.URL.Path, string(event), request.Header)
 	var trItems []*triggersv1.Trigger
 	labelSelector := labels.Everything()
@@ -238,7 +239,7 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 }
 
 func (r Sink) processTrigger(t triggersv1.Trigger, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger) error {
-	log := eventLog.With(zap.String(triggersv1.TriggerLabelKey, t.Name))
+	log := eventLog.With(zap.String(triggers.TriggerLabelKey, t.Name))
 
 	finalPayload, header, iresp, err := r.ExecuteInterceptors(t, request, event, log, eventID)
 	if err != nil {

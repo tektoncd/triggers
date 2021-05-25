@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
@@ -66,7 +67,7 @@ func TestClusterInterceptorSetDefaults(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.in
-			got.SetDefaults(triggersv1.WithUpgradeViaDefaulting(context.Background()))
+			got.SetDefaults(contexts.WithUpgradeViaDefaulting(context.Background()))
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatalf("ClusterInterceptor SetDefaults error: %s", diff)
 			}

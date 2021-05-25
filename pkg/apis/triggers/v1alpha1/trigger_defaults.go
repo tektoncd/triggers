@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"knative.dev/pkg/logging"
 )
 
@@ -26,7 +27,7 @@ type triggerSpecBindingArray []*TriggerSpecBinding
 
 // SetDefaults sets the defaults on the object.
 func (t *Trigger) SetDefaults(ctx context.Context) {
-	if !IsUpgradeViaDefaulting(ctx) {
+	if !contexts.IsUpgradeViaDefaulting(ctx) {
 		return
 	}
 	triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()

@@ -19,13 +19,14 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
 
 // SetDefaults sets the defaults on the object.
 func (el *EventListener) SetDefaults(ctx context.Context) {
-	if IsUpgradeViaDefaulting(ctx) {
+	if contexts.IsUpgradeViaDefaulting(ctx) {
 		// set defaults
 		if el.Spec.Resources.KubernetesResource != nil {
 			if el.Spec.Resources.KubernetesResource.Replicas != nil && *el.Spec.Resources.KubernetesResource.Replicas == 0 {

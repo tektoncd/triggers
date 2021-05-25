@@ -17,27 +17,14 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const (
-	// GroupName is the Kubernetes resource group name for Tekton types.
-	GroupName = "triggers.tekton.dev"
-
-	// EventListenerLabelKey is used as the label identifier for an EventListener.
-	EventListenerLabelKey = "/eventlistener"
-
-	// EventIDLabelKey is used as the label identifier for an EventListener event.
-	EventIDLabelKey = "/triggers-eventid"
-
-	// TriggerLabelKey is used as the label identifier for a Trigger
-	TriggerLabelKey = "/trigger"
-)
-
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: triggers.GroupName, Version: "v1alpha1"}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) schema.GroupKind {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
@@ -57,7 +58,7 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 		types,
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-		v1alpha1.WithUpgradeViaDefaulting,
+		contexts.WithUpgradeViaDefaulting,
 
 		// Whether to disallow unknown fields.
 		true,
