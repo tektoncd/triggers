@@ -96,13 +96,6 @@ func EventListenerServiceAccount(saName string) EventListenerSpecOp {
 	}
 }
 
-// EventListenerReplicas sets the specified Replicas of the EventListener.
-func EventListenerReplicas(replicas int32) EventListenerSpecOp {
-	return func(spec *v1alpha1.EventListenerSpec) {
-		spec.DeprecatedReplicas = &replicas
-	}
-}
-
 // EventListenerTrigger adds an EventListenerTrigger to the EventListenerSpec Triggers.
 // Any number of EventListenerTriggerOp modifiers can be passed to create/modify it.
 func EventListenerTrigger(ttName, apiVersion string, ops ...EventListenerTriggerOp) EventListenerSpecOp {

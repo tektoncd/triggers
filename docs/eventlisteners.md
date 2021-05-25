@@ -24,6 +24,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Specifying a `PodTemplate`](#specifying-a-podtemplate)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
+    - [Specifying `Replicas`](#specifying-replicas)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
     - [Contract for the `CustomResource` object](#contract-for-the-customresource-object)
 - [Specifying `Interceptors`](#specifying-interceptors)
@@ -58,7 +59,6 @@ An `EventListener` definition consists of the following fields:
     - [`serviceAccountName`](#specifiying-the-kubernetes-service-account) - Specifies the `ServiceAccount` the `EventListener` will use to instantiate Tekton resources
 - Optional:
   - [`triggers`](#specifying-triggers) - specifies a list of `Triggers` to execute upon event detection
-  - [`replicas`](#specifying-a-kubernetesresource-object) - specifies the number of `EventListener` pods to create (only for `kubernetesResource` objects)
   - [`podTemplate`](#specifying-a-podtemplate) - specifies the `PodTemplate` for your `EventListener` pod
   - [`resources`](#specifying-resources) - specifies the resources that will be available to the event listening service
   - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the 
@@ -235,12 +235,12 @@ spec:
               effect: NoSchedule
 ```
 
+#### Specifying `Replicas`
+
 You can optionally use the `replicas` field to instruct Tekton Triggers to deploy more than one instance of your `EventListener` in individual Kubernetes Pods.
 If you do not specify this value, the default number of instances (and thus, the number of respective Pods) per `EventListener` is 1. If you set a value for the `replicas` field
 while creating or upgrading the `EventListener's` YAML file, that value overrides any value you set manually later as as well as a value set by any other deployment
 mechanism, such as HPA.
-
-**Note:** The `spec.replicas` field is now the `spec.resources.kubernetesResource.replicas` field.
 
 ### Specifying a `CustomResource` object
 
