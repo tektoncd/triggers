@@ -38,7 +38,7 @@ Tekton Triggers ships with the following `Interceptors` to help you get started:
 
 To specify an `Interceptor` within your `EventListener`, create an `interceptors:` field with the following sub-fields:
 - `name` - (optional) a name that uniquely identifies this `Interceptor` definition
-- `ref` - a reference to a [`ClusterInterceptor`](#clusterinterceptors) object with the following fields:
+- `ref` - a reference to a [`ClusterInterceptor`](./clusterinterceptors.md) object with the following fields:
   - `name` - the name of the referenced `ClusterInterceptor`
   - `kind` - (optional) specifies that the referenced Kubernetes object is a `ClusterInterceptor` object
   - `apiVersion` - (optional) specifies the target API version, for example `triggers.tekton.dev/v1alpha1`
