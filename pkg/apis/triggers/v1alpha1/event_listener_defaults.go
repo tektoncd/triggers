@@ -44,26 +44,5 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 				}
 			}
 		}
-		el.Spec.updatePodTemplate()
-	}
-}
-
-func (spec *EventListenerSpec) updatePodTemplate() {
-	if spec.DeprecatedPodTemplate != nil {
-		if spec.DeprecatedPodTemplate.NodeSelector != nil {
-			if spec.Resources.KubernetesResource == nil {
-				spec.Resources.KubernetesResource = &KubernetesResource{}
-			}
-			spec.Resources.KubernetesResource.Template.Spec.NodeSelector = spec.DeprecatedPodTemplate.NodeSelector
-			spec.DeprecatedPodTemplate.NodeSelector = nil
-		}
-		if spec.DeprecatedPodTemplate.Tolerations != nil {
-			if spec.Resources.KubernetesResource == nil {
-				spec.Resources.KubernetesResource = &KubernetesResource{}
-			}
-			spec.Resources.KubernetesResource.Template.Spec.Tolerations = spec.DeprecatedPodTemplate.Tolerations
-			spec.DeprecatedPodTemplate.Tolerations = nil
-		}
-		spec.DeprecatedPodTemplate = nil
 	}
 }
