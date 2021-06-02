@@ -22,8 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/ptr"
 )
 
@@ -93,50 +91,6 @@ func TestEventListenerSetDefaults(t *testing.T) {
 					KubernetesResource: &v1alpha1.KubernetesResource{
 						Replicas: ptr.Int32(1),
 					},
-				},
-			},
-		},
-	}, {
-		name: "deprecate podTemplate nodeselector to resource",
-		in: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				DeprecatedPodTemplate: &v1alpha1.PodTemplate{
-					NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
-				},
-			},
-		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
-		want: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				Resources: v1alpha1.Resources{
-					KubernetesResource: &v1alpha1.KubernetesResource{
-						WithPodSpec: duckv1.WithPodSpec{
-							Template: duckv1.PodSpecable{
-								Spec: corev1.PodSpec{
-									NodeSelector: map[string]string{"beta.kubernetes.io/os": "linux"},
-								},
-							},
-						}},
-				},
-			},
-		},
-	}, {
-		name: "deprecate podTemplate toleration to resource",
-		in: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				DeprecatedPodTemplate: &v1alpha1.PodTemplate{Tolerations: []corev1.Toleration{{Key: "key"}}},
-			},
-		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
-		want: &v1alpha1.EventListener{
-			Spec: v1alpha1.EventListenerSpec{
-				Resources: v1alpha1.Resources{
-					KubernetesResource: &v1alpha1.KubernetesResource{
-						WithPodSpec: duckv1.WithPodSpec{
-							Template: duckv1.PodSpecable{
-								Spec: corev1.PodSpec{Tolerations: []corev1.Toleration{{Key: "key"}}},
-							},
-						}},
 				},
 			},
 		},
