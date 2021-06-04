@@ -62,8 +62,10 @@ import (
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	"knative.dev/pkg/ptr"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -135,9 +137,10 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
+	secretLister := fakeSecretInformer.Get(ctx).Lister()
 
 	// Setup a handler for core interceptors using httptest
-	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
+	httpClient := setupInterceptors(t, secretLister, clients.Kube, logger.Sugar(), webhookInterceptor)
 
 	recorder, _ := NewRecorder()
 	r := Sink{
@@ -163,10 +166,10 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 
 // setupInterceptors creates a httptest server with all coreInterceptors and any passed in webhook interceptor
 // It returns a http.Client that can be used to talk to these interceptors
-func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
+func setupInterceptors(t *testing.T, s corev1lister.SecretLister, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := server.NewWithCoreInterceptors(k, l)
+	coreInterceptors, err := server.NewWithCoreInterceptors(s, k, l)
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}
@@ -1209,7 +1212,7 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 // that the last response is as expected.
 func TestExecuteInterceptor_Sequential(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	httpClient := setupInterceptors(t, nil, logger.Sugar(), &sequentialInterceptor{})
+	httpClient := setupInterceptors(t, nil, nil, logger.Sugar(), &sequentialInterceptor{})
 
 	r := Sink{
 		HTTPClient: httpClient,
@@ -1284,7 +1287,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	r.MatcherFunc(match).Handler(&errorInterceptor{})
 	si := &sequentialInterceptor{}
 	r.Handle("/", si)
-	httpClient := setupInterceptors(t, nil, logger.Sugar(), r)
+	httpClient := setupInterceptors(t, nil, nil, logger.Sugar(), r)
 
 	s := Sink{
 		HTTPClient: httpClient,
