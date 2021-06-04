@@ -33,7 +33,7 @@ func NewWithCoreInterceptors(sl corev1lister.SecretLister, k kubernetes.Interfac
 		"bitbucket": bitbucket.NewInterceptor(k, l),
 		"cel":       cel.NewInterceptor(k, l),
 		"github":    github.NewInterceptor(sl, l),
-		"gitlab":    gitlab.NewInterceptor(k, l),
+		"gitlab":    gitlab.NewInterceptor(sl, l),
 	}
 
 	for k, v := range i {

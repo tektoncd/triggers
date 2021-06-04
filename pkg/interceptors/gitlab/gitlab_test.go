@@ -17,7 +17,6 @@ limitations under the License.
 package gitlab
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -26,7 +25,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -96,7 +95,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
-			kubeClient := fakekubeclient.Get(ctx)
+			secretInformer := fakeSecretInformer.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -119,13 +118,14 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 				req.Header["X-GitLab-Event"] = []string{tt.eventType}
 			}
 			if tt.secret != nil {
-				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.secret, metav1.CreateOptions{}); err != nil {
-					t.Error(err)
+				tt.secret.Namespace = metav1.NamespaceDefault
+				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
+					t.Fatal(err)
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet: kubeClient,
-				Logger:        logger.Sugar(),
+				SecretLister: secretInformer.Lister(),
+				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
 			if !res.Continue {
@@ -250,7 +250,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := rtesting.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
-			kubeClient := fakekubeclient.Get(ctx)
+			secretInformer := fakeSecretInformer.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -273,13 +273,14 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				req.Header["X-interceptorParams-Event"] = []string{tt.eventType}
 			}
 			if tt.secret != nil {
-				if _, err := kubeClient.CoreV1().Secrets(metav1.NamespaceDefault).Create(context.Background(), tt.secret, metav1.CreateOptions{}); err != nil {
-					t.Error(err)
+				tt.secret.Namespace = metav1.NamespaceDefault
+				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
+					t.Fatal(err)
 				}
 			}
 			w := &Interceptor{
-				KubeClientSet: kubeClient,
-				Logger:        logger.Sugar(),
+				SecretLister: secretInformer.Lister(),
+				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
 			if res.Continue {
@@ -292,11 +293,11 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	logger := zaptest.NewLogger(t)
-	kubeClient := fakekubeclient.Get(ctx)
+	secretInformer := fakeSecretInformer.Get(ctx)
 
 	w := &Interceptor{
-		KubeClientSet: kubeClient,
-		Logger:        logger.Sugar(),
+		SecretLister: secretInformer.Lister(),
+		Logger:       logger.Sugar(),
 	}
 
 	req := &triggersv1.InterceptorRequest{
