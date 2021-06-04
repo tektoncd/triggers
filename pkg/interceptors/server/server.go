@@ -18,6 +18,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 type Server struct {
@@ -26,11 +27,12 @@ type Server struct {
 	interceptors map[string]v1alpha1.InterceptorInterface
 }
 
-func NewWithCoreInterceptors(k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
+func NewWithCoreInterceptors(sl corev1lister.SecretLister, k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
+
 	i := map[string]v1alpha1.InterceptorInterface{
 		"bitbucket": bitbucket.NewInterceptor(k, l),
 		"cel":       cel.NewInterceptor(k, l),
-		"github":    github.NewInterceptor(k, l),
+		"github":    github.NewInterceptor(sl, l),
 		"gitlab":    gitlab.NewInterceptor(k, l),
 	}
 
