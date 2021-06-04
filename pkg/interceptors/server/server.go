@@ -30,7 +30,7 @@ type Server struct {
 func NewWithCoreInterceptors(sl corev1lister.SecretLister, k kubernetes.Interface, l *zap.SugaredLogger) (*Server, error) {
 
 	i := map[string]v1alpha1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(k, l),
+		"bitbucket": bitbucket.NewInterceptor(sl, l),
 		"cel":       cel.NewInterceptor(k, l),
 		"github":    github.NewInterceptor(sl, l),
 		"gitlab":    gitlab.NewInterceptor(sl, l),
