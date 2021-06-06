@@ -169,7 +169,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 func setupInterceptors(t *testing.T, s corev1lister.SecretLister, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := server.NewWithCoreInterceptors(s, k, l)
+	coreInterceptors, err := server.NewWithCoreInterceptors(s, l)
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

@@ -30,11 +30,11 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 // Triggers returns a cel.EnvOption to configure extended functions for
@@ -160,13 +160,13 @@ import (
 // 		body.jsonObjectOrList.marshalJSON()
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, k kubernetes.Interface) cel.EnvOption {
-	return cel.Lib(triggersLib{defaultNS: ns, client: k})
+func Triggers(ns string, sl corev1lister.SecretLister) cel.EnvOption {
+	return cel.Lib(triggersLib{defaultNS: ns, secretLister: sl})
 }
 
 type triggersLib struct {
-	defaultNS string
-	client    kubernetes.Interface
+	defaultNS    string
+	secretLister corev1lister.SecretLister
 }
 
 func (triggersLib) CompileOptions() []cel.EnvOption {
@@ -231,7 +231,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.defaultNS, t.client)},
+				Function: makeCompareSecret(t.defaultNS, t.secretLister)},
 			&functions.Overload{
 				Operator: "marshalJSON",
 				Unary:    marshalJSON},
@@ -299,7 +299,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.FunctionOp {
+func makeCompareSecret(defaultNS string, sl corev1lister.SecretLister) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -326,7 +326,7 @@ func makeCompareSecret(defaultNS string, k kubernetes.Interface) functions.Funct
 		// GetSecretToken uses request as a cache key to cache secret lookup. Since multiple
 		// triggers execute concurrently in separate goroutines, this cache is not very effective
 		// for this use case
-		secretToken, err := interceptors.GetSecretToken(nil, k, secretRef, string(secretNS))
+		secretToken, err := interceptors.GetSecretToken(nil, sl, secretRef, string(secretNS))
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

@@ -26,7 +26,6 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
@@ -52,10 +51,6 @@ func main() {
 	}
 
 	ctx, startInformer := injection.EnableInjectionOrDie(ctx, clusterConfig)
-	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the Kubernetes client set: %v", err)
-	}
 
 	zap, err := zap.NewProduction()
 	if err != nil {
@@ -70,7 +65,7 @@ func main() {
 	}()
 
 	secretLister := secretInformer.Get(ctx).Lister()
-	service, err := server.NewWithCoreInterceptors(secretLister, kubeClient, logger)
+	service, err := server.NewWithCoreInterceptors(secretLister, logger)
 	if err != nil {
 		log.Printf("failed to initialize core interceptors: %s", err)
 		return
