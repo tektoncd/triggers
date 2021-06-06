@@ -29,8 +29,7 @@ import (
 	"knative.dev/pkg/apis"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 const (
@@ -60,8 +59,7 @@ func getCache(req *http.Request) map[string]interface{} {
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
-// TODO: we don't really use the cache here. Instead use a secretLister?
-func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.SecretRef, triggerNS string) ([]byte, error) {
+func GetSecretToken(req *http.Request, sl corev1lister.SecretLister, sr *triggersv1.SecretRef, triggerNS string) ([]byte, error) {
 	var cache map[string]interface{}
 
 	cacheKey := path.Join("secret", triggerNS, sr.SecretName, sr.SecretKey)
@@ -72,7 +70,7 @@ func GetSecretToken(req *http.Request, cs kubernetes.Interface, sr *triggersv1.S
 		}
 	}
 
-	secret, err := cs.CoreV1().Secrets(triggerNS).Get(context.Background(), sr.SecretName, metav1.GetOptions{})
+	secret, err := sl.Secrets(triggerNS).Get(sr.SecretName)
 	if err != nil {
 		return nil, err
 	}

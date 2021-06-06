@@ -38,7 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -290,17 +290,17 @@ func TestGetSecretToken(t *testing.T) {
 			req = req.WithContext(context.WithValue(req.Context(), interceptors.RequestCacheKey, tt.cache))
 
 			ctx, _ := rtesting.SetupFakeContext(t)
-			kubeClient := fakekubeclient.Get(ctx)
+			secretInformer := fakeSecretInformer.Get(ctx)
 			secretRef := triggersv1.SecretRef{
 				SecretKey:  "token",
 				SecretName: "test-secret",
 			}
 
-			if _, err := kubeClient.CoreV1().Secrets(testNS).Create(context.Background(), makeSecret("secret from API"), metav1.CreateOptions{}); err != nil {
-				rt.Error(err)
+			if err := secretInformer.Informer().GetIndexer().Add(makeSecret("secret from API")); err != nil {
+				t.Fatal(err)
 			}
 
-			secret, err := interceptors.GetSecretToken(req, kubeClient, &secretRef, testNS)
+			secret, err := interceptors.GetSecretToken(req, secretInformer.Lister(), &secretRef, testNS)
 			if err != nil {
 				rt.Error(err)
 			}
@@ -462,7 +462,7 @@ func TestExecute(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			coreInterceptors, err := server.NewWithCoreInterceptors(nil, nil, zaptest.NewLogger(t).Sugar())
+			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
 			if err != nil {
 				t.Fatalf("failed to initialize core interceptors: %v", err)
 			}
@@ -493,7 +493,7 @@ func TestExecute_Error(t *testing.T) {
 			"filter": `header.match("Content-Type", "application/json")`,
 		},
 	}
-	coreInterceptors, err := server.NewWithCoreInterceptors(nil, nil, zaptest.NewLogger(t).Sugar())
+	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

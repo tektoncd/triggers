@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
@@ -48,7 +48,7 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	KubeClientSet    kubernetes.Interface
+	SecretLister     corev1lister.SecretLister
 	Logger           *zap.SugaredLogger
 	CEL              *triggersv1.CELInterceptor
 	TriggerNamespace string
@@ -61,10 +61,10 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(k kubernetes.Interface, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(sl corev1lister.SecretLister, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
-		Logger:        l,
-		KubeClientSet: k,
+		SecretLister: sl,
+		Logger:       l,
 	}
 }
 
@@ -91,10 +91,10 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(ns string, k kubernetes.Interface) (*cel.Env, error) {
+func makeCelEnv(ns string, sl corev1lister.SecretLister) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
-		Triggers(ns, k),
+		Triggers(ns, sl),
 		celext.Strings(),
 		celext.Encoders(),
 		cel.Declarations(
@@ -126,7 +126,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-	env, err := makeCelEnv(ns, w.KubeClientSet)
+	env, err := makeCelEnv(ns, w.SecretLister)
 	if err != nil {
 		return interceptors.Failf(codes.Internal, "error creating cel environment: %v", err)
 	}

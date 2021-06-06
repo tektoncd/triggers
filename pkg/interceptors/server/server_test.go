@@ -16,7 +16,6 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"go.uber.org/zap/zaptest"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -75,10 +74,9 @@ func TestServer_ServeHTTP(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := rtesting.SetupFakeContext(t)
-			kubeClient := fakekubeclient.Get(ctx)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
-			server, err := NewWithCoreInterceptors(secretLister, kubeClient, logger.Sugar())
+			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -136,10 +134,9 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := rtesting.SetupFakeContext(t)
-			kubeClient := fakekubeclient.Get(ctx)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
-			server, err := NewWithCoreInterceptors(secretLister, kubeClient, logger.Sugar())
+			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
