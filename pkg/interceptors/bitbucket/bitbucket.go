@@ -25,7 +25,7 @@ import (
 	corev1lister "k8s.io/client-go/listers/core/v1"
 
 	gh "github.com/google/go-github/v31/github"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
 )

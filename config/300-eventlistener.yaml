@@ -35,8 +35,8 @@ spec:
     - tekton-triggers
   versions:
   - name: v1beta1
-    served: false
-    storage: false
+    served: true
+    storage: true
     # Opt into the status subresource so metadata.generation
     # starts to increment
     subresources:
@@ -71,7 +71,7 @@ spec:
 
   - name: v1alpha1
     served: true
-    storage: true
+    storage: false
     schema:
       openAPIV3Schema:
         type: object

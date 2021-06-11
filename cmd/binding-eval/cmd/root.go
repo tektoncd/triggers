@@ -28,7 +28,7 @@ import (
 	"sort"
 
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/template"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -72,7 +72,7 @@ func evalBinding(w io.Writer, bindingPath, httpPath string) error {
 		return fmt.Errorf("error reading bindings: %w", err)
 	}
 
-	bindingParams := []v1alpha1.Param{}
+	bindingParams := []v1beta1.Param{}
 	for _, b := range bindings {
 		bindingParams = append(bindingParams, b.Spec.Params...)
 	}
@@ -99,16 +99,16 @@ func evalBinding(w io.Writer, bindingPath, httpPath string) error {
 	return nil
 }
 
-func readBindings(path string) ([]*v1alpha1.TriggerBinding, error) {
+func readBindings(path string) ([]*v1beta1.TriggerBinding, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading binding file: %w", err)
 	}
 	defer f.Close()
 
-	var list []*v1alpha1.TriggerBinding
+	var list []*v1beta1.TriggerBinding
 	decoder := streaming.NewDecoder(f, scheme.Codecs.UniversalDecoder())
-	b := new(v1alpha1.TriggerBinding)
+	b := new(v1beta1.TriggerBinding)
 	for err == nil {
 		_, _, err = decoder.Decode(nil, b)
 		if err != nil {

@@ -39,7 +39,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 )
 
 var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)

@@ -32,7 +32,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"sigs.k8s.io/yaml"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 )

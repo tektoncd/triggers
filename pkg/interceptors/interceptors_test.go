@@ -26,9 +26,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/test"
@@ -52,74 +54,90 @@ func TestGetInterceptorParams(t *testing.T) {
 	}{{
 		name: "cel",
 		in: triggersv1.EventInterceptor{
-			DeprecatedCEL: &triggersv1.CELInterceptor{
-				Filter: `header.match("foo", "bar")`,
-				Overlays: []triggersv1.CELOverlay{{
+			Ref: triggersv1.InterceptorRef{Name: "cel"},
+			Params: []triggersv1.InterceptorParams{{
+				Name:  "filter",
+				Value: test.ToV1JSON(t, `header.match("foo", "bar")`),
+			}, {
+				Name: "overlays",
+				Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
 					Key:        "short_sha",
 					Expression: "body.ref.truncate(7)",
-				}},
-			},
+				}}),
+			}},
 		},
 		want: map[string]interface{}{
-			"filter": `header.match("foo", "bar")`,
-			"overlays": []triggersv1.CELOverlay{{
+			"filter": test.ToV1JSON(t, `header.match("foo", "bar")`),
+			"overlays": test.ToV1JSON(t, []triggersv1.CELOverlay{{
 				Key:        "short_sha",
 				Expression: "body.ref.truncate(7)",
-			}},
+			}}),
 		},
 	}, {
 		name: "gitlab",
 		in: triggersv1.EventInterceptor{
-			DeprecatedGitLab: &triggersv1.GitLabInterceptor{
-				SecretRef: &triggersv1.SecretRef{
+			Ref: triggersv1.InterceptorRef{Name: "gitlab"},
+			Params: []triggersv1.InterceptorParams{{
+				Name: "secretRef",
+				Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
-				},
-				EventTypes: []string{"push"},
-			},
+				}),
+			}, {
+				Name:  "eventTypes",
+				Value: test.ToV1JSON(t, []string{"push"}),
+			}},
 		},
 		want: map[string]interface{}{
-			"eventTypes": []string{"push"},
-			"secretRef": &triggersv1.SecretRef{
+			"eventTypes": test.ToV1JSON(t, []string{"push"}),
+			"secretRef": test.ToV1JSON(t, &triggersv1.SecretRef{
 				SecretKey:  "test-secret",
 				SecretName: "token",
-			},
+			}),
 		},
 	}, {
 		name: "github",
 		in: triggersv1.EventInterceptor{
-			DeprecatedGitHub: &triggersv1.GitHubInterceptor{
-				SecretRef: &triggersv1.SecretRef{
+			Ref: triggersv1.InterceptorRef{Name: "github"},
+			Params: []triggersv1.InterceptorParams{{
+				Name: "secretRef",
+				Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
-				},
-				EventTypes: []string{"push"},
-			},
+				}),
+			}, {
+				Name:  "eventTypes",
+				Value: test.ToV1JSON(t, []string{"push"}),
+			}},
 		},
 		want: map[string]interface{}{
-			"eventTypes": []string{"push"},
-			"secretRef": &triggersv1.SecretRef{
+			"eventTypes": test.ToV1JSON(t, []string{"push"}),
+			"secretRef": test.ToV1JSON(t, &triggersv1.SecretRef{
 				SecretKey:  "test-secret",
 				SecretName: "token",
-			},
+			}),
 		},
 	}, {
 		name: "bitbucket",
 		in: triggersv1.EventInterceptor{
-			DeprecatedBitbucket: &triggersv1.BitbucketInterceptor{
-				SecretRef: &triggersv1.SecretRef{
+			Ref: triggersv1.InterceptorRef{Name: "bitbucket"},
+			Params: []triggersv1.InterceptorParams{{
+				Name: "secretRef",
+				Value: test.ToV1JSON(t, &triggersv1.SecretRef{
 					SecretKey:  "test-secret",
 					SecretName: "token",
-				},
-				EventTypes: []string{"push"},
-			},
+				}),
+			}, {
+				Name:  "eventTypes",
+				Value: test.ToV1JSON(t, []string{"push"}),
+			}},
 		},
 		want: map[string]interface{}{
-			"eventTypes": []string{"push"},
-			"secretRef": &triggersv1.SecretRef{
+			"eventTypes": test.ToV1JSON(t, []string{"push"}),
+			"secretRef": test.ToV1JSON(t, &triggersv1.SecretRef{
 				SecretKey:  "test-secret",
 				SecretName: "token",
-			},
+			}),
 		},
 	}, {
 		name: "webhook",
@@ -332,9 +350,9 @@ func TestResolveToURL(t *testing.T) {
 		want   string
 	}{{
 		name: "ClusterInterceptor has status.address.url",
-		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Status: triggersv1.ClusterInterceptorStatus{
+		getter: func(n string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Status: v1alpha1.ClusterInterceptorStatus{
 					AddressStatus: duckv1.AddressStatus{
 						Address: &duckv1.Addressable{
 							URL: &apis.URL{
@@ -351,10 +369,10 @@ func TestResolveToURL(t *testing.T) {
 		want:  "http://some-host/cel",
 	}, {
 		name: "ClusterInterceptor does not have a status",
-		getter: func(n string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Spec: triggersv1.ClusterInterceptorSpec{
-					ClientConfig: triggersv1.ClientConfig{
+		getter: func(n string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Spec: v1alpha1.ClusterInterceptorSpec{
+					ClientConfig: v1alpha1.ClientConfig{
 						URL: &apis.URL{
 							Scheme: "http",
 							Host:   "some-host",
@@ -381,18 +399,18 @@ func TestResolveToURL(t *testing.T) {
 	}
 
 	t.Run("interceptor has no URL", func(t *testing.T) {
-		fakeGetter := func(name string) (*triggersv1.ClusterInterceptor, error) {
-			return &triggersv1.ClusterInterceptor{
-				Spec: triggersv1.ClusterInterceptorSpec{
-					ClientConfig: triggersv1.ClientConfig{
+		fakeGetter := func(name string) (*v1alpha1.ClusterInterceptor, error) {
+			return &v1alpha1.ClusterInterceptor{
+				Spec: v1alpha1.ClusterInterceptorSpec{
+					ClientConfig: v1alpha1.ClientConfig{
 						URL: nil,
 					},
 				},
 			}, nil
 		}
 		_, err := interceptors.ResolveToURL(fakeGetter, "cel")
-		if !errors.Is(err, triggersv1.ErrNilURL) {
-			t.Fatalf("ResolveToURL expected error to be %s but got %s", triggersv1.ErrNilURL, err)
+		if !errors.Is(err, v1alpha1.ErrNilURL) {
+			t.Fatalf("ResolveToURL expected error to be %s but got %s", v1alpha1.ErrNilURL, err)
 		}
 	})
 }
