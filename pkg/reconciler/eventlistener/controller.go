@@ -19,10 +19,10 @@ package eventlistener
 import (
 	"context"
 
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
-	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
-	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
+	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
+	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"k8s.io/client-go/tools/cache"
 	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
@@ -76,12 +76,12 @@ func NewController(config Config) func(context.Context, configmap.Watcher) *cont
 		})
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+			FilterFunc: controller.FilterControllerGVK(v1beta1.SchemeGroupVersion.WithKind("EventListener")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("EventListener")),
+			FilterFunc: controller.FilterControllerGVK(v1beta1.SchemeGroupVersion.WithKind("EventListener")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

@@ -21,13 +21,11 @@ import (
 	"crypto/subtle"
 	"fmt"
 
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-
-	"go.uber.org/zap"
 )
 
 var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)

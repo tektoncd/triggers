@@ -30,10 +30,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/eventlistener"
-	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
+	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
@@ -107,7 +107,7 @@ var (
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
-func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListener) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListener) pkgreconciler.Event {
 	// Initial reconciliation
 	el.Status.InitializeConditions()
 	el.Status.Configuration.GeneratedResourceName = fmt.Sprintf("%s-%s", GeneratedResourcePrefix, el.Name)
@@ -131,7 +131,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1alpha1.EventListen
 }
 
 // FinalizeKind cleans up associated logging config maps when an EventListener is deleted
-func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1alpha1.EventListener) pkgreconciler.Event {
+func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1beta1.EventListener) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	cfgs, err := r.eventListenerLister.EventListeners(el.Namespace).List(labels.Everything())
 	if err != nil {
@@ -176,7 +176,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	return
 }
 
-func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	// for backward compatibility with original behavior
 	var serviceType corev1.ServiceType
 	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceType != "" {
@@ -197,7 +197,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 	case err == nil:
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingService.ObjectMeta, service.ObjectMeta)
-		el.Status.SetExistsCondition(v1alpha1.ServiceExists, nil)
+		el.Status.SetExistsCondition(v1beta1.ServiceExists, nil)
 		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
 		if !reflect.DeepEqual(existingService.Spec.Selector, service.Spec.Selector) {
 			existingService.Spec.Selector = service.Spec.Selector
@@ -224,7 +224,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 	case errors.IsNotFound(err):
 		// Create the EventListener Service
 		_, err = r.KubeClientSet.CoreV1().Services(el.Namespace).Create(ctx, service, metav1.CreateOptions{})
-		el.Status.SetExistsCondition(v1alpha1.ServiceExists, err)
+		el.Status.SetExistsCondition(v1beta1.ServiceExists, err)
 		if err != nil {
 			logger.Errorf("Error creating EventListener Service: %s", err)
 			return err
@@ -238,7 +238,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 	return nil
 }
 
-func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(eventListenerConfigMapName); errors.IsNotFound(err) {
 		// create default config-logging ConfigMap
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultLoggingConfigMap(), metav1.CreateOptions{}); err != nil {
@@ -252,7 +252,7 @@ func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.Sug
 	return nil
 }
 
-func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
 			logger.Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
@@ -265,7 +265,7 @@ func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *z
 	return nil
 }
 
-func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	// check logging config, create if it doesn't exist
 	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
 		logger.Error(err)
@@ -321,7 +321,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	switch {
 	case err == nil:
 		el.Status.SetDeploymentConditions(existingDeployment.Status.Conditions)
-		el.Status.SetExistsCondition(v1alpha1.DeploymentExists, nil)
+		el.Status.SetExistsCondition(v1beta1.DeploymentExists, nil)
 
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingDeployment.ObjectMeta, deployment.ObjectMeta)
@@ -422,7 +422,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	case errors.IsNotFound(err):
 		// Create the EventListener Deployment
 		deployment, err = r.KubeClientSet.AppsV1().Deployments(el.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
-		el.Status.SetExistsCondition(v1alpha1.DeploymentExists, err)
+		el.Status.SetExistsCondition(v1beta1.DeploymentExists, err)
 		if err != nil {
 			logger.Errorf("Error creating EventListener Deployment: %s", err)
 			return err
@@ -436,7 +436,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	return nil
 }
 
-func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.SugaredLogger, el *v1alpha1.EventListener) error {
+func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
 	// check logging config, create if it doesn't exist
 	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
 		logger.Error(err)
@@ -684,7 +684,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	return nil
 }
 
-func getDeployment(el *v1alpha1.EventListener, container corev1.Container, c Config) *appsv1.Deployment {
+func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Config) *appsv1.Deployment {
 	var (
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
@@ -823,7 +823,7 @@ func addCertsForSecureConnection(container corev1.Container, c Config) corev1.Co
 	return container
 }
 
-func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
+func getContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
 	var resources corev1.ResourceRequirements
 	env := []corev1.EnvVar{}
 	if el.Spec.Resources.KubernetesResource != nil {
@@ -869,7 +869,7 @@ func getContainer(el *v1alpha1.EventListener, c Config, pod *duckv1.WithPod) cor
 	}
 }
 
-func getServicePort(el *v1alpha1.EventListener, c Config) corev1.ServicePort {
+func getServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 	var elCert, elKey string
 
 	servicePortName := eventListenerServicePortName
@@ -927,7 +927,7 @@ func GenerateResourceLabels(eventListenerName string, staticResourceLabels map[s
 
 // generateObjectMeta generates the object meta that should be used by all
 // resources generated by the EventListener reconciler
-func generateObjectMeta(el *v1alpha1.EventListener, staticResourceLabels map[string]string) metav1.ObjectMeta {
+func generateObjectMeta(el *v1beta1.EventListener, staticResourceLabels map[string]string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,

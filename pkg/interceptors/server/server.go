@@ -15,19 +15,19 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"go.uber.org/zap"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 type Server struct {
 	Logger       *zap.SugaredLogger
-	interceptors map[string]v1alpha1.InterceptorInterface
+	interceptors map[string]triggersv1.InterceptorInterface
 }
 
 func NewWithCoreInterceptors(sl corev1lister.SecretLister, l *zap.SugaredLogger) (*Server, error) {
 
-	i := map[string]v1alpha1.InterceptorInterface{
+	i := map[string]triggersv1.InterceptorInterface{
 		"bitbucket": bitbucket.NewInterceptor(sl, l),
 		"cel":       cel.NewInterceptor(sl, l),
 		"github":    github.NewInterceptor(sl, l),
@@ -96,7 +96,7 @@ func internal(err error) HTTPError {
 }
 
 func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
-	var ii v1alpha1.InterceptorInterface
+	var ii triggersv1.InterceptorInterface
 
 	// Find correct interceptor
 	ii, ok := is.interceptors[strings.TrimPrefix(strings.ToLower(r.URL.Path), "/")]
@@ -113,7 +113,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	if _, err := io.Copy(&body, r.Body); err != nil {
 		return nil, internal(fmt.Errorf("failed to read body: %w", err))
 	}
-	var ireq v1alpha1.InterceptorRequest
+	var ireq triggersv1.InterceptorRequest
 	if err := json.Unmarshal(body.Bytes(), &ireq); err != nil {
 		return nil, badRequest(fmt.Errorf("failed to parse body as InterceptorRequest: %w", err))
 	}

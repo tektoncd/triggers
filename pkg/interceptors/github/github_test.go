@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"testing"
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"

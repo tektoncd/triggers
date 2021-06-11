@@ -28,16 +28,17 @@ import (
 	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeClusterInterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor/fake"
-	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding/fake"
-	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener/fake"
-	faketriggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger/fake"
-	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding/fake"
-	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate/fake"
+	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding/fake"
+	fakeeventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener/fake"
+	faketriggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/trigger/fake"
+	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding/fake"
+	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -65,12 +66,12 @@ import (
 // to seed controllers with.
 type Resources struct {
 	Namespaces             []*corev1.Namespace
-	ClusterTriggerBindings []*v1alpha1.ClusterTriggerBinding
-	EventListeners         []*v1alpha1.EventListener
+	ClusterTriggerBindings []*v1beta1.ClusterTriggerBinding
+	EventListeners         []*v1beta1.EventListener
 	ClusterInterceptors    []*v1alpha1.ClusterInterceptor
-	TriggerBindings        []*v1alpha1.TriggerBinding
-	TriggerTemplates       []*v1alpha1.TriggerTemplate
-	Triggers               []*v1alpha1.Trigger
+	TriggerBindings        []*v1beta1.TriggerBinding
+	TriggerTemplates       []*v1beta1.TriggerTemplate
+	Triggers               []*v1beta1.Trigger
 	Deployments            []*appsv1.Deployment
 	Services               []*corev1.Service
 	ConfigMaps             []*corev1.ConfigMap
@@ -140,7 +141,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ctbInformer.Informer().GetIndexer().Add(ctb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().Create(context.Background(), ctb, metav1.CreateOptions{}); err != nil {
+		if _, err := c.Triggers.TriggersV1beta1().ClusterTriggerBindings().Create(context.Background(), ctb, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -148,7 +149,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := elInformer.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().EventListeners(el.Namespace).Create(context.Background(), el, metav1.CreateOptions{}); err != nil {
+		if _, err := c.Triggers.TriggersV1beta1().EventListeners(el.Namespace).Create(context.Background(), el, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -164,7 +165,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := tbInformer.Informer().GetIndexer().Add(tb); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().TriggerBindings(tb.Namespace).Create(context.Background(), tb, metav1.CreateOptions{}); err != nil {
+		if _, err := c.Triggers.TriggersV1beta1().TriggerBindings(tb.Namespace).Create(context.Background(), tb, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -172,7 +173,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := ttInformer.Informer().GetIndexer().Add(tt); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(tt.Namespace).Create(context.Background(), tt, metav1.CreateOptions{}); err != nil {
+		if _, err := c.Triggers.TriggersV1beta1().TriggerTemplates(tt.Namespace).Create(context.Background(), tt, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -180,7 +181,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		if err := trInformer.Informer().GetIndexer().Add(tr); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Triggers.TriggersV1alpha1().Triggers(tr.Namespace).Create(context.Background(), tr, metav1.CreateOptions{}); err != nil {
+		if _, err := c.Triggers.TriggersV1beta1().Triggers(tr.Namespace).Create(context.Background(), tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -272,7 +273,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 func GetResourcesFromClients(c Clients) (*Resources, error) {
 	testResources := &Resources{}
 	// Add ClusterTriggerBindings
-	ctbList, err := c.Triggers.TriggersV1alpha1().ClusterTriggerBindings().List(context.Background(), metav1.ListOptions{})
+	ctbList, err := c.Triggers.TriggersV1beta1().ClusterTriggerBindings().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +288,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		// Add Namespace
 		testResources.Namespaces = append(testResources.Namespaces, ns.DeepCopy())
 		// Add EventListeners
-		elList, err := c.Triggers.TriggersV1alpha1().EventListeners(ns.Name).List(context.Background(), metav1.ListOptions{})
+		elList, err := c.Triggers.TriggersV1beta1().EventListeners(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +296,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.EventListeners = append(testResources.EventListeners, el.DeepCopy())
 		}
 		// Add TriggerBindings
-		tbList, err := c.Triggers.TriggersV1alpha1().TriggerBindings(ns.Name).List(context.Background(), metav1.ListOptions{})
+		tbList, err := c.Triggers.TriggersV1beta1().TriggerBindings(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +304,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.TriggerBindings = append(testResources.TriggerBindings, tb.DeepCopy())
 		}
 		// Add TriggerTemplates
-		ttList, err := c.Triggers.TriggersV1alpha1().TriggerTemplates(ns.Name).List(context.Background(), metav1.ListOptions{})
+		ttList, err := c.Triggers.TriggersV1beta1().TriggerTemplates(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -343,7 +344,7 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 			testResources.Secrets = append(testResources.Secrets, s.DeepCopy())
 		}
 		// Get Triggers
-		trList, err := c.Triggers.TriggersV1alpha1().Triggers(ns.Name).List(context.Background(), metav1.ListOptions{})
+		trList, err := c.Triggers.TriggersV1beta1().Triggers(ns.Name).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}

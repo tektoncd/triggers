@@ -36,15 +36,16 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	interceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
-	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clustertriggerbinding"
-	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/eventlistener"
-	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/trigger"
-	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggerbinding"
-	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/triggertemplate"
+	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding"
+	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
+	triggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/trigger"
+	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding"
+	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/pkg/template"
@@ -82,12 +83,12 @@ func init() {
 }
 
 var (
-	github = &triggersv1.ClusterInterceptor{
+	github = &triggersv1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "github",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -96,12 +97,12 @@ var (
 			},
 		},
 	}
-	cel = &triggersv1.ClusterInterceptor{
+	cel = &triggersv1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "cel",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -110,12 +111,12 @@ var (
 			},
 		},
 	}
-	bitbucket = &triggersv1.ClusterInterceptor{
+	bitbucket = &triggersv1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "bitbucket",
 		},
-		Spec: triggersv1.ClusterInterceptorSpec{
-			ClientConfig: triggersv1.ClientConfig{
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
 				URL: &apis.URL{
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
@@ -276,26 +277,26 @@ func TestHandleEvent(t *testing.T) {
 	var (
 		eventListenerName = "my-el"
 		eventBody         = json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
-		gitCloneTTSpec    = triggersv1.TriggerTemplateSpec{
-			Params: []triggersv1.ParamSpec{
+		gitCloneTTSpec    = triggersv1beta1.TriggerTemplateSpec{
+			Params: []triggersv1beta1.ParamSpec{
 				{Name: "url"},
 				{Name: "revision"},
 				{Name: "name", Default: ptr.String("git-clone-test-run")},
 				{Name: "app", Default: ptr.String("triggers")},
 				{Name: "type", Default: ptr.String("bar")},
 			},
-			ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+			ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
 				RawExtension: trResourceTemplate(t),
 			}},
 		}
-		gitCloneTT = &triggersv1.TriggerTemplate{
+		gitCloneTT = &triggersv1beta1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "git-clone",
 				Namespace: namespace,
 			},
 			Spec: gitCloneTTSpec,
 		}
-		gitCloneTBSpec = []*triggersv1.TriggerSpecBinding{
+		gitCloneTBSpec = []*triggersv1beta1.TriggerSpecBinding{
 			{Name: "url", Value: ptr.String("$(body.repository.url)")},
 			{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
 			{Name: "name", Value: ptr.String("git-clone-run")},
@@ -303,13 +304,13 @@ func TestHandleEvent(t *testing.T) {
 			{Name: "type", Value: ptr.String("$(header.Content-Type)")},
 		}
 
-		gitCloneTB = &triggersv1.TriggerBinding{
+		gitCloneTB = &triggersv1beta1.TriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "git-clone",
 				Namespace: namespace,
 			},
-			Spec: triggersv1.TriggerBindingSpec{
-				Params: []triggersv1.Param{
+			Spec: triggersv1beta1.TriggerBindingSpec{
+				Params: []triggersv1beta1.Param{
 					{Name: "url", Value: "$(body.repository.url)"},
 					{Name: "revision", Value: "$(body.head_commit.id)"},
 					{Name: "name", Value: "git-clone-run"},
@@ -350,22 +351,22 @@ func TestHandleEvent(t *testing.T) {
 	)
 
 	// tenGitCloneTriggers is a slice to ten triggers named git-clone-$i
-	tenGitCloneTriggers := []*triggersv1.Trigger{}
+	tenGitCloneTriggers := []*triggersv1beta1.Trigger{}
 	for i := 0; i < 10; i++ {
-		tenGitCloneTriggers = append(tenGitCloneTriggers, &triggersv1.Trigger{
+		tenGitCloneTriggers = append(tenGitCloneTriggers, &triggersv1beta1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("git-clone-trigger-%d", i),
 				Namespace: namespace,
 			},
-			Spec: triggersv1.TriggerSpec{
-				Bindings: []*triggersv1.TriggerSpecBinding{
+			Spec: triggersv1beta1.TriggerSpec{
+				Bindings: []*triggersv1beta1.TriggerSpecBinding{
 					{Name: "url", Value: ptr.String("$(body.repository.url)")},
 					{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
 					{Name: "name", Value: ptr.String(fmt.Sprintf("git-clone-run-%d", i))},
 					{Name: "app", Value: ptr.String("$(body.foo)")},
 					{Name: "type", Value: ptr.String("$(header.Content-Type)")},
 				},
-				Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+				Template: triggersv1beta1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
 			},
 		})
 	}
@@ -391,27 +392,27 @@ func TestHandleEvent(t *testing.T) {
 	}{{
 		name: "single trigger embedded within EventListener",
 		resources: test.Resources{
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						Name: "git-clone-trigger",
-						Bindings: []*triggersv1.EventListenerBinding{{
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
 							Ref:  "git-clone",
-							Kind: triggersv1.NamespacedTriggerBindingKind,
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
 						}},
-						Template: &triggersv1.EventListenerTemplate{
+						Template: &triggersv1beta1.EventListenerTemplate{
 							Ref: ptr.String("git-clone"),
 						},
 					}},
 				},
 			}},
-			TriggerBindings:  []*triggersv1.TriggerBinding{gitCloneTB},
-			TriggerTemplates: []*triggersv1.TriggerTemplate{gitCloneTT},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{gitCloneTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{gitCloneTT},
 		},
 		eventBody: eventBody,
 		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
@@ -423,13 +424,13 @@ func TestHandleEvent(t *testing.T) {
 					Name: "bar",
 				},
 			}},
-			TriggerBindings: []*triggersv1.TriggerBinding{{
+			TriggerBindings: []*triggersv1beta1.TriggerBinding{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
-				Spec: triggersv1.TriggerBindingSpec{
-					Params: []triggersv1.Param{
+				Spec: triggersv1beta1.TriggerBindingSpec{
+					Params: []triggersv1beta1.Param{
 						{Name: "url", Value: "$(body.repository.url)"},
 						{Name: "revision", Value: "$(body.head_commit.id)"},
 						{Name: "name", Value: "git-clone-run"},
@@ -438,31 +439,31 @@ func TestHandleEvent(t *testing.T) {
 					},
 				},
 			}},
-			TriggerTemplates: []*triggersv1.TriggerTemplate{{
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
 				Spec: gitCloneTTSpec,
 			}},
-			Triggers: []*triggersv1.Trigger{{
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: "bar",
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					NamespaceSelector: triggersv1.NamespaceSelector{
+				Spec: triggersv1beta1.EventListenerSpec{
+					NamespaceSelector: triggersv1beta1.NamespaceSelector{
 						MatchNames: []string{"bar"},
 					},
 				},
@@ -478,13 +479,13 @@ func TestHandleEvent(t *testing.T) {
 					Name: "bar",
 				},
 			}},
-			TriggerBindings: []*triggersv1.TriggerBinding{{
+			TriggerBindings: []*triggersv1beta1.TriggerBinding{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
-				Spec: triggersv1.TriggerBindingSpec{
-					Params: []triggersv1.Param{
+				Spec: triggersv1beta1.TriggerBindingSpec{
+					Params: []triggersv1beta1.Param{
 						{Name: "url", Value: "$(body.repository.url)"},
 						{Name: "revision", Value: "$(body.head_commit.id)"},
 						{Name: "name", Value: "git-clone-run"},
@@ -493,14 +494,14 @@ func TestHandleEvent(t *testing.T) {
 					},
 				},
 			}},
-			TriggerTemplates: []*triggersv1.TriggerTemplate{{
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
 				Spec: gitCloneTTSpec,
 			}},
-			Triggers: []*triggersv1.Trigger{{
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: "bar",
@@ -508,9 +509,9 @@ func TestHandleEvent(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
@@ -520,19 +521,19 @@ func TestHandleEvent(t *testing.T) {
 						"foo": "notbar",
 					},
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					NamespaceSelector: triggersv1.NamespaceSelector{
+				Spec: triggersv1beta1.EventListenerSpec{
+					NamespaceSelector: triggersv1beta1.NamespaceSelector{
 						MatchNames: []string{"bar"},
 					},
 					LabelSelector: &metav1.LabelSelector{
@@ -552,13 +553,13 @@ func TestHandleEvent(t *testing.T) {
 					Name: "bar",
 				},
 			}},
-			TriggerBindings: []*triggersv1.TriggerBinding{{
+			TriggerBindings: []*triggersv1beta1.TriggerBinding{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerBindingSpec{
-					Params: []triggersv1.Param{
+				Spec: triggersv1beta1.TriggerBindingSpec{
+					Params: []triggersv1beta1.Param{
 						{Name: "url", Value: "$(body.repository.url)"},
 						{Name: "revision", Value: "$(body.head_commit.id)"},
 						{Name: "name", Value: "git-clone-run"},
@@ -567,14 +568,14 @@ func TestHandleEvent(t *testing.T) {
 					},
 				},
 			}},
-			TriggerTemplates: []*triggersv1.TriggerTemplate{{
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone",
 					Namespace: namespace,
 				},
 				Spec: gitCloneTTSpec,
 			}},
-			Triggers: []*triggersv1.Trigger{{
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
@@ -582,9 +583,9 @@ func TestHandleEvent(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
@@ -594,18 +595,18 @@ func TestHandleEvent(t *testing.T) {
 						"foo": "notbar",
 					},
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
+				Spec: triggersv1beta1.EventListenerSpec{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{"foo": "bar"},
 					},
@@ -618,26 +619,26 @@ func TestHandleEvent(t *testing.T) {
 	}, {
 		name: "eventlistener with a trigger ref",
 		resources: test.Resources{
-			TriggerBindings:  []*triggersv1.TriggerBinding{gitCloneTB},
-			TriggerTemplates: []*triggersv1.TriggerTemplate{gitCloneTT},
-			Triggers: []*triggersv1.Trigger{{
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{gitCloneTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{gitCloneTT},
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
-					Bindings: []*triggersv1.TriggerSpecBinding{{Ref: "git-clone"}},
-					Template: triggersv1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				Spec: triggersv1beta1.TriggerSpec{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{Ref: "git-clone"}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "git-clone-trigger",
 					}},
 				},
@@ -648,24 +649,24 @@ func TestHandleEvent(t *testing.T) {
 	}, {
 		name: "eventlistener with ref to trigger with embedded spec",
 		resources: test.Resources{
-			Triggers: []*triggersv1.Trigger{{
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
+				Spec: triggersv1beta1.TriggerSpec{
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "git-clone-trigger",
 					}},
 				},
@@ -685,18 +686,18 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
-			ClusterInterceptors: []*triggersv1.ClusterInterceptor{github, cel},
-			Triggers: []*triggersv1.Trigger{{
+			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{github, cel},
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Ref: triggersv1.InterceptorRef{Name: "github"},
-						Params: []triggersv1.InterceptorParams{{
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "github"},
+						Params: []triggersv1beta1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1beta1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
@@ -704,26 +705,19 @@ func TestHandleEvent(t *testing.T) {
 							Name:  "eventTypes",
 							Value: test.ToV1JSON(t, []string{"pull_request"}),
 						}},
-					}, {
-						DeprecatedCEL: &triggersv1.CELInterceptor{
-							Overlays: []triggersv1.CELOverlay{
-								// FIXME: We aren't really testing that this value can be used in a binding tho
-								{Key: "new", Expression: "body.repository.url"},
-							},
-						},
 					}},
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "git-clone-trigger",
 					}},
 				},
@@ -747,18 +741,18 @@ func TestHandleEvent(t *testing.T) {
 					"secretKey": []byte("secret"),
 				},
 			}},
-			ClusterInterceptors: []*triggersv1.ClusterInterceptor{bitbucket},
-			Triggers: []*triggersv1.Trigger{{
+			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{bitbucket},
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Ref: triggersv1.InterceptorRef{Name: "bitbucket"},
-						Params: []triggersv1.InterceptorParams{{
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "bitbucket"},
+						Params: []triggersv1beta1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1beta1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
@@ -768,17 +762,17 @@ func TestHandleEvent(t *testing.T) {
 						}},
 					}},
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "git-clone-trigger",
 					}},
 				},
@@ -793,14 +787,14 @@ func TestHandleEvent(t *testing.T) {
 	}, {
 		name: "eventListener with multiple triggers",
 		resources: test.Resources{
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					NamespaceSelector: triggersv1.NamespaceSelector{
+				Spec: triggersv1beta1.EventListenerSpec{
+					NamespaceSelector: triggersv1beta1.NamespaceSelector{
 						MatchNames: []string{namespace},
 					},
 				},
@@ -812,14 +806,14 @@ func TestHandleEvent(t *testing.T) {
 	}, {
 		name: "with webhook interceptors",
 		resources: test.Resources{
-			Triggers: []*triggersv1.Trigger{{
+			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Webhook: &triggersv1.WebhookInterceptor{
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Webhook: &triggersv1beta1.WebhookInterceptor{
 							ObjectRef: &corev1.ObjectReference{
 								APIVersion: "v1",
 								Kind:       "Service",
@@ -834,22 +828,22 @@ func TestHandleEvent(t *testing.T) {
 							}},
 						},
 					}},
-					Bindings: []*triggersv1.TriggerSpecBinding{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{
 						{Name: "url", Value: ptr.String("https://github.com/tektoncd/triggers")},
 						{Name: "revision", Value: ptr.String("master")},
 						{Name: "name", Value: ptr.String("$(body.name)")}, // Header added by Webhook Interceptor
 					},
-					Template: triggersv1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: &gitCloneTTSpec},
 				},
 			}},
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      eventListenerName,
 					Namespace: namespace,
 					UID:       types.UID(elUID),
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "git-clone-trigger",
 					}},
 				},
@@ -982,18 +976,18 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 	} {
 		t.Run(testCase.userVal, func(t *testing.T) {
 			eventBody := json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}}`)
-			trigger := &triggersv1.Trigger{
+			trigger := &triggersv1beta1.Trigger{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "git-clone-trigger",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.TriggerSpec{
+				Spec: triggersv1beta1.TriggerSpec{
 					ServiceAccountName: testCase.userVal,
-					Interceptors: []*triggersv1.EventInterceptor{{
-						Ref: triggersv1.InterceptorRef{Name: "github"},
-						Params: []triggersv1.InterceptorParams{{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "github"},
+						Params: []triggersv1beta1.InterceptorParams{{
 							Name: "secretRef",
-							Value: test.ToV1JSON(t, &triggersv1.SecretRef{
+							Value: test.ToV1JSON(t, &triggersv1beta1.SecretRef{
 								SecretKey:  "secretKey",
 								SecretName: "secret",
 							}),
@@ -1002,20 +996,20 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 							Value: test.ToV1JSON(t, []string{"pull_request"}),
 						}},
 					}},
-					Bindings: []*triggersv1.TriggerSpecBinding{{
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{{
 						Name:  "url",
 						Value: ptr.String("$(body.repository.url)"),
 					}},
-					Template: triggersv1.TriggerSpecTemplate{
-						Spec: &triggersv1.TriggerTemplateSpec{
-							Params: []triggersv1.ParamSpec{
+					Template: triggersv1beta1.TriggerSpecTemplate{
+						Spec: &triggersv1beta1.TriggerTemplateSpec{
+							Params: []triggersv1beta1.ParamSpec{
 								{Name: "url"},
 								{Name: "revision", Default: ptr.String("master")},
 								{Name: "name", Default: ptr.String("git-clone-test-run")},
 								{Name: "app", Default: ptr.String("triggers")},
 								{Name: "type", Default: ptr.String("bar")},
 							},
-							ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+							ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
 								RawExtension: trResourceTemplate(t),
 							}},
 						},
@@ -1047,13 +1041,13 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 				}},
 			}
 
-			el := &triggersv1.EventListener{
+			el := &triggersv1beta1.EventListener{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "el",
 					Namespace: namespace,
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{TriggerRef: "git-clone-trigger"}},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{TriggerRef: "git-clone-trigger"}},
 				},
 			}
 			secret := &corev1.Secret{
@@ -1066,9 +1060,9 @@ func TestHandleEvent_AuthOverride(t *testing.T) {
 				},
 			}
 			resources := test.Resources{
-				ClusterInterceptors: []*triggersv1.ClusterInterceptor{github},
-				Triggers:            []*triggersv1.Trigger{trigger},
-				EventListeners:      []*triggersv1.EventListener{el},
+				ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{github},
+				Triggers:            []*triggersv1beta1.Trigger{trigger},
+				EventListeners:      []*triggersv1beta1.EventListener{el},
 				Secrets:             []*corev1.Secret{secret, authSecret},
 				ServiceAccounts:     []*corev1.ServiceAccount{authSA},
 			}
@@ -1115,7 +1109,7 @@ func TestHandleEvent_Error(t *testing.T) {
 	}{{
 		name: "missing eventListener",
 		testResources: test.Resources{
-			EventListeners: []*triggersv1.EventListener{},
+			EventListeners: []*triggersv1beta1.EventListener{},
 		},
 		eventBody:      eventBody,
 		wantStatusCode: http.StatusInternalServerError,
@@ -1123,13 +1117,13 @@ func TestHandleEvent_Error(t *testing.T) {
 	}, {
 		name: "eventlistener with unknown triggers",
 		testResources: test.Resources{
-			EventListeners: []*triggersv1.EventListener{{
+			EventListeners: []*triggersv1beta1.EventListener{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      defaultELName,
 					Namespace: namespace,
 				},
-				Spec: triggersv1.EventListenerSpec{
-					Triggers: []triggersv1.EventListenerTrigger{{
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
 						TriggerRef: "unknown",
 					}},
 				},
@@ -1219,8 +1213,8 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 		Logger:     logger.Sugar(),
 	}
 
-	a := &triggersv1.EventInterceptor{
-		Webhook: &triggersv1.WebhookInterceptor{
+	a := &triggersv1beta1.EventInterceptor{
+		Webhook: &triggersv1beta1.WebhookInterceptor{
 			ObjectRef: &corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "Service",
@@ -1228,9 +1222,9 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			},
 		},
 	}
-	trigger := triggersv1.Trigger{
-		Spec: triggersv1.TriggerSpec{
-			Interceptors: []*triggersv1.EventInterceptor{a, a}},
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{a, a}},
 	}
 
 	for _, method := range []string{
@@ -1294,11 +1288,11 @@ func TestExecuteInterceptor_error(t *testing.T) {
 		Logger:     logger.Sugar(),
 	}
 
-	trigger := triggersv1.Trigger{
-		Spec: triggersv1.TriggerSpec{
-			Interceptors: []*triggersv1.EventInterceptor{{
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
 				// Error interceptor needs to come first.
-				Webhook: &triggersv1.WebhookInterceptor{
+				Webhook: &triggersv1beta1.WebhookInterceptor{
 					ObjectRef: &corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Service",
@@ -1306,7 +1300,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 					},
 				},
 			}, {
-				Webhook: &triggersv1.WebhookInterceptor{
+				Webhook: &triggersv1beta1.WebhookInterceptor{
 					ObjectRef: &corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Service",
@@ -1331,14 +1325,14 @@ func TestExecuteInterceptor_error(t *testing.T) {
 
 func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	resources := test.Resources{
-		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
 	}
 	s, _ := getSinkAssets(t, resources, "el-name", nil)
-	trigger := triggersv1.Trigger{
-		Spec: triggersv1.TriggerSpec{
-			Interceptors: []*triggersv1.EventInterceptor{{
-				Ref: triggersv1.InterceptorRef{Name: "cel"},
-				Params: []triggersv1.InterceptorParams{{
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
+				Ref: triggersv1beta1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1beta1.InterceptorParams{{
 					Name:  "filter",
 					Value: test.ToV1JSON(t, `body.head == "abcde"`),
 				}},
@@ -1382,25 +1376,25 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	webhookInterceptorName := "foo"
 	echoServer := &echoInterceptor{}
 	resources := test.Resources{
-		ClusterInterceptors: []*triggersv1.ClusterInterceptor{cel},
+		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
 	}
 	s, _ := getSinkAssets(t, resources, "", echoServer)
 
 	sha := "abcdefghi" // Fake "sha" to send via body
 	// trigger has a chain of 3 interceptors CEL(overlay) -> webhook -> CEL(filter)
-	trigger := triggersv1.Trigger{
-		Spec: triggersv1.TriggerSpec{
-			Interceptors: []*triggersv1.EventInterceptor{{
-				Ref: triggersv1.InterceptorRef{Name: "cel"},
-				Params: []triggersv1.InterceptorParams{{
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
+				Ref: triggersv1beta1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1beta1.InterceptorParams{{
 					Name: "overlays",
-					Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
+					Value: test.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 						Key:        "truncated_sha",
 						Expression: "body.sha.truncate(5)",
 					}}),
 				}},
 			}, {
-				Webhook: &triggersv1.WebhookInterceptor{
+				Webhook: &triggersv1beta1.WebhookInterceptor{
 					ObjectRef: &corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Service",
@@ -1408,8 +1402,8 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 					},
 				},
 			}, {
-				Ref: triggersv1.InterceptorRef{Name: "cel"},
-				Params: []triggersv1.InterceptorParams{{
+				Ref: triggersv1beta1.InterceptorRef{Name: "cel"},
+				Params: []triggersv1beta1.InterceptorParams{{
 					Name:  "filter",
 					Value: test.ToV1JSON(t, "body.extensions.truncated_sha == \"abcde\" && extensions.truncated_sha == \"abcde\""),
 				}},
