@@ -462,12 +462,19 @@ spec:
 
 ### Chaining `Interceptors`
 
-**Note:** This section documents the current behavior for passing data between interceptors. New behavior is currently being implemented in [PR 271](https://github.com/tektoncd/triggers/issues/271).
-
 You can chain `Interceptors` with the following constraints:
 
-- CEL `Interceptors` do not modify the body of the event payload; instead, they add extra fields to the top-level `extensions` field.
+- `ClusterInterceptors` do not modify the body of the event payload; instead, they add extra fields to the top-level `extensions` field.
+
 - Webhook `Interceptors` can modify the body of the event payload, but cannot access the top-level `extensions` field.
+
+#### Chaining ClusterInterceptors
+
+Each ClusterInterceptor can return values in the InterceptorResponse within the `extensions` field. These values are then added to the `extensions` field of the InterceptorRequest that is sent to the next interceptor in the chain. 
+
+If two interceptors return an extensions field with the same name, the latter one will overwrite the one from the previous one i.e. if interceptors A and B both return `foo` in the Extensions field of the InterceptorResponse, the values written by B will overwrite the ones written by A. To prevent this, it is recommended that each cluster interceptor write to its own top level field i.e A returns `A.foo` and B return `B.foo` in the InterceptorResponse.
+
+#### Chaining Webhook Interceptors
 
 **Note:** We are working on changing the behavior of Webhook `Interceptors` to match that of CEL `Interceptors` so that both `Interceptor` types can share data via the top-level `extensions` field.
 
