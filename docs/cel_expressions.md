@@ -283,6 +283,7 @@ interceptor.
     <td>
       Constant-time comparison of strings against secrets, this will fetch the secret using the combination of namespace/name and compare the token key to the string using a cryptographic constant-time comparison..<p>
       The event-listener service account must have access to the secret.
+      The parameters to the function are 1. the key within the secret, 2. the secret name, and 3. the namespace for the secret (optional, defaults to the namespace of the EventListener).
     </td>
     <td>
      <pre>header.canonical('X-Secret-Token').compareSecret('', 'secret-name', 'namespace')</pre>
