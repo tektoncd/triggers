@@ -56,5 +56,5 @@ The Kubernetes object running the custom business logic for your `ClusterInterce
 - Accepts an HTTP `POST` request that contains an [`InterceptorRequest`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorRequest) 
   as a JSON body
 - Returns an HTTP 200 OK response that contains an [`InterceptorResponse`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorResponse) 
-  as a JSON body
-- Returns a response other than HTTP 200 OK only if payload processing halts due to a catastrophic failure
+  as a JSON body. If the trigger processing should continue, the interceptor should set the `continue` field in the response to `true`. If the processing should be stopped, the interceptor should set the `continue` field to `false` and also provide additional information detailing the error in the `status` field.
+- Returns a response other than HTTP 200 OK only if payload processing halts due to a catastrophic failure. 
