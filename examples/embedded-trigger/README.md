@@ -10,7 +10,7 @@ messages.
 
 ```sh
 kubectl apply -f rbac.yaml
-kubectl apply -f riggertemplate.yaml
+kubectl apply -f triggertemplate.yaml
 kubectl apply -f triggerbinding.yaml
 kubectl apply -f triggerbinding-message.yaml
 kubectl apply -f eventlistener.yaml

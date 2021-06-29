@@ -24,6 +24,7 @@ function cleanup() {
   kubectl delete secret ${CERTIFICATE_SECRET_NAME} || true
   kubectl delete taskrun ${INGRESS_TASKRUN_NAME} || true
   kubectl delete -f ${REPO_ROOT_DIR}/test/ingress || true
+  kubectl delete -f ${REPO_ROOT_DIR}/examples/rbac.yaml || true
 }
 
 # Parameters: $1 - TaskRun name
@@ -93,6 +94,8 @@ set -o errexit
 set -o pipefail
 set -x
 
+# Apply SA roles for EventListener to create service
+kubectl apply -f ${REPO_ROOT_DIR}/examples/rbac.yaml
 # Apply ClusterRole/ClusterRoleBinding for default SA to run create Ingress Task
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress
 # Apply Ingress Task
@@ -109,13 +112,15 @@ kind: EventListener
 metadata:
   name: ${EVENTLISTENER_NAME}
 spec:
-  serviceAccountName: default
+  serviceAccountName: tekton-triggers-example-sa
   triggers:
   - bindings:
     - ref: pipeline-binding
     template:
       ref: pipeline-template
 DONE
+
+kubectl wait --for=condition=Ready --timeout=45s eventlisteners.triggers.tekton.dev/${EVENTLISTENER_NAME}
 
 INGRESS_TASKRUN_NAME="create-ingress-taskrun"
 CERTIFICATE_KEY_PASSPHRASE="pass1"
