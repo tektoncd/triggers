@@ -13,9 +13,7 @@ Creates an EventListener that listens for GitHub webhook events.
 1. Port forward:
 
    ```bash
-   kubectl port-forward \
-    "$(kubectl get pod --selector=eventlistener=github-listener-interceptor -oname)" \
-     8000
+   kubectl port-forward service/el-github-listener-interceptor 8080
    ```
 
 1. Test by sending the sample payload.
@@ -26,7 +24,7 @@ Creates an EventListener that listens for GitHub webhook events.
    -H 'X-Hub-Signature: sha1=ba0cdc263b3492a74b601d240c27efe81c4720cb' \
    -H 'Content-Type: application/json' \
    -d '{"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git"}}' \
-   http://localhost:8000
+   http://localhost:8080
    ```
 
    The response status code should be `202 Accepted`

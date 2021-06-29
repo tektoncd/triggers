@@ -13,9 +13,7 @@ Creates an EventListener that listens for Bitbucket webhook events.
 1. Port forward:
 
    ```bash
-   kubectl port-forward \
-    "$(kubectl get pod --selector=eventlistener=bitbucket-listener -oname)" \
-     8000
+   kubectl port-forward service el-bitbucket-listener 8080
    ```
 
 1. Test by sending the sample payload.
@@ -25,7 +23,7 @@ Creates an EventListener that listens for Bitbucket webhook events.
    -H 'X-Event-Key: repo:refs_changed' \
    -H 'X-Hub-Signature: sha1=544dde67b85743361b0321c9cc55f84472a608dd' \
    -d '{"repository": {"links": {"clone": [{"href": "http://localhost:7990/scm/~test/helloworld.git", "name": "http"}, {"href": "ssh://git@localhost:7999/~test/helloworld.git", "name": "ssh"}]}}, "changes": [{"ref": {"displayId": "main"}}]}' \
-   http://localhost:8000
+   http://localhost:8080
    ```
 
    The response status code should be `202 Accepted`
