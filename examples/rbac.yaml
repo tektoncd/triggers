@@ -45,7 +45,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-example-clusterrole
 rules:
-  # EventListeners need to be able to fetch any clustertriggerbindings
+# EventListeners need to be able to fetch any clustertriggerbindings, and clusterinterceptors
 - apiGroups: ["triggers.tekton.dev"]
   resources: ["clustertriggerbindings", "clusterinterceptors"]
   verbs: ["get", "list", "watch"]

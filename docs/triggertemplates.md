@@ -25,9 +25,9 @@ and/or execute when your `EventListener` detects an event. It exposes parameters
 
 Below is an example `TriggerTemplate` definition:
 
-<!-- FILE: examples/triggertemplates/triggertemplate.yaml -->
+<!-- FILE: examples/v1beta1/triggertemplates/triggertemplate.yaml -->
 ```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template

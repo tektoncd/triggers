@@ -1,0 +1,24 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: listener-tolerations
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            tolerations:
+            - key: key
+              value: value
+              operator: Equal
+              effect: NoSchedule
+  triggers:
+    - name: foo-trig
+      bindings:
+        - ref: pipeline-binding
+        - ref: message-binding
+      template:
+        ref: pipeline-template

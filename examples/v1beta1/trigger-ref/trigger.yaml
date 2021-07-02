@@ -1,0 +1,19 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: trigger
+spec:
+  interceptors:
+    - ref:
+        name: "cel"
+      params:
+        - name: "filter"
+          value: "header.match('X-GitHub-Event', 'pull_request')"
+        - name: "overlays"
+          value:
+            - key: extensions.truncated_sha
+              expression: "body.pull_request.head.sha.truncate(7)"
+  bindings:
+  - ref: pipeline-binding
+  template:
+    ref: pipeline-template

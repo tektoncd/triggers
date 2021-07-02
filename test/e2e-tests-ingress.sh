@@ -100,14 +100,14 @@ kubectl apply -f ${REPO_ROOT_DIR}/examples/rbac.yaml
 kubectl apply -f ${REPO_ROOT_DIR}/test/ingress
 # Apply Ingress Task
 kubectl apply -f ${REPO_ROOT_DIR}/docs/getting-started/create-ingress.yaml
-kubectl apply -f ${REPO_ROOT_DIR}/examples/triggerbindings/triggerbinding.yaml
-kubectl apply -f ${REPO_ROOT_DIR}/examples/triggertemplates/triggertemplate.yaml
+kubectl apply -f ${REPO_ROOT_DIR}/examples/v1beta1/triggerbindings/triggerbinding.yaml
+kubectl apply -f ${REPO_ROOT_DIR}/examples/v1beta1/triggertemplates/triggertemplate.yaml
 
 EVENTLISTENER_NAME="ingress-test-eventlistener"
 
 # Create EventListener
 cat << DONE | kubectl apply -f -
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
   name: ${EVENTLISTENER_NAME}

@@ -1,0 +1,40 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: example-with-multiple-overlays
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "overlays"
+              value:
+                - key: truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
+                - key: branch_name
+                  expression: "body.ref.split('/')[2]"
+      bindings:
+      - name: sha
+        value: $(extensions.truncated_sha)
+      - name: branch
+        value: $(extensions.branch_name)
+      template:
+        spec:
+          params:
+            - name: sha
+            - name: branch
+          resourcetemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: TaskRun
+              metadata:
+                generateName: cel-trig-
+              spec:
+                taskSpec:
+                  steps:
+                  - image: ubuntu
+                    script: |
+                      #!/usr/bin/env bash
+                      echo "SHA is : $(tt.params.sha). Branch is $(tt.params.branch)"

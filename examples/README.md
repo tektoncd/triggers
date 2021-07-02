@@ -1,9 +1,9 @@
 # Triggers Examples
 
 
-This folder contains a number of examples of running Triggers with various configurations. Many of the sub-folders also
-contain their own READMEs with information specific to the example
-
+This folder contains a number of examples of running Triggers with various configurations. The v1alpha1 folder contains
+examples that use the v1alpha1 version of the Triggers while the v1beta1 folder contains resources using v1beta1 versions
+of Triggers resources. Many of the sub-folders also contain their own READMEs with information specific to the example.
 
 # Running the Examples
 
@@ -12,12 +12,12 @@ To run the examples, you need the following pre-requisites:
 
 1. Ensure you have Tekton Pipelines [installed](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
 
-2. Create the service account and all associated roles and bindings by running `kubectl apply rbac.yaml`
+2. Create the service account and all associated roles and bindings by running `kubectl apply -f rbac.yaml`
 
 
 ## Creating Triggers Resources
 
-Create the trigger resources for each example by applying the YAMLs from the sub-folder.  Some examples have 
+Create the trigger resources for each example by applying the YAMLs from the sub-folders.  Some examples have 
 their own READMEs with further instructions.
    
 At this point, you can invoke the Trigger locally to test it out.
