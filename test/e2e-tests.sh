@@ -38,5 +38,8 @@ header "Running Go e2e tests"
 go_test_e2e -timeout=20m ./test || failed=1
 go_test_e2e -timeout=20m ./cmd/... || failed=1
 
+header "Running examples tests"
+$(dirname $0)/e2e-tests-examples.sh || failed=1
+
 (( failed )) && fail_test
 success

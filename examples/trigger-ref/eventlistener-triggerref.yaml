@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: listener-triggerref
+  name: trigger-ref-listener
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
