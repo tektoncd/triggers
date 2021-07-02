@@ -1,0 +1,9 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: label-selector-listener
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  labelSelector:
+    matchLabels:
+      foo: bar

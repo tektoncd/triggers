@@ -1,0 +1,93 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: tls-listener-interceptor
+spec:
+  triggers:
+    - name: tls-listener
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secretToken
+            - name: "eventTypes"
+              value: ["pull_request"]
+        - name: "only when PRs are opened"
+          ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.action in ['opened', 'synchronize', 'reopened']"
+      bindings:
+        - ref: tls-pr-binding
+      template:
+        ref: tls-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+            - env:
+              - name: TLS_CERT
+                valueFrom:
+                  secretKeyRef:
+                    name: tls-secret-key
+                    key: tls.crt
+              - name: TLS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: tls-secret-key
+                    key: tls.key
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: tls-pr-binding
+spec:
+  params:
+    - name: gitrevision
+      value: $(body.pull_request.head.sha)
+    - name: gitrepositoryurl
+      value: $(body.repository.clone_url)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: tls-template
+spec:
+  params:
+    - name: gitrevision
+    - name: gitrepositoryurl
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: TaskRun
+      metadata:
+        generateName: tls-run-
+      spec:
+        taskSpec:
+          inputs:
+            resources:
+              - name: source
+                type: git
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                ls -al $(inputs.resources.source.path)
+        inputs:
+          resources:
+            - name: source
+              resourceSpec:
+                type: git
+                params:
+                  - name: revision
+                    value: $(tt.params.gitrevision)
+                  - name: url
+                    value: $(tt.params.gitrepositoryurl)

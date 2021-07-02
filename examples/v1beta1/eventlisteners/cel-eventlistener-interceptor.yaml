@@ -1,0 +1,51 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: cel-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig-with-matches
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "header.match('X-GitHub-Event', 'pull_request')"
+            - name: "overlays"
+              value:
+                - key: truncated_sha
+                  expression: "body.pull_request.head.sha.truncate(7)"
+      bindings:
+      - name: sha
+        value: $(extensions.truncated_sha)
+      template:
+        spec:
+          params:
+            - name: sha
+          resourcetemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: TaskRun
+              metadata:
+                generateName: cel-trig-with-matches-
+              spec:
+                params:
+                - name: "git_sha"
+                  value: "$(tt.params.sha)"
+                taskSpec:
+                  params:
+                  - name: git_sha
+                    type: string
+                  steps:
+                  - image: ubuntu
+                    script: |
+                      #!/usr/bin/env bash
+                      echo "$(params.sha)"
+    - name: cel-trig-with-canonical
+      interceptors:
+        - cel:
+            filter: "header.canonical('X-GitHub-Event') == 'push'"
+      bindings:
+      - ref: pipeline-binding
+      template:
+        ref: pipeline-template

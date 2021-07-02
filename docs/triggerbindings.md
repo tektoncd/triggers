@@ -17,9 +17,9 @@ entire cluster.
 
 Below is an example `TriggerBinding` definition:
 
-<!-- FILE: examples/triggerbindings/triggerbinding.yaml -->
+<!-- FILE: examples/v1beta1/triggerbindings/triggerbinding.yaml -->
 ```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
   name: pipeline-binding
@@ -42,9 +42,9 @@ You can reference a `ClusterTriggerBinding` in any `EventListener` in any namesp
 
 Below is an example `ClusterTriggerBinding` definition:
 
-<!-- FILE: examples/clustertriggerbindings/clustertriggerbinding.yaml -->
+<!-- FILE: examples/v1beta1/clustertriggerbindings/clustertriggerbinding.yaml -->
 ```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: ClusterTriggerBinding
 metadata:
   name: pipeline-clusterbinding
@@ -61,10 +61,10 @@ spec:
 When referencing a `ClusterTriggerBinding`, you must specify a `kind` value within the `bindings` field.
 The default is `TriggerBinding` which denotes a namespaced `TriggerBinding`. For example:
 
-<!-- FILE: examples/eventlisteners/eventlistener-clustertriggerbinding.yaml -->
+<!-- FILE: examples/v1beta1/eventlisteners/eventlistener-clustertriggerbinding.yaml -->
 ```YAML
 ---
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
   name: listener-clustertriggerbinding

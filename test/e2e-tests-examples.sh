@@ -20,7 +20,7 @@
 source $(dirname $0)/e2e-common.sh
 # Script entry point.
 
-set -u -e -o pipefail
+set -u -e -o pipefail -x
 
 current_example=""
 yaml_files=""
@@ -35,8 +35,8 @@ err() {
 
 apply_files() {
   info "Applying Resources"
-
-  folder=${REPO_ROOT_DIR}/examples/${current_example}
+  local version=$1
+  folder=${REPO_ROOT_DIR}/examples/${version}/${current_example}
   yaml_files=$(find ${folder}/ -name *.yaml | sort) || {
     err "failed to find files"
     exit 1
@@ -73,16 +73,20 @@ cleanup() {
 # Name of example would be name of directory
 # Name of eventlistener must be (exampleName)-listener
 main() {
+  versions="v1alpha1 v1beta1"
   # List of examples test will run on
   examples="bitbucket cron embedded-trigger github gitlab label-selector namespace-selector trigger-ref v1alpha1-task"
 
-  for e in ${examples}; do
-    current_example=${e}
-    echo "*** Example ${current_example} ***";
-    apply_files
-    check_eventlistener
-    cleanup
-    info "Test Successful"
+  for v in ${versions}; do
+    echo "Applying examples for version: ${v}"
+    for e in ${examples}; do
+      current_example=${e}
+      echo "*** Example ${current_example} ***";
+      apply_files ${v}
+      check_eventlistener
+      cleanup
+      info "Test Successful"
+    done
   done
 }
 

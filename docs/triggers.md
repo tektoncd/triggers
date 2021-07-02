@@ -26,9 +26,9 @@ When creating a `Trigger` definition you must specify the required fields and ca
 
 Below is an example `Trigger` definition:
 
-<!-- FILE: examples/trigger-ref/trigger.yaml -->
+<!-- FILE: examples/v1beta1/trigger-ref/trigger.yaml -->
 ```YAML
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: Trigger
 metadata:
   name: trigger
