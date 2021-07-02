@@ -3,11 +3,10 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: Trigger
 metadata:
   name: matching-label-trigger
-  namespace: foo
   labels:
     foo: bar
 spec:
-  serviceAccountName: bar-trigger-sa
+  serviceAccountName: tekton-triggers-example-sa
   interceptors:
     - github:
         secretRef:
@@ -24,11 +23,10 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: Trigger
 metadata:
   name: unmatched-label-trigger
-  namespace: foo
   labels:
     foo: baz
 spec:
-  serviceAccountName: bar-trigger-sa
+  serviceAccountName: tekton-triggers-example-sa
   interceptors:
     - github:
         secretRef:
@@ -45,7 +43,6 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: pipeline-binding
-  namespace: foo
 spec:
   params:
   - name: gitrevision
@@ -59,7 +56,6 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template
-  namespace: foo
 spec:
   params:
   - name: gitrevision
