@@ -161,7 +161,7 @@ the triggers repo, a terminal window and a text editor.
     kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/interceptors.yaml
     ```
 
-1. Announce the release in Slack channels #general, #trigers and #announcements.
+1. Announce the release in Slack channels #general, #triggers and #announcements.
 
 Congratulations, you're done!
 
