@@ -18,8 +18,7 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: foo-el-sa
-  namespace: foo
+  name: el-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -27,8 +26,8 @@ metadata:
   name: el-sel-clusterrolebinding
 subjects:
 - kind: ServiceAccount
-  name: foo-el-sa
-  namespace: foo
+  name: el-sa
+  namespace: default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -38,7 +37,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: triggercr-role
-  namespace: bar
+  namespace: foo
 rules:
 - apiGroups: ["tekton.dev"]
   resources: ["pipelineruns", "pipelineresources", "taskruns"]
@@ -47,18 +46,18 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: bar-trigger-sa
-  namespace: bar
+  name: foo-trigger-sa
+  namespace: foo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: triggercr-rolebinding
-  namespace: bar
+  namespace: foo
 subjects:
 - kind: ServiceAccount
-  name: bar-trigger-sa
-  namespace: bar
+  name: foo-trigger-sa
+  namespace: foo
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -68,7 +67,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: github-secret
-  namespace: bar
+  namespace: foo
 type: Opaque
 stringData:
   secretToken: "1234567"

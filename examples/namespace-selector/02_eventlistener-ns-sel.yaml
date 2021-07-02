@@ -1,11 +1,10 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: listener-sel
-  namespace: foo
+  name: namespace-selector-listener
 spec:
-  serviceAccountName: foo-el-sa
+  serviceAccountName: el-sa
   namespaceSelector:
     matchNames:
+    - default
     - foo
-    - bar
