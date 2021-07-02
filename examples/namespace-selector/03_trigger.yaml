@@ -3,9 +3,9 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: Trigger
 metadata:
   name: trigger
-  namespace: bar
+  namespace: foo
 spec:
-  serviceAccountName: bar-trigger-sa
+  serviceAccountName: foo-trigger-sa
   interceptors:
     - github:
         secretRef:
@@ -22,7 +22,7 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
   name: pipeline-binding
-  namespace: bar
+  namespace: foo
 spec:
   params:
   - name: gitrevision
@@ -36,7 +36,7 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template
-  namespace: bar
+  namespace: foo
 spec:
   params:
   - name: gitrevision
