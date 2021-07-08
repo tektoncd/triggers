@@ -476,10 +476,12 @@ see the [NGINX Ingress Controller Installation Guide](https://kubernetes.github.
    ```sh
    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.1/deploy/static/provider/cloud/deploy.yaml
    ```
+   
 2. Obtain the name of your `EventListener` service:
    ```sh
     kubectl get el <EVENTLISTENR_NAME> -o=jsonpath='{.status.configuration.generatedName}{"\n"}'
    ```
+   
 3. Instantiate the `Ingress` object:
    ```yaml
    apiVersion: extensions/v1beta1
@@ -505,26 +507,29 @@ see the [NGINX Ingress Controller Installation Guide](https://kubernetes.github.
    ```   
    kubectl get ingress ingress-resource
    ``` 
-   
+
 5. Test the configuragion with `curl` or set up a GitHub Webhook that sends events to it.
 
 ## Exposing an `EventListener` using Openshift Route
 
 Below are instructions for configuring an OpenShift 4.2 cluster running API version `v1.14.6+32dc4a0`. For more information,
-see [Route Configuration]https://docs.openshift.com/container-platform/4.2/networking/routes/route-configuration.html).
+see [Route Configuration](https://docs.openshift.com/container-platform/4.2/networking/routes/route-configuration.html).
 
 1. Obtain the name of your `EventListener` service:
    ```sh
     oc get el <EVENTLISTENR_NAME> -o=jsonpath='{.status.configuration.generatedName}'
    ```
+
 2. Expose the `EventListener` service:
    ```sh
     oc expose svc/[el-listener] # REPLACE el-listener WITH YOUR SERVICE NAME FROM STEP 1
    ```
+
 3. Obtain the IP address of the exposed route:
    ```sh
     oc get route el-listener  -o=jsonpath='{.spec.host}' # REPLACE el-listener WITH YOUR SERVICE NAME FROM STEP 1
    ```
+   
 4. Test the configuragion with `curl` or set up a GitHub Webhook that sends events to it.
 
 ## Understanding the deployment of an `EventListener`
@@ -535,6 +540,7 @@ Below is a high-level walkthrough through the deployment of an `EventListener` u
    ```bash
    kubectl create -f https://github.com/tektoncd/triggers/tree/master/examples/github
    ```
+   
    Tekton Triggers creates a new `Deployment` and `Service` for the `EventListener`. using the `EventListener` definition,
    [`metadata.labels`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#labels), and pre-existing values
    such as container `Image`, `Name`, and `Port`. Tekton Triggers uses the `EventListener` name prefixed with `el-` to name the
