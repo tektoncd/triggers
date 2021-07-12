@@ -158,7 +158,8 @@ Now, you must create and execute the following `Tasks`:
    - `GitHubOrg` - the GitHub organization you're using for the namespace in this tutorial.
    - `GitHubUser` - your GitHub username.
    - `GitHubRepo` - the GitHub repository you're using for this tutorial.
-   - `ExternalDomain` - set this to a value appropriate to your environment.
+   - `ExternalDomain` - set this to a value appropriate to your environment: the external domain of the event listener instance.
+   - `GitHubDomain` (optional) - if you are using github enterprise, set this to your GitHub domain (e.g. `git.corp.com`)
 
 9. Run the webhook `Task`:
    ``` 
