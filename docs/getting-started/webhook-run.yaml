@@ -21,5 +21,8 @@ spec:
     value: secret
   - name: ExternalDomain
     value: demo.iancoffey.com
+#   If you are using github enterprise, provide a value for GitHubDomain
+#  - name: GitHubDomain
+#    value: git.corp.com
   timeout: 1000s
   serviceAccountName: tekton-triggers-createwebhook
