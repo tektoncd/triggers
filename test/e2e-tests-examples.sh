@@ -65,10 +65,6 @@ ignoreExamples=( cron trigger-ref v1alpha1-task )
 
 port_forward_and_curl() {
 
-   if [[ $version == "v1beta1" ]]; then
-    info "ignoring for now"
-  fi
-
   if [[ " ${ignoreExamples[@]} " =~ " ${current_example} " ]]; then
     info 'ignoring for port forwarding'
     return
