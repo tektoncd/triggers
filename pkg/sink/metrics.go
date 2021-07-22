@@ -20,7 +20,10 @@ var (
 		"http_duration_seconds",
 		"The eventlistener HTTP request duration",
 		stats.UnitDimensionless)
-	elDistribution     = view.Distribution(metrics.BucketsNBy10(0.001, 5)...)
+	elDistribution = view.Distribution(metrics.BucketsNBy10(0.001, 5)...)
+	eventCount     = stats.Float64("event_count",
+		"number of events received by sink",
+		stats.UnitDimensionless)
 	triggeredResources = stats.Int64("triggered_resources", "Count of the number of triggered eventlistener resources", stats.UnitDimensionless)
 )
 
@@ -57,6 +60,12 @@ func NewRecorder() (*Recorder, error) {
 			Measure:     triggeredResources,
 			Aggregation: view.Count(),
 			TagKeys:     []tag.Key{r.kind},
+		},
+		&view.View{
+			Description: eventCount.Description(),
+			Measure:     eventCount,
+			Aggregation: view.Count(),
+			TagKeys:     []tag.Key{r.status},
 		},
 	)
 	if err != nil {
@@ -97,6 +106,7 @@ func (s *Sink) recordMetrics(w *StatusRecorder, elapsed time.Duration) {
 	}
 
 	metrics.Record(ctx, elDuration.M(duration))
+	metrics.Record(ctx, eventCount.M(1))
 }
 
 func (s *Sink) recordResourceCreation(resources []json.RawMessage) {
