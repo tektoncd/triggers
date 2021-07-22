@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"sync"
 	"testing"
+	"time"
 
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap/zaptest"
 	"knative.dev/pkg/metrics"
+	"knative.dev/pkg/metrics/metricstest"
 )
 
 func TestRecorderMetricsRegistered(t *testing.T) {
@@ -94,6 +96,49 @@ func TestRecordResourceCreation(t *testing.T) {
 			v := view.Find("triggered_resources")
 			// need to unregister the view so the counts reset
 			view.Unregister(v)
+		})
+	}
+}
+
+func TestRecordRecordMetrics(t *testing.T) {
+	tests := []struct {
+		name             string
+		status           int
+		expectedTags     map[string]string
+		duration         time.Duration
+		expectedDuration float64
+		expectedCount    int64
+	}{{
+		name:   "Record Metrics",
+		status: 200,
+		expectedTags: map[string]string{
+			"status": "200",
+		},
+		duration:         7,
+		expectedDuration: 7e-09,
+		expectedCount:    1,
+	}}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer metricstest.Unregister("event_count", "http_duration_seconds")
+			logger := zaptest.NewLogger(t).Sugar()
+			metrics.FlushExporter()
+			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
+				Domain:    "tekton.dev/triggers",
+				Component: "triggers",
+				ConfigMap: map[string]string{},
+			}, logger)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, _ := NewRecorder()
+			s := &Sink{
+				Recorder: r,
+				Logger:   logger,
+			}
+			s.recordMetrics(&StatusRecorder{Status: 200}, test.duration)
+			metricstest.CheckDistributionData(t, "http_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
+			metricstest.CheckCountData(t, "event_count", test.expectedTags, test.expectedCount)
 		})
 	}
 }
