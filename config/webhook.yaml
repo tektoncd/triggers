@@ -69,7 +69,7 @@ spec:
           value: tekton.dev/triggers
         ports:
         - name: metrics
-          containerPort: 9000
+          containerPort: 9090
         - name: profiling
           containerPort: 8008
         - name: https-webhook
