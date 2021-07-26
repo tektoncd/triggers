@@ -71,11 +71,14 @@ See our [Tekton Triggers examples](https://github.com/tektoncd/triggers/tree/mas
 ## Specifying the Kubernetes service account
 
 You must specify a Kubernetes service account in the `serviceAccountName` field that the `EventListener` will use to instantiate Tekton objects.
-This account must have the following assigned:
-- A Kubernetes `Role` that permits the `get`, `list`, and `watch` verbs for each `Trigger` specified in the `EventListener`
-- A Kubernetes `ClusterRole` that permits read access to `ClusterTriggerBindings` objects
-- Permissions to create the Tekton resources specified in the associated `TriggerTemplate`, as shown in the following [example](../examples/rbac.yaml)
-- If you're using `namespaceSelectors` in your `EventListener`, a `ClusterRole` that permits read access to all `Trigger` objects on the cluster.ources across the cluster.
+
+Tekton Trigger creates 2 clusterroles while installing with necessary permissions required for an eventlistener. You can directly create bindings for your serviceaccount with the clusterroles.
+- A Kubernetes RoleBinding with `tekton-triggers-eventlistener-roles` clusterrole.
+- A Kubernetes ClusterRoleBinding with `tekton-triggers-eventlistener-clusterroles` clusterrole.
+  
+  You can checkout an example [here](../examples/rbac.yaml).
+- If you're using `namespaceSelectors` in your `EventListener`, you will have to create an additional `ClusterRoleBinding ` 
+  with `tekton-triggers-eventlistener-roles` clusterrole.
 
 ## Specifying `Triggers`
 
