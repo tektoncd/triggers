@@ -295,12 +295,12 @@ github.com/tektoncd/pipeline/pkg/substitution
 ## explicit
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tidwall/gjson v1.3.5
+# github.com/tidwall/gjson v1.6.5
 ## explicit
 github.com/tidwall/gjson
-# github.com/tidwall/match v1.0.1
+# github.com/tidwall/match v1.0.3
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.0.0
+# github.com/tidwall/pretty v1.0.2
 github.com/tidwall/pretty
 # github.com/tidwall/sjson v1.0.4
 ## explicit

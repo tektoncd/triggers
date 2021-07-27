@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/pipeline v0.24.1
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
-	github.com/tidwall/gjson v1.3.5 // indirect
+	github.com/tidwall/gjson v1.6.5 // indirect
 	github.com/tidwall/sjson v1.0.4
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.16.0
