@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"go.opencensus.io/stats"
@@ -53,7 +52,6 @@ func NewRecorder() (*Recorder, error) {
 			Description: elDuration.Description(),
 			Measure:     elDuration,
 			Aggregation: elDistribution,
-			TagKeys:     []tag.Key{r.status},
 		},
 		&view.View{
 			Description: triggeredResources.Description(),
@@ -65,7 +63,6 @@ func NewRecorder() (*Recorder, error) {
 			Description: eventCount.Description(),
 			Measure:     eventCount,
 			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.status},
 		},
 	)
 	if err != nil {
@@ -97,7 +94,6 @@ func (s *Sink) recordMetrics(w *StatusRecorder, elapsed time.Duration) {
 	s.Logger.Debugw("event listener request completed", "status", w.Status, "duration", duration)
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Insert(s.Recorder.status, strconv.Itoa(w.Status)),
 	)
 
 	if err != nil {

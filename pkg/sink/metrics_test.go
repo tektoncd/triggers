@@ -103,17 +103,11 @@ func TestRecordResourceCreation(t *testing.T) {
 func TestRecordRecordMetrics(t *testing.T) {
 	tests := []struct {
 		name             string
-		status           int
-		expectedTags     map[string]string
 		duration         time.Duration
 		expectedDuration float64
 		expectedCount    int64
 	}{{
-		name:   "Record Metrics",
-		status: 200,
-		expectedTags: map[string]string{
-			"status": "200",
-		},
+		name:             "Record Metrics",
 		duration:         7,
 		expectedDuration: 7e-09,
 		expectedCount:    1,
@@ -137,8 +131,8 @@ func TestRecordRecordMetrics(t *testing.T) {
 				Logger:   logger,
 			}
 			s.recordMetrics(&StatusRecorder{Status: 200}, test.duration)
-			metricstest.CheckDistributionData(t, "http_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
-			metricstest.CheckCountData(t, "event_count", test.expectedTags, test.expectedCount)
+			metricstest.CheckDistributionData(t, "http_duration_seconds", nil, 1, test.expectedDuration, test.expectedDuration)
+			metricstest.CheckCountData(t, "event_count", nil, test.expectedCount)
 		})
 	}
 }
