@@ -444,10 +444,10 @@ kubectl get pods --selector eventlistener=my-eventlistener
 The following pipeline metrics are available on the `eventlistener` Service on port `9000`.
 
 |  Name | Type | Labels/Tags | Status |
-| ---------- | ----------- | ----------- | ----------- |
+| ---------- | ----------- | :-: | ----------- |
 | `eventlistener_triggered_resources` | Counter | `kind`=&lt;kind&gt; | experimental |
-| `eventlistener_event_count` | Counter | `status`=&lt;status&gt; <br> | experimental |
-| `eventlistener_http_duration_seconds_[bucket, sum, count]` | Histogram | `status`=&lt;status&gt; <br> | experimental |
+| `eventlistener_event_count` | Counter | - | experimental |
+| `eventlistener_http_duration_seconds_[bucket, sum, count]` | Histogram | - | experimental |
 
 Several kinds of exporters can be configured for an `EventListener`, including Prometheus, Google Stackdriver, and many others.
 You can configure metrics using the [`config-observability-triggers` config map](../config/config-observability.yaml) in the `EventListener` namespaces.
