@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	stdError "errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -49,6 +50,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
@@ -665,6 +667,14 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		}
 		if err != nil {
 			return err
+		}
+		for _, cond := range customConditions {
+			if cond.Type == apis.ConditionReady {
+				if cond.Status != corev1.ConditionTrue {
+					logger.Warn("custom object is not yet ready")
+					return stdError.New("custom object is not yet ready")
+				}
+			}
 		}
 		el.Status.SetConditionsForDynamicObjects(customConditions)
 		if url != nil {
