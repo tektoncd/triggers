@@ -68,7 +68,7 @@ const (
 	// eventListenerServiceTLSPortName defines service TLS port name for EventListener Service
 	eventListenerServiceTLSPortName = "https-listener"
 	// eventListenerContainerPort defines the port exposed by the EventListener Container
-	eventListenerContainerPort = 8000
+	eventListenerContainerPort = 8080
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -488,6 +488,16 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
 	})
 
+	container.ReadinessProbe = &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/live",
+				Scheme: corev1.URISchemeHTTP,
+			},
+		},
+		SuccessThreshold: 1,
+	}
+
 	podlabels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
 
 	podlabels = mergeMaps(podlabels, customObjectData.Labels)
@@ -628,6 +638,10 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 			}
 			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].Env, container.Env) {
 				existingObject.Spec.Template.Spec.Containers[0].Env = container.Env
+				updated = true
+			}
+			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].ReadinessProbe, container.ReadinessProbe) {
+				existingObject.Spec.Template.Spec.Containers[0].ReadinessProbe = container.ReadinessProbe
 				updated = true
 			}
 			if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Containers[0].VolumeMounts, originalObject.Spec.Template.Spec.Containers[0].VolumeMounts) {

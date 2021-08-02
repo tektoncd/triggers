@@ -465,6 +465,15 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							Name:  "METRICS_PROMETHEUS_PORT",
 							Value: "9000",
 						}},
+						ReadinessProbe: &corev1.Probe{
+							Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path:   "/live",
+									Scheme: corev1.URISchemeHTTP,
+								},
+							},
+							SuccessThreshold: 1,
+						},
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "config-logging",
