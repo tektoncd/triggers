@@ -388,7 +388,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// ElPort forward sink pod for http request
-	portString := strconv.Itoa(8000)
+	portString := strconv.Itoa(8080)
 	podName := sinkPods.Items[0].Name
 	stopChan, errChan := make(chan struct{}, 1), make(chan error, 1)
 
