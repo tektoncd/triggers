@@ -57,6 +57,7 @@ spec:
           "-stderrthreshold", "INFO",
           "-el-image", "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
           "-el-port", "8080",
+          "-el-security-context=true",
           "-el-readtimeout", "5",
           "-el-writetimeout", "40",
           "-el-idletimeout", "120",
