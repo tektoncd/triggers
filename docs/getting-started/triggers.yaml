@@ -7,7 +7,7 @@ spec:
   params:
     - name: gitrevision
       description: The git revision
-      default: main
+      default: master
     - name: gitrepositoryurl
       description: The git repository url
     - name: namespace
