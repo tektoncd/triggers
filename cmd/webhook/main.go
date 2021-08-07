@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 
+	defaultconfig "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -53,6 +54,9 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -65,7 +69,9 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 		types,
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-		contexts.WithUpgradeViaDefaulting,
+		func(ctx context.Context) context.Context {
+			return contexts.WithUpgradeViaDefaulting(store.ToContext(ctx))
+		},
 
 		// Whether to disallow unknown fields.
 		true,
@@ -73,6 +79,9 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 }
 
 func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -86,7 +95,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			return ctx
+			return contexts.WithUpgradeViaDefaulting(store.ToContext(ctx))
 		},
 
 		// Whether to disallow unknown fields.
@@ -104,7 +113,8 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 		"/config-validation",
 
 		configmap.Constructors{
-			logging.ConfigMapName(): logging.NewConfigFromConfigMap,
+			logging.ConfigMapName():               logging.NewConfigFromConfigMap,
+			defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
 		},
 	)
 }

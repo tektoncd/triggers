@@ -19,6 +19,7 @@ package eventlistener
 import (
 	"context"
 
+	cfg "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
@@ -60,8 +61,11 @@ func NewController(config Config) func(context.Context, configmap.Watcher) *cont
 		}
 
 		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
+			configStore := cfg.NewStore(logger.Named("config-store"))
+			configStore.WatchConfigs(cmw)
 			return controller.Options{
-				AgentName: ControllerName,
+				AgentName:   ControllerName,
+				ConfigStore: configStore,
 			}
 		})
 

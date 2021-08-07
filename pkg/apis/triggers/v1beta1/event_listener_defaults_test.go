@@ -21,8 +21,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/ptr"
 )
 
@@ -56,6 +60,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
 				Triggers: []v1beta1.EventListenerTrigger{{
 					Bindings: []*v1beta1.EventListenerBinding{
 						{
@@ -88,6 +93,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
 				Resources: v1beta1.Resources{
 					KubernetesResource: &v1beta1.KubernetesResource{
 						Replicas: ptr.Int32(1),
@@ -109,6 +115,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
 				Resources: v1beta1.Resources{
 					KubernetesResource: &v1beta1.KubernetesResource{
 						Replicas: ptr.Int32(2),
@@ -132,6 +139,7 @@ func TestEventListenerSetDefaults(t *testing.T) {
 		wc: contexts.WithUpgradeViaDefaulting,
 		want: &v1beta1.EventListener{
 			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
 				Triggers: []v1beta1.EventListenerTrigger{{
 					Interceptors: []*v1beta1.EventInterceptor{{
 						Ref: v1beta1.InterceptorRef{
@@ -141,6 +149,44 @@ func TestEventListenerSetDefaults(t *testing.T) {
 					}},
 				}},
 			},
+		},
+	}, {
+		name: "EventListener default config context with sa",
+		in: &v1beta1.EventListener{
+			Spec: v1beta1.EventListenerSpec{
+				Triggers: []v1beta1.EventListenerTrigger{{
+					Interceptors: []*v1beta1.EventInterceptor{{
+						Ref: v1beta1.InterceptorRef{
+							Name: "cel",
+						},
+					}},
+				}},
+			},
+		},
+		want: &v1beta1.EventListener{
+			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: "tekton",
+				Triggers: []v1beta1.EventListenerTrigger{{
+					Interceptors: []*v1beta1.EventInterceptor{{
+						Ref: v1beta1.InterceptorRef{
+							Name: "cel",
+							Kind: v1beta1.ClusterInterceptorKind,
+						},
+					}},
+				}},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-service-account": "tekton",
+				},
+			})
+			return contexts.WithUpgradeViaDefaulting(s.ToContext(ctx))
 		},
 	}}
 	for _, tc := range tests {

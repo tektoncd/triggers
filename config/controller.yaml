@@ -73,6 +73,8 @@ spec:
           value: config-logging-triggers
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability-triggers
+        - name: CONFIG_DEFAULTS_NAME
+          value: config-defaults-triggers
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
         - name: METRICS_PROMETHEUS_PORT
