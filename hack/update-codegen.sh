@@ -33,6 +33,11 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
   "triggers:v1alpha1,v1beta1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+  -i github.com/tektoncd/triggers/pkg/apis/config
+
 # Knative Injection
 bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
   github.com/tektoncd/triggers/pkg/client github.com/tektoncd/triggers/pkg/apis \
