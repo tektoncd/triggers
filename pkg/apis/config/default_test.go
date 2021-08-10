@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/config"
-	test "github.com/tektoncd/triggers/pkg/reconciler/testing"
+	"github.com/tektoncd/triggers/test"
 )
 
 func TestNewDefaultsFromConfigMap(t *testing.T) {

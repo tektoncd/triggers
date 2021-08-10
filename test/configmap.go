@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package testing
+package test
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 
 	var cm corev1.ConfigMap
 
-	// Use github.com/ghodss/yaml since it reads json struct
+	// Use sigs.k8s.io/yaml since it reads json struct
 	// tags so things unmarshal properly
 	if err := yaml.Unmarshal(b, &cm); err != nil {
 		t.Fatalf("yaml.Unmarshal() = %v", err)

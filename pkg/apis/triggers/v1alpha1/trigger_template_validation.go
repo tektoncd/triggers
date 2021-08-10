@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/config"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
