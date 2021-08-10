@@ -269,3 +269,99 @@ If you need to add a new CRD type, you will need to add:
    - [200-clusterrole.yaml](./config/200-clusterrole.yaml)
    - [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
    - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
+
+## Adding feature gated API fields
+
+We've introduced a feature-flag called `enable-api-fields` to the
+[config-feature-flags.yaml file](config/config-feature-flags.yaml) deployed
+as part of our releases.
+
+This field can be configured either to be `alpha` or `stable`. This field is documented as 
+part of our [install docs](install.md#customizing-the-triggers-controller-behavior).
+
+For developers adding new features to Triggers' CRDs we've got
+a couple of helpful tools to make gating those features simpler
+and to provide a consistent testing experience.
+
+### Guarding Features with Feature Gates
+
+Writing new features is made trickier when you need to support both
+the existing stable behaviour as well as your new alpha behaviour.
+
+In the reconciler or sink code, you can guard your new features with an `if` statement
+such as the following:
+
+```go
+alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha"
+if alphaAPIEnabled {
+  // new feature code goes here
+} else {
+  // existing stable code goes here
+}
+```
+
+Notice that you'll need a context object to be passed into your function
+for this to work. When writing new features keep in mind that you might
+need to include this in your new function signatures.
+
+### Guarding Validations with Feature Gates
+
+Just because your application code might be correctly observing
+the feature gate flag doesn't mean you're done yet! When a user submits
+a Tekton resource it's validated by a validation webhook. Here too you'll need
+to ensure your new features aren't accidentally accepted when the feature gate
+suggests they shouldn't be. We've got a helper function,
+[`ValidateEnabledAPIFields`](pkg/apis/triggers/v1beta1/version_validation.go),
+to make validating the current feature gate easier. Use it like this:
+
+```go
+requiredVersion := config.AlphaAPIFields
+// errs is an instance of *apis.FieldError, a common type in our validation code
+errs = errs.Also(ValidateEnabledAPIFields(ctx, "your feature name", requiredVersion))
+```
+
+If the user's cluster isn't configured with the required feature gate it'll
+return an error like this:
+
+```
+<your feature> requires "enable-api-fields" feature gate to be "alpha" but it is "stable"
+```
+
+### Unit Testing with Feature Gates
+
+Any new code you write that uses the `ctx` context variable is trivially
+unit tested with different feature gate settings. You should make sure
+to unit test your code both with and without a feature gate enabled to
+make sure it's properly guarded. See the following for an example of a
+unit test that sets the feature gate to test behaviour:
+
+```go
+ctx, err := test.FeatureFlagsToContext(context.Background(), map[string]string{
+        "enable-api-fields": "alpha",
+})
+if err != nil {
+	t.Fatalf("unexpected error initializing feature flags: %v", err)
+}
+
+if err := ts.TestThing(ctx); err != nil {
+	t.Errorf("unexpected error with alpha feature gate enabled: %v", err)
+}
+```
+
+### Integration Tests
+
+For integration tests we provide the [`requireGate` function](test/gate.go) which
+should be passed to the `setup` function used by tests:
+
+```go
+c, namespace := setup(ctx, t, requireGate("enable-api-fields", "alpha"))
+```
+
+This will Skip your integration test if the feature gate is not set to `alpha`
+with a clear message explaining why it was skipped.
+
+**Note**: As with running example YAMLs you have to manually set the `enable-api-fields`
+flag to `alpha` in your test cluster to see your alpha integration tests
+run. When the flag in your cluster is `alpha` _all_ integration tests are executed,
+both `stable` and `alpha`. Setting the feature flag to `stable` will exclude `alpha`
+tests.

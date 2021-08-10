@@ -27,7 +27,8 @@ type cfgKey struct{}
 // Config holds the collection of configurations that we attach to contexts.
 // +k8s:deepcopy-gen=false
 type Config struct {
-	Defaults *Defaults
+	Defaults     *Defaults
+	FeatureFlags *FeatureFlags
 }
 
 // FromContext extracts a Config from the provided context.
@@ -46,8 +47,10 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		return cfg
 	}
 	defaults, _ := NewDefaultsFromMap(map[string]string{})
+	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
 	return &Config{
-		Defaults: defaults,
+		Defaults:     defaults,
+		FeatureFlags: featureFlags,
 	}
 }
 
