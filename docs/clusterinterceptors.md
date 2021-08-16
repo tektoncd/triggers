@@ -16,6 +16,7 @@ top-level `extensions` field to other [`Interceptors`](interceptors.md) and `Clu
 ## Structure of a `ClusterInterceptor`
 
 A `ClusterInterceptor` definition consists of the following fields:
+
 - Required:
   - [`apiVersion`][kubernetes-overview] - specifies the target API version, for example `triggers.tekton.dev/v1alpha1`
   - [`kind`][kubernetes-overview] - specifies that this Kubernetes resource is a `ClusterInterceptor` object
@@ -30,6 +31,7 @@ A `ClusterInterceptor` definition consists of the following fields:
 
 The `clientConfig` field specifies the client, such as an `EventListener` and how it communicates with the `ClusterInterceptor` to exchange
 event payload and other data. You can configure this field in one of the following ways:
+
 - Specify the `url` field and as its value a URL at which the corresponding Kubernetes service listens for incoming requests from this `ClusterInterceptor`
 - Specify the `service` field and within it reference the corresponding Kubernetes service that's listening for incoming requests from this `ClusterInterceptor`
 
@@ -52,6 +54,7 @@ spec:
 ## Configuring a Kubernetes Service for the `ClusterInterceptor`
 
 The Kubernetes object running the custom business logic for your `ClusterInterceptor` must meet the following criteria:
+
 - Fronted by a regular Kubernetes v1 Service listening on an HTTP port (default port is 80)
 - Accepts an HTTP `POST` request that contains an [`InterceptorRequest`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorRequest) 
   as a JSON body
