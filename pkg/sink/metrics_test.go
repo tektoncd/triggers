@@ -100,17 +100,15 @@ func TestRecordResourceCreation(t *testing.T) {
 	}
 }
 
-func TestRecordRecordMetrics(t *testing.T) {
+func TestRecordRecordDurationMetrics(t *testing.T) {
 	tests := []struct {
 		name             string
 		duration         time.Duration
 		expectedDuration float64
-		expectedCount    int64
 	}{{
 		name:             "Record Metrics",
 		duration:         7,
 		expectedDuration: 7e-09,
-		expectedCount:    1,
 	}}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -130,9 +128,44 @@ func TestRecordRecordMetrics(t *testing.T) {
 				Recorder: r,
 				Logger:   logger,
 			}
-			s.recordMetrics(&StatusRecorder{Status: 200}, test.duration)
+			s.recordDurationMetrics(&StatusRecorder{Status: 200}, test.duration)
 			metricstest.CheckDistributionData(t, "http_duration_seconds", nil, 1, test.expectedDuration, test.expectedDuration)
-			metricstest.CheckCountData(t, "event_count", nil, test.expectedCount)
+		})
+	}
+}
+
+func TestRecordRecordCountMetrics(t *testing.T) {
+	tests := []struct {
+		name          string
+		expectedTags  map[string]string
+		expectedCount int64
+	}{{
+		name: "Record Metrics",
+		expectedTags: map[string]string{
+			"status": failTag,
+		},
+		expectedCount: 1,
+	}}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer metricstest.Unregister("event_count", "http_duration_seconds")
+			logger := zaptest.NewLogger(t).Sugar()
+			metrics.FlushExporter()
+			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
+				Domain:    "tekton.dev/triggers",
+				Component: "triggers",
+				ConfigMap: map[string]string{},
+			}, logger)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, _ := NewRecorder()
+			s := &Sink{
+				Recorder: r,
+				Logger:   logger,
+			}
+			s.recordCountMetrics(failTag)
+			metricstest.CheckCountData(t, "event_count", test.expectedTags, test.expectedCount)
 		})
 	}
 }
