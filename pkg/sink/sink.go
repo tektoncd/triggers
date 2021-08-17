@@ -96,6 +96,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	el, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName)
 	if err != nil {
 		log.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
+		r.recordCountMetrics(failTag)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -104,6 +105,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	event, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		log.Errorf("Error reading event body: %s", err)
+		r.recordCountMetrics(failTag)
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -117,6 +119,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		labelSelector, err = metav1.LabelSelectorAsSelector(el.Spec.LabelSelector)
 		if err != nil {
 			r.Logger.Errorf("Failed to create label selector: %s", err)
+			r.recordCountMetrics(failTag)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -150,6 +153,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		trList, err := triggerFunc()
 		if err != nil {
 			log.Errorf("Error getting Triggers: %s", err)
+			r.recordCountMetrics(failTag)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -172,6 +176,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		}(*t)
 	}
 
+	r.recordCountMetrics(successTag)
 	response.WriteHeader(http.StatusAccepted)
 	response.Header().Set("Content-Type", "application/json")
 	body := Response{
