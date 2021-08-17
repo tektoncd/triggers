@@ -36,7 +36,7 @@ the triggers repo, a terminal window and a text editor.
 1. Confirm commit SHA matches what you want to release.
 
     ```bash
-    git show $TEKTON_RELEASE_GIT_SHA
+    git show $TRIGGERS_RELEASE_GIT_SHA
     ```
 
 1. Create a workspace template file:
