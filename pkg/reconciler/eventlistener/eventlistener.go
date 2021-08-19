@@ -67,8 +67,12 @@ const (
 	eventListenerServicePortName = "http-listener"
 	// eventListenerServiceTLSPortName defines service TLS port name for EventListener Service
 	eventListenerServiceTLSPortName = "https-listener"
-	// eventListenerContainerPort defines the port exposed by the EventListener Container
+	// eventListenerMetricsPortName defines the metrics port name by the EventListener Container
+	eventListenerMetricsPortName = "http-metrics"
+	// eventListenerContainerPort defines service port for EventListener Service
 	eventListenerContainerPort = 8080
+	// eventListenerMetricsPort defines metrics port for EventListener Service
+	eventListenerMetricsPort = 9000
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
@@ -186,13 +190,21 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 	}
 
 	servicePort := getServicePort(el, r.config)
+	metricsPort := corev1.ServicePort{
+		Name:     eventListenerMetricsPortName,
+		Protocol: corev1.ProtocolTCP,
+		Port:     int32(9000),
+		TargetPort: intstr.IntOrString{
+			IntVal: int32(eventListenerMetricsPort),
+		},
+	}
 
 	service := &corev1.Service{
 		ObjectMeta: generateObjectMeta(el, r.config.StaticResourceLabels),
 		Spec: corev1.ServiceSpec{
 			Selector: GenerateResourceLabels(el.Name, r.config.StaticResourceLabels),
 			Type:     serviceType,
-			Ports:    []corev1.ServicePort{servicePort}},
+			Ports:    []corev1.ServicePort{servicePort, metricsPort}},
 	}
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
