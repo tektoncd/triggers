@@ -517,6 +517,13 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 				TargetPort: intstr.IntOrString{
 					IntVal: int32(eventListenerContainerPort),
 				},
+			}, {
+				Name:     eventListenerMetricsPortName,
+				Protocol: corev1.ProtocolTCP,
+				Port:     int32(9000),
+				TargetPort: intstr.IntOrString{
+					IntVal: int32(eventListenerMetricsPort),
+				},
 			}},
 		},
 	}
