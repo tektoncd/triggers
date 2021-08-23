@@ -13,7 +13,7 @@ Creates an EventListener that listens for GitHub webhook events.
 1. Port forward:
 
    ```bash
-   kubectl port-forward service/el-github-listener-interceptor 8080
+   kubectl port-forward service/el-github-listener 8080
    ```
 
 1. Test by sending the sample payload.
