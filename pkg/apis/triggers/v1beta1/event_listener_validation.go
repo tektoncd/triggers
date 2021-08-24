@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -43,6 +44,11 @@ func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 		// Since `el-` is added as the prefix of EventListener services, the name of EventListener must be no more than 60 characters long.
 		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("eventListener name '%s' must be no more than 60 characters long", e.ObjectMeta.Name), "metadata.name"))
 	}
+
+	if len(e.GetObjectMeta().GetAnnotations()) != 0 {
+		errs = errs.Also(triggers.ValidateAnnotations(e.GetObjectMeta().GetAnnotations()))
+	}
+
 	if apis.IsInDelete(ctx) {
 		return nil
 	}

@@ -34,22 +34,24 @@ func (r Sink) IsValidPayload(eventHandler http.Handler) http.Handler {
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		var event map[string]interface{}
-		if err := json.Unmarshal([]byte(payload), &event); err != nil {
-			errMsg := fmt.Sprintf("Invalid event body format format: %s", err)
-			r.recordCountMetrics(failTag)
-			r.Logger.Error(errMsg)
-			response.WriteHeader(http.StatusBadRequest)
-			response.Header().Set("Content-Type", "application/json")
-			body := Response{
-				EventListener: r.EventListenerName,
-				Namespace:     r.EventListenerNamespace,
-				ErrorMessage:  errMsg,
+		if r.PayloadValidation {
+			var event map[string]interface{}
+			if err := json.Unmarshal([]byte(payload), &event); err != nil {
+				errMsg := fmt.Sprintf("Invalid event body format format: %s", err)
+				r.recordCountMetrics(failTag)
+				r.Logger.Error(errMsg)
+				response.WriteHeader(http.StatusBadRequest)
+				response.Header().Set("Content-Type", "application/json")
+				body := Response{
+					EventListener: r.EventListenerName,
+					Namespace:     r.EventListenerNamespace,
+					ErrorMessage:  errMsg,
+				}
+				if err := json.NewEncoder(response).Encode(body); err != nil {
+					r.Logger.Errorf("failed to write back sink response: %v", err)
+				}
+				return
 			}
-			if err := json.NewEncoder(response).Encode(body); err != nil {
-				r.Logger.Errorf("failed to write back sink response: %v", err)
-			}
-			return
 		}
 		eventHandler.ServeHTTP(response, request)
 	})

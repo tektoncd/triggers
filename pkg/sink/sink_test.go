@@ -156,6 +156,7 @@ func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhoo
 		ClusterTriggerBindingLister: clustertriggerbindinginformer.Get(ctx).Lister(),
 		TriggerTemplateLister:       triggertemplateinformer.Get(ctx).Lister(),
 		ClusterInterceptorLister:    interceptorinformer.Get(ctx).Lister(),
+		PayloadValidation:           true,
 	}
 	return r, dynamicClient
 }

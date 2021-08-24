@@ -57,6 +57,8 @@ var (
 		"The filename for the TLS certificate.")
 	tlsKeyFlag = flag.String("tls-key", "",
 		"The filename for the TLS key.")
+	payloadValidation = flag.Bool("payload-validation", true,
+		"Whether to disable payload validation or not.")
 )
 
 // Args define the arguments for Sink.
@@ -81,6 +83,8 @@ type Args struct {
 	Key string
 	// Cert defines the filename for tls Cert.
 	Cert string
+	// PayloadValidation defines whether to validate payload or not
+	PayloadValidation bool
 }
 
 // Clients define the set of client dependencies Sink requires.
@@ -104,16 +108,17 @@ func GetArgs() (Args, error) {
 	}
 
 	return Args{
-		ElName:           *nameFlag,
-		ElNamespace:      *namespaceFlag,
-		Port:             *portFlag,
-		IsMultiNS:        *isMultiNSFlag,
-		ELReadTimeOut:    time.Duration(*elReadTimeOut),
-		ELWriteTimeOut:   time.Duration(*elWriteTimeOut),
-		ELIdleTimeOut:    time.Duration(*elIdleTimeOut),
-		ELTimeOutHandler: time.Duration(*elTimeOutHandler),
-		Cert:             *tlsCertFlag,
-		Key:              *tlsKeyFlag,
+		ElName:            *nameFlag,
+		ElNamespace:       *namespaceFlag,
+		Port:              *portFlag,
+		IsMultiNS:         *isMultiNSFlag,
+		PayloadValidation: *payloadValidation,
+		ELReadTimeOut:     time.Duration(*elReadTimeOut),
+		ELWriteTimeOut:    time.Duration(*elWriteTimeOut),
+		ELIdleTimeOut:     time.Duration(*elIdleTimeOut),
+		ELTimeOutHandler:  time.Duration(*elTimeOutHandler),
+		Cert:              *tlsCertFlag,
+		Key:               *tlsKeyFlag,
 	}, nil
 }
 

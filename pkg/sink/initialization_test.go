@@ -52,6 +52,9 @@ func Test_GetArgs(t *testing.T) {
 	if sinkArgs.IsMultiNS != true {
 		t.Errorf("Error EL Type want type, got %t", sinkArgs.IsMultiNS)
 	}
+	if sinkArgs.PayloadValidation != true {
+		t.Errorf("Error EL PayloadValidation want true, got %t", sinkArgs.PayloadValidation)
+	}
 }
 
 func Test_GetArgs_error(t *testing.T) {

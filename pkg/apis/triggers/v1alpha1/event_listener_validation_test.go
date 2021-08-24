@@ -22,6 +22,7 @@ import (
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
@@ -95,6 +96,20 @@ func Test_EventListenerValidate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
 				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					TriggerRef: "tt",
+				}},
+			},
+		},
+	}, {
+		name: "Valid EventListener with Annotation",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "name",
+				Namespace:   "namespace",
+				Annotations: map[string]string{triggers.PayloadValidationAnnotation: "true"},
 			},
 			Spec: v1alpha1.EventListenerSpec{
 				Triggers: []v1alpha1.EventListenerTrigger{{
@@ -554,6 +569,20 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Template: &v1alpha1.EventListenerTemplate{
 						Ref: ptr.String(""),
 					},
+				}},
+			},
+		},
+	}, {
+		name: "Invalid Annotation value",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "name",
+				Namespace:   "namespace",
+				Annotations: map[string]string{triggers.PayloadValidationAnnotation: "xyz"},
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					TriggerRef: "tt",
 				}},
 			},
 		},
