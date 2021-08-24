@@ -30,6 +30,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -883,6 +884,13 @@ func getContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) core
 		isMultiNS = true
 	}
 
+	payloadValidation := true
+	if value, ok := el.GetAnnotations()[triggers.PayloadValidationAnnotation]; ok {
+		if value == "false" {
+			payloadValidation = false
+		}
+	}
+
 	return corev1.Container{
 		Name:  "event-listener",
 		Image: *c.Image,
@@ -900,6 +908,7 @@ func getContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) core
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
 			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
+			"--payload-validation=" + strconv.FormatBool(payloadValidation),
 		},
 		Env: env,
 	}

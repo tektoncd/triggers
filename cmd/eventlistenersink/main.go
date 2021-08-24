@@ -149,6 +149,7 @@ func main() {
 		HTTPClient:             http.DefaultClient,
 		EventListenerName:      sinkArgs.ElName,
 		EventListenerNamespace: sinkArgs.ElNamespace,
+		PayloadValidation:      sinkArgs.PayloadValidation,
 		Logger:                 logger,
 		Recorder:               recorder,
 		Auth:                   sink.DefaultAuthOverride{},

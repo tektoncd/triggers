@@ -57,7 +57,7 @@ type Sink struct {
 	Logger                 *zap.SugaredLogger
 	Recorder               *Recorder
 	Auth                   AuthOverride
-
+	PayloadValidation      bool
 	// WGProcessTriggers keeps track of triggers currently being processed
 	// Currently only used in tests to wait for all triggers to finish processing
 	WGProcessTriggers *sync.WaitGroup
