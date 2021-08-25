@@ -53,6 +53,7 @@ import (
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/ptr"
@@ -171,7 +172,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	}
 
 	// TODO(dibyom): We should exclude propagation of some annotations such as `kubernetes.io/last-applied-revision`
-	if !reflect.DeepEqual(existing.Annotations, mergeMaps(existing.Annotations, desired.Annotations)) {
+	if !reflect.DeepEqual(existing.Annotations, kmeta.UnionMaps(existing.Annotations, desired.Annotations)) {
 		updated = true
 		existing.Annotations = desired.Annotations
 	}
@@ -511,9 +512,9 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		SuccessThreshold: 1,
 	}
 
-	podlabels := mergeMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
+	podlabels := kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
 
-	podlabels = mergeMaps(podlabels, customObjectData.Labels)
+	podlabels = kmeta.UnionMaps(podlabels, customObjectData.Labels)
 
 	original.Labels = podlabels
 	original.Annotations = customObjectData.Annotations
@@ -728,7 +729,7 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Conf
 		serviceAccountName                   string
 		securityContext                      corev1.PodSecurityContext
 	)
-	podlabels = mergeMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
+	podlabels = kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
 
 	serviceAccountName = el.Spec.ServiceAccountName
 
@@ -771,7 +772,7 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Conf
 			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
 		}
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = mergeMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		podlabels = kmeta.UnionMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
 	}
 
 	if *c.SetSecurityContext {
@@ -977,7 +978,7 @@ func generateObjectMeta(el *v1beta1.EventListener, staticResourceLabels map[stri
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,
 		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
-		Labels:          mergeMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
+		Labels:          kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
 		Annotations:     el.Annotations,
 	}
 }
@@ -1007,19 +1008,6 @@ func defaultLoggingConfigMap() *corev1.ConfigMap {
 			"zap-logger-config":      defaultConfig,
 		},
 	}
-}
-
-// mergeMaps merges the values in the passed maps into a new map.
-// Values within m2 potentially clobber m1 values.
-func mergeMaps(m1, m2 map[string]string) map[string]string {
-	merged := make(map[string]string, len(m1)+len(m2))
-	for k, v := range m1 {
-		merged[k] = v
-	}
-	for k, v := range m2 {
-		merged[k] = v
-	}
-	return merged
 }
 
 func defaultObservabilityConfigMap() *corev1.ConfigMap {

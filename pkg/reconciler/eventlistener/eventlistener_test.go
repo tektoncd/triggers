@@ -44,6 +44,7 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	cminformer "knative.dev/pkg/configmap/informer"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -893,9 +894,9 @@ func TestReconcile(t *testing.T) {
 
 	elDeployment := makeDeployment()
 	elDeploymentWithLabels := makeDeployment(func(d *appsv1.Deployment) {
-		d.Labels = mergeMaps(updateLabel, generatedLabels)
+		d.Labels = kmeta.UnionMaps(updateLabel, generatedLabels)
 		d.Spec.Selector.MatchLabels = generatedLabels
-		d.Spec.Template.Labels = mergeMaps(updateLabel, generatedLabels)
+		d.Spec.Template.Labels = kmeta.UnionMaps(updateLabel, generatedLabels)
 	})
 
 	elDeploymentWithAnnotations := makeDeployment(func(d *appsv1.Deployment) {
@@ -1004,7 +1005,7 @@ func TestReconcile(t *testing.T) {
 	elService := makeService()
 
 	elServiceWithLabels := makeService(func(s *corev1.Service) {
-		s.Labels = mergeMaps(updateLabel, generatedLabels)
+		s.Labels = kmeta.UnionMaps(updateLabel, generatedLabels)
 		s.Spec.Selector = generatedLabels
 	})
 
@@ -1897,7 +1898,7 @@ func TestGenerateResourceLabels(t *testing.T) {
 		"app.kubernetes.io/part-of":    "Triggers",
 	}
 
-	expectedLabels := mergeMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
+	expectedLabels := kmeta.UnionMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
 	actualLabels := GenerateResourceLabels(eventListenerName, staticResourceLabels)
 	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
 		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
@@ -1981,7 +1982,7 @@ func Test_generateObjectMeta(t *testing.T) {
 				Controller:         &isController,
 				BlockOwnerDeletion: &blockOwnerDeletion,
 			}},
-			Labels: mergeMaps(map[string]string{"k": "v"}, generatedLabels),
+			Labels: kmeta.UnionMaps(map[string]string{"k": "v"}, generatedLabels),
 		},
 	}, {
 		name: "EventListener with Annotation",
