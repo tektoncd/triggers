@@ -12,7 +12,7 @@ Creates an EventListener that serve triggers selected via a label selector.
 
 2. Port forward:
    ```bash
-   kubectl port-forward service/el-listener-label-selector 8080
+   kubectl port-forward service/el-label-selector-listener 8080
    ```
 
 3. Create sample pipeline:
