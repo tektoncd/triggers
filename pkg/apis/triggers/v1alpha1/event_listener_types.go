@@ -28,6 +28,7 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	"knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/kmeta"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -51,6 +52,8 @@ type EventListener struct {
 	// +optional
 	Status EventListenerStatus `json:"status,omitempty"`
 }
+
+var _ kmeta.OwnerRefable = (*EventListener)(nil)
 
 // EventListenerSpec defines the desired state of the EventListener, represented
 // by a list of Triggers.
@@ -180,6 +183,11 @@ var eventListenerCondSet = apis.NewLivingConditionSet(
 	DeploymentExists,
 )
 
+// GetGroupVersionKind implements kmeta.OwnerRefable
+func (el *EventListener) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("EventListener")
+}
+
 // GetCondition returns the Condition matching the given type.
 func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return eventListenerCondSet.Manage(els).GetCondition(t)
@@ -288,16 +296,6 @@ func (els *EventListenerStatus) InitializeConditions() {
 			Status: corev1.ConditionFalse,
 		})
 	}
-}
-
-// GetOwnerReference gets the EventListener as owner reference for any related
-// objects.
-func (el *EventListener) GetOwnerReference() *metav1.OwnerReference {
-	return metav1.NewControllerRef(el, schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    "EventListener",
-	})
 }
 
 // SetAddress sets the address (as part of Addressable contract) and marks the correct condition.

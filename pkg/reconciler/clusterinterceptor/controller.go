@@ -21,15 +21,12 @@ import (
 
 	clusterinterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
 	clusterinterceptorreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/clusterinterceptor"
-	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
 )
 
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		logger := logging.FromContext(ctx)
 		clusterInterceptorInformer := clusterinterceptorinformer.Get(ctx)
 		reconciler := &Reconciler{}
 
@@ -39,12 +36,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 			}
 		})
 
-		logger.Info("Setting up event handlers")
-		clusterInterceptorInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-			DeleteFunc: impl.Enqueue,
-		})
+		clusterInterceptorInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		return impl
 	}
