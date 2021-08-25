@@ -189,7 +189,7 @@ func makeEL(ops ...func(el *v1beta1.EventListener)) *v1beta1.EventListener {
 // makeDeployment is a helper to build a Deployment that is created by an EventListener.
 // It generates a basic Deployment for the simplest EventListener and accepts functions for modification
 func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
-	ownerRefs := makeEL().GetOwnerReference()
+	ownerRefs := kmeta.NewControllerRef(makeEL())
 
 	d := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -413,7 +413,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 // makeWithPod is a helper to build a Knative Service that is created by an EventListener.
 // It generates a basic Knative Service for the simplest EventListener and accepts functions for modification
 func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
-	ownerRefs := makeEL().GetOwnerReference()
+	ownerRefs := kmeta.NewControllerRef(makeEL())
 
 	d := duckv1.WithPod{
 		TypeMeta: metav1.TypeMeta{
@@ -499,7 +499,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 // makeService is a helper to build a Service that is created by an EventListener.
 // It generates a basic Service for the simplest EventListener and accepts functions for modification.
 func makeService(ops ...func(*corev1.Service)) *corev1.Service {
-	ownerRefs := makeEL().GetOwnerReference()
+	ownerRefs := kmeta.NewControllerRef(makeEL())
 	s := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedResourceName,

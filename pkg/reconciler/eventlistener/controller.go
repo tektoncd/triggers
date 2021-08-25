@@ -69,23 +69,17 @@ func NewController(config Config) func(context.Context, configmap.Watcher) *cont
 			}
 		})
 
-		logger.Info("Setting up event handlers")
-
 		reconciler.podspecableTracker = dynamicduck.NewListableTracker(ctx, duckinformer.Get, impl)
 
-		eventListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-			DeleteFunc: impl.Enqueue,
-		})
+		eventListenerInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1beta1.SchemeGroupVersion.WithKind("EventListener")),
+			FilterFunc: controller.FilterController(&v1beta1.EventListener{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1beta1.SchemeGroupVersion.WithKind("EventListener")),
+			FilterFunc: controller.FilterController(&v1beta1.EventListener{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

@@ -553,7 +553,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 	}
 	gvr, _ := meta.UnsafeGuessKindToResource(data.GetObjectKind().GroupVersionKind())
 
-	data.SetOwnerReferences([]metav1.OwnerReference{*el.GetOwnerReference()})
+	data.SetOwnerReferences([]metav1.OwnerReference{*kmeta.NewControllerRef(el)})
 
 	var watchError error
 	r.onlyOnce.Do(func() {
@@ -975,7 +975,7 @@ func generateObjectMeta(el *v1beta1.EventListener, staticResourceLabels map[stri
 	return metav1.ObjectMeta{
 		Namespace:       el.Namespace,
 		Name:            el.Status.Configuration.GeneratedResourceName,
-		OwnerReferences: []metav1.OwnerReference{*el.GetOwnerReference()},
+		OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(el)},
 		Labels:          kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
 		Annotations:     el.Annotations,
 	}
