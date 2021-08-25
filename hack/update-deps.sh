@@ -52,4 +52,13 @@ fi
 go mod tidy
 go mod vendor
 
+# Applying patches
+if [[ -d hack/patches ]];then
+    for f in hack/patches/*.patch;do
+        [[ -f ${f} ]] || continue
+        # Apply patches but do not commit
+        git apply ${f}
+    done
+fi
+
 update_licenses third_party/
