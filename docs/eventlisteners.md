@@ -28,6 +28,7 @@ or more [`Interceptors`](./interceptors.md).
     - [Contract for the `CustomResource` object](#contract-for-the-customresource-object)
 - [Specifying `Interceptors`](#specifying-interceptors)
 - [Constraining `EventListeners` to specific namespaces](#constraining-eventlisteners-to-specific-namespaces)
+- [Disabling Payload Validationn](#disabling-payload-validation)
 - [Labels in `EventListeners`](#labels-in-eventlisteners)
   - [Constraining `EventListeners` to specific labels](#constraining-eventlisteners-to-specific-labels)
 - [Specifying `EventListener` timeouts](#specifying-eventlistener-timeouts)
@@ -342,6 +343,23 @@ An `EventListener` times out if it cannot process an event request within a time
 - `-el-writetimeout`: Write timeout; default is 40 seconds.
 - `-el-idletimeout`: Idle timeout; default is 120 seconds.
 - `-el-timeouthandler`: Server route handler timeout; default is 30 seconds.
+
+## Disabling Payload Validation
+
+To disable incoming payload validation for an EventListener, you can define an annotation `tekton.dev/payload-validation: false`
+on EventListener.
+
+```
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: eventlistener
+  annotations:
+    tekton.dev/payload-validation: "false"
+```
+
+By default, payload validation is enabled and will be disabled only if the annotation is defined. Removing the annotation will enable
+the payload validation. 
 
 ## Labels in `EventListeners`
 
