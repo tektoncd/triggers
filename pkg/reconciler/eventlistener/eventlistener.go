@@ -55,6 +55,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
+	"knative.dev/pkg/network"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -994,7 +995,7 @@ func wrapError(err1, err2 error) error {
 
 // listenerHostname returns the intended hostname for the EventListener service.
 func listenerHostname(name, namespace string, port int) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", name, namespace, port)
+	return network.GetServiceHostname(name, namespace) + fmt.Sprintf(":%d", port)
 }
 
 func defaultLoggingConfigMap() *corev1.ConfigMap {
