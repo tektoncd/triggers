@@ -12,7 +12,7 @@ Creates an EventListener that serve triggers in multiple namespaces.
 
 2. Port forward:
    ```bash
-   kubectl port-forward service/el-listener-sel 8080
+   kubectl port-forward service/el-namespace-selector-listener 8080
    ```
 
 3. Create sample pipeline in namespace foo:
