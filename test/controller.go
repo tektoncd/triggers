@@ -30,8 +30,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	faketriggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned/fake"
-	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeClusterInterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor/fake"
 	fakeclustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding/fake"
@@ -48,7 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
-	"knative.dev/pkg/apis/duck"
+	"k8s.io/client-go/rest"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckinformerfake "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -59,7 +57,9 @@ import (
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	fakedynamicclientset "knative.dev/pkg/injection/clients/dynamicclient/fake"
+	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Resources represents the desired state of the system (i.e. existing resources)
@@ -83,13 +83,11 @@ type Resources struct {
 
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
-	Kube                *fakekubeclientset.Clientset
-	Triggers            *faketriggersclientset.Clientset
-	Pipeline            *fakepipelineclientset.Clientset
-	Resource            *fakeresourceclientset.Clientset
-	Dynamic             *dynamicclientset.Clientset
-	DynamicClient       *fakedynamic.FakeDynamicClient
-	DuckInformerFactory duck.InformerFactory
+	Kube          *fakekubeclientset.Clientset
+	Triggers      *faketriggersclientset.Clientset
+	Pipeline      *fakepipelineclientset.Clientset
+	Resource      *fakeresourceclientset.Clientset
+	DynamicClient *fakedynamic.FakeDynamicClient
 }
 
 // Assets holds references to the controller and clients.
@@ -98,17 +96,28 @@ type Assets struct {
 	Clients    Clients
 }
 
+func init() {
+	// Register a separate fake dynamic client with out schemes.
+	injection.Fake.RegisterClient(func(ctx context.Context, cfg *rest.Config) context.Context {
+		scheme := runtime.NewScheme()
+		err := servingv1.AddToScheme(scheme)
+		if err != nil {
+			panic(err.Error())
+		}
+		ctx, _ = fakedynamicclientset.With(ctx, scheme)
+		return ctx
+	})
+}
+
 // SeedResources returns Clients populated with the given Resources
 // nolint: golint
 func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	c := Clients{
 		Kube:          fakekubeclient.Get(ctx),
 		Triggers:      faketriggersclient.Get(ctx),
 		Pipeline:      fakepipelineclient.Get(ctx),
 		Resource:      fakeresourceclient.Get(ctx),
-		Dynamic:       dynamicclientset.New(tekton.WithClient(dynamicClient)),
 		DynamicClient: fakedynamicclientset.Get(ctx),
 	}
 
