@@ -42,6 +42,12 @@ rules:
   - apiGroups: ["serving.knative.dev"]
     resources: ["*", "*/status", "*/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get"]
+    # The webhook configured the namespace as the OwnerRef on various cluster-scoped resources,
+    # which requires we can Get the system namespace.
+    resourceNames: ["tekton-pipelines"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
