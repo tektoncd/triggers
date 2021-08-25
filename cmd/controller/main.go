@@ -50,7 +50,7 @@ var (
 )
 
 func main() {
-	cfg := sharedmain.ParseAndGetConfigOrDie()
+	cfg := injection.ParseAndGetRESTConfigOrDie()
 
 	c := eventlistener.Config{
 		Image:              image,

@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
@@ -140,8 +141,8 @@ func main() {
 	// NOTE(afrittoli) - we should have the name "webhook-triggers"
 	// configurable. Once the change is done on knative/pkg side
 	// knative/eventing#4530 we can inherit it from it
-	sharedmain.WebhookMainWithConfig(ctx, "webhook-triggers",
-		sharedmain.ParseAndGetConfigOrDie(),
+	sharedmain.MainWithConfig(ctx, "webhook-triggers",
+		injection.ParseAndGetRESTConfigOrDie(),
 		certificates.NewController,
 		NewDefaultingAdmissionController,
 		NewValidationAdmissionController,
