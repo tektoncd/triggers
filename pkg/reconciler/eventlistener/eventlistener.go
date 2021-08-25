@@ -560,7 +560,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 	})
 	if watchError != nil {
 		logging.FromContext(ctx).Errorf("failed to watch on created custom object", watchError)
-		return err
+		return watchError
 	}
 
 	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Get(ctx, data.GetName(), metav1.GetOptions{})
