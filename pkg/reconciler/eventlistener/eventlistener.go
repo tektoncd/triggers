@@ -37,7 +37,6 @@ import (
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
-	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -119,18 +118,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListene
 	el.Status.InitializeConditions()
 	el.Status.Configuration.GeneratedResourceName = fmt.Sprintf("%s-%s", GeneratedResourcePrefix, el.Name)
 
-	logger := logging.FromContext(ctx)
-
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	el.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	if el.Spec.Resources.CustomResource != nil {
-		kError := r.reconcileCustomObject(ctx, logger, el)
+		kError := r.reconcileCustomObject(ctx, el)
 		return wrapError(kError, nil)
 	}
-	deploymentReconcileError := r.reconcileDeployment(ctx, logger, el)
-	serviceReconcileError := r.reconcileService(ctx, logger, el)
+	deploymentReconcileError := r.reconcileDeployment(ctx, el)
+	serviceReconcileError := r.reconcileService(ctx, el)
 	if el.Spec.Resources.CustomResource == nil {
 		el.Status.SetReadyCondition()
 	}
@@ -183,7 +180,7 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 	return
 }
 
-func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
+func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventListener) error {
 	// for backward compatibility with original behavior
 	var serviceType corev1.ServiceType
 	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceType != "" {
@@ -231,63 +228,63 @@ func (r *Reconciler) reconcileService(ctx context.Context, logger *zap.SugaredLo
 		}
 		if updated {
 			if _, err := r.KubeClientSet.CoreV1().Services(el.Namespace).Update(ctx, existingService, metav1.UpdateOptions{}); err != nil {
-				logger.Errorf("Error updating EventListener Service: %s", err)
+				logging.FromContext(ctx).Errorf("Error updating EventListener Service: %s", err)
 				return err
 			}
-			logger.Infof("Updated EventListener Service %s in Namespace %s", existingService.Namespace, el.Namespace)
+			logging.FromContext(ctx).Infof("Updated EventListener Service %s in Namespace %s", existingService.Namespace, el.Namespace)
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Service
 		_, err = r.KubeClientSet.CoreV1().Services(el.Namespace).Create(ctx, service, metav1.CreateOptions{})
 		el.Status.SetExistsCondition(v1beta1.ServiceExists, err)
 		if err != nil {
-			logger.Errorf("Error creating EventListener Service: %s", err)
+			logging.FromContext(ctx).Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
 		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
-		logger.Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
+		logging.FromContext(ctx).Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
-		logger.Error(err)
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 	return nil
 }
 
-func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
+func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, el *v1beta1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(eventListenerConfigMapName); errors.IsNotFound(err) {
 		// create default config-logging ConfigMap
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultLoggingConfigMap(), metav1.CreateOptions{}); err != nil {
-			logger.Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
+			logging.FromContext(ctx).Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
 			return err
 		}
 	} else if err != nil {
-		logger.Errorf("Error retrieving ConfigMap %q: %s", eventListenerConfigMapName, err)
+		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", eventListenerConfigMapName, err)
 		return err
 	}
 	return nil
 }
 
-func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
+func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, el *v1beta1.EventListener) error {
 	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
-			logger.Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
+			logging.FromContext(ctx).Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
 			return err
 		}
 	} else if err != nil {
-		logger.Errorf("Error retrieving ConfigMap %q: %s", metrics.ConfigMapName(), err)
+		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", metrics.ConfigMapName(), err)
 		return err
 	}
 	return nil
 }
 
-func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
+func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventListener) error {
 	// check logging config, create if it doesn't exist
-	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
-		logger.Error(err)
+	if err := r.reconcileLoggingConfig(ctx, el); err != nil {
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
-	if err := r.reconcileObservabilityConfig(ctx, logger, el); err != nil {
-		logger.Error(err)
+	if err := r.reconcileObservabilityConfig(ctx, el); err != nil {
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 
@@ -295,7 +292,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 	// env METRICS_PROMETHEUS_PORT set by controller
 	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
 	if err != nil {
-		logger.Error(err)
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 	container := getContainer(el, r.config, nil)
@@ -429,39 +426,39 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, logger *zap.Sugare
 		}
 		if updated {
 			if _, err := r.KubeClientSet.AppsV1().Deployments(el.Namespace).Update(ctx, existingDeployment, metav1.UpdateOptions{}); err != nil {
-				logger.Errorf("Error updating EventListener Deployment: %s", err)
+				logging.FromContext(ctx).Errorf("Error updating EventListener Deployment: %s", err)
 				return err
 			}
-			logger.Infof("Updated EventListener Deployment %s in Namespace %s", existingDeployment.Name, el.Namespace)
+			logging.FromContext(ctx).Infof("Updated EventListener Deployment %s in Namespace %s", existingDeployment.Name, el.Namespace)
 		}
 	case errors.IsNotFound(err):
 		// Create the EventListener Deployment
 		deployment, err = r.KubeClientSet.AppsV1().Deployments(el.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
 		el.Status.SetExistsCondition(v1beta1.DeploymentExists, err)
 		if err != nil {
-			logger.Errorf("Error creating EventListener Deployment: %s", err)
+			logging.FromContext(ctx).Errorf("Error creating EventListener Deployment: %s", err)
 			return err
 		}
 		el.Status.SetDeploymentConditions(deployment.Status.Conditions)
-		logger.Infof("Created EventListener Deployment %s in Namespace %s", deployment.Name, el.Namespace)
+		logging.FromContext(ctx).Infof("Created EventListener Deployment %s in Namespace %s", deployment.Name, el.Namespace)
 	default:
-		logger.Error(err)
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 	return nil
 }
 
-func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.SugaredLogger, el *v1beta1.EventListener) error {
+func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.EventListener) error {
 	// check logging config, create if it doesn't exist
-	if err := r.reconcileLoggingConfig(ctx, logger, el); err != nil {
-		logger.Error(err)
+	if err := r.reconcileLoggingConfig(ctx, el); err != nil {
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 
 	original := &duckv1.WithPod{}
 	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
 	if err := decoder.Decode(&original); err != nil {
-		logger.Errorf("unable to decode object", err)
+		logging.FromContext(ctx).Errorf("unable to decode object", err)
 		return err
 	}
 
@@ -540,12 +537,12 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	}
 	marshaledData, err := json.Marshal(original)
 	if err != nil {
-		logger.Errorf("failed to marshal custom object", err)
+		logging.FromContext(ctx).Errorf("failed to marshal custom object", err)
 		return err
 	}
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(marshaledData); err != nil {
-		logger.Errorf("failed to unmarshal to unstructured object", err)
+		logging.FromContext(ctx).Errorf("failed to unmarshal to unstructured object", err)
 		return err
 	}
 
@@ -561,7 +558,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		watchError = r.podspecableTracker.WatchOnDynamicObject(ctx, gvr)
 	})
 	if watchError != nil {
-		logger.Errorf("failed to watch on created custom object", watchError)
+		logging.FromContext(ctx).Errorf("failed to watch on created custom object", watchError)
 		return err
 	}
 
@@ -671,25 +668,25 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		if updated {
 			existingMarshaledData, err := json.Marshal(existingObject)
 			if err != nil {
-				logger.Errorf("failed to marshal custom object", err)
+				logging.FromContext(ctx).Errorf("failed to marshal custom object", err)
 				return err
 			}
 			existingCustomObject = new(unstructured.Unstructured)
 			if err := existingCustomObject.UnmarshalJSON(existingMarshaledData); err != nil {
-				logger.Errorf("failed to unmarshal to unstructured object", err)
+				logging.FromContext(ctx).Errorf("failed to unmarshal to unstructured object", err)
 				return err
 			}
 			if _, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
-				logger.Errorf("error updating to eventListener custom object: %v", err)
+				logging.FromContext(ctx).Errorf("error updating to eventListener custom object: %v", err)
 				return err
 			}
-			logger.Infof("Updated EventListener Custom Object %s in Namespace %s", data.GetName(), el.Namespace)
+			logging.FromContext(ctx).Infof("Updated EventListener Custom Object %s in Namespace %s", data.GetName(), el.Namespace)
 		}
 
 		customConditions, url, err := dynamicduck.GetConditions(existingCustomObject)
 		if customConditions == nil {
 			// No status in the created object, it is weird but let's not fail
-			logger.Warn("empty status for the created custom object")
+			logging.FromContext(ctx).Warn("empty status for the created custom object")
 			return nil
 		}
 		if err != nil {
@@ -698,7 +695,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 		for _, cond := range customConditions {
 			if cond.Type == apis.ConditionReady {
 				if cond.Status != corev1.ConditionTrue {
-					logger.Warn("custom object is not yet ready")
+					logging.FromContext(ctx).Warn("custom object is not yet ready")
 					return stdError.New("custom object is not yet ready")
 				}
 			}
@@ -710,12 +707,12 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, logger *zap.Suga
 	case errors.IsNotFound(err):
 		createDynamicObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Create(ctx, data, metav1.CreateOptions{})
 		if err != nil {
-			logger.Errorf("Error creating EventListener Dynamic object: ", err)
+			logging.FromContext(ctx).Errorf("Error creating EventListener Dynamic object: ", err)
 			return err
 		}
-		logger.Infof("Created EventListener Deployment %s in Namespace %s", createDynamicObject.GetName(), el.Namespace)
+		logging.FromContext(ctx).Infof("Created EventListener Deployment %s in Namespace %s", createDynamicObject.GetName(), el.Namespace)
 	default:
-		logger.Error(err)
+		logging.FromContext(ctx).Error(err)
 		return err
 	}
 	return nil
