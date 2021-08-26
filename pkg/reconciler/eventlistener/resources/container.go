@@ -22,31 +22,11 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-func MakeContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
-	var resources corev1.ResourceRequirements
-	env := []corev1.EnvVar{}
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-			env = append(env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
-		}
-	}
+type ContainerOption func(*corev1.Container)
 
-	// handle env and resources for custom object
-	// TODO(mattmoor): Consider replacing this with a functional option,
-	// to avoid leaking caller details into here?
-	if pod != nil {
-		if len(pod.Spec.Template.Spec.Containers) == 1 {
-			for i := range pod.Spec.Template.Spec.Containers[0].Env {
-				env = append(env, pod.Spec.Template.Spec.Containers[0].Env[i])
-			}
-			resources = pod.Spec.Template.Spec.Containers[0].Resources
-		}
-	}
-
+func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption) corev1.Container {
 	isMultiNS := false
 	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
 		isMultiNS = true
@@ -59,14 +39,13 @@ func MakeContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) cor
 		}
 	}
 
-	return corev1.Container{
+	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *c.Image,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
 		}},
-		Resources: resources,
 		Args: []string{
 			"--el-name=" + el.Name,
 			"--el-namespace=" + el.Namespace,
@@ -78,6 +57,11 @@ func MakeContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) cor
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 			"--payload-validation=" + strconv.FormatBool(payloadValidation),
 		},
-		Env: env,
 	}
+
+	for _, opt := range opts {
+		opt(&container)
+	}
+
+	return container
 }
