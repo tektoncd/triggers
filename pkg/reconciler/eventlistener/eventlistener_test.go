@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -108,7 +109,7 @@ func compareCondition(x, y apis.Condition) bool {
 
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
 // given test.Resources r where r represents the state of the system
-func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test.Assets, context.CancelFunc) {
+func getEventListenerTestAssets(t *testing.T, r test.Resources, c *resources.Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
@@ -131,7 +132,7 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test
 	clients := test.SeedResources(t, ctx, r)
 	cmw := cminformer.NewInformedWatcher(clients.Kube, system.GetNamespace())
 	if c == nil {
-		c = makeConfig()
+		c = resources.MakeConfig()
 	}
 	testAssets := test.Assets{
 		Controller: NewController(*c)(ctx, cmw),
@@ -141,30 +142,6 @@ func getEventListenerTestAssets(t *testing.T, r test.Resources, c *Config) (test
 		_ = la.Promote(pkgreconciler.UniversalBucket(), func(pkgreconciler.Bucket, types.NamespacedName) {})
 	}
 	return testAssets, cancel
-}
-
-// makeConfig is a helper to build a config that is consumed by an EventListener.
-// It generates a default Config for the EventListener without any flags set and accepts functions for modification.
-func makeConfig(ops ...func(d *Config)) *Config {
-	c := Config{
-		Image:              &DefaultImage,
-		Port:               &DefaultPort,
-		SetSecurityContext: &DefaultSetSecurityContext,
-		ReadTimeOut:        &DefaultReadTimeout,
-		WriteTimeOut:       &DefaultWriteTimeout,
-		IdleTimeOut:        &DefaultIdleTimeout,
-		TimeOutHandler:     &DefaultTimeOutHandler,
-		PeriodSeconds:      &DefaultPeriodSeconds,
-		FailureThreshold:   &DefaultFailureThreshold,
-
-		StaticResourceLabels: DefaultStaticResourceLabels,
-		SystemNamespace:      DefaultSystemNamespace,
-	}
-
-	for _, op := range ops {
-		op(&c)
-	}
-	return &c
 }
 
 // makeEL is a helper to build an EventListener for tests.
@@ -213,7 +190,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 					ServiceAccountName: "sa",
 					Containers: []corev1.Container{{
 						Name:  "event-listener",
-						Image: DefaultImage,
+						Image: resources.DefaultImage,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: int32(eventListenerContainerPort),
 							Protocol:      corev1.ProtocolTCP,
@@ -229,8 +206,8 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 									Port:   intstr.FromInt(eventListenerContainerPort),
 								},
 							},
-							PeriodSeconds:    int32(DefaultPeriodSeconds),
-							FailureThreshold: int32(DefaultFailureThreshold),
+							PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
+							FailureThreshold: int32(resources.DefaultFailureThreshold),
 						},
 						ReadinessProbe: &corev1.Probe{
 							Handler: corev1.Handler{
@@ -240,17 +217,17 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 									Port:   intstr.FromInt(eventListenerContainerPort),
 								},
 							},
-							PeriodSeconds:    int32(DefaultPeriodSeconds),
-							FailureThreshold: int32(DefaultFailureThreshold),
+							PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
+							FailureThreshold: int32(resources.DefaultFailureThreshold),
 						},
 						Args: []string{
 							"-el-name", eventListenerName,
 							"-el-namespace", namespace,
 							"-port", strconv.Itoa(eventListenerContainerPort),
-							"readtimeout", strconv.FormatInt(DefaultReadTimeout, 10),
-							"writetimeout", strconv.FormatInt(DefaultWriteTimeout, 10),
-							"idletimeout", strconv.FormatInt(DefaultIdleTimeout, 10),
-							"timeouthandler", strconv.FormatInt(DefaultTimeOutHandler, 10),
+							"readtimeout", strconv.FormatInt(resources.DefaultReadTimeout, 10),
+							"writetimeout", strconv.FormatInt(resources.DefaultWriteTimeout, 10),
+							"idletimeout", strconv.FormatInt(resources.DefaultIdleTimeout, 10),
+							"timeouthandler", strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 						},
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "config-logging",
@@ -308,7 +285,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 var withTLSConfig = func(d *appsv1.Deployment) {
 	d.Spec.Template.Spec.Containers = []corev1.Container{{
 		Name:  "event-listener",
-		Image: DefaultImage,
+		Image: resources.DefaultImage,
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(eventListenerContainerPort),
 			Protocol:      corev1.ProtocolTCP,
@@ -324,8 +301,8 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
-			PeriodSeconds:    int32(DefaultPeriodSeconds),
-			FailureThreshold: int32(DefaultFailureThreshold),
+			PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
+			FailureThreshold: int32(resources.DefaultFailureThreshold),
 		},
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -335,8 +312,8 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 					Port:   intstr.FromInt(eventListenerContainerPort),
 				},
 			},
-			PeriodSeconds:    int32(DefaultPeriodSeconds),
-			FailureThreshold: int32(DefaultFailureThreshold),
+			PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
+			FailureThreshold: int32(resources.DefaultFailureThreshold),
 		},
 		Args: []string{
 			"-el-name", eventListenerName,
@@ -433,7 +410,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:  "event-listener",
-						Image: DefaultImage,
+						Image: resources.DefaultImage,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: int32(eventListenerContainerPort),
 							Protocol:      corev1.ProtocolTCP,
@@ -442,10 +419,10 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							"--el-name=" + eventListenerName,
 							"--el-namespace=" + namespace,
 							"--port=" + strconv.Itoa(eventListenerContainerPort),
-							"--readtimeout=" + strconv.FormatInt(DefaultReadTimeout, 10),
-							"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
-							"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
-							"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+							"--readtimeout=" + strconv.FormatInt(resources.DefaultReadTimeout, 10),
+							"--writetimeout=" + strconv.FormatInt(resources.DefaultWriteTimeout, 10),
+							"--idletimeout=" + strconv.FormatInt(resources.DefaultIdleTimeout, 10),
+							"--timeouthandler=" + strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 							"--is-multi-ns=" + strconv.FormatBool(false),
 						},
 						VolumeMounts: []corev1.VolumeMount{{
@@ -514,7 +491,7 @@ func makeService(ops ...func(*corev1.Service)) *corev1.Service {
 			Ports: []corev1.ServicePort{{
 				Name:     eventListenerServicePortName,
 				Protocol: corev1.ProtocolTCP,
-				Port:     int32(DefaultPort),
+				Port:     int32(resources.DefaultPort),
 				TargetPort: intstr.IntOrString{
 					IntVal: int32(eventListenerContainerPort),
 				},
@@ -543,12 +520,10 @@ func logConfig(ns string) *corev1.ConfigMap {
 }
 
 func withTLSPort(el *v1beta1.EventListener) {
-	el.Status.Address = &duckv1beta1.Addressable{
-		URL: &apis.URL{
-			Scheme: "http",
-			Host:   listenerHostname(generatedResourceName, namespace, 8443),
-		},
-	}
+	el.Status.SetAddress(resources.ListenerHostname(el, *resources.MakeConfig(func(c *resources.Config) {
+		x := 8443
+		c.Port = &x
+	})))
 }
 
 func withKnativeStatus(el *v1beta1.EventListener) {
@@ -593,20 +568,14 @@ func withStatus(el *v1beta1.EventListener) {
 				Message: "Service exists",
 			}},
 		},
-		AddressStatus: duckv1beta1.AddressStatus{
-			Address: &duckv1beta1.Addressable{
-				URL: &apis.URL{
-					Scheme: "http",
-					Host:   listenerHostname(generatedResourceName, namespace, DefaultPort),
-				},
-			},
-		},
 		Configuration: v1beta1.EventListenerConfig{
 			GeneratedResourceName: generatedResourceName,
 		},
 	}
 
+	el.Status.SetAddress(resources.ListenerHostname(el, *resources.MakeConfig()))
 }
+
 func withAddedLabels(el *v1beta1.EventListener) {
 	el.Labels = updateLabel
 }
@@ -643,11 +612,11 @@ func TestReconcile(t *testing.T) {
 
 	customPort := 80
 
-	configWithSetSecurityContextFalse := makeConfig(func(c *Config) {
+	configWithSetSecurityContextFalse := resources.MakeConfig(func(c *resources.Config) {
 		c.SetSecurityContext = ptr.Bool(false)
 	})
 
-	configWithPortSet := makeConfig(func(c *Config) {
+	configWithPortSet := resources.MakeConfig(func(c *resources.Config) {
 		c.Port = &customPort
 	})
 
@@ -887,7 +856,9 @@ func TestReconcile(t *testing.T) {
 		el.Status.Address = &duckv1beta1.Addressable{
 			URL: &apis.URL{
 				Scheme: "http",
-				Host:   listenerHostname(generatedResourceName, namespace, customPort),
+				Host: resources.ListenerHostname(el, *resources.MakeConfig(func(c *resources.Config) {
+					c.Port = &customPort
+				})),
 			},
 		}
 	})
@@ -971,7 +942,7 @@ func TestReconcile(t *testing.T) {
 	})
 
 	imageForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
-		data.Spec.Template.Spec.Containers[0].Image = DefaultImage
+		data.Spec.Template.Spec.Containers[0].Image = resources.DefaultImage
 	})
 	annotationForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Annotations = map[string]string{
@@ -1041,9 +1012,9 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config        // Config of the reconciler
-		startResources test.Resources // State of the world before we call Reconcile
-		endResources   test.Resources // Expected State of the world after calling Reconcile
+		config         *resources.Config // Config of the reconciler
+		startResources test.Resources    // State of the world before we call Reconcile
+		endResources   test.Resources    // Expected State of the world after calling Reconcile
 	}{{
 		name: "eventlistener creation",
 		key:  reconcileKey,
@@ -1492,8 +1463,8 @@ func TestReconcile(t *testing.T) {
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
-	},
-	}
+	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup with startResources
@@ -1639,9 +1610,9 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config        // Config of the reconciler
-		startResources test.Resources // State of the world before we call Reconcile
-		endResources   test.Resources // Expected State of the world after calling Reconcile
+		config         *resources.Config // Config of the reconciler
+		startResources test.Resources    // State of the world before we call Reconcile
+		endResources   test.Resources    // Expected State of the world after calling Reconcile
 	}{
 		{
 			name: "eventlistener with custome resource",
@@ -1690,9 +1661,9 @@ func TestReconcile_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		config         *Config        // Config of the reconciler
-		startResources test.Resources // State of the world before we call Reconcile
-		endResources   test.Resources // Expected State of the world after calling Reconcile
+		config         *resources.Config // Config of the reconciler
+		startResources test.Resources    // State of the world before we call Reconcile
+		endResources   test.Resources    // Expected State of the world after calling Reconcile
 	}{{
 		name: "delete eventlistener with remaining eventlisteners",
 		key:  fmt.Sprintf("%s/%s", namespace, "el-2"),
@@ -1773,80 +1744,6 @@ func TestReconcile_Delete(t *testing.T) {
 	}
 }
 
-func Test_getServicePort(t *testing.T) {
-	tests := []struct {
-		name                string
-		el                  *v1beta1.EventListener
-		config              Config
-		expectedServicePort corev1.ServicePort
-	}{{
-		name:   "EventListener with status",
-		el:     makeEL(withStatus),
-		config: *makeConfig(),
-		expectedServicePort: corev1.ServicePort{
-			Name:     eventListenerServicePortName,
-			Protocol: corev1.ProtocolTCP,
-			Port:     int32(DefaultPort),
-			TargetPort: intstr.IntOrString{
-				IntVal: int32(eventListenerContainerPort),
-			},
-		},
-	}, {
-		name: "EventListener with TLS configuration",
-		el: makeEL(withStatus, withTLSPort, func(el *v1beta1.EventListener) {
-			el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
-				WithPodSpec: duckv1.WithPodSpec{
-					Template: duckv1.PodSpecable{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{{
-								Env: []corev1.EnvVar{{
-									Name: "TLS_CERT",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret-key",
-											},
-											Key: "tls.crt",
-										},
-									},
-								}, {
-									Name: "TLS_KEY",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret-key",
-											},
-											Key: "tls.key",
-										},
-									},
-								}},
-							}},
-						},
-					},
-				},
-			}
-		}),
-		config: *makeConfig(),
-		expectedServicePort: corev1.ServicePort{
-			Name:     eventListenerServiceTLSPortName,
-			Protocol: corev1.ProtocolTCP,
-			Port:     int32(8443),
-			TargetPort: intstr.IntOrString{
-				IntVal: int32(eventListenerContainerPort),
-			},
-		},
-	},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actualPort := getServicePort(tt.el, tt.config)
-			if diff := cmp.Diff(tt.expectedServicePort, actualPort); diff != "" {
-				t.Errorf("getServicePort() did not return expected. -want, +got: %s", diff)
-			}
-		})
-	}
-}
-
 func Test_wrapError(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1887,134 +1784,6 @@ func Test_wrapError(t *testing.T) {
 			}
 			if diff := cmp.Diff(expectedErrorString, actualErrorString); diff != "" {
 				t.Errorf("wrapError() did not return expected. -want, +got: %s", diff)
-			}
-		})
-	}
-}
-
-func TestGenerateResourceLabels(t *testing.T) {
-	staticResourceLabels := map[string]string{
-		"app.kubernetes.io/managed-by": "EventListener",
-		"app.kubernetes.io/part-of":    "Triggers",
-	}
-
-	expectedLabels := kmeta.UnionMaps(staticResourceLabels, map[string]string{"eventlistener": eventListenerName})
-	actualLabels := GenerateResourceLabels(eventListenerName, staticResourceLabels)
-	if diff := cmp.Diff(expectedLabels, actualLabels); diff != "" {
-		t.Errorf("mergeLabels() did not return expected. -want, +got: %s", diff)
-	}
-}
-
-func Test_generateObjectMeta(t *testing.T) {
-	blockOwnerDeletion := true
-	isController := true
-	tests := []struct {
-		name               string
-		el                 *v1beta1.EventListener
-		expectedObjectMeta metav1.ObjectMeta
-	}{{
-		name: "Empty EventListener",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      eventListenerName,
-				Namespace: "",
-			},
-		},
-		expectedObjectMeta: metav1.ObjectMeta{
-			Namespace: "",
-			Name:      "",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "triggers.tekton.dev/v1beta1",
-				Kind:               "EventListener",
-				Name:               eventListenerName,
-				UID:                "",
-				Controller:         &isController,
-				BlockOwnerDeletion: &blockOwnerDeletion,
-			}},
-			Labels: generatedLabels,
-		},
-	}, {
-		name: "EventListener with Configuration",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      eventListenerName,
-				Namespace: "",
-			},
-			Status: v1beta1.EventListenerStatus{
-				Configuration: v1beta1.EventListenerConfig{
-					GeneratedResourceName: "generatedName",
-				},
-			},
-		},
-
-		expectedObjectMeta: metav1.ObjectMeta{
-			Namespace: "",
-			Name:      "generatedName",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "triggers.tekton.dev/v1beta1",
-				Kind:               "EventListener",
-				Name:               eventListenerName,
-				UID:                "",
-				Controller:         &isController,
-				BlockOwnerDeletion: &blockOwnerDeletion,
-			}},
-			Labels: generatedLabels,
-		},
-	}, {
-		name: "EventListener with Labels",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      eventListenerName,
-				Namespace: "",
-				Labels: map[string]string{
-					"k": "v",
-				},
-			},
-		},
-		expectedObjectMeta: metav1.ObjectMeta{
-			Namespace: "",
-			Name:      "",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "triggers.tekton.dev/v1beta1",
-				Kind:               "EventListener",
-				Name:               eventListenerName,
-				UID:                "",
-				Controller:         &isController,
-				BlockOwnerDeletion: &blockOwnerDeletion,
-			}},
-			Labels: kmeta.UnionMaps(map[string]string{"k": "v"}, generatedLabels),
-		},
-	}, {
-		name: "EventListener with Annotation",
-		el: &v1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      eventListenerName,
-				Namespace: "",
-				Annotations: map[string]string{
-					"k": "v",
-				},
-			},
-		},
-		expectedObjectMeta: metav1.ObjectMeta{
-			Namespace: "",
-			Name:      "",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "triggers.tekton.dev/v1beta1",
-				Kind:               "EventListener",
-				Name:               eventListenerName,
-				UID:                "",
-				Controller:         &isController,
-				BlockOwnerDeletion: &blockOwnerDeletion,
-			}},
-			Labels:      generatedLabels,
-			Annotations: map[string]string{"k": "v"},
-		},
-	}}
-	for i := range tests {
-		t.Run(tests[i].name, func(t *testing.T) {
-			actualObjectMeta := generateObjectMeta(tests[i].el, DefaultStaticResourceLabels)
-			if diff := cmp.Diff(tests[i].expectedObjectMeta, actualObjectMeta); diff != "" {
-				t.Errorf("generateObjectMeta() did not return expected. -want, +got: %s", diff)
 			}
 		})
 	}

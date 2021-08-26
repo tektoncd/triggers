@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package eventlistener
+package resources
 
 var (
 	// DefaultImage is the image used by default.
@@ -67,4 +67,30 @@ type Config struct {
 	StaticResourceLabels map[string]string
 	// SystemNamespace is the namespace where the reconciler is deployed.
 	SystemNamespace string
+}
+
+type ConfigOption func(d *Config)
+
+// MakeConfig is a helper to build a config that is consumed by an EventListener.
+// It generates a default Config for the EventListener without any flags set and accepts functions for modification.
+func MakeConfig(ops ...ConfigOption) *Config {
+	c := &Config{
+		Image:              &DefaultImage,
+		Port:               &DefaultPort,
+		SetSecurityContext: &DefaultSetSecurityContext,
+		ReadTimeOut:        &DefaultReadTimeout,
+		WriteTimeOut:       &DefaultWriteTimeout,
+		IdleTimeOut:        &DefaultIdleTimeout,
+		TimeOutHandler:     &DefaultTimeOutHandler,
+		PeriodSeconds:      &DefaultPeriodSeconds,
+		FailureThreshold:   &DefaultFailureThreshold,
+
+		StaticResourceLabels: DefaultStaticResourceLabels,
+		SystemNamespace:      DefaultSystemNamespace,
+	}
+
+	for _, op := range ops {
+		op(c)
+	}
+	return c
 }
