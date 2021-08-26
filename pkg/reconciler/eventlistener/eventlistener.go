@@ -268,55 +268,12 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 		return err
 	}
 
-	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-	// env METRICS_PROMETHEUS_PORT set by controller
-	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
+	deployment, err := getDeployment(el, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Error(err)
 		return err
 	}
-
-	container := resources.MakeContainer(el, r.config, func(c *corev1.Container) {
-		if el.Spec.Resources.KubernetesResource != nil {
-			if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-				c.Resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-				c.Env = append(c.Env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
-			}
-		}
-
-		c.Ports = append(c.Ports, corev1.ContainerPort{
-			ContainerPort: int32(metricsPort),
-			Protocol:      corev1.ProtocolTCP,
-		})
-
-		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
-		c.VolumeMounts = []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-		}}
-
-		c.Env = append(c.Env, corev1.EnvVar{
-			Name: "SYSTEM_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				}},
-		}, corev1.EnvVar{
-			Name:  "CONFIG_OBSERVABILITY_NAME",
-			Value: metrics.ConfigMapName(),
-		}, corev1.EnvVar{
-			Name:  "METRICS_DOMAIN",
-			Value: triggersMetricsDomain,
-		}, corev1.EnvVar{
-			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-			// env METRICS_PROMETHEUS_PORT set by controller
-			Name:  "METRICS_PROMETHEUS_PORT",
-			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
-		})
-		addCertsForSecureConnection(c, r.config)
-	})
-
-	deployment := getDeployment(el, container, r.config)
+	container := deployment.Spec.Template.Spec.Containers[0]
 
 	existingDeployment, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
@@ -716,7 +673,54 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 	return nil
 }
 
-func getDeployment(el *v1beta1.EventListener, container corev1.Container, c resources.Config) *appsv1.Deployment {
+func getDeployment(el *v1beta1.EventListener, c resources.Config) (*appsv1.Deployment, error) {
+	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+	// env METRICS_PROMETHEUS_PORT set by controller
+	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	container := resources.MakeContainer(el, c, func(container *corev1.Container) {
+		if el.Spec.Resources.KubernetesResource != nil {
+			if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+				container.Resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
+				container.Env = append(container.Env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
+			}
+		}
+
+		container.Ports = append(container.Ports, corev1.ContainerPort{
+			ContainerPort: int32(metricsPort),
+			Protocol:      corev1.ProtocolTCP,
+		})
+
+		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
+		container.VolumeMounts = []corev1.VolumeMount{{
+			Name:      "config-logging",
+			MountPath: "/etc/config-logging",
+		}}
+
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				}},
+		}, corev1.EnvVar{
+			Name:  "CONFIG_OBSERVABILITY_NAME",
+			Value: metrics.ConfigMapName(),
+		}, corev1.EnvVar{
+			Name:  "METRICS_DOMAIN",
+			Value: triggersMetricsDomain,
+		}, corev1.EnvVar{
+			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+			// env METRICS_PROMETHEUS_PORT set by controller
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		})
+		addCertsForSecureConnection(container, c)
+	})
+
 	var (
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
@@ -798,7 +802,7 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c reso
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 func addCertsForSecureConnection(container *corev1.Container, c resources.Config) {
