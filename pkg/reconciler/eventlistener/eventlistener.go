@@ -275,37 +275,46 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 		logging.FromContext(ctx).Error(err)
 		return err
 	}
-	container := resources.MakeContainer(el, r.config, nil)
-	container.Ports = append(container.Ports, corev1.ContainerPort{
-		ContainerPort: int32(metricsPort),
-		Protocol:      corev1.ProtocolTCP,
+
+	container := resources.MakeContainer(el, r.config, func(c *corev1.Container) {
+		if el.Spec.Resources.KubernetesResource != nil {
+			if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+				c.Resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
+				c.Env = append(c.Env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
+			}
+		}
+
+		c.Ports = append(c.Ports, corev1.ContainerPort{
+			ContainerPort: int32(metricsPort),
+			Protocol:      corev1.ProtocolTCP,
+		})
+
+		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
+		c.VolumeMounts = []corev1.VolumeMount{{
+			Name:      "config-logging",
+			MountPath: "/etc/config-logging",
+		}}
+
+		c.Env = append(c.Env, corev1.EnvVar{
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				}},
+		}, corev1.EnvVar{
+			Name:  "CONFIG_OBSERVABILITY_NAME",
+			Value: metrics.ConfigMapName(),
+		}, corev1.EnvVar{
+			Name:  "METRICS_DOMAIN",
+			Value: triggersMetricsDomain,
+		}, corev1.EnvVar{
+			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+			// env METRICS_PROMETHEUS_PORT set by controller
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		})
+		addCertsForSecureConnection(c, r.config)
 	})
-	container.VolumeMounts = []corev1.VolumeMount{{
-		Name:      "config-logging",
-		MountPath: "/etc/config-logging",
-	}}
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name: "SYSTEM_NAMESPACE",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
-			}},
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "CONFIG_OBSERVABILITY_NAME",
-		Value: metrics.ConfigMapName(),
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "METRICS_DOMAIN",
-		Value: triggersMetricsDomain,
-	})
-	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-	// env METRICS_PROMETHEUS_PORT set by controller
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "METRICS_PROMETHEUS_PORT",
-		Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
-	})
-	container = addCertsForSecureConnection(container, r.config)
 
 	deployment := getDeployment(el, container, r.config)
 
@@ -450,43 +459,52 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		namespace = el.GetNamespace()
 	}
 
-	container := resources.MakeContainer(el, r.config, original)
-	container.VolumeMounts = []corev1.VolumeMount{{
-		Name:      "config-logging",
-		MountPath: "/etc/config-logging",
-		ReadOnly:  true,
-	}}
+	container := resources.MakeContainer(el, r.config, func(c *corev1.Container) {
+		// handle env and resources for custom object
+		if len(original.Spec.Template.Spec.Containers) == 1 {
+			for i := range original.Spec.Template.Spec.Containers[0].Env {
+				c.Env = append(c.Env, original.Spec.Template.Spec.Containers[0].Env[i])
+			}
+			c.Resources = original.Spec.Template.Spec.Containers[0].Resources
+		}
 
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name: "SYSTEM_NAMESPACE",
-		// Cannot use FieldRef here because Knative Serving mask that field under feature gate
-		// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
-		Value: el.Namespace,
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "CONFIG_OBSERVABILITY_NAME",
-		Value: metrics.ConfigMapName(),
-	})
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "METRICS_DOMAIN",
-		Value: triggersMetricsDomain,
-	})
-	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-	// env METRICS_PROMETHEUS_PORT set by controller
-	container.Env = append(container.Env, corev1.EnvVar{
-		Name:  "METRICS_PROMETHEUS_PORT",
-		Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
-	})
+		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
+		c.VolumeMounts = []corev1.VolumeMount{{
+			Name:      "config-logging",
+			MountPath: "/etc/config-logging",
+			ReadOnly:  true,
+		}}
 
-	container.ReadinessProbe = &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/live",
-				Scheme: corev1.URISchemeHTTP,
+		c.Env = append(c.Env, corev1.EnvVar{
+			Name: "SYSTEM_NAMESPACE",
+			// Cannot use FieldRef here because Knative Serving mask that field under feature gate
+			// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
+			Value: el.Namespace,
+		})
+
+		c.Env = append(c.Env, corev1.EnvVar{
+			Name:  "CONFIG_OBSERVABILITY_NAME",
+			Value: metrics.ConfigMapName(),
+		}, corev1.EnvVar{
+			Name:  "METRICS_DOMAIN",
+			Value: triggersMetricsDomain,
+		}, corev1.EnvVar{
+			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
+			// env METRICS_PROMETHEUS_PORT set by controller
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		})
+
+		c.ReadinessProbe = &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/live",
+					Scheme: corev1.URISchemeHTTP,
+				},
 			},
-		},
-		SuccessThreshold: 1,
-	}
+			SuccessThreshold: 1,
+		}
+	})
 
 	podlabels := kmeta.UnionMaps(el.Labels, resources.GenerateLabels(el.Name, r.config.StaticResourceLabels))
 
@@ -783,7 +801,7 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c reso
 	}
 }
 
-func addCertsForSecureConnection(container corev1.Container, c resources.Config) corev1.Container {
+func addCertsForSecureConnection(container *corev1.Container, c resources.Config) {
 	var elCert, elKey string
 	certEnv := map[string]*corev1.EnvVarSource{}
 	for i := range container.Env {
@@ -834,7 +852,6 @@ func addCertsForSecureConnection(container corev1.Container, c resources.Config)
 		FailureThreshold: int32(*c.FailureThreshold),
 	}
 	container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)
-	return container
 }
 
 // wrapError wraps errors together. If one of the errors is nil, the other is
