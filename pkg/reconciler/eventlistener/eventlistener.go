@@ -17,12 +17,10 @@ limitations under the License.
 package eventlistener
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	stdError "errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -393,113 +391,13 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		return err
 	}
 
-	original := &duckv1.WithPod{}
-	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
-	if err := decoder.Decode(&original); err != nil {
-		logging.FromContext(ctx).Errorf("unable to decode object", err)
-		return err
-	}
-
-	customObjectData := original.DeepCopy()
-
-	namespace := original.GetNamespace()
-	// Default the resource creation to the EventListenerNamespace if not found in the resource object
-	if namespace == "" {
-		namespace = el.GetNamespace()
-	}
-
-	container := resources.MakeContainer(el, r.config, func(c *corev1.Container) {
-		// handle env and resources for custom object
-		if len(original.Spec.Template.Spec.Containers) == 1 {
-			for i := range original.Spec.Template.Spec.Containers[0].Env {
-				c.Env = append(c.Env, original.Spec.Template.Spec.Containers[0].Env[i])
-			}
-			c.Resources = original.Spec.Template.Spec.Containers[0].Resources
-		}
-
-		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
-		c.VolumeMounts = []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-			ReadOnly:  true,
-		}}
-
-		c.Env = append(c.Env, corev1.EnvVar{
-			Name: "SYSTEM_NAMESPACE",
-			// Cannot use FieldRef here because Knative Serving mask that field under feature gate
-			// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
-			Value: el.Namespace,
-		})
-
-		c.Env = append(c.Env, corev1.EnvVar{
-			Name:  "CONFIG_OBSERVABILITY_NAME",
-			Value: metrics.ConfigMapName(),
-		}, corev1.EnvVar{
-			Name:  "METRICS_DOMAIN",
-			Value: resources.TriggersMetricsDomain,
-		}, corev1.EnvVar{
-			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-			// env METRICS_PROMETHEUS_PORT set by controller
-			Name:  "METRICS_PROMETHEUS_PORT",
-			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
-		})
-
-		c.ReadinessProbe = &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: corev1.URISchemeHTTP,
-				},
-			},
-			SuccessThreshold: 1,
-		}
-	})
-
-	podlabels := kmeta.UnionMaps(el.Labels, resources.GenerateLabels(el.Name, r.config.StaticResourceLabels))
-
-	podlabels = kmeta.UnionMaps(podlabels, customObjectData.Labels)
-
-	original.Labels = podlabels
-	original.Annotations = customObjectData.Annotations
-	original.Spec.Template.ObjectMeta = metav1.ObjectMeta{
-		Name:        customObjectData.Spec.Template.Name,
-		Labels:      customObjectData.Spec.Template.Labels,
-		Annotations: customObjectData.Spec.Template.Annotations,
-	}
-	original.Spec.Template.Spec = corev1.PodSpec{
-		Tolerations:        customObjectData.Spec.Template.Spec.Tolerations,
-		NodeSelector:       customObjectData.Spec.Template.Spec.NodeSelector,
-		ServiceAccountName: customObjectData.Spec.Template.Spec.ServiceAccountName,
-		Containers:         []corev1.Container{container},
-		Volumes: []corev1.Volume{{
-			Name: "config-logging",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: resources.EventListenerConfigMapName,
-					},
-				},
-			},
-		}},
-	}
-	marshaledData, err := json.Marshal(original)
+	data, container, err := resources.MakeCustomObject(el, r.config)
 	if err != nil {
-		logging.FromContext(ctx).Errorf("failed to marshal custom object", err)
-		return err
-	}
-	data := new(unstructured.Unstructured)
-	if err := data.UnmarshalJSON(marshaledData); err != nil {
-		logging.FromContext(ctx).Errorf("failed to unmarshal to unstructured object", err)
+		logging.FromContext(ctx).Errorf("unable to construct custom object", err)
 		return err
 	}
 
-	if data.GetName() == "" {
-		data.SetName(el.Status.Configuration.GeneratedResourceName)
-	}
 	gvr, _ := meta.UnsafeGuessKindToResource(data.GetObjectKind().GroupVersionKind())
-
-	data.SetOwnerReferences([]metav1.OwnerReference{*kmeta.NewControllerRef(el)})
-
 	var watchError error
 	r.onlyOnce.Do(func() {
 		watchError = r.podspecableTracker.WatchOnDynamicObject(ctx, gvr)
@@ -509,7 +407,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		return watchError
 	}
 
-	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Get(ctx, data.GetName(), metav1.GetOptions{})
+	existingCustomObject, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Get(ctx, data.GetName(), metav1.GetOptions{})
 	switch {
 	case err == nil:
 		if _, err := r.deploymentLister.Deployments(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName); err == nil {
@@ -566,7 +464,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		}
 		if len(existingObject.Spec.Template.Spec.Containers) == 0 ||
 			len(existingObject.Spec.Template.Spec.Containers) > 1 {
-			existingObject.Spec.Template.Spec.Containers = []corev1.Container{container}
+			existingObject.Spec.Template.Spec.Containers = []corev1.Container{*container}
 			updated = true
 		} else {
 			if existingObject.Spec.Template.Spec.Containers[0].Name != container.Name {
@@ -623,7 +521,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 				logging.FromContext(ctx).Errorf("failed to unmarshal to unstructured object", err)
 				return err
 			}
-			if _, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
+			if _, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
 				logging.FromContext(ctx).Errorf("error updating to eventListener custom object: %v", err)
 				return err
 			}
@@ -652,7 +550,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 			el.Status.SetAddress(strings.Split(fmt.Sprintf("%v", url), "//")[1])
 		}
 	case errors.IsNotFound(err):
-		createDynamicObject, err := r.DynamicClientSet.Resource(gvr).Namespace(namespace).Create(ctx, data, metav1.CreateOptions{})
+		createDynamicObject, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Create(ctx, data, metav1.CreateOptions{})
 		if err != nil {
 			logging.FromContext(ctx).Errorf("Error creating EventListener Dynamic object: ", err)
 			return err
