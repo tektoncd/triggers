@@ -30,13 +30,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
+	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +55,6 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/network"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -101,7 +100,7 @@ type Reconciler struct {
 	serviceLister       corev1lister.ServiceLister
 
 	// config is the configuration options that the Reconciler accepts.
-	config             Config
+	config             resources.Config
 	podspecableTracker dynamicduck.ListableTracker
 	onlyOnce           sync.Once
 }
@@ -183,36 +182,15 @@ func reconcileObjectMeta(existing *metav1.ObjectMeta, desired metav1.ObjectMeta)
 }
 
 func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventListener) error {
-	// for backward compatibility with original behavior
-	var serviceType corev1.ServiceType
-	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceType != "" {
-		serviceType = el.Spec.Resources.KubernetesResource.ServiceType
-	}
+	service := resources.MakeService(el, r.config)
 
-	servicePort := getServicePort(el, r.config)
-	metricsPort := corev1.ServicePort{
-		Name:     eventListenerMetricsPortName,
-		Protocol: corev1.ProtocolTCP,
-		Port:     int32(9000),
-		TargetPort: intstr.IntOrString{
-			IntVal: int32(eventListenerMetricsPort),
-		},
-	}
-
-	service := &corev1.Service{
-		ObjectMeta: generateObjectMeta(el, r.config.StaticResourceLabels),
-		Spec: corev1.ServiceSpec{
-			Selector: GenerateResourceLabels(el.Name, r.config.StaticResourceLabels),
-			Type:     serviceType,
-			Ports:    []corev1.ServicePort{servicePort, metricsPort}},
-	}
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
 	case err == nil:
 		// Determine if reconciliation has to occur
 		updated := reconcileObjectMeta(&existingService.ObjectMeta, service.ObjectMeta)
 		el.Status.SetExistsCondition(v1beta1.ServiceExists, nil)
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
+		el.Status.SetAddress(resources.ListenerHostname(el, r.config))
 		if !reflect.DeepEqual(existingService.Spec.Selector, service.Spec.Selector) {
 			existingService.Spec.Selector = service.Spec.Selector
 			updated = true
@@ -243,7 +221,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 			logging.FromContext(ctx).Errorf("Error creating EventListener Service: %s", err)
 			return err
 		}
-		el.Status.SetAddress(listenerHostname(service.Name, el.Namespace, int(servicePort.Port)))
+		el.Status.SetAddress(resources.ListenerHostname(el, r.config))
 		logging.FromContext(ctx).Infof("Created EventListener Service %s in Namespace %s", service.Name, el.Namespace)
 	default:
 		logging.FromContext(ctx).Error(err)
@@ -297,7 +275,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 		logging.FromContext(ctx).Error(err)
 		return err
 	}
-	container := getContainer(el, r.config, nil)
+	container := resources.MakeContainer(el, r.config, nil)
 	container.Ports = append(container.Ports, corev1.ContainerPort{
 		ContainerPort: int32(metricsPort),
 		Protocol:      corev1.ProtocolTCP,
@@ -472,7 +450,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		namespace = el.GetNamespace()
 	}
 
-	container := getContainer(el, r.config, original)
+	container := resources.MakeContainer(el, r.config, original)
 	container.VolumeMounts = []corev1.VolumeMount{{
 		Name:      "config-logging",
 		MountPath: "/etc/config-logging",
@@ -510,7 +488,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		SuccessThreshold: 1,
 	}
 
-	podlabels := kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, r.config.StaticResourceLabels))
+	podlabels := kmeta.UnionMaps(el.Labels, resources.GenerateLabels(el.Name, r.config.StaticResourceLabels))
 
 	podlabels = kmeta.UnionMaps(podlabels, customObjectData.Labels)
 
@@ -720,14 +698,14 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 	return nil
 }
 
-func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Config) *appsv1.Deployment {
+func getDeployment(el *v1beta1.EventListener, container corev1.Container, c resources.Config) *appsv1.Deployment {
 	var (
 		tolerations                          []corev1.Toleration
 		nodeSelector, annotations, podlabels map[string]string
 		serviceAccountName                   string
 		securityContext                      corev1.PodSecurityContext
 	)
-	podlabels = kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, c.StaticResourceLabels))
+	podlabels = kmeta.UnionMaps(el.Labels, resources.GenerateLabels(el.Name, c.StaticResourceLabels))
 
 	serviceAccountName = el.Spec.ServiceAccountName
 
@@ -781,11 +759,11 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Conf
 	}
 
 	return &appsv1.Deployment{
-		ObjectMeta: generateObjectMeta(el, c.StaticResourceLabels),
+		ObjectMeta: resources.ObjectMeta(el, c.StaticResourceLabels),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: GenerateResourceLabels(el.Name, c.StaticResourceLabels),
+				MatchLabels: resources.GenerateLabels(el.Name, c.StaticResourceLabels),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -805,7 +783,7 @@ func getDeployment(el *v1beta1.EventListener, container corev1.Container, c Conf
 	}
 }
 
-func addCertsForSecureConnection(container corev1.Container, c Config) corev1.Container {
+func addCertsForSecureConnection(container corev1.Container, c resources.Config) corev1.Container {
 	var elCert, elKey string
 	certEnv := map[string]*corev1.EnvVarSource{}
 	for i := range container.Env {
@@ -859,128 +837,6 @@ func addCertsForSecureConnection(container corev1.Container, c Config) corev1.Co
 	return container
 }
 
-func getContainer(el *v1beta1.EventListener, c Config, pod *duckv1.WithPod) corev1.Container {
-	var resources corev1.ResourceRequirements
-	env := []corev1.EnvVar{}
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-			resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-			env = append(env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
-		}
-	}
-	// handle env and resources for custom object
-	if pod != nil {
-		if len(pod.Spec.Template.Spec.Containers) == 1 {
-			for i := range pod.Spec.Template.Spec.Containers[0].Env {
-				env = append(env, pod.Spec.Template.Spec.Containers[0].Env[i])
-			}
-			resources = pod.Spec.Template.Spec.Containers[0].Resources
-		}
-	}
-
-	isMultiNS := false
-	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
-		isMultiNS = true
-	}
-
-	payloadValidation := true
-	if value, ok := el.GetAnnotations()[triggers.PayloadValidationAnnotation]; ok {
-		if value == "false" {
-			payloadValidation = false
-		}
-	}
-
-	return corev1.Container{
-		Name:  "event-listener",
-		Image: *c.Image,
-		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(eventListenerContainerPort),
-			Protocol:      corev1.ProtocolTCP,
-		}},
-		Resources: resources,
-		Args: []string{
-			"--el-name=" + el.Name,
-			"--el-namespace=" + el.Namespace,
-			"--port=" + strconv.Itoa(eventListenerContainerPort),
-			"--readtimeout=" + strconv.FormatInt(*c.ReadTimeOut, 10),
-			"--writetimeout=" + strconv.FormatInt(*c.WriteTimeOut, 10),
-			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
-			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
-			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
-			"--payload-validation=" + strconv.FormatBool(payloadValidation),
-		},
-		Env: env,
-	}
-}
-
-func getServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
-	var elCert, elKey string
-
-	servicePortName := eventListenerServicePortName
-	servicePortPort := *c.Port
-
-	certEnv := map[string]*corev1.EnvVarSource{}
-	if el.Spec.Resources.KubernetesResource != nil {
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-			for i := range el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env {
-				certEnv[el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].Name] =
-					el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].ValueFrom
-			}
-		}
-	}
-
-	if v, ok := certEnv["TLS_CERT"]; ok {
-		elCert = v.SecretKeyRef.Key
-	} else {
-		elCert = ""
-	}
-	if v, ok := certEnv["TLS_KEY"]; ok {
-		elKey = v.SecretKeyRef.Key
-	} else {
-		elKey = ""
-	}
-
-	if elCert != "" && elKey != "" {
-		servicePortName = eventListenerServiceTLSPortName
-		if *c.Port == DefaultPort {
-			// We return port 8443 if TLS is enabled and the default HTTP port is set.
-			// This effectively makes 8443 the default HTTPS port unless a user explicitly sets a different port.
-			servicePortPort = 8443
-		}
-	}
-
-	return corev1.ServicePort{
-		Name:     servicePortName,
-		Protocol: corev1.ProtocolTCP,
-		Port:     int32(servicePortPort),
-		TargetPort: intstr.IntOrString{
-			IntVal: int32(eventListenerContainerPort),
-		},
-	}
-}
-
-// GenerateResourceLabels generates the labels to be used on all generated resources.
-func GenerateResourceLabels(eventListenerName string, staticResourceLabels map[string]string) map[string]string {
-	resourceLabels := make(map[string]string, len(staticResourceLabels)+1)
-	for k, v := range staticResourceLabels {
-		resourceLabels[k] = v
-	}
-	resourceLabels["eventlistener"] = eventListenerName
-	return resourceLabels
-}
-
-// generateObjectMeta generates the object meta that should be used by all
-// resources generated by the EventListener reconciler
-func generateObjectMeta(el *v1beta1.EventListener, staticResourceLabels map[string]string) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Namespace:       el.Namespace,
-		Name:            el.Status.Configuration.GeneratedResourceName,
-		OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(el)},
-		Labels:          kmeta.UnionMaps(el.Labels, GenerateResourceLabels(el.Name, staticResourceLabels)),
-		Annotations:     el.Annotations,
-	}
-}
-
 // wrapError wraps errors together. If one of the errors is nil, the other is
 // returned.
 func wrapError(err1, err2 error) error {
@@ -991,11 +847,6 @@ func wrapError(err1, err2 error) error {
 		return err1
 	}
 	return xerrors.Errorf("%s : %s", err1.Error(), err2.Error())
-}
-
-// listenerHostname returns the intended hostname for the EventListener service.
-func listenerHostname(name, namespace string, port int) string {
-	return network.GetServiceHostname(name, namespace) + fmt.Sprintf(":%d", port)
 }
 
 func defaultLoggingConfigMap() *corev1.ConfigMap {

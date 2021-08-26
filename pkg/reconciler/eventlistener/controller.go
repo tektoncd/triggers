@@ -25,6 +25,7 @@ import (
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
+	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"k8s.io/client-go/tools/cache"
 	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -38,7 +39,7 @@ import (
 )
 
 // NewController creates a new instance of an EventListener controller.
-func NewController(config Config) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(config resources.Config) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		dynamicclientset := dynamicclient.Get(ctx)
