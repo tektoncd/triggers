@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -38,14 +37,12 @@ import (
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"golang.org/x/xerrors"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
@@ -55,15 +52,12 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 const (
 	// ControllerName defines the name for EventListener Controller
 	ControllerName = "EventListener"
-	// eventListenerConfigMapName is for the automatically created ConfigMap
-	eventListenerConfigMapName = "config-logging-triggers"
 	// eventListenerServicePortName defines service port name for EventListener Service
 	eventListenerServicePortName = "http-listener"
 	// eventListenerServiceTLSPortName defines service TLS port name for EventListener Service
@@ -79,8 +73,6 @@ const (
 	GeneratedResourcePrefix = "el"
 
 	defaultConfig = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
-
-	triggersMetricsDomain = "tekton.dev/triggers"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -152,7 +144,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1beta1.EventListener
 		logger.Infof("Not deleting logging config map since EventListener is in the same namespace (%s) as the controller", el.Namespace)
 		return nil
 	}
-	if err = r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Delete(ctx, eventListenerConfigMapName, metav1.DeleteOptions{}); err != nil {
+	if err = r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Delete(ctx, resources.EventListenerConfigMapName, metav1.DeleteOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
@@ -231,14 +223,14 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 }
 
 func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, el *v1beta1.EventListener) error {
-	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(eventListenerConfigMapName); errors.IsNotFound(err) {
+	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(resources.EventListenerConfigMapName); errors.IsNotFound(err) {
 		// create default config-logging ConfigMap
 		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultLoggingConfigMap(), metav1.CreateOptions{}); err != nil {
 			logging.FromContext(ctx).Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
 			return err
 		}
 	} else if err != nil {
-		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", eventListenerConfigMapName, err)
+		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", resources.EventListenerConfigMapName, err)
 		return err
 	}
 	return nil
@@ -268,7 +260,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 		return err
 	}
 
-	deployment, err := getDeployment(el, r.config)
+	deployment, err := resources.MakeDeployment(el, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Error(err)
 		return err
@@ -444,7 +436,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 			Value: metrics.ConfigMapName(),
 		}, corev1.EnvVar{
 			Name:  "METRICS_DOMAIN",
-			Value: triggersMetricsDomain,
+			Value: resources.TriggersMetricsDomain,
 		}, corev1.EnvVar{
 			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 			// env METRICS_PROMETHEUS_PORT set by controller
@@ -484,7 +476,7 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: eventListenerConfigMapName,
+						Name: resources.EventListenerConfigMapName,
 					},
 				},
 			},
@@ -673,191 +665,6 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 	return nil
 }
 
-func getDeployment(el *v1beta1.EventListener, c resources.Config) (*appsv1.Deployment, error) {
-	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-	// env METRICS_PROMETHEUS_PORT set by controller
-	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	container := resources.MakeContainer(el, c, func(container *corev1.Container) {
-		if el.Spec.Resources.KubernetesResource != nil {
-			if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
-				container.Resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
-				container.Env = append(container.Env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
-			}
-		}
-
-		container.Ports = append(container.Ports, corev1.ContainerPort{
-			ContainerPort: int32(metricsPort),
-			Protocol:      corev1.ProtocolTCP,
-		})
-
-		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
-		container.VolumeMounts = []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-		}}
-
-		container.Env = append(container.Env, corev1.EnvVar{
-			Name: "SYSTEM_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				}},
-		}, corev1.EnvVar{
-			Name:  "CONFIG_OBSERVABILITY_NAME",
-			Value: metrics.ConfigMapName(),
-		}, corev1.EnvVar{
-			Name:  "METRICS_DOMAIN",
-			Value: triggersMetricsDomain,
-		}, corev1.EnvVar{
-			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
-			// env METRICS_PROMETHEUS_PORT set by controller
-			Name:  "METRICS_PROMETHEUS_PORT",
-			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
-		})
-		addCertsForSecureConnection(container, c)
-	})
-
-	var (
-		tolerations                          []corev1.Toleration
-		nodeSelector, annotations, podlabels map[string]string
-		serviceAccountName                   string
-		securityContext                      corev1.PodSecurityContext
-	)
-	podlabels = kmeta.UnionMaps(el.Labels, resources.GenerateLabels(el.Name, c.StaticResourceLabels))
-
-	serviceAccountName = el.Spec.ServiceAccountName
-
-	vol := []corev1.Volume{{
-		Name: "config-logging",
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: eventListenerConfigMapName,
-				},
-			},
-		},
-	}}
-
-	for _, v := range container.Env {
-		// If TLS related env are set then mount secret volume which will be used while starting the eventlistener.
-		if v.Name == "TLS_CERT" {
-			vol = append(vol, corev1.Volume{
-				Name: "https-connection",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: v.ValueFrom.SecretKeyRef.Name,
-					},
-				},
-			})
-		}
-	}
-	var replicas = ptr.Int32(1)
-	if el.Spec.Resources.KubernetesResource != nil {
-		if el.Spec.Resources.KubernetesResource.Replicas != nil {
-			replicas = el.Spec.Resources.KubernetesResource.Replicas
-		}
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations) != 0 {
-			tolerations = el.Spec.Resources.KubernetesResource.Template.Spec.Tolerations
-		}
-		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
-			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
-		}
-		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
-			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
-		}
-		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
-		podlabels = kmeta.UnionMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
-	}
-
-	if *c.SetSecurityContext {
-		securityContext = corev1.PodSecurityContext{
-			RunAsNonRoot: ptr.Bool(true),
-			RunAsUser:    ptr.Int64(65532),
-		}
-	}
-
-	return &appsv1.Deployment{
-		ObjectMeta: resources.ObjectMeta(el, c.StaticResourceLabels),
-		Spec: appsv1.DeploymentSpec{
-			Replicas: replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: resources.GenerateLabels(el.Name, c.StaticResourceLabels),
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podlabels,
-					Annotations: annotations,
-				},
-				Spec: corev1.PodSpec{
-					Tolerations:        tolerations,
-					NodeSelector:       nodeSelector,
-					ServiceAccountName: serviceAccountName,
-					Containers:         []corev1.Container{container},
-					Volumes:            vol,
-					SecurityContext:    &securityContext,
-				},
-			},
-		},
-	}, nil
-}
-
-func addCertsForSecureConnection(container *corev1.Container, c resources.Config) {
-	var elCert, elKey string
-	certEnv := map[string]*corev1.EnvVarSource{}
-	for i := range container.Env {
-		certEnv[container.Env[i].Name] = container.Env[i].ValueFrom
-	}
-	var scheme corev1.URIScheme
-	if v, ok := certEnv["TLS_CERT"]; ok {
-		elCert = "/etc/triggers/tls/" + v.SecretKeyRef.Key
-	} else {
-		elCert = ""
-	}
-	if v, ok := certEnv["TLS_KEY"]; ok {
-		elKey = "/etc/triggers/tls/" + v.SecretKeyRef.Key
-	} else {
-		elKey = ""
-	}
-
-	if elCert != "" && elKey != "" {
-		scheme = corev1.URISchemeHTTPS
-		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      "https-connection",
-			ReadOnly:  true,
-			MountPath: "/etc/triggers/tls",
-		})
-	} else {
-		scheme = corev1.URISchemeHTTP
-	}
-	container.LivenessProbe = &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/live",
-				Scheme: scheme,
-				Port:   intstr.FromInt(eventListenerContainerPort),
-			},
-		},
-		PeriodSeconds:    int32(*c.PeriodSeconds),
-		FailureThreshold: int32(*c.FailureThreshold),
-	}
-	container.ReadinessProbe = &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/live",
-				Scheme: scheme,
-				Port:   intstr.FromInt(eventListenerContainerPort),
-			},
-		},
-		PeriodSeconds:    int32(*c.PeriodSeconds),
-		FailureThreshold: int32(*c.FailureThreshold),
-	}
-	container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)
-}
-
 // wrapError wraps errors together. If one of the errors is nil, the other is
 // returned.
 func wrapError(err1, err2 error) error {
@@ -872,7 +679,7 @@ func wrapError(err1, err2 error) error {
 
 func defaultLoggingConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: eventListenerConfigMapName},
+		ObjectMeta: metav1.ObjectMeta{Name: resources.EventListenerConfigMapName},
 		Data: map[string]string{
 			"loglevel.eventlistener": "info",
 			"zap-logger-config":      defaultConfig,

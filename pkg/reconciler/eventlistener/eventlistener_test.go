@@ -256,7 +256,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: eventListenerConfigMapName,
+									Name: resources.EventListenerConfigMapName,
 								},
 							},
 						},
@@ -373,7 +373,7 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: eventListenerConfigMapName,
+					Name: resources.EventListenerConfigMapName,
 				},
 			},
 		},
@@ -458,7 +458,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: eventListenerConfigMapName,
+									Name: resources.EventListenerConfigMapName,
 								},
 							},
 						},
@@ -1591,7 +1591,7 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: eventListenerConfigMapName,
+						Name: resources.EventListenerConfigMapName,
 					},
 				},
 			},
