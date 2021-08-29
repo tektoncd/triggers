@@ -327,7 +327,7 @@ func TestCustomObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := MakeCustomObject(tt.el, config)
+			got, err := MakeCustomObject(tt.el, config)
 			if err != nil {
 				t.Fatalf("MakeCustomObject() = %v", err)
 			}
@@ -350,7 +350,7 @@ func TestCustomObjectError(t *testing.T) {
 
 	config := *MakeConfig()
 
-	got, _, err := MakeCustomObject(makeEL(func(el *v1beta1.EventListener) {
+	got, err := MakeCustomObject(makeEL(func(el *v1beta1.EventListener) {
 		el.Spec.Resources.CustomResource = &v1beta1.CustomResource{
 			RawExtension: runtime.RawExtension{
 				Raw: []byte(`garbage`),

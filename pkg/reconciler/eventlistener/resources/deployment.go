@@ -63,10 +63,10 @@ func MakeDeployment(el *v1beta1.EventListener, c Config) (*appsv1.Deployment, er
 	container := MakeContainer(el, c, opt, addCertsForSecureConnection(c))
 
 	var (
-		replicas                  = ptr.Int32(1)
 		podlabels                 = kmeta.UnionMaps(el.Labels, GenerateLabels(el.Name, c.StaticResourceLabels))
 		serviceAccountName        = el.Spec.ServiceAccountName
 		vol                       = []corev1.Volume{configLoggingVolume}
+		replicas                  *int32
 		tolerations               []corev1.Toleration
 		nodeSelector, annotations map[string]string
 	)

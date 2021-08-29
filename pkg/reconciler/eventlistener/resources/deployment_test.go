@@ -62,7 +62,6 @@ func TestDeployment(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
 			},
 			Spec: appsv1.DeploymentSpec{
-				Replicas: ptr.Int32(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labels,
 				},
@@ -143,7 +142,6 @@ func TestDeployment(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
 			},
 			Spec: appsv1.DeploymentSpec{
-				Replicas: ptr.Int32(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labels,
 				},
@@ -191,7 +189,6 @@ func TestDeployment(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
 			},
 			Spec: appsv1.DeploymentSpec{
-				Replicas: ptr.Int32(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labels,
 				},
@@ -236,7 +233,6 @@ func TestDeployment(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
 			},
 			Spec: appsv1.DeploymentSpec{
-				Replicas: ptr.Int32(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labels,
 				},
@@ -268,7 +264,6 @@ func TestDeployment(t *testing.T) {
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
 			},
 			Spec: appsv1.DeploymentSpec{
-				Replicas: ptr.Int32(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labels,
 				},
