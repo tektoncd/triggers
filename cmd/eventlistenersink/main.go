@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	cminformer "knative.dev/pkg/configmap/informer"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/logging"
@@ -130,10 +131,10 @@ func main() {
 
 	// Create a sharedInformer factory so that we can cache API server calls
 	factory := externalversions.NewSharedInformerFactoryWithOptions(sinkClients.TriggersClient,
-		30*time.Second, externalversions.WithNamespace(sinkArgs.ElNamespace))
+		controller.DefaultResyncPeriod, externalversions.WithNamespace(sinkArgs.ElNamespace))
 	if sinkArgs.IsMultiNS {
 		factory = externalversions.NewSharedInformerFactory(sinkClients.TriggersClient,
-			30*time.Second)
+			controller.DefaultResyncPeriod)
 	}
 
 	recorder, err := sink.NewRecorder()
