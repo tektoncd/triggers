@@ -48,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckinformerfake "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable/fake"
@@ -59,7 +60,9 @@ import (
 	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
-	fakedynamicclientset "knative.dev/pkg/injection/clients/dynamicclient/fake"
+	"knative.dev/pkg/injection"
+	fakedynamicclient "knative.dev/pkg/injection/clients/dynamicclient/fake"
+	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Resources represents the desired state of the system (i.e. existing resources)
@@ -98,18 +101,31 @@ type Assets struct {
 	Clients    Clients
 }
 
+func init() {
+	// Register a separate fake dynamic client with out schemes.
+	injection.Fake.RegisterClient(func(ctx context.Context, cfg *rest.Config) context.Context {
+		scheme := runtime.NewScheme()
+		err := servingv1.AddToScheme(scheme)
+		if err != nil {
+			panic(err.Error())
+		}
+		ctx, _ = fakedynamicclient.With(ctx, scheme)
+		return ctx
+	})
+}
+
 // SeedResources returns Clients populated with the given Resources
 // nolint: golint
 func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
-	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
+	fdc := fakedynamicclient.Get(ctx)
 	c := Clients{
 		Kube:          fakekubeclient.Get(ctx),
 		Triggers:      faketriggersclient.Get(ctx),
 		Pipeline:      fakepipelineclient.Get(ctx),
 		Resource:      fakeresourceclient.Get(ctx),
-		Dynamic:       dynamicclientset.New(tekton.WithClient(dynamicClient)),
-		DynamicClient: fakedynamicclientset.Get(ctx),
+		Dynamic:       dynamicclientset.New(tekton.WithClient(fdc)),
+		DynamicClient: fdc,
 	}
 
 	// Teach Kube clients about the Tekton resources (needed by discovery client when creating resources)

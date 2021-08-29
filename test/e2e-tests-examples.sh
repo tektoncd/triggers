@@ -96,6 +96,7 @@ port_forward_and_curl() {
   if [ -z "$tr" ] && [ -z "$pr" ]
   then
      err "failed to create taskrun/pipelinerun"
+     kubectl logs -l "eventlistener=${current_example}-listener"
      exit 1
   fi
 
