@@ -98,8 +98,6 @@ var (
 		"app.kubernetes.io/part-of":    "Triggers",
 		"eventlistener":                eventListenerName,
 	}
-
-	replicas int32 = 1
 )
 
 // compareCondition compares two conditions based on their Type field.
@@ -178,7 +176,6 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 			Labels: generatedLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: generatedLabels,
 			},
@@ -900,7 +897,7 @@ func TestReconcile(t *testing.T) {
 	})
 
 	deploymentMissingSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
-		d.Spec.Template.Spec.Containers[0].SecurityContext = nil
+		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
 	})
 
 	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
@@ -1161,7 +1158,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Services:       []*corev1.Service{elServiceWithAnnotation},
+			Services:       []*corev1.Service{elService}, // Annotation is cleared.
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
@@ -1211,7 +1208,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
+			Deployments:    []*appsv1.Deployment{elDeployment}, // labels are removed
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
@@ -1348,13 +1345,13 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext}, // SecurityContext is cleared
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},

@@ -30,11 +30,11 @@ import (
 	"knative.dev/pkg/metrics"
 )
 
-func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstructured, *corev1.Container, error) {
+func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstructured, error) {
 	original := &duckv1.WithPod{}
 	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
 	if err := decoder.Decode(&original); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	customObjectData := original.DeepCopy()
@@ -119,11 +119,11 @@ func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstru
 	}
 	marshaledData, err := json.Marshal(original)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(marshaledData); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if data.GetName() == "" {
@@ -132,5 +132,5 @@ func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstru
 	data.SetNamespace(namespace)
 	data.SetOwnerReferences([]metav1.OwnerReference{*kmeta.NewControllerRef(el)})
 
-	return data, &container, nil
+	return data, nil
 }
