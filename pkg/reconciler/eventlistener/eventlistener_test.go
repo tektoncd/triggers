@@ -1158,7 +1158,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Services:       []*corev1.Service{elService}, // Annotation is cleared.
+			Services:       []*corev1.Service{elServiceWithAnnotation},
 			Deployments:    []*appsv1.Deployment{elDeployment},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},
@@ -1208,7 +1208,7 @@ func TestReconcile(t *testing.T) {
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{elDeployment}, // labels are removed
+			Deployments:    []*appsv1.Deployment{elDeploymentWithAnnotations},
 			Services:       []*corev1.Service{elService},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
 		},

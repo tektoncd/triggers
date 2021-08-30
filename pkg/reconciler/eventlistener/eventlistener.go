@@ -42,6 +42,7 @@ import (
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -168,6 +169,10 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 				service.Spec.Ports[i].NodePort = existingService.Spec.Ports[i].NodePort
 			}
 		}
+		// Preserve user-added annotations.
+		if len(existingService.Annotations) > 0 {
+			service.Annotations = kmeta.UnionMaps(service.Annotations, existingService.Annotations)
+		}
 
 		if !equality.Semantic.DeepEqual(existingService.Spec, service.Spec) ||
 			!equality.Semantic.DeepEqual(existingService.Labels, service.Labels) ||
@@ -260,6 +265,10 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 		// (or manually themselves) scale the underlying deployment.
 		if deployment.Spec.Replicas == nil {
 			deployment.Spec.Replicas = existingDeployment.Spec.Replicas
+		}
+		// Preserve user-added annotations.
+		if len(existingDeployment.Annotations) > 0 {
+			deployment.Annotations = kmeta.UnionMaps(deployment.Annotations, existingDeployment.Annotations)
 		}
 
 		if !equality.Semantic.DeepEqual(existingDeployment.Spec, deployment.Spec) ||
