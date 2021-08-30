@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
@@ -25,6 +26,12 @@ import (
 )
 
 type ContainerOption func(*corev1.Container)
+
+var (
+	MetricsConfig = `{"Domain":"` + TriggersMetricsDomain + `","Component":"eventlistener","ConfigMap":{}}`
+	zapConfig     = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
+	LoggingConfig = fmt.Sprintf(`{"loglevel.eventlistener": "info", "zap-logger-config": %q}`, zapConfig)
+)
 
 func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption) corev1.Container {
 	isMultiNS := false
@@ -57,6 +64,19 @@ func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption)
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 			"--payload-validation=" + strconv.FormatBool(payloadValidation),
 		},
+		Env: []corev1.EnvVar{{
+			Name:  "NAMESPACE",
+			Value: el.Namespace,
+		}, {
+			Name:  "NAME",
+			Value: el.Name,
+		}, {
+			Name:  "K_METRICS_CONFIG",
+			Value: MetricsConfig,
+		}, {
+			Name:  "K_LOGGING_CONFIG",
+			Value: LoggingConfig,
+		}},
 	}
 
 	for _, opt := range opts {

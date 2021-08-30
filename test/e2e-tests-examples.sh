@@ -90,12 +90,16 @@ port_forward_and_curl() {
      exit 1
   fi
 
+  # Wait a few seconds for resources to show up
+  sleep 3
+
   tr=$(kubectl get taskruns -A -l triggers.tekton.dev/triggers-eventid=${eventID} -o name)
   pr=$(kubectl get pipelineruns -A -l triggers.tekton.dev/triggers-eventid=${eventID} -o name)
 
   if [ -z "$tr" ] && [ -z "$pr" ]
   then
      err "failed to create taskrun/pipelinerun"
+     kubectl logs -l "eventlistener=${current_example}-listener"
      exit 1
   fi
 

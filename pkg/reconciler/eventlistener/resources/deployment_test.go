@@ -76,7 +76,6 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes:         []corev1.Volume{configLoggingVolume},
 						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
@@ -112,7 +111,6 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes:         []corev1.Volume{configLoggingVolume},
 						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
@@ -156,7 +154,6 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes:         []corev1.Volume{configLoggingVolume},
 						SecurityContext: &strongerSecurityPolicy,
 						Tolerations: []corev1.Toleration{{
 							Key:   "foo",
@@ -203,7 +200,6 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes:         []corev1.Volume{configLoggingVolume},
 						SecurityContext: &strongerSecurityPolicy,
 						NodeSelector: map[string]string{
 							"foo": "bar",
@@ -247,7 +243,6 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes:         []corev1.Volume{configLoggingVolume},
 						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
@@ -278,7 +273,7 @@ func TestDeployment(t *testing.T) {
 								mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
 								addCertsForSecureConnection(config)),
 						},
-						Volumes: []corev1.Volume{configLoggingVolume, {
+						Volumes: []corev1.Volume{{
 							Name: "https-connection",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{

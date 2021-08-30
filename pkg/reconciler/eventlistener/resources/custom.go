@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/kmeta"
-	"knative.dev/pkg/metrics"
 )
 
 func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstructured, error) {
@@ -54,24 +53,11 @@ func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstru
 			c.Resources = original.Spec.Template.Spec.Containers[0].Resources
 		}
 
-		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
-		c.VolumeMounts = []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-			ReadOnly:  true,
-		}}
-
 		c.Env = append(c.Env, corev1.EnvVar{
 			Name: "SYSTEM_NAMESPACE",
 			// Cannot use FieldRef here because Knative Serving mask that field under feature gate
 			// https://github.com/knative/serving/blob/master/pkg/apis/config/features.go#L48
 			Value: el.Namespace,
-		}, corev1.EnvVar{
-			Name:  "CONFIG_OBSERVABILITY_NAME",
-			Value: metrics.ConfigMapName(),
-		}, corev1.EnvVar{
-			Name:  "METRICS_DOMAIN",
-			Value: TriggersMetricsDomain,
 		}, corev1.EnvVar{
 			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 			// env METRICS_PROMETHEUS_PORT set by controller
@@ -106,16 +92,6 @@ func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstru
 		NodeSelector:       customObjectData.Spec.Template.Spec.NodeSelector,
 		ServiceAccountName: customObjectData.Spec.Template.Spec.ServiceAccountName,
 		Containers:         []corev1.Container{container},
-		Volumes: []corev1.Volume{{
-			Name: "config-logging",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: EventListenerConfigMapName,
-					},
-				},
-			},
-		}},
 	}
 	marshaledData, err := json.Marshal(original)
 	if err != nil {
