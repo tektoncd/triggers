@@ -18,200 +18,53 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
 
+	"github.com/tektoncd/triggers/pkg/adapter"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
-	"github.com/tektoncd/triggers/pkg/client/informers/externalversions"
-	triggerLogging "github.com/tektoncd/triggers/pkg/logging"
 	"github.com/tektoncd/triggers/pkg/sink"
-	"github.com/tektoncd/triggers/pkg/system"
-	"go.uber.org/zap"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	cminformer "knative.dev/pkg/configmap/informer"
-	"knative.dev/pkg/controller"
+	evadapter "knative.dev/eventing/pkg/adapter/v2"
 	"knative.dev/pkg/injection"
-	"knative.dev/pkg/injection/sharedmain"
-	"knative.dev/pkg/logging"
-	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/profiling"
+	"knative.dev/pkg/injection/clients/dynamicclient"
 	"knative.dev/pkg/signals"
 )
 
 const (
 	// EventListenerLogKey is the name of the logger for the eventlistener cmd
 	EventListenerLogKey = "eventlistener"
-	// ConfigName is the name of the ConfigMap that the logging config will be stored in
-	ConfigName = "config-logging-triggers"
-)
-
-var (
-	// CacheSyncTimeout is the amount of the time we will wait for the informer cache to sync
-	// before timing out
-	cacheSyncTimeout = 1 * time.Minute
 )
 
 func main() {
-	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.NewContext()
 
-	clusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Failed to get in cluster config: %v", err)
-	}
-	ctx, startInformers := injection.EnableInjectionOrDie(ctx, clusterConfig)
-	kubeClient, err := kubernetes.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the Kubernetes client set: %v", err)
-	}
+	cfg := injection.ParseAndGetRESTConfigOrDie()
 
-	dynamicClient, err := dynamic.NewForConfig(clusterConfig)
-	if err != nil {
-		log.Fatalf("Failed to get the dynamic client: %v", err)
-	}
-	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
-	configMapWatcher := cminformer.NewInformedWatcher(kubeClient, system.GetNamespace())
+	dc := dynamic.NewForConfigOrDie(cfg)
+	dc = dynamicClientset.New(tekton.WithClient(dc))
+	ctx = context.WithValue(ctx, dynamicclient.Key{}, dc)
 
-	logger := triggerLogging.ConfigureLogging(EventListenerLogKey, ConfigName, ctx.Done(), kubeClient, configMapWatcher)
-	ctx = logging.WithLogger(ctx, logger)
-
-	profilingHandler := profiling.NewHandler(logger, false)
-	profilingServer := profiling.NewServer(profilingHandler)
-	metrics.MemStatsOrDie(ctx)
-
-	exp := metrics.ExporterOptions{
-		Component: strings.ReplaceAll(EventListenerLogKey, "-", "_"),
-		ConfigMap: nil,
-		Secrets:   sharedmain.SecretFetcher(ctx),
-	}
-	cmData, err := metrics.UpdateExporterFromConfigMapWithOpts(ctx, exp, logger)
-	if err != nil {
-		logger.Fatalw("Error in update exporter from ConfigMap ", zap.Error(err))
-	}
-	if _, err := kubeClient.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, metrics.ConfigMapName(),
-		metav1.GetOptions{}); err == nil {
-		configMapWatcher.Watch(metrics.ConfigMapName(),
-			cmData,
-			profilingHandler.UpdateFromConfigMap)
-	} else if !apierrors.IsNotFound(err) {
-		logger.Fatalw("Error reading ConfigMap "+metrics.ConfigMapName(), zap.Error(err))
-	}
-
-	logger.Info("Starting configuration manager...")
-	if err := configMapWatcher.Start(ctx.Done()); err != nil {
-		logger.Fatalw("Failed to start configuration manager", zap.Error(err))
-	}
-	defer func() {
-		err := logger.Sync()
-		if err != nil {
-			logger.Fatalf("Failed to sync the logger", zap.Error(err))
-		}
-	}()
-
-	logger.Info("EventListener pod started")
+	// Set up ctx with the set of things based on the
+	// dynamic client we've set up above.
+	ctx = injection.Dynamic.SetupDynamic(ctx)
 
 	sinkArgs, err := sink.GetArgs()
 	if err != nil {
-		logger.Fatal(err)
+		log.Fatal(err.Error())
 	}
-
-	sinkClients, err := sink.ConfigureClients(clusterConfig)
+	sinkClients, err := sink.ConfigureClients(cfg)
 	if err != nil {
-		logger.Fatal(err)
+		log.Fatal(err.Error())
 	}
-
-	// Create a sharedInformer factory so that we can cache API server calls
-	factory := externalversions.NewSharedInformerFactoryWithOptions(sinkClients.TriggersClient,
-		controller.DefaultResyncPeriod, externalversions.WithNamespace(sinkArgs.ElNamespace))
-	if sinkArgs.IsMultiNS {
-		factory = externalversions.NewSharedInformerFactory(sinkClients.TriggersClient,
-			controller.DefaultResyncPeriod)
-	}
-
 	recorder, err := sink.NewRecorder()
 	if err != nil {
-		logger.Fatal(err)
-	}
-	// Create EventListener Sink
-	r := sink.Sink{
-		KubeClientSet:          kubeClient,
-		DiscoveryClient:        sinkClients.DiscoveryClient,
-		DynamicClient:          dynamicCS,
-		TriggersClient:         sinkClients.TriggersClient,
-		HTTPClient:             http.DefaultClient,
-		EventListenerName:      sinkArgs.ElName,
-		EventListenerNamespace: sinkArgs.ElNamespace,
-		PayloadValidation:      sinkArgs.PayloadValidation,
-		Logger:                 logger,
-		Recorder:               recorder,
-		Auth:                   sink.DefaultAuthOverride{},
-		WGProcessTriggers:      &sync.WaitGroup{},
-		// Register all the listers we'll need
-		EventListenerLister:         factory.Triggers().V1beta1().EventListeners().Lister(),
-		TriggerLister:               factory.Triggers().V1beta1().Triggers().Lister(),
-		TriggerBindingLister:        factory.Triggers().V1beta1().TriggerBindings().Lister(),
-		ClusterTriggerBindingLister: factory.Triggers().V1beta1().ClusterTriggerBindings().Lister(),
-		TriggerTemplateLister:       factory.Triggers().V1beta1().TriggerTemplates().Lister(),
-		ClusterInterceptorLister:    factory.Triggers().V1alpha1().ClusterInterceptors().Lister(),
+		log.Fatal(err.Error())
 	}
 
-	startInformers()
-	// Start and sync the informers before we start taking traffic
-	withTimeout, cancel := context.WithTimeout(ctx, cacheSyncTimeout)
-	defer cancel()
-	factory.Start(ctx.Done())
-	res := factory.WaitForCacheSync(withTimeout.Done())
-	for r, hasSynced := range res {
-		if !hasSynced {
-			logger.Fatalf("failed to sync informer for: %s", r)
-		}
-	}
-	logger.Infof("Synced informers. Starting EventListener")
-
-	// Listen and serve
-	logger.Infof("Listen and serve on port %s", sinkArgs.Port)
-	mux := http.NewServeMux()
-	eventHandler := http.HandlerFunc(r.HandleEvent)
-	metricsRecorder := &sink.MetricsHandler{Handler: r.IsValidPayload(eventHandler)}
-
-	mux.HandleFunc("/", http.HandlerFunc(metricsRecorder.Intercept(r.NewMetricsRecorderInterceptor())))
-
-	// For handling Liveness Probe
-	// TODO(dibyom): Livness, metrics etc. should be on a separate port
-	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		fmt.Fprint(w, "ok")
-	})
-
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", sinkArgs.Port),
-		ReadTimeout:  sinkArgs.ELReadTimeOut * time.Second,
-		WriteTimeout: sinkArgs.ELWriteTimeOut * time.Second,
-		IdleTimeout:  sinkArgs.ELIdleTimeOut * time.Second,
-		Handler: http.TimeoutHandler(mux,
-			sinkArgs.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"),
+	if sinkArgs.IsMultiNS {
+		ctx = injection.WithNamespaceScope(ctx, sinkArgs.ElNamespace)
 	}
 
-	if sinkArgs.Cert == "" && sinkArgs.Key == "" {
-		if err := srv.ListenAndServe(); err != nil {
-			logger.Fatalf("failed to start eventlistener sink: %v", err)
-		}
-	} else {
-		if err := srv.ListenAndServeTLS(sinkArgs.Cert, sinkArgs.Key); err != nil {
-			logger.Fatalf("failed to start eventlistener sink: %v", err)
-		}
-	}
-	err = profilingServer.Shutdown(context.Background())
-	if err != nil {
-		logger.Fatalf("failed to shutdown profiling server: %v", err)
-	}
+	evadapter.MainWithContext(ctx, EventListenerLogKey, adapter.NewEnvConfig, adapter.New(sinkArgs, sinkClients, recorder))
 }

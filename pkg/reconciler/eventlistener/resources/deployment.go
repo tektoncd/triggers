@@ -26,28 +26,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"knative.dev/pkg/kmeta"
-	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/ptr"
 )
 
 const (
-	// EventListenerConfigMapName is for the automatically created ConfigMap
-	EventListenerConfigMapName = "config-logging-triggers"
-
 	TriggersMetricsDomain = "tekton.dev/triggers"
 )
 
 var (
-	configLoggingVolume = corev1.Volume{
-		Name: "config-logging",
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: EventListenerConfigMapName,
-				},
-			},
-		},
-	}
 	strongerSecurityPolicy = corev1.PodSecurityContext{
 		RunAsNonRoot: ptr.Bool(true),
 		RunAsUser:    ptr.Int64(65532),
@@ -65,8 +51,8 @@ func MakeDeployment(el *v1beta1.EventListener, c Config) (*appsv1.Deployment, er
 	var (
 		podlabels                 = kmeta.UnionMaps(el.Labels, GenerateLabels(el.Name, c.StaticResourceLabels))
 		serviceAccountName        = el.Spec.ServiceAccountName
-		vol                       = []corev1.Volume{configLoggingVolume}
 		replicas                  *int32
+		vol                       []corev1.Volume
 		tolerations               []corev1.Toleration
 		nodeSelector, annotations map[string]string
 	)
@@ -153,24 +139,12 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			Protocol:      corev1.ProtocolTCP,
 		})
 
-		// TODO(mattmoor): Knative's sharedmain no longer looks for this, so confirm this is still needed.
-		container.VolumeMounts = []corev1.VolumeMount{{
-			Name:      "config-logging",
-			MountPath: "/etc/config-logging",
-		}}
-
 		container.Env = append(container.Env, corev1.EnvVar{
 			Name: "SYSTEM_NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "metadata.namespace",
 				}},
-		}, corev1.EnvVar{
-			Name:  "CONFIG_OBSERVABILITY_NAME",
-			Value: metrics.ConfigMapName(),
-		}, corev1.EnvVar{
-			Name:  "METRICS_DOMAIN",
-			Value: TriggersMetricsDomain,
 		}, corev1.EnvVar{
 			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 			// env METRICS_PROMETHEUS_PORT set by controller

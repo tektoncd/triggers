@@ -56,6 +56,19 @@ func TestContainer(t *testing.T) {
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(true),
 			},
+			Env: []corev1.EnvVar{{
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "K_METRICS_CONFIG",
+				Value: MetricsConfig,
+			}, {
+				Name:  "K_LOGGING_CONFIG",
+				Value: LoggingConfig,
+			}},
 		},
 	}, {
 		name: "with resources option",
@@ -92,6 +105,19 @@ func TestContainer(t *testing.T) {
 					corev1.ResourceCPU: resource.MustParse("200m"),
 				},
 			},
+			Env: []corev1.EnvVar{{
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "K_METRICS_CONFIG",
+				Value: MetricsConfig,
+			}, {
+				Name:  "K_LOGGING_CONFIG",
+				Value: LoggingConfig,
+			}},
 		},
 	}, {
 		name: "with env option",
@@ -150,6 +176,19 @@ func TestContainer(t *testing.T) {
 				"--is-multi-ns=" + strconv.FormatBool(true),
 				"--payload-validation=" + strconv.FormatBool(true),
 			},
+			Env: []corev1.EnvVar{{
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "K_METRICS_CONFIG",
+				Value: MetricsConfig,
+			}, {
+				Name:  "K_LOGGING_CONFIG",
+				Value: LoggingConfig,
+			}},
 		},
 	}, {
 		name: "without payload validation",
@@ -176,6 +215,19 @@ func TestContainer(t *testing.T) {
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(false),
 			},
+			Env: []corev1.EnvVar{{
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "K_METRICS_CONFIG",
+				Value: MetricsConfig,
+			}, {
+				Name:  "K_LOGGING_CONFIG",
+				Value: LoggingConfig,
+			}},
 		},
 	}}
 

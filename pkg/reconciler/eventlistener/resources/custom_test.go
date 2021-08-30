@@ -69,24 +69,37 @@ func TestCustomObject(t *testing.T) {
 		"--payload-validation=" + strconv.FormatBool(true),
 	}
 
-	env := []interface{}{
+	containerEnv := []interface{}{
 		map[string]interface{}{
-			"name":  "SYSTEM_NAMESPACE",
+			"name":  "NAMESPACE",
 			"value": namespace,
 		},
 		map[string]interface{}{
-			"name":  "CONFIG_OBSERVABILITY_NAME",
-			"value": "config-observability",
+			"name":  "NAME",
+			"value": eventListenerName,
 		},
 		map[string]interface{}{
-			"name":  "METRICS_DOMAIN",
-			"value": TriggersMetricsDomain,
+			"name":  "K_METRICS_CONFIG",
+			"value": MetricsConfig,
+		},
+		map[string]interface{}{
+			"name":  "K_LOGGING_CONFIG",
+			"value": LoggingConfig,
+		},
+	}
+
+	customEnv := []interface{}{
+		map[string]interface{}{
+			"name":  "SYSTEM_NAMESPACE",
+			"value": namespace,
 		},
 		map[string]interface{}{
 			"name":  "METRICS_PROMETHEUS_PORT",
 			"value": "9000",
 		},
 	}
+
+	env := append(append([]interface{}{}, containerEnv...), customEnv...)
 
 	tests := []struct {
 		name string
@@ -128,13 +141,6 @@ func TestCustomObject(t *testing.T) {
 										},
 									},
 									"resources": map[string]interface{}{},
-									"volumeMounts": []interface{}{
-										map[string]interface{}{
-											"mountPath": "/etc/config-logging",
-											"name":      "config-logging",
-											"readOnly":  true,
-										},
-									},
 									"readinessProbe": map[string]interface{}{
 										"httpGet": map[string]interface{}{
 											"path":   "/live",
@@ -143,14 +149,6 @@ func TestCustomObject(t *testing.T) {
 										},
 										"successThreshold": int64(1),
 									},
-								},
-							},
-							"volumes": []interface{}{
-								map[string]interface{}{
-									"configMap": map[string]interface{}{
-										"name": EventListenerConfigMapName,
-									},
-									"name": "config-logging",
 								},
 							},
 						},
@@ -198,12 +196,11 @@ func TestCustomObject(t *testing.T) {
 									"name":  "event-listener",
 									"image": DefaultImage,
 									"args":  args,
-									"env": append([]interface{}{
+									"env": append(append(append([]interface{}{}, containerEnv...),
 										map[string]interface{}{
 											"name":  "FOO",
 											"value": "bar",
-										},
-									}, env...),
+										}), customEnv...),
 									"ports": []interface{}{
 										map[string]interface{}{
 											"containerPort": int64(8080),
@@ -211,13 +208,6 @@ func TestCustomObject(t *testing.T) {
 										},
 									},
 									"resources": map[string]interface{}{},
-									"volumeMounts": []interface{}{
-										map[string]interface{}{
-											"mountPath": "/etc/config-logging",
-											"name":      "config-logging",
-											"readOnly":  true,
-										},
-									},
 									"readinessProbe": map[string]interface{}{
 										"httpGet": map[string]interface{}{
 											"path":   "/live",
@@ -226,14 +216,6 @@ func TestCustomObject(t *testing.T) {
 										},
 										"successThreshold": int64(1),
 									},
-								},
-							},
-							"volumes": []interface{}{
-								map[string]interface{}{
-									"configMap": map[string]interface{}{
-										"name": EventListenerConfigMapName,
-									},
-									"name": "config-logging",
 								},
 							},
 						},
@@ -293,13 +275,6 @@ func TestCustomObject(t *testing.T) {
 											"cpu": "101m",
 										},
 									},
-									"volumeMounts": []interface{}{
-										map[string]interface{}{
-											"mountPath": "/etc/config-logging",
-											"name":      "config-logging",
-											"readOnly":  true,
-										},
-									},
 									"readinessProbe": map[string]interface{}{
 										"httpGet": map[string]interface{}{
 											"path":   "/live",
@@ -308,14 +283,6 @@ func TestCustomObject(t *testing.T) {
 										},
 										"successThreshold": int64(1),
 									},
-								},
-							},
-							"volumes": []interface{}{
-								map[string]interface{}{
-									"configMap": map[string]interface{}{
-										"name": EventListenerConfigMapName,
-									},
-									"name": "config-logging",
 								},
 							},
 						},

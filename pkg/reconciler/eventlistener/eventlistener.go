@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
@@ -44,7 +43,6 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/metrics"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
@@ -64,8 +62,6 @@ const (
 	// GeneratedResourcePrefix is the name prefix for resources generated in the
 	// EventListener reconciler
 	GeneratedResourcePrefix = "el"
-
-	defaultConfig = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -93,8 +89,6 @@ type Reconciler struct {
 var (
 	// Check that our Reconciler implements eventlistenerreconciler.Interface
 	_ eventlistenerreconciler.Interface = (*Reconciler)(nil)
-	// Check that our Reconciler implements eventlistenerreconciler.Finalizer
-	_ eventlistenerreconciler.Finalizer = (*Reconciler)(nil)
 )
 
 // ReconcileKind compares the actual state with the desired, and attempts to
@@ -118,33 +112,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListene
 		el.Status.SetReadyCondition()
 	}
 	return wrapError(serviceReconcileError, deploymentReconcileError)
-}
-
-// FinalizeKind cleans up associated logging config maps when an EventListener is deleted
-func (r *Reconciler) FinalizeKind(ctx context.Context, el *v1beta1.EventListener) pkgreconciler.Event {
-	logger := logging.FromContext(ctx)
-	cfgs, err := r.eventListenerLister.EventListeners(el.Namespace).List(labels.Everything())
-	if err != nil {
-		return err
-	}
-	if len(cfgs) != 1 {
-		logger.Infof("Not deleting logging config map since more than one EventListener present in the namespace %s", el.Namespace)
-		return nil
-	}
-	// only one EL left
-	lastEL := cfgs[0]
-	if lastEL.Namespace == r.config.SystemNamespace {
-		logger.Infof("Not deleting logging config map since EventListener is in the same namespace (%s) as the controller", el.Namespace)
-		return nil
-	}
-	if err = r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Delete(ctx, resources.EventListenerConfigMapName, metav1.DeleteOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	logger.Infof("Deleted logging config map since last EventListener in the namespace %s was deleted", lastEL.Namespace)
-	return nil
 }
 
 func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventListener) error {
@@ -207,44 +174,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 	return nil
 }
 
-func (r *Reconciler) reconcileLoggingConfig(ctx context.Context, el *v1beta1.EventListener) error {
-	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(resources.EventListenerConfigMapName); errors.IsNotFound(err) {
-		// create default config-logging ConfigMap
-		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultLoggingConfigMap(), metav1.CreateOptions{}); err != nil {
-			logging.FromContext(ctx).Errorf("Failed to create logging config: %s.  EventListener won't start.", err)
-			return err
-		}
-	} else if err != nil {
-		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", resources.EventListenerConfigMapName, err)
-		return err
-	}
-	return nil
-}
-
-func (r *Reconciler) reconcileObservabilityConfig(ctx context.Context, el *v1beta1.EventListener) error {
-	if _, err := r.configmapLister.ConfigMaps(el.Namespace).Get(metrics.ConfigMapName()); errors.IsNotFound(err) {
-		if _, err := r.KubeClientSet.CoreV1().ConfigMaps(el.Namespace).Create(ctx, defaultObservabilityConfigMap(), metav1.CreateOptions{}); err != nil {
-			logging.FromContext(ctx).Errorf("Failed to create observability config: %s.  EventListener won't start.", err)
-			return err
-		}
-	} else if err != nil {
-		logging.FromContext(ctx).Errorf("Error retrieving ConfigMap %q: %s", metrics.ConfigMapName(), err)
-		return err
-	}
-	return nil
-}
-
 func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventListener) error {
-	// check logging config, create if it doesn't exist
-	if err := r.reconcileLoggingConfig(ctx, el); err != nil {
-		logging.FromContext(ctx).Error(err)
-		return err
-	}
-	if err := r.reconcileObservabilityConfig(ctx, el); err != nil {
-		logging.FromContext(ctx).Error(err)
-		return err
-	}
-
 	deployment, err := resources.MakeDeployment(el, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Error(err)
@@ -308,16 +238,6 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 }
 
 func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.EventListener) error {
-	// check logging config, create if it doesn't exist
-	if err := r.reconcileLoggingConfig(ctx, el); err != nil {
-		logging.FromContext(ctx).Error(err)
-		return err
-	}
-	// TODO(mattmoor): This is missing reconciliation of the observability config, which reconcileDeployment has.
-	// Given that the CustomObject passes the config name, this probably should have it, but it probably makes
-	// the most sense to eliminate the configmap propagation altogether and translate that state into container
-	// config (env, args).
-
 	data, err := resources.MakeCustomObject(el, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Errorf("unable to construct custom object", err)
@@ -419,24 +339,4 @@ func wrapError(err1, err2 error) error {
 		return err1
 	}
 	return xerrors.Errorf("%s : %s", err1.Error(), err2.Error())
-}
-
-func defaultLoggingConfigMap() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: resources.EventListenerConfigMapName},
-		Data: map[string]string{
-			"loglevel.eventlistener": "info",
-			"zap-logger-config":      defaultConfig,
-		},
-	}
-}
-
-func defaultObservabilityConfigMap() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: metrics.ConfigMapName()},
-		Data: map[string]string{
-			// TODO: Better nonempty config
-			"_example": "See tekton-pipelines namespace for valid values",
-		},
-	}
 }

@@ -21,8 +21,15 @@ package clustertriggerbinding
 import (
 	context "context"
 
+	apistriggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	v1alpha1 "github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1alpha1"
+	client "github.com/tektoncd/triggers/pkg/client/injection/client"
 	factory "github.com/tektoncd/triggers/pkg/client/injection/informers/factory"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	cache "k8s.io/client-go/tools/cache"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -30,6 +37,7 @@ import (
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
+	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -41,6 +49,11 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
+func withDynamicInformer(ctx context.Context) context.Context {
+	inf := &wrapper{client: client.Get(ctx)}
+	return context.WithValue(ctx, Key{}, inf)
+}
+
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1alpha1.ClusterTriggerBindingInformer {
 	untyped := ctx.Value(Key{})
@@ -49,4 +62,39 @@ func Get(ctx context.Context) v1alpha1.ClusterTriggerBindingInformer {
 			"Unable to fetch github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1alpha1.ClusterTriggerBindingInformer from context.")
 	}
 	return untyped.(v1alpha1.ClusterTriggerBindingInformer)
+}
+
+type wrapper struct {
+	client versioned.Interface
+}
+
+var _ v1alpha1.ClusterTriggerBindingInformer = (*wrapper)(nil)
+var _ triggersv1alpha1.ClusterTriggerBindingLister = (*wrapper)(nil)
+
+func (w *wrapper) Informer() cache.SharedIndexInformer {
+	return cache.NewSharedIndexInformer(nil, &apistriggersv1alpha1.ClusterTriggerBinding{}, 0, nil)
+}
+
+func (w *wrapper) Lister() triggersv1alpha1.ClusterTriggerBindingLister {
+	return w
+}
+
+func (w *wrapper) List(selector labels.Selector) (ret []*apistriggersv1alpha1.ClusterTriggerBinding, err error) {
+	lo, err := w.client.TriggersV1alpha1().ClusterTriggerBindings().List(context.TODO(), v1.ListOptions{
+		LabelSelector: selector.String(),
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
+	if err != nil {
+		return nil, err
+	}
+	for idx := range lo.Items {
+		ret = append(ret, &lo.Items[idx])
+	}
+	return ret, nil
+}
+
+func (w *wrapper) Get(name string) (*apistriggersv1alpha1.ClusterTriggerBinding, error) {
+	return w.client.TriggersV1alpha1().ClusterTriggerBindings().Get(context.TODO(), name, v1.GetOptions{
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
 }
