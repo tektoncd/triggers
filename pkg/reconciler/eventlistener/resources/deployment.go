@@ -50,7 +50,6 @@ var (
 	}
 	strongerSecurityPolicy = corev1.PodSecurityContext{
 		RunAsNonRoot: ptr.Bool(true),
-		RunAsUser:    ptr.Int64(65532),
 	}
 )
 
