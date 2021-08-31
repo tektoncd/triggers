@@ -254,7 +254,6 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 					}},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr.Bool(true),
-						RunAsUser:    ptr.Int64(65532),
 					},
 				},
 			},
