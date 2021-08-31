@@ -62,7 +62,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	if sinkArgs.IsMultiNS {
+	if !sinkArgs.IsMultiNS {
 		ctx = injection.WithNamespaceScope(ctx, sinkArgs.ElNamespace)
 	}
 
