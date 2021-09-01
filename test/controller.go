@@ -110,7 +110,7 @@ func init() {
 }
 
 // SeedResources returns Clients populated with the given Resources
-// nolint: golint
+// nolint: revive
 func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	t.Helper()
 	c := Clients{

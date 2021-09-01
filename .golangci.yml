@@ -15,4 +15,4 @@ linters:
   - goimports
   - gosec
   - gocritic
-  - golint
+  - revive

@@ -109,8 +109,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListene
 	el.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	if el.Spec.Resources.CustomResource != nil {
-		kError := r.reconcileCustomObject(ctx, el)
-		return wrapError(kError, nil)
+		return r.reconcileCustomObject(ctx, el)
 	}
 	deploymentReconcileError := r.reconcileDeployment(ctx, el)
 	serviceReconcileError := r.reconcileService(ctx, el)
