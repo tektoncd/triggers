@@ -86,7 +86,7 @@ the triggers repo, a terminal window and a text editor.
    (...)
    ```
 
-   The `commit-sha` should match `$TEKTON_RELEASE_GIT_SHA`.
+   The `commit-sha` should match `$TRIGGERS_RELEASE_GIT_SHA`.
    The two URLs can be opened in the browser or via `curl` to download the release manifests.
 
     1. The YAMLs are now released! Anyone installing Tekton Triggers will now get the new version. Time to create a new GitHub release announcement:
