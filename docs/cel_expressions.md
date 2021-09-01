@@ -94,6 +94,57 @@ interceptors:
 `failed to evaluate overlay expression 'body.measure * 3': no such overload`
 because there's no automatic conversion.
 
+## CEL expression examples
+
+### Matching on an element in an array.
+
+CEL provides several [macros](https://github.com/google/cel-spec/blob/master/doc/langdef.md#macros) which can operate on JSON objects.
+
+If you have a JSON body like this:
+
+```json
+{
+  "labels": [
+    {
+      "name": "test-a"
+    },
+    {
+      "name":"test-b"
+    }
+  ]
+}
+```
+
+You can use this in filters in the following ways:
+
+ * `filter: body.labels.exists(x, x.name == 'test-b')` is _true_
+ * `filter: body.labels.exists(x, x.name == 'test-c')` is _false_
+ * `filter: body.labels.exists_one(x, x.name.endsWith('-b'))` is _true_
+ * `filter: body.labels.exists_one(x, x.name.startsWith('test-'))` is _false_
+ * `filter: body.labels.all(x, x.name.startsWith('test-'))` is _true_
+ * `filter: body.labels.all(x, x.name.endsWith('-b'))` is _false_
+
+You can also parse additional data from each of the labels:
+```yaml
+overlays:
+- key: suffixes
+  expression: "body.labels.map(x, x.name.substring(x.name.lastIndexOf('-')+1))"
+```
+This yields an array of `["a", "b"]` in the `suffixes` extension key.
+```yaml
+overlays:
+- key: filtered
+  expression: "body.labels.filter(x, x.name.endsWith('-b'))"
+```
+This would add an extensions key `filtered` with only one of the labels.
+```yaml
+[
+  {
+    "name": "test-b"
+  }
+]
+```
+
 ## cel-go extensions
 
 All the functionality from the cel-go project's [CEL extension](https://github.com/google/cel-go/tree/master/ext) is available in
