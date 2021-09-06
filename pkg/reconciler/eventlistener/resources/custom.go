@@ -25,11 +25,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/kmeta"
 )
 
-func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstructured, error) {
+func MakeCustomObject(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*unstructured.Unstructured, error) {
 	original := &duckv1.WithPod{}
 	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
 	if err := decoder.Decode(&original); err != nil {
@@ -44,7 +45,7 @@ func MakeCustomObject(el *v1beta1.EventListener, c Config) (*unstructured.Unstru
 		namespace = el.GetNamespace()
 	}
 
-	container := MakeContainer(el, c, func(c *corev1.Container) {
+	container := MakeContainer(el, configAcc, c, func(c *corev1.Container) {
 		// handle env and resources for custom object
 		if len(original.Spec.Template.Spec.Containers) == 1 {
 			for i := range original.Spec.Template.Spec.Containers[0].Env {

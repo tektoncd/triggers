@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/ptr"
 )
@@ -40,13 +41,13 @@ var (
 	}
 )
 
-func MakeDeployment(el *v1beta1.EventListener, c Config) (*appsv1.Deployment, error) {
+func MakeDeployment(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*appsv1.Deployment, error) {
 	opt, err := addDeploymentBits(el, c)
 	if err != nil {
 		return nil, err
 	}
 
-	container := MakeContainer(el, c, opt, addCertsForSecureConnection(c))
+	container := MakeContainer(el, configAcc, c, opt, addCertsForSecureConnection(c))
 
 	var (
 		podlabels                 = kmeta.UnionMaps(el.Labels, GenerateLabels(el.Name, c.StaticResourceLabels))

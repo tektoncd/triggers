@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
@@ -79,6 +80,9 @@ type Reconciler struct {
 	deploymentLister    appsv1lister.DeploymentLister
 	eventListenerLister listers.EventListenerLister
 	serviceLister       corev1lister.ServiceLister
+
+	// config accessor for observability/logging/tracing
+	configAcc reconcilersource.ConfigAccessor
 
 	// config is the configuration options that the Reconciler accepts.
 	config             resources.Config
@@ -174,7 +178,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 }
 
 func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventListener) error {
-	deployment, err := resources.MakeDeployment(el, r.config)
+	deployment, err := resources.MakeDeployment(el, r.configAcc, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Error(err)
 		return err
@@ -237,7 +241,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 }
 
 func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.EventListener) error {
-	data, err := resources.MakeCustomObject(el, r.config)
+	data, err := resources.MakeCustomObject(el, r.configAcc, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Errorf("unable to construct custom object", err)
 		return err

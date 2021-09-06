@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 )
 
 func TestCustomObject(t *testing.T) {
@@ -71,20 +72,21 @@ func TestCustomObject(t *testing.T) {
 
 	containerEnv := []interface{}{
 		map[string]interface{}{
+			"name": "K_LOGGING_CONFIG",
+		},
+		map[string]interface{}{
+			"name": "K_METRICS_CONFIG",
+		},
+		map[string]interface{}{
+			"name": "K_TRACING_CONFIG",
+		},
+		map[string]interface{}{
 			"name":  "NAMESPACE",
 			"value": namespace,
 		},
 		map[string]interface{}{
 			"name":  "NAME",
 			"value": eventListenerName,
-		},
-		map[string]interface{}{
-			"name":  "K_METRICS_CONFIG",
-			"value": MetricsConfig,
-		},
-		map[string]interface{}{
-			"name":  "K_LOGGING_CONFIG",
-			"value": LoggingConfig,
 		},
 	}
 
@@ -294,7 +296,7 @@ func TestCustomObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MakeCustomObject(tt.el, config)
+			got, err := MakeCustomObject(tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
 			if err != nil {
 				t.Fatalf("MakeCustomObject() = %v", err)
 			}
@@ -323,7 +325,7 @@ func TestCustomObjectError(t *testing.T) {
 				Raw: []byte(`garbage`),
 			},
 		}
-	}), config)
+	}), &reconcilersource.EmptyVarsGenerator{}, config)
 	if err == nil {
 		t.Fatalf("MakeCustomObject() = %v, wanted error", got)
 	}

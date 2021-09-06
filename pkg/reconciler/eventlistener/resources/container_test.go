@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 )
 
 func TestContainer(t *testing.T) {
@@ -57,17 +58,17 @@ func TestContainer(t *testing.T) {
 				"--payload-validation=" + strconv.FormatBool(true),
 			},
 			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
-			}, {
-				Name:  "K_METRICS_CONFIG",
-				Value: MetricsConfig,
-			}, {
-				Name:  "K_LOGGING_CONFIG",
-				Value: LoggingConfig,
 			}},
 		},
 	}, {
@@ -106,17 +107,17 @@ func TestContainer(t *testing.T) {
 				},
 			},
 			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
-			}, {
-				Name:  "K_METRICS_CONFIG",
-				Value: MetricsConfig,
-			}, {
-				Name:  "K_LOGGING_CONFIG",
-				Value: LoggingConfig,
 			}},
 		},
 	}, {
@@ -177,17 +178,17 @@ func TestContainer(t *testing.T) {
 				"--payload-validation=" + strconv.FormatBool(true),
 			},
 			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
-			}, {
-				Name:  "K_METRICS_CONFIG",
-				Value: MetricsConfig,
-			}, {
-				Name:  "K_LOGGING_CONFIG",
-				Value: LoggingConfig,
 			}},
 		},
 	}, {
@@ -216,24 +217,24 @@ func TestContainer(t *testing.T) {
 				"--payload-validation=" + strconv.FormatBool(false),
 			},
 			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
-			}, {
-				Name:  "K_METRICS_CONFIG",
-				Value: MetricsConfig,
-			}, {
-				Name:  "K_LOGGING_CONFIG",
-				Value: LoggingConfig,
 			}},
 		},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeContainer(tt.el, config, tt.opts...)
+			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, tt.opts...)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("MakeContainer() did not return expected. -want, +got: %s", diff)
 			}
