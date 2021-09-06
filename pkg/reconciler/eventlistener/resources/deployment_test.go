@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/ptr"
@@ -72,7 +73,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), config,
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -107,7 +108,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), config,
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -150,7 +151,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), config,
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -196,7 +197,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), config,
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -239,7 +240,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "bob",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), config,
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -269,7 +270,7 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(withTLSEnvFrom("Bill")), config,
+							MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, config,
 								mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
 								addCertsForSecureConnection(config)),
 						},
@@ -290,12 +291,12 @@ func TestDeployment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MakeDeployment(tt.el, config)
+			got, err := MakeDeployment(tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
 			if err != nil {
 				t.Fatalf("MakeDeployment() = %v", err)
 			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("MakeContainer() did not return expected. -want, +got: %s", diff)
+				t.Errorf("MakeDeployment() did not return expected. -want, +got: %s", diff)
 			}
 		})
 	}
@@ -306,7 +307,7 @@ func TestDeploymentError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := MakeDeployment(makeEL(), *MakeConfig())
+	got, err := MakeDeployment(makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig())
 	if err == nil {
 		t.Fatalf("MakeDeployment() = %v, wanted error", got)
 	}

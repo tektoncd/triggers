@@ -227,17 +227,19 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							"timeouthandler", strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 						},
 						Env: []corev1.EnvVar{{
+							Name: "K_LOGGING_CONFIG",
+						}, {
+							Name:  "K_METRICS_CONFIG",
+							Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+						}, {
+							Name:  "K_TRACING_CONFIG",
+							Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+						}, {
 							Name:  "NAMESPACE",
 							Value: namespace,
 						}, {
 							Name:  "NAME",
 							Value: eventListenerName,
-						}, {
-							Name:  "K_METRICS_CONFIG",
-							Value: resources.MetricsConfig,
-						}, {
-							Name:  "K_LOGGING_CONFIG",
-							Value: resources.LoggingConfig,
 						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
@@ -317,17 +319,19 @@ var withTLSConfig = func(d *appsv1.Deployment) {
 			ReadOnly:  true,
 		}},
 		Env: []corev1.EnvVar{{
+			Name: "K_LOGGING_CONFIG",
+		}, {
+			Name:  "K_METRICS_CONFIG",
+			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+		}, {
+			Name:  "K_TRACING_CONFIG",
+			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+		}, {
 			Name:  "NAMESPACE",
 			Value: namespace,
 		}, {
 			Name:  "NAME",
 			Value: eventListenerName,
-		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: resources.MetricsConfig,
-		}, {
-			Name:  "K_LOGGING_CONFIG",
-			Value: resources.LoggingConfig,
 		}, {
 			Name: "TLS_CERT",
 			ValueFrom: &corev1.EnvVarSource{
@@ -409,17 +413,19 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							"--is-multi-ns=" + strconv.FormatBool(false),
 						},
 						Env: []corev1.EnvVar{{
+							Name: "K_LOGGING_CONFIG",
+						}, {
+							Name:  "K_METRICS_CONFIG",
+							Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+						}, {
+							Name:  "K_TRACING_CONFIG",
+							Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+						}, {
 							Name:  "NAMESPACE",
 							Value: namespace,
 						}, {
 							Name:  "NAME",
 							Value: eventListenerName,
-						}, {
-							Name:  "K_METRICS_CONFIG",
-							Value: resources.MetricsConfig,
-						}, {
-							Name:  "K_LOGGING_CONFIG",
-							Value: resources.LoggingConfig,
 						}, {
 							Name:  "SYSTEM_NAMESPACE",
 							Value: namespace,
@@ -912,17 +918,19 @@ func TestReconcile(t *testing.T) {
 	})
 	envForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
+			Name: "K_LOGGING_CONFIG",
+		}, {
+			Name:  "K_METRICS_CONFIG",
+			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+		}, {
+			Name:  "K_TRACING_CONFIG",
+			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+		}, {
 			Name:  "NAMESPACE",
 			Value: namespace,
 		}, {
 			Name:  "NAME",
 			Value: eventListenerName,
-		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: resources.MetricsConfig,
-		}, {
-			Name:  "K_LOGGING_CONFIG",
-			Value: resources.LoggingConfig,
 		}, {
 			Name: "key",
 			ValueFrom: &corev1.EnvVarSource{

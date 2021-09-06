@@ -27,6 +27,7 @@ import (
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"k8s.io/client-go/tools/cache"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
@@ -57,8 +58,8 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 			deploymentLister:    deploymentInformer.Lister(),
 			eventListenerLister: eventListenerInformer.Lister(),
 			serviceLister:       serviceInformer.Lister(),
-
-			config: config,
+			configAcc:           reconcilersource.WatchConfigurations(ctx, "eventlistener", cmw),
+			config:              config,
 		}
 
 		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {

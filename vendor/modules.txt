@@ -977,6 +977,7 @@ knative.dev/eventing/pkg/apis/feature
 knative.dev/eventing/pkg/kncloudevents
 knative.dev/eventing/pkg/metrics
 knative.dev/eventing/pkg/metrics/source
+knative.dev/eventing/pkg/reconciler/source
 # knative.dev/networking v0.0.0-20210803181815-acdfd41c575c
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking

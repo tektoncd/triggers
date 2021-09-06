@@ -448,8 +448,10 @@ Where for each returned line, the column values are, from left to right:
 
 ## Configuring logging for `EventListeners`
 
-You can configure logging for your `EventListener` using the `config-logging-triggers` `ConfigMap` located in the `EventListener's` namespace.
-Tekton Triggers automatically creates and populates this `ConfigMap` with default values described in [config-logging.yaml](../config/config-logging.yaml).
+You can configure logging for your `EventListener`s using the `config-logging-triggers`
+`ConfigMap` located in the `tekton-pipelines` namespace ([config-logging.yaml](../config/config-logging.yaml)).
+Tekton Triggers automatically reconciles this configmap into environment variables on your
+event listener deployment.
 
 To access your `EventListener` logs, query your cluster for Pods whose `eventlistener` label matches the name of your `EventListener` object. For example:
 

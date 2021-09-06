@@ -17,23 +17,23 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 )
 
 type ContainerOption func(*corev1.Container)
 
-var (
-	MetricsConfig = `{"Domain":"` + TriggersMetricsDomain + `","Component":"eventlistener","ConfigMap":{}}`
-	zapConfig     = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
-	LoggingConfig = fmt.Sprintf(`{"loglevel.eventlistener": "info", "zap-logger-config": %q}`, zapConfig)
-)
+// var (
+// 	MetricsConfig = `{"Domain":"` + TriggersMetricsDomain + `","Component":"eventlistener","ConfigMap":{}}`
+// 	zapConfig     = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
+// 	LoggingConfig = fmt.Sprintf(`{"loglevel.eventlistener": "info", "zap-logger-config": %q}`, zapConfig)
+// )
 
-func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption) corev1.Container {
+func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, opts ...ContainerOption) corev1.Container {
 	isMultiNS := false
 	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
 		isMultiNS = true
@@ -45,6 +45,8 @@ func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption)
 			payloadValidation = false
 		}
 	}
+
+	ev := configAcc.ToEnvVars()
 
 	container := corev1.Container{
 		Name:  "event-listener",
@@ -64,19 +66,13 @@ func MakeContainer(el *v1beta1.EventListener, c Config, opts ...ContainerOption)
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 			"--payload-validation=" + strconv.FormatBool(payloadValidation),
 		},
-		Env: []corev1.EnvVar{{
+		Env: append(ev, []corev1.EnvVar{{
 			Name:  "NAMESPACE",
 			Value: el.Namespace,
 		}, {
 			Name:  "NAME",
 			Value: el.Name,
-		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: MetricsConfig,
-		}, {
-			Name:  "K_LOGGING_CONFIG",
-			Value: LoggingConfig,
-		}},
+		}}...),
 	}
 
 	for _, opt := range opts {
