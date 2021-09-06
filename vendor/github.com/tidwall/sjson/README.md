@@ -3,13 +3,12 @@
     src="logo.png" 
     width="240" height="78" border="0" alt="SJSON">
 <br>
-<a href="https://travis-ci.org/tidwall/sjson"><img src="https://img.shields.io/travis/tidwall/sjson.svg?style=flat-square" alt="Build Status"></a>
 <a href="https://godoc.org/github.com/tidwall/sjson"><img src="https://img.shields.io/badge/api-reference-blue.svg?style=flat-square" alt="GoDoc"></a>
 </p>
 
 <p align="center">set a json value quickly</p>
 
-SJSON is a Go package that provides a [very fast](#performance) and simple way to set a value in a json document. The purpose for this library is to provide efficient json updating for the [SummitDB](https://github.com/tidwall/summitdb) project. 
+SJSON is a Go package that provides a [very fast](#performance) and simple way to set a value in a json document.
 For quickly retrieving json values check out [GJSON](https://github.com/tidwall/gjson).
 
 For a command line interface check out [JJ](https://github.com/tidwall/jj).
@@ -114,6 +113,7 @@ sjson.Set(`{"key":true}`, "key", false)
 sjson.Set(`{"key":true}`, "key", 1)
 sjson.Set(`{"key":true}`, "key", 10.5)
 sjson.Set(`{"key":true}`, "key", "hello")
+sjson.Set(`{"key":true}`, "key", []string{"hello", "world"})
 sjson.Set(`{"key":true}`, "key", map[string]interface{}{"hello":"world"})
 ```
 
