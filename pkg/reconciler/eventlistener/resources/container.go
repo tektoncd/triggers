@@ -27,12 +27,6 @@ import (
 
 type ContainerOption func(*corev1.Container)
 
-// var (
-// 	MetricsConfig = `{"Domain":"` + TriggersMetricsDomain + `","Component":"eventlistener","ConfigMap":{}}`
-// 	zapConfig     = `{"level": "info","development": false,"sampling": {"initial": 100,"thereafter": 100},"outputPaths": ["stdout"],"errorOutputPaths": ["stderr"],"encoding": "json","encoderConfig": {"timeKey": "ts","levelKey": "level","nameKey": "logger","callerKey": "caller","messageKey": "msg","stacktraceKey": "stacktrace","lineEnding": "","levelEncoder": "","timeEncoder": "iso8601","durationEncoder": "","callerEncoder": ""}}`
-// 	LoggingConfig = fmt.Sprintf(`{"loglevel.eventlistener": "info", "zap-logger-config": %q}`, zapConfig)
-// )
-
 func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, opts ...ContainerOption) corev1.Container {
 	isMultiNS := false
 	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
