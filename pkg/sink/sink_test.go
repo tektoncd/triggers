@@ -61,6 +61,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/ptr"
 )
 
@@ -148,6 +149,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 		Logger:                      logger.Sugar(),
 		Auth:                        DefaultAuthOverride{},
 		WGProcessTriggers:           &sync.WaitGroup{},
+		EventRecorder:               controller.GetEventRecorder(ctx),
 		Recorder:                    recorder,
 		EventListenerLister:         eventlistenerinformer.Get(ctx).Lister(),
 		TriggerLister:               triggerinformer.Get(ctx).Lister(),
@@ -1113,6 +1115,14 @@ func TestHandleEvent(t *testing.T) {
 			elName := tc.resources.EventListeners[0].Name
 			sink, dynamicClient := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
 
+			for _, j := range tc.resources.EventListeners {
+				j.Status.SetCondition(&apis.Condition{
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionTrue,
+					Message: "EventListener is Ready",
+				})
+			}
+
 			metricsRecorder := &MetricsHandler{Handler: http.HandlerFunc(sink.HandleEvent)}
 			ts := httptest.NewServer(metricsRecorder.Intercept(sink.NewMetricsRecorderInterceptor()))
 			defer ts.Close()
@@ -1150,6 +1160,7 @@ func TestHandleEvent_Error(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
 		testResources  test.Resources
+		condition      *apis.Condition
 		eventBody      []byte
 		wantStatusCode int
 		wantErrLogMsg  string
@@ -1176,6 +1187,11 @@ func TestHandleEvent_Error(t *testing.T) {
 				},
 			}},
 		},
+		condition: &apis.Condition{
+			Type:    apis.ConditionReady,
+			Status:  corev1.ConditionTrue,
+			Message: "EventListener is ready",
+		},
 		eventBody:      eventBody,
 		wantStatusCode: http.StatusAccepted,
 		wantErrLogMsg:  "Error getting Trigger unknown in Namespace foo: trigger.triggers.tekton.dev \"unknown\" not found",
@@ -1191,6 +1207,10 @@ func TestHandleEvent_Error(t *testing.T) {
 			core, logs := observer.New(zapcore.DebugLevel)
 			logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.WrapCore(func(zapcore.Core) zapcore.Core { return core }))).Sugar()
 			sink.Logger = logger
+
+			for _, el := range tc.testResources.EventListeners {
+				el.Status.SetCondition(tc.condition)
+			}
 
 			ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
 			defer ts.Close()

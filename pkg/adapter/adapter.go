@@ -33,8 +33,14 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/eventing/pkg/adapter/v2"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/clients/dynamicclient"
 	"knative.dev/pkg/logging"
 )
@@ -61,6 +67,31 @@ type sinker struct {
 
 var _ adapter.Adapter = (*sinker)(nil)
 
+func (s *sinker) createRecorder(ctx context.Context, agentName string) record.EventRecorder {
+	logger := logging.FromContext(ctx)
+
+	recorder := controller.GetEventRecorder(ctx)
+	if recorder == nil {
+		// Create event broadcaster
+		logger.Debug("Creating event broadcaster")
+		eventBroadcaster := record.NewBroadcaster()
+		watches := []watch.Interface{
+			eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof),
+			eventBroadcaster.StartRecordingToSink(
+				&v1.EventSinkImpl{Interface: s.Clients.K8sClient.CoreV1().Events("")}),
+		}
+		recorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: agentName})
+		go func() {
+			<-ctx.Done()
+			for _, w := range watches {
+				w.Stop()
+			}
+		}()
+	}
+
+	return recorder
+}
+
 func (s *sinker) Start(ctx context.Context) error {
 	// Create EventListener Sink
 	r := sink.Sink{
@@ -76,6 +107,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		Recorder:               s.Recorder,
 		Auth:                   sink.DefaultAuthOverride{},
 		WGProcessTriggers:      &sync.WaitGroup{},
+		EventRecorder:          s.createRecorder(s.injCtx, "EventListener"),
 
 		// Register all the listers we'll need
 		EventListenerLister:         eventlistenerinformer.Get(s.injCtx).Lister(),

@@ -289,8 +289,8 @@ func TestSetConditionsForDynamicObjects(t *testing.T) {
 			Conditions: []apis.Condition{{
 				Type:    apis.ConditionReady,
 				Status:  corev1.ConditionTrue,
-				Reason:  "Reason",
-				Message: "Message",
+				Reason:  "",
+				Message: "EventListener is ready",
 			}},
 		},
 	}

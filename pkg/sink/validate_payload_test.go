@@ -25,7 +25,9 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/test"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestSink_IsValidPayload(t *testing.T) {
@@ -76,6 +78,14 @@ func TestSink_IsValidPayload(t *testing.T) {
 				elName = tc.testResources.EventListeners[0].Name
 			}
 			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
+
+			for _, el := range tc.testResources.EventListeners {
+				el.Status.SetCondition(&apis.Condition{
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionTrue,
+					Message: "EventListener is Ready",
+				})
+			}
 
 			ts := httptest.NewServer(sink.IsValidPayload(http.HandlerFunc(sink.HandleEvent)))
 			defer ts.Close()
@@ -140,6 +150,13 @@ func TestSink_IsValidPayload_PayloadValidation(t *testing.T) {
 			}
 			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
 
+			for _, el := range tc.testResources.EventListeners {
+				el.Status.SetCondition(&apis.Condition{
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionTrue,
+					Message: "EventListener is Ready",
+				})
+			}
 			// Disabling payload validation
 			sink.PayloadValidation = false
 

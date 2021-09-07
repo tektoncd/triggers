@@ -19,7 +19,6 @@ package eventlistener
 import (
 	"context"
 	"encoding/json"
-	stdError "errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -339,8 +338,8 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		for _, cond := range customConditions {
 			if cond.Type == apis.ConditionReady {
 				if cond.Status != corev1.ConditionTrue {
-					logging.FromContext(ctx).Warn("custom object is not yet ready")
-					return stdError.New("custom object is not yet ready")
+					logging.FromContext(ctx).Warnf("custom object is not yet ready because %s", cond.Message)
+					return fmt.Errorf("custom object is not yet ready because %s", cond.Message)
 				}
 			}
 		}

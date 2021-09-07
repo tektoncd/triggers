@@ -33,6 +33,7 @@ import (
 	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/webhook"
+	"github.com/tektoncd/triggers/pkg/reconciler/events"
 	"github.com/tektoncd/triggers/pkg/resources"
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/sjson"
@@ -42,6 +43,7 @@ import (
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 )
 
 // Sink defines the sink resource for processing incoming events for the
@@ -61,6 +63,7 @@ type Sink struct {
 	// WGProcessTriggers keeps track of triggers or triggerGroups currently being processed
 	// Currently only used in tests to wait for all triggers to finish processing
 	WGProcessTriggers *sync.WaitGroup
+	EventRecorder     record.EventRecorder
 
 	// listers index properties about resources
 	EventListenerLister         listers.EventListenerLister
@@ -87,19 +90,42 @@ type Response struct {
 	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
+func (r Sink) emitEvents(recorder record.EventRecorder, el *triggersv1.EventListener, eventType string, err error) {
+	if el.Annotations[events.EnableEventListenerEvents] == "true" {
+		events.Emit(recorder, eventType, el, err)
+	}
+}
+
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	log := r.Logger.With(
 		zap.String("eventlistener", r.EventListenerName),
 		zap.String("namespace", r.EventListenerNamespace),
 	)
+	elTemp := triggersv1.EventListener{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EventListener",
+			APIVersion: "v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.EventListenerName,
+			Namespace: r.EventListenerNamespace,
+			Annotations: map[string]string{
+				// enabled by default for temporary EL
+				events.EnableEventListenerEvents: "true",
+			}}}
+
 	el, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName)
 	if err != nil {
 		log.Errorf("Error getting EventListener %s in Namespace %s: %s", r.EventListenerName, r.EventListenerNamespace, err)
 		r.recordCountMetrics(failTag)
 		response.WriteHeader(http.StatusInternalServerError)
+		r.emitEvents(r.EventRecorder, &elTemp, events.TriggerProcessingFailedV1, err)
 		return
 	}
+
+	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingStartedV1, nil)
+
 	elUID := string(el.GetUID())
 	log = log.With(zap.String("eventlistenerUID", elUID))
 	event, err := ioutil.ReadAll(request.Body)
@@ -107,6 +133,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		log.Errorf("Error reading event body: %s", err)
 		r.recordCountMetrics(failTag)
 		response.WriteHeader(http.StatusInternalServerError)
+		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 		return
 	}
 
@@ -117,6 +144,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		r.Logger.Errorf("unable to select configured mergedTriggers: %s", err)
 		response.WriteHeader(http.StatusInternalServerError)
+		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 		return
 	}
 
@@ -125,6 +153,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		log.Errorf("error merging triggers: %s", err)
 		response.WriteHeader(http.StatusInternalServerError)
+		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 		return
 	}
 	r.WGProcessTriggers.Add(len(mergedTriggers))
@@ -158,7 +187,9 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 	if err := json.NewEncoder(response).Encode(body); err != nil {
 		log.Errorf("failed to write back sink response: %v", err)
+		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 	}
+	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingSuccessfulV1, nil)
 }
 
 func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.Trigger) ([]*triggersv1.Trigger, error) {
