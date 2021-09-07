@@ -92,6 +92,7 @@ type Clients struct {
 	DiscoveryClient discoveryclient.DiscoveryInterface
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
+	K8sClient       *kubeclientset.Clientset
 }
 
 // GetArgs returns the flagged Args
@@ -136,5 +137,6 @@ func ConfigureClients(clusterConfig *rest.Config) (Clients, error) {
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
+		K8sClient:       kubeClient,
 	}, nil
 }

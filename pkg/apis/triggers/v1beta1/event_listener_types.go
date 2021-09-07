@@ -287,6 +287,12 @@ func (els *EventListenerStatus) SetConditionsForDynamicObjects(conditions v1beta
 			Message: cond.Message,
 		})
 	}
+
+	els.SetCondition(&apis.Condition{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Message: "EventListener is ready",
+	})
 }
 
 // SetExistsCondition simplifies setting the exists conditions on the
