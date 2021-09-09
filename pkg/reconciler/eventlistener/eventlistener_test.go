@@ -400,7 +400,8 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 			OwnerReferences: []metav1.OwnerReference{
 				*ownerRefs,
 			},
-			Labels: generatedLabels,
+			Labels:          generatedLabels,
+			ResourceVersion: "testresourceversion",
 		},
 		Spec: duckv1.WithPodSpec{
 			Template: duckv1.PodSpecable{
@@ -699,7 +700,8 @@ func TestReconcile(t *testing.T) {
 					APIVersion: "serving.knative.dev/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: generatedResourceName,
+					Name:            generatedResourceName,
+					ResourceVersion: "testresourceversion",
 				},
 				Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
 					Spec: corev1.PodSpec{
@@ -727,7 +729,8 @@ func TestReconcile(t *testing.T) {
 					APIVersion: "serving.knative.dev/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: generatedResourceName,
+					Name:            generatedResourceName,
+					ResourceVersion: "testresourceversion",
 				},
 				Spec: duckv1.WithPodSpec{
 					Template: duckv1.PodSpecable{
@@ -749,7 +752,8 @@ func TestReconcile(t *testing.T) {
 					APIVersion: "serving.knative.dev/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: generatedResourceName,
+					Name:            generatedResourceName,
+					ResourceVersion: "testresourceversion",
 				},
 				Spec: duckv1.WithPodSpec{
 					Template: duckv1.PodSpecable{
@@ -772,7 +776,8 @@ func TestReconcile(t *testing.T) {
 					APIVersion: "serving.knative.dev/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: generatedResourceName,
+					Name:            generatedResourceName,
+					ResourceVersion: "testresourceversion",
 				},
 				Spec: duckv1.WithPodSpec{
 					Template: duckv1.PodSpecable{
@@ -793,7 +798,8 @@ func TestReconcile(t *testing.T) {
 					APIVersion: "serving.knative.dev/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: generatedResourceName,
+					Name:            generatedResourceName,
+					ResourceVersion: "testresourceversion",
 					Annotations: map[string]string{
 						"key": "value",
 					},
