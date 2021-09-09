@@ -280,12 +280,13 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		if !equality.Semantic.DeepEqual(data.GetLabels(), existingCustomObject.GetLabels()) ||
 			!equality.Semantic.DeepEqual(data.GetAnnotations(), existingCustomObject.GetAnnotations()) ||
 			!equality.Semantic.DeepEqual(data.Object["spec"], existingCustomObject.Object["spec"]) {
-			data = data.DeepCopy()
-			data.SetLabels(existingCustomObject.GetLabels())
-			data.SetAnnotations(existingCustomObject.GetAnnotations())
-			data.Object["spec"] = existingCustomObject.Object["spec"]
+			// Don't modify informer copy
+			existingCustomObject = existingCustomObject.DeepCopy()
+			existingCustomObject.SetLabels(data.GetLabels())
+			existingCustomObject.SetAnnotations(data.GetAnnotations())
+			existingCustomObject.Object["spec"] = data.Object["spec"]
 
-			if updated, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Update(ctx, data, metav1.UpdateOptions{}); err != nil {
+			if updated, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
 				logging.FromContext(ctx).Errorf("error updating to eventListener custom object: %v", err)
 				return err
 			} else if data.GetResourceVersion() != updated.GetResourceVersion() {
