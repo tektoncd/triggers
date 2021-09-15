@@ -38,7 +38,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		fileName: config.GetFeatureFlagsConfigName(),
 	}, {
 		expectedConfig: &config.FeatureFlags{
-			EnableAPIFields: "alpha",
+			EnableAPIFields:        "alpha",
+			LabelsExclusionPattern: "^abc-",
 		},
 		fileName: "feature-flags-all-flags-set",
 	}, {
@@ -101,6 +102,8 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName string
 	}{{
 		fileName: "feature-flags-invalid-enable-api-fields",
+	}, {
+		fileName: "feature-flags-invalid-exclusion-pattern-fields",
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

@@ -118,7 +118,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListene
 }
 
 func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventListener) error {
-	service := resources.MakeService(el, r.config)
+	service := resources.MakeService(ctx, el, r.config)
 
 	existingService, err := r.serviceLister.Services(el.Namespace).Get(el.Status.Configuration.GeneratedResourceName)
 	switch {
@@ -178,7 +178,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, el *v1beta1.EventList
 }
 
 func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventListener) error {
-	deployment, err := resources.MakeDeployment(el, r.configAcc, r.config)
+	deployment, err := resources.MakeDeployment(ctx, el, r.configAcc, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Error(err)
 		return err
@@ -241,7 +241,7 @@ func (r *Reconciler) reconcileDeployment(ctx context.Context, el *v1beta1.EventL
 }
 
 func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.EventListener) error {
-	data, err := resources.MakeCustomObject(el, r.configAcc, r.config)
+	data, err := resources.MakeCustomObject(ctx, el, r.configAcc, r.config)
 	if err != nil {
 		logging.FromContext(ctx).Errorf("unable to construct custom object", err)
 		return err

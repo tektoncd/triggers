@@ -18,6 +18,7 @@ package resources
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 
@@ -30,7 +31,7 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
-func MakeCustomObject(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*unstructured.Unstructured, error) {
+func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*unstructured.Unstructured, error) {
 	original := &duckv1.WithPod{}
 	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
 	if err := decoder.Decode(&original); err != nil {
@@ -77,7 +78,7 @@ func MakeCustomObject(el *v1beta1.EventListener, configAcc reconcilersource.Conf
 		}
 	})
 
-	podlabels := kmeta.UnionMaps(el.Labels, GenerateLabels(el.Name, c.StaticResourceLabels))
+	podlabels := kmeta.UnionMaps(FilterLabels(ctx, el.Labels), GenerateLabels(el.Name, c.StaticResourceLabels))
 
 	podlabels = kmeta.UnionMaps(podlabels, customObjectData.Labels)
 

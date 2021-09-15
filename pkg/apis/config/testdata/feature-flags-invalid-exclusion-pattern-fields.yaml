@@ -17,13 +17,6 @@ kind: ConfigMap
 metadata:
   name: feature-flags-triggers
   namespace: tekton-pipelines
-  labels:
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # Setting this flag will determine which gated features are enabled.
-  # Acceptable values are "stable" or "alpha".
   enable-api-fields: "stable"
-  # Setting this field with valid regex pattern matching the pattern will exclude labels from
-  # getting added to resources created by the EventListener such as the deployment
-  labels-exclusion-pattern: ""
+  labels-exclusion-pattern: "[0-9]++"

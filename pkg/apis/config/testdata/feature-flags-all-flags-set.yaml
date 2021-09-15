@@ -19,3 +19,4 @@ metadata:
   namespace: tekton-pipelines
 data:
   enable-api-fields: "alpha"
+  labels-exclusion-pattern: "^abc-"
