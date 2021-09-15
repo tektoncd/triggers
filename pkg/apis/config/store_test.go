@@ -32,8 +32,11 @@ func TestStoreLoadWithContext(t *testing.T) {
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 
+	expectedFeatureFlag, _ := config.NewFeatureFlagsFromConfigMap(defaultConfig)
+
 	expected := &config.Config{
-		Defaults: expectedDefaults,
+		Defaults:     expectedDefaults,
+		FeatureFlags: expectedFeatureFlag,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))

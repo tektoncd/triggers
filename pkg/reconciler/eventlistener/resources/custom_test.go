@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"testing"
@@ -296,7 +297,7 @@ func TestCustomObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MakeCustomObject(tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
+			got, err := MakeCustomObject(context.Background(), tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
 			if err != nil {
 				t.Fatalf("MakeCustomObject() = %v", err)
 			}
@@ -319,7 +320,7 @@ func TestCustomObjectError(t *testing.T) {
 
 	config := *MakeConfig()
 
-	got, err := MakeCustomObject(makeEL(func(el *v1beta1.EventListener) {
+	got, err := MakeCustomObject(context.Background(), makeEL(func(el *v1beta1.EventListener) {
 		el.Spec.Resources.CustomResource = &v1beta1.CustomResource{
 			RawExtension: runtime.RawExtension{
 				Raw: []byte(`garbage`),

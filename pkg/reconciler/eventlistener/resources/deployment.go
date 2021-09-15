@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"os"
 	"strconv"
 
@@ -40,7 +41,8 @@ var (
 	}
 )
 
-func MakeDeployment(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*appsv1.Deployment, error) {
+func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*appsv1.Deployment, error) {
+
 	opt, err := addDeploymentBits(el, c)
 	if err != nil {
 		return nil, err
@@ -48,8 +50,10 @@ func MakeDeployment(el *v1beta1.EventListener, configAcc reconcilersource.Config
 
 	container := MakeContainer(el, configAcc, c, opt, addCertsForSecureConnection(c))
 
+	filteredLabels := FilterLabels(ctx, el.Labels)
+
 	var (
-		podlabels                 = kmeta.UnionMaps(el.Labels, GenerateLabels(el.Name, c.StaticResourceLabels))
+		podlabels                 = kmeta.UnionMaps(filteredLabels, GenerateLabels(el.Name, c.StaticResourceLabels))
 		serviceAccountName        = el.Spec.ServiceAccountName
 		replicas                  *int32
 		vol                       []corev1.Volume
@@ -94,7 +98,7 @@ func MakeDeployment(el *v1beta1.EventListener, configAcc reconcilersource.Config
 	}
 
 	return &appsv1.Deployment{
-		ObjectMeta: ObjectMeta(el, c.StaticResourceLabels),
+		ObjectMeta: ObjectMeta(el, filteredLabels, c.StaticResourceLabels),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: replicas,
 			Selector: &metav1.LabelSelector{

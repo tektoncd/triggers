@@ -17,10 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/kmeta"
@@ -160,8 +162,57 @@ func TestObjectMeta(t *testing.T) {
 	}}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
-			actualObjectMeta := ObjectMeta(tests[i].el, DefaultStaticResourceLabels)
+			actualObjectMeta := ObjectMeta(tests[i].el, FilterLabels(context.Background(), tests[i].el.Labels), DefaultStaticResourceLabels)
 			if diff := cmp.Diff(tests[i].expectedObjectMeta, actualObjectMeta); diff != "" {
+				t.Errorf("generateObjectMeta() did not return expected. -want, +got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestFilterLabels(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		ctx            context.Context
+		elLabels       map[string]string
+		expectedLabels map[string]string
+	}{{
+		name: "exclusion pattern not defined",
+		ctx: config.ToContext(context.Background(), &config.Config{
+			FeatureFlags: &config.FeatureFlags{
+				LabelsExclusionPattern: "",
+			}}),
+		elLabels: map[string]string{
+			"tekton.dev/abc": "xyz",
+			"tekton.dev/foo": "bar",
+			"abc.com/key":    "value",
+		},
+		expectedLabels: map[string]string{
+			"tekton.dev/abc": "xyz",
+			"tekton.dev/foo": "bar",
+			"abc.com/key":    "value",
+		},
+	}, {
+		name: "exclusion pattern defined",
+		ctx: config.ToContext(context.Background(), &config.Config{
+			FeatureFlags: &config.FeatureFlags{
+				LabelsExclusionPattern: "^tekton.*",
+			}}),
+		elLabels: map[string]string{
+			"tekton.dev/abc": "xyz",
+			"tekton.dev/foo": "bar",
+			"abc.com/key":    "value",
+		},
+		expectedLabels: map[string]string{
+			"abc.com/key": "value",
+		},
+	}}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			actualLabels := FilterLabels(tests[i].ctx, tests[i].elLabels)
+			if diff := cmp.Diff(tests[i].expectedLabels, actualLabels); diff != "" {
 				t.Errorf("generateObjectMeta() did not return expected. -want, +got: %s", diff)
 			}
 		})

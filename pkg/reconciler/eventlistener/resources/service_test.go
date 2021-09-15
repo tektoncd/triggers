@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -103,7 +104,7 @@ func TestService(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeService(tt.el, config)
+			got := MakeService(context.Background(), tt.el, config)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("MakeService() did not return expected. -want, +got: %s", diff)
 			}
