@@ -236,8 +236,6 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, reque
 			r.processTrigger(t, localRequest, event, eventID, log, extensions)
 		}(*t)
 	}
-
-	return
 }
 
 func (r Sink) selectTriggers(namespaceSelector triggersv1.NamespaceSelector, labelSelector *metav1.LabelSelector) ([]*triggersv1.Trigger, error) {

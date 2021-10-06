@@ -171,7 +171,7 @@ rules:
 
 `TriggerGroups` is a feature that allows you to specify a set of interceptors that will process before a set of 
 `Trigger` resources are processed by the eventlistener. The goal of this feature is described in 
-[TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md).TriggerGroups` allow for 
+[TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for 
 a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked. 
 
 `TriggerGroups` is currently an `alpha` feature. To use it, you use use the v1beta1 API version with the 

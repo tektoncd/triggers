@@ -61,9 +61,17 @@ func Test_EventListenerValidate_OnDelete(t *testing.T) {
 }
 
 func Test_EventListenerValidate(t *testing.T) {
+	ctxWithAlphaFieldsEnabled, err := test.FeatureFlagsToContext(context.Background(), map[string]string{
+		"enable-api-fields": "alpha",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error initializing feature flags: %v", err)
+	}
+
 	tests := []struct {
 		name    string
 		el      *triggersv1beta1.EventListener
+		ctx     context.Context
 		wantErr *apis.FieldError
 	}{{
 		name: "TriggerTemplate Does Not Exist",
@@ -450,6 +458,7 @@ func Test_EventListenerValidate(t *testing.T) {
 		},
 	}, {
 		name: "valid EventListener with embedded TriggerTemplate",
+		ctx:  ctxWithAlphaFieldsEnabled,
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: myObjectMeta,
 			Spec: triggersv1beta1.EventListenerSpec{
@@ -484,6 +493,7 @@ func Test_EventListenerValidate(t *testing.T) {
 		},
 	}, {
 		name: "Valid event listener with TriggerGroup and namespaceSelector",
+		ctx:  ctxWithAlphaFieldsEnabled,
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -514,7 +524,11 @@ func Test_EventListenerValidate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.el.Validate(context.Background())
+			ctx := tc.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			err := tc.el.Validate(ctx)
 			if err != nil {
 				t.Errorf("EventListener.Validate() expected no error, but got one, EventListener: %v, error: %v", tc.el, err)
 			}
@@ -523,9 +537,17 @@ func Test_EventListenerValidate(t *testing.T) {
 }
 
 func TestEventListenerValidate_error(t *testing.T) {
+	ctxWithAlphaFieldsEnabled, err := test.FeatureFlagsToContext(context.Background(), map[string]string{
+		"enable-api-fields": "alpha",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error initializing feature flags: %v", err)
+	}
+
 	tests := []struct {
 		name    string
 		el      *triggersv1beta1.EventListener
+		ctx     context.Context
 		wantErr *apis.FieldError
 	}{{
 		name: "Invalid EventListener name",
@@ -1189,7 +1211,8 @@ func TestEventListenerValidate_error(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.triggers[0].template or bindings or interceptors", "spec.triggers[0].triggerRef"),
 	}, {
-		name: "missing label and namespace selector",
+		name: "triggerGroups is not allowed if alpha fields are not enabled",
+		ctx:  context.Background(), // By default, enable-api-felds is set to stable, not alpha
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "name",
@@ -1198,6 +1221,11 @@ func TestEventListenerValidate_error(t *testing.T) {
 			Spec: triggersv1beta1.EventListenerSpec{
 				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
 					Name: "my-group",
+					TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+						NamespaceSelector: triggersv1beta1.NamespaceSelector{
+							MatchNames: []string{"default"},
+						},
+					},
 					Interceptors: []*triggersv1beta1.TriggerInterceptor{{
 						Ref: triggersv1beta1.InterceptorRef{
 							Name: "cel",
@@ -1210,33 +1238,63 @@ func TestEventListenerValidate_error(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrMissingOneOf("spec.triggerGroups[0].triggerSelector.labelSelector", "spec.triggerGroups[0].triggerSelector.namespaceSelector"),
-	}, {
-		name: "triggerGroup requires interceptor",
-		el: &triggersv1beta1.EventListener{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
+		wantErr: apis.ErrGeneric("spec.triggerGroups requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	},
+		{
+			name: "missing label and namespace selector",
+			ctx:  ctxWithAlphaFieldsEnabled,
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+						Name: "my-group",
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{
+								Name: "cel",
+							},
+							Params: []triggersv1beta1.InterceptorParams{{
+								Name:  "filter",
+								Value: test.ToV1JSON(t, "has(body.repository)"),
+							}},
+						}},
+					}},
+				},
 			},
-			Spec: triggersv1beta1.EventListenerSpec{
-				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
-					Name: "my-group",
-					TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
-						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"foo": "bar",
+			wantErr: apis.ErrMissingOneOf("spec.triggerGroups[0].triggerSelector.labelSelector", "spec.triggerGroups[0].triggerSelector.namespaceSelector"),
+		}, {
+			name: "triggerGroup requires interceptor",
+			ctx:  ctxWithAlphaFieldsEnabled,
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+						Name: "my-group",
+						TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
 							},
 						},
-					},
-				}},
+					}},
+				},
 			},
-		},
-		wantErr: apis.ErrMissingField("spec.triggerGroups[0].interceptors"),
-	}}
+			wantErr: apis.ErrMissingField("spec.triggerGroups[0].interceptors"),
+		}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.el.Validate(context.Background())
+			ctx := tc.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			got := tc.el.Validate(ctx)
 
 			if diff := cmp.Diff(tc.wantErr.Error(), got.Error()); diff != "" {
 				t.Error("EventListener.Validate() (-want, +got) =", diff)

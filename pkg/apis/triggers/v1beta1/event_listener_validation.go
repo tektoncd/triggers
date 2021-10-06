@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
+
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -73,8 +75,15 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 		errs = errs.Also(validateCustomObject(s.Resources.CustomResource).ViaField("spec.resources.customResource"))
 	}
 
-	for i, group := range s.TriggerGroups {
-		errs = errs.Also(group.validate(ctx).ViaField(fmt.Sprintf("spec.triggerGroups[%d]", i)))
+	if len(s.TriggerGroups) > 0 {
+		err := ValidateEnabledAPIFields(ctx, "spec.triggerGroups", config.AlphaAPIFieldValue)
+		if err != nil {
+			errs = errs.Also(err)
+		} else {
+			for i, group := range s.TriggerGroups {
+				errs = errs.Also(group.validate(ctx).ViaField(fmt.Sprintf("spec.triggerGroups[%d]", i)))
+			}
+		}
 	}
 	return errs
 }
