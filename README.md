@@ -12,7 +12,7 @@ Tekton Triggers is a Kubernetes
 [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 (CRD) controller that allows you to create Kubernetes resources based on information it extracts from event payloads.
 
- Tekton Triggers originates from the implementaiton of [this design](https://docs.google.com/document/d/1fngeNn3kGD4P_FTZjAnfERcEajS7zQhSEUaN7BYIlTw/edit#heading=h.iyqzt1brkg3o)
+ Tekton Triggers originates from the implementation of [this design](https://docs.google.com/document/d/1fngeNn3kGD4P_FTZjAnfERcEajS7zQhSEUaN7BYIlTw/edit#heading=h.iyqzt1brkg3o)
 (visible to members of [the Tekton mailing list](https://github.com/tektoncd/community/blob/main/contact.md#mailing-list)).
 
 * [Background](#background)
