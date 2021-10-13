@@ -279,19 +279,46 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 			}
 		}
 
+		var updated bool
+		// Preserve any externally added annotations
+		data.SetAnnotations(kmeta.UnionMaps(data.GetAnnotations(), existingCustomObject.GetAnnotations()))
+
 		if !equality.Semantic.DeepEqual(data.GetLabels(), existingCustomObject.GetLabels()) ||
-			!equality.Semantic.DeepEqual(data.GetAnnotations(), existingCustomObject.GetAnnotations()) ||
-			!equality.Semantic.DeepEqual(data.Object["spec"], existingCustomObject.Object["spec"]) {
+			!equality.Semantic.DeepEqual(data.GetAnnotations(), existingCustomObject.GetAnnotations()) {
 			// Don't modify informer copy
 			existingCustomObject = existingCustomObject.DeepCopy()
 			existingCustomObject.SetLabels(data.GetLabels())
 			existingCustomObject.SetAnnotations(data.GetAnnotations())
-			existingCustomObject.Object["spec"] = data.Object["spec"]
 
-			if updated, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Update(ctx, existingCustomObject, metav1.UpdateOptions{}); err != nil {
+			updated = true
+		}
+
+		if !equality.Semantic.DeepEqual(data.Object["spec"], existingCustomObject.Object["spec"]) {
+			diffExist, existingObject, err := resources.UpdateCustomObject(data, existingCustomObject)
+			if err != nil {
+				return err
+			}
+			// To avoid un necessary marshalling when there is no updates.
+			if diffExist {
+				existingMarshaledData, err := json.Marshal(existingObject)
+				if err != nil {
+					logging.FromContext(ctx).Errorf("failed to marshal custom object: %v", err)
+					return err
+				}
+				existingCustomObject = new(unstructured.Unstructured)
+				if err := existingCustomObject.UnmarshalJSON(existingMarshaledData); err != nil {
+					logging.FromContext(ctx).Errorf("failed to unmarshal to unstructured object: %v", err)
+					return err
+				}
+				updated = diffExist
+			}
+		}
+		if updated {
+			updatedData, err := r.DynamicClientSet.Resource(gvr).Namespace(data.GetNamespace()).Update(ctx, existingCustomObject, metav1.UpdateOptions{})
+			if err != nil {
 				logging.FromContext(ctx).Errorf("error updating to eventListener custom object: %v", err)
 				return err
-			} else if data.GetResourceVersion() != updated.GetResourceVersion() {
+			} else if data.GetResourceVersion() != updatedData.GetResourceVersion() {
 				logging.FromContext(ctx).Infof("Updated EventListener Custom Object %s in Namespace %s", data.GetName(), el.Namespace)
 			}
 		}
