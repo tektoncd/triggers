@@ -400,7 +400,8 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 			OwnerReferences: []metav1.OwnerReference{
 				*ownerRefs,
 			},
-			Labels: generatedLabels,
+			Annotations: map[string]string{},
+			Labels:      generatedLabels,
 		},
 		Spec: duckv1.WithPodSpec{
 			Template: duckv1.PodSpecable{
@@ -1379,6 +1380,7 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForEnv},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
+			WithPod:        []*duckv1.WithPod{envForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -1408,6 +1410,7 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
+			WithPod:        []*duckv1.WithPod{argsForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -1422,6 +1425,7 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForImage},
 			ConfigMaps:     []*corev1.ConfigMap{loggingConfigMap, observabilityConfigMap},
+			WithPod:        []*duckv1.WithPod{imageForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
