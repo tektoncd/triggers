@@ -1326,6 +1326,7 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForEnv},
+			WithPod:        []*duckv1.WithPod{envForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -1351,6 +1352,7 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
+			WithPod:        []*duckv1.WithPod{argsForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
@@ -1363,6 +1365,7 @@ func TestReconcile(t *testing.T) {
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForImage},
+			WithPod:        []*duckv1.WithPod{imageForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
