@@ -91,7 +91,7 @@ specifies the following fields:
 - `name` - (optional) a valid [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set) that uniquely identifies the `Trigger`
 - `interceptors` - (optional) a list of [`Interceptors`](#specifying-interceptors) that will process event payload data before passing it to the associated `TriggerBinding`
 - `bindings` - (optional) a list of `TriggerBindings` for this `Trigger`; you can either reference existing `TriggerBindings` or embed their definitions directly
-- `template` - (optional) a list of `TriggerTemplates` for this `Trigger`; you can either reference existing `TriggerTemplates` or embed their definitions directly
+- `template` - (optional) a `TriggerTemplate` for this `Trigger`; you can either reference an existing `TriggerTemplate` or embed its definition directly
 - `triggerRef` - (optional) a reference to an external [`Trigger`](./triggers.md)
 
 Below is an example `Trigger` definition that references the desired `TriggerBindings`, `TriggerTemplates`, and `Interceptors`:
