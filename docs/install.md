@@ -90,5 +90,6 @@ kind: ConfigMap
 metadata:
   name: feature-flags-triggers
 data:
-  enable-api-fields: "alpha" # Allow "alpha" fields to be used in v1beta1 Triggers' resources. Defaults to "stable" features only.``
+  enable-api-fields: "alpha" # Allow "alpha" fields to be used in v1beta1 Triggers' resources. Defaults to "stable" features only.
   labels-exclusion-pattern: "^tekton-dev-"
+```
