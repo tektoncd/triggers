@@ -105,6 +105,11 @@ func compareCondition(x, y apis.Condition) bool {
 	return x.Type < y.Type
 }
 
+// compareEnv compares two conditions based on their Type field.
+func compareEnv(x, y corev1.EnvVar) bool {
+	return x.Name < y.Name
+}
+
 // getEventListenerTestAssets returns TestAssets that have been seeded with the
 // given test.Resources r where r represents the state of the system
 func getEventListenerTestAssets(t *testing.T, r test.Resources, c *resources.Config) (test.Assets, context.CancelFunc) {
@@ -218,13 +223,17 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							FailureThreshold: int32(resources.DefaultFailureThreshold),
 						},
 						Args: []string{
-							"-el-name", eventListenerName,
-							"-el-namespace", namespace,
-							"-port", strconv.Itoa(eventListenerContainerPort),
-							"readtimeout", strconv.FormatInt(resources.DefaultReadTimeout, 10),
-							"writetimeout", strconv.FormatInt(resources.DefaultWriteTimeout, 10),
-							"idletimeout", strconv.FormatInt(resources.DefaultIdleTimeout, 10),
-							"timeouthandler", strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+							"--el-name=" + eventListenerName,
+							"--el-namespace=" + namespace,
+							"--port=" + strconv.Itoa(eventListenerContainerPort),
+							"--readtimeout=" + strconv.FormatInt(resources.DefaultReadTimeout, 10),
+							"--writetimeout=" + strconv.FormatInt(resources.DefaultWriteTimeout, 10),
+							"--idletimeout=" + strconv.FormatInt(resources.DefaultIdleTimeout, 10),
+							"--timeouthandler=" + strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+							"--is-multi-ns=false",
+							"--payload-validation=true",
+							"--tls-cert=",
+							"--tls-key=",
 						},
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
@@ -273,96 +282,49 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 }
 
 var withTLSConfig = func(d *appsv1.Deployment) {
-	d.Spec.Template.Spec.Containers = []corev1.Container{{
-		Name:  "event-listener",
-		Image: resources.DefaultImage,
-		Ports: []corev1.ContainerPort{{
-			ContainerPort: int32(eventListenerContainerPort),
-			Protocol:      corev1.ProtocolTCP,
-		}, {
-			ContainerPort: int32(9000),
-			Protocol:      corev1.ProtocolTCP,
-		}},
-		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: corev1.URISchemeHTTPS,
-					Port:   intstr.FromInt(eventListenerContainerPort),
-				},
-			},
-			PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
-			FailureThreshold: int32(resources.DefaultFailureThreshold),
-		},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: corev1.URISchemeHTTPS,
-					Port:   intstr.FromInt(eventListenerContainerPort),
-				},
-			},
-			PeriodSeconds:    int32(resources.DefaultPeriodSeconds),
-			FailureThreshold: int32(resources.DefaultFailureThreshold),
-		},
-		Args: []string{
-			"-el-name", eventListenerName,
-			"-el-namespace", namespace,
-			"-port", strconv.Itoa(eventListenerContainerPort),
-			"-tls-cert", "/etc/triggers/tls/tls.pem",
-			"-tls-key", "/etc/triggers/tls/tls.key",
-		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "https-connection",
-			MountPath: "/etc/triggers/tls",
-			ReadOnly:  true,
-		}},
-		Env: []corev1.EnvVar{{
-			Name: "K_LOGGING_CONFIG",
-		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
-		}, {
-			Name:  "K_TRACING_CONFIG",
-			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
-		}, {
-			Name:  "NAMESPACE",
-			Value: namespace,
-		}, {
-			Name:  "NAME",
-			Value: eventListenerName,
-		}, {
-			Name: "TLS_CERT",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "tls-secret-key",
-					},
-					Key: "tls.crt",
-				},
-			},
-		}, {
-			Name: "TLS_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "tls-secret-key",
-					},
-					Key: "tls.key",
-				},
-			},
-		}, {
-			Name: "SYSTEM_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		}, {
-			Name:  "METRICS_PROMETHEUS_PORT",
-			Value: "9000",
-		}},
+	// Replace the 2 TLS args with the right values
+	container := &d.Spec.Template.Spec.Containers[0]
+
+	// Set probes to use HTTPS
+	container.LivenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+	container.ReadinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+
+	// Pass keys as container args
+	for i, arg := range container.Args {
+		if arg == "--tls-key=" {
+			container.Args[i] = "--tls-key=/etc/triggers/tls/tls.key"
+		}
+		if arg == "--tls-cert=" {
+			container.Args[i] = "--tls-cert=/etc/triggers/tls/tls.crt"
+		}
+	}
+	container.VolumeMounts = []corev1.VolumeMount{{
+		Name:      "https-connection",
+		MountPath: "/etc/triggers/tls",
+		ReadOnly:  true,
 	}}
+
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name: "TLS_CERT",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "tls-secret-key",
+				},
+				Key: "tls.crt",
+			},
+		},
+	}, corev1.EnvVar{
+		Name: "TLS_KEY",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "tls-secret-key",
+				},
+				Key: "tls.key",
+			},
+		},
+	})
 	d.Spec.Template.Spec.Volumes = []corev1.Volume{{
 		Name: "https-connection",
 		VolumeSource: corev1.VolumeSource{
@@ -411,6 +373,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							"--idletimeout=" + strconv.FormatInt(resources.DefaultIdleTimeout, 10),
 							"--timeouthandler=" + strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 							"--is-multi-ns=" + strconv.FormatBool(false),
+							"--payload-validation=" + strconv.FormatBool(true),
 						},
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
@@ -907,12 +870,6 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
-	argsForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
-		data.Spec.Template.Spec.Containers[0].Args = []string{
-			"--is-multi-ns=" + strconv.FormatBool(true),
-		}
-	})
-
 	imageForCustomResource := makeWithPod(func(data *duckv1.WithPod) {
 		data.Spec.Template.Spec.Containers[0].Image = resources.DefaultImage
 	})
@@ -1347,17 +1304,17 @@ func TestReconcile(t *testing.T) {
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
 	}, {
-		name: "eventlistener with added Args for custom resource",
+		// If a user provides custom args, we ignore them and create the EL with the standard set of args
+		name: "CustomResource EventListener with user provided custom args",
 		key:  reconcileKey,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
-			WithPod:        []*duckv1.WithPod{argsForCustomResource},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForArgs},
-			WithPod:        []*duckv1.WithPod{argsForCustomResource},
+			WithPod:        []*duckv1.WithPod{makeWithPod()},
 		},
 	}, {
 		name: "eventlistener with added Image for custom resource",
@@ -1399,6 +1356,25 @@ func TestReconcile(t *testing.T) {
 			EventListeners: []*v1beta1.EventListener{elWithCustomResourceForNodeSelector},
 			WithPod:        []*duckv1.WithPod{nodeSelectorForCustomResource},
 		},
+	}, {
+		name: "reconcile removes old finalizers", // See #1243
+		key:  reconcileKey,
+		startResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+			// The initial EL needs to have a Status set else the update from the generated Reconcile
+			// overwrites the update from removeFinalizer
+			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, func(el *v1beta1.EventListener) {
+				el.Finalizers = append(el.Finalizers, "eventlisteners.triggers.tekton.dev")
+			})},
+		},
+		endResources: test.Resources{
+			Namespaces: []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1beta1.EventListener{makeEL(withStatus, func(el *v1beta1.EventListener) {
+				el.Finalizers = []string{} // Finalizer should be removed
+			})},
+			Deployments: []*appsv1.Deployment{makeDeployment()},
+			Services:    []*corev1.Service{makeService()},
+		},
 	}}
 
 	for _, tt := range tests {
@@ -1419,8 +1395,7 @@ func TestReconcile(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
 				apis.Condition{}.LastTransitionTime.Inner.Time,
-				metav1.ObjectMeta{}.Finalizers,
-			), cmpopts.SortSlices(compareCondition)); diff != "" {
+			), cmpopts.SortSlices(compareCondition), cmpopts.SortSlices(compareEnv)); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
