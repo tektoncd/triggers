@@ -116,6 +116,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, el *v1beta1.EventListene
 	if el.Spec.Resources.CustomResource == nil {
 		el.Status.SetReadyCondition()
 	}
+	if len(el.Finalizers) > 0 {
+		// TODO(dibyom): Remove this in a future release once we are sure no one is using pre v0.16 resources
+		r.removeFinalizer(ctx, el)
+	}
+
 	return wrapError(serviceReconcileError, deploymentReconcileError)
 }
 
@@ -360,6 +365,21 @@ func (r *Reconciler) reconcileCustomObject(ctx context.Context, el *v1beta1.Even
 		return err
 	}
 	return nil
+}
+
+func (r *Reconciler) removeFinalizer(ctx context.Context, el *v1beta1.EventListener) {
+	// We used to need Finalizers in older versions of Triggers.
+	// They are not necessary anymore so let's remove them from any old EventListener objects
+	for i, f := range el.Finalizers {
+		if f == "eventlisteners.triggers.tekton.dev" {
+			el.Finalizers = append(el.Finalizers[:i], el.Finalizers[i+1:]...)
+			_, err := r.TriggersClientSet.TriggersV1beta1().EventListeners(el.Namespace).Update(ctx, el, metav1.UpdateOptions{})
+			if err != nil {
+				logging.FromContext(ctx).Errorf("failed to update EventListener to remove finalizer: %v", err)
+			}
+			break
+		}
+	}
 }
 
 // wrapError wraps errors together. If one of the errors is nil, the other is
