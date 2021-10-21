@@ -294,8 +294,8 @@ func TestSetConditionsForDynamicObjects(t *testing.T) {
 			}},
 		},
 	}
-	if diff := cmp.Diff(expected, status, cmpopts.IgnoreTypes(
-		apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
+	if diff := cmp.Diff(expected, status, cmpopts.IgnoreFields(
+		apis.Condition{}, "LastTransitionTime.Inner.Time")); diff != "" {
 		t.Fatalf("SetConditionsForDynamicObjects() error. Diff (-want/+got) : %s", diff)
 	}
 }
@@ -404,8 +404,8 @@ func TestEventListenerStatus_SetReadyCondition(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.initial.SetReadyCondition()
-			if diff := cmp.Diff(tc.want, tc.initial, cmpopts.IgnoreTypes(
-				apis.Condition{}.LastTransitionTime.Inner.Time), cmpopts.SortSlices(func(x, y apis.Condition) bool {
+			if diff := cmp.Diff(tc.want, tc.initial, cmpopts.IgnoreFields(
+				apis.Condition{}, "LastTransitionTime.Inner.Time"), cmpopts.SortSlices(func(x, y apis.Condition) bool {
 				return x.Type < y.Type
 			})); diff != "" {
 				t.Fatalf("SetReadyCondition() mismatch. -want/+got: %s", diff)

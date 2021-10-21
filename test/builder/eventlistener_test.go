@@ -596,7 +596,7 @@ func TestEventListenerBuilder(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := cmp.Diff(tt.normal, tt.builder, cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
+			if diff := cmp.Diff(tt.normal, tt.builder, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); diff != "" {
 				t.Errorf("EventListener() builder equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
