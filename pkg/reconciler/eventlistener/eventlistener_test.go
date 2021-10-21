@@ -1393,9 +1393,10 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
-				apis.Condition{}.LastTransitionTime.Inner.Time,
-			), cmpopts.SortSlices(compareCondition), cmpopts.SortSlices(compareEnv)); diff != "" {
+			if diff := cmp.Diff(tt.endResources, *actualEndResources,
+				cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time"),
+				cmpopts.SortSlices(compareCondition),
+				cmpopts.SortSlices(compareEnv)); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
@@ -1535,10 +1536,9 @@ func TestReconcile_InvalidForCustomResource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(
-				apis.Condition{}.LastTransitionTime.Inner.Time,
-				metav1.ObjectMeta{}.Finalizers,
-			), cmpopts.SortSlices(compareCondition)); diff == "" {
+			if diff := cmp.Diff(tt.endResources, *actualEndResources,
+				cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time"),
+				cmpopts.SortSlices(compareCondition)); diff == "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
@@ -1620,7 +1620,7 @@ func TestReconcile_Delete(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); diff != "" {
+			if diff := cmp.Diff(tt.endResources, *actualEndResources, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); diff != "" {
 				t.Errorf("eventlistener.Reconcile() equality mismatch. Diff request body: -want +got: %s", diff)
 			}
 		})
