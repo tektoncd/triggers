@@ -58,9 +58,9 @@ var _ kmeta.OwnerRefable = (*EventListener)(nil)
 // by a list of Triggers.
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
-	Triggers           []EventListenerTrigger `json:"triggers"`
+	Triggers           []EventListenerTrigger `json:"triggers,omitempty"`
 	// Trigger groups allow for centralized processing of an interceptor chain
-	TriggerGroups     []EventListenerTriggerGroup `json:"triggerGroups"`
+	TriggerGroups     []EventListenerTriggerGroup `json:"triggerGroups,omitempty"`
 	NamespaceSelector NamespaceSelector           `json:"namespaceSelector,omitempty"`
 	LabelSelector     *metav1.LabelSelector       `json:"labelSelector,omitempty"`
 	Resources         Resources                   `json:"resources,omitempty"`
