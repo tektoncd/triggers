@@ -43,8 +43,11 @@ spec:
                       echo "$(params.sha)"
     - name: cel-trig-with-canonical
       interceptors:
-        - cel:
-            filter: "header.canonical('X-GitHub-Event') == 'push'"
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "header.canonical('X-GitHub-Event') == 'push'"
       bindings:
       - ref: pipeline-binding
       template:
