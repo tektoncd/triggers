@@ -26,6 +26,8 @@ current_example=""
 current_example_version=""
 yaml_files=""
 port_forward_pid=""
+forwardingPort=8888
+elName=""
 
 info() {
   echo; echo "*** Example ${current_example_version}/${current_example}: $@ ***"; echo;
@@ -33,6 +35,25 @@ info() {
 
 err() {
   echo; echo "ERROR: Example ${current_example_version}/${current_example}: $@"; echo;
+}
+
+install_knative_serving() {
+  # Install Knative by referring https://knative.dev/docs/admin/install/serving/install-serving-with-yaml/#install-the-knative-serving-component
+  kubectl apply -f https://github.com/knative/serving/releases/download/v0.26.0/serving-crds.yaml
+  kubectl apply -f https://github.com/knative/serving/releases/download/v0.26.0/serving-core.yaml
+
+  kubectl apply -f https://github.com/knative/net-kourier/releases/download/v0.26.0/kourier.yaml
+
+  kubectl patch configmap/config-network \
+    --namespace knative-serving \
+    --type merge \
+    --patch '{"data":{"ingress.class":"kourier.ingress.networking.knative.dev"}}'
+
+  # Wait for pods to be running in the namespaces we are deploying to
+  wait_until_pods_running knative-serving || fail_test "Knative Serving did not come up"
+  # Changing port of kourier service to use 8888 instead of 80 so that port-forward can be done easily
+  # Because with 80 its giving permission deneid and in Knative all traffic goes via gateway which is kourier here.
+  kubectl -n kourier-system patch service/kourier --type=json -p="[{"op": "add", "path": "/spec/ports/0/port", "value": $forwardingPort}]"
 }
 
 apply_files() {
@@ -120,10 +141,26 @@ create_example_pipeline() {
   }
 }
 
+curl_knative_service() {
+  # port forwarding to access application
+  kubectl -n kourier-system port-forward service/kourier $forwardingPort:$forwardingPort > /dev/null 2>&1 &
+  sleep 1
+  hostURL=$(kubectl get el ${elName} -o=jsonpath='{.status.address.url}')
+  host=$(echo $(echo $hostURL | tr "://" "\n") | cut -d' ' -f 2)
+
+  bash ${REPO_ROOT_DIR}/examples/${current_example_version}/${current_example}/curl.sh $forwardingPort $host
+
+  # kill the process which ran eith port-forwarding
+  ps -ef | grep $forwardingPort | grep -v grep | awk '{print $2}' | xargs kill
+}
+
+kill_process() {
+  kill $port_forward_pid || true
+}
+
 trap "cleanup" EXIT SIGINT
 cleanup() {
   info "Cleaning up resources"
-  kill $port_forward_pid || true
   for y in ${yaml_files}; do
     kubectl delete -f ${y} --ignore-not-found || true
   done
@@ -133,6 +170,8 @@ cleanup() {
 # Name of example would be name of directory
 # Name of eventlistener must be (exampleName)-listener
 main() {
+  install_knative_serving
+
   versions="v1alpha1 v1beta1"
   # List of examples test will run on
   examples="bitbucket cron embedded-trigger github gitlab label-selector namespace-selector v1alpha1-task trigger-ref"
@@ -146,9 +185,19 @@ main() {
       apply_files
       check_eventlistener
       port_forward_and_curl
+      kill_process
       cleanup
       info "Test Successful"
     done
+    # To test Knative Serving example
+    info "Knative Example Test Started"
+    current_example="custom-resource"
+    echo "*** Example ${current_example_version}/${current_example} ***";
+    apply_files
+    check_eventlistener
+    curl_knative_service
+    cleanup
+    info "Knative Example Test Successful"
   done
 
   echo; echo "*** Completed Examples Test Successfully ***"; echo;

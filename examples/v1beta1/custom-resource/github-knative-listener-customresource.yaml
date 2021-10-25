@@ -2,10 +2,10 @@
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
-  name: github-knative-listener
+  name: custom-resource-listener
 spec:
   triggers:
-    - name: github-listener
+    - name: custom-resource-listener
       interceptors:
         - ref:
             name: "github"
