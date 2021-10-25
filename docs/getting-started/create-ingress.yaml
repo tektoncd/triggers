@@ -75,7 +75,7 @@ spec:
       set -e
       if [ -n "$(params.ServiceUID)" ];then
         cat <<EOF | kubectl create -f - || true
-        apiVersion: extensions/v1beta1
+        apiVersion: networking.k8s.io/v1
         kind: Ingress
         metadata:
           name: $(params.Service)
@@ -93,13 +93,16 @@ spec:
           - host: $(params.ExternalDomain)
             http:
               paths:
-              - backend:
-                  serviceName: $(params.Service)
-                  servicePort: $(params.ServicePort)
+              - pathType: ImplementationSpecific
+                backend:
+                  service:
+                    name: $(params.Service)
+                    port:
+                      number: $(params.ServicePort)
       EOF
       else
         cat <<EOF | kubectl create -f - || true
-        apiVersion: extensions/v1beta1
+        apiVersion: networking.k8s.io/v1
         kind: Ingress
         metadata:
           name: $(params.Service)
@@ -112,8 +115,11 @@ spec:
           - host: $(params.ExternalDomain)
             http:
               paths:
-              - backend:
-                  serviceName: $(params.Service)
-                  servicePort: $(params.ServicePort)
+              - pathType: ImplementationSpecific
+                backend:
+                  service:
+                    name: $(params.Service)
+                    port:
+                      number: $(params.ServicePort)
       EOF
       fi
