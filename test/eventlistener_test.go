@@ -43,7 +43,6 @@ import (
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"github.com/tektoncd/triggers/pkg/sink"
-	bldr "github.com/tektoncd/triggers/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -179,23 +178,49 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error marshalling ResourceTemplate PipelineResource 2: %s", err)
 	}
 
+	defaultValueStr := "defaultvalue"
+
 	// TriggerTemplate
 	tt, err := c.TriggersClient.TriggersV1alpha1().TriggerTemplates(namespace).Create(context.Background(),
-		bldr.TriggerTemplate("my-triggertemplate", "",
-			bldr.TriggerTemplateMeta(
-				bldr.Annotation("triggers.tekton.dev/old-escape-quotes", "true"),
-			),
-			bldr.TriggerTemplateSpec(
-				bldr.TriggerTemplateParam("oneparam", "", ""),
-				bldr.TriggerTemplateParam("twoparamname", "", ""),
-				bldr.TriggerTemplateParam("twoparamvalue", "", "defaultvalue"),
-				bldr.TriggerTemplateParam("license", "", ""),
-				bldr.TriggerTemplateParam("header", "", ""),
-				bldr.TriggerTemplateParam("prmessage", "", ""),
-				bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pr1Bytes}),
-				bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pr2Bytes}),
-			),
-		), metav1.CreateOptions{},
+		&triggersv1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "my-triggertemplate",
+				Annotations: map[string]string{
+					"triggers.tekton.dev/old-escape-quotes": "true",
+				},
+			},
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{
+					{
+						Name: "oneparam",
+					},
+					{
+						Name: "twoparamname",
+					},
+					{
+						Name:    "twoparamvalue",
+						Default: &defaultValueStr,
+					},
+					{
+						Name: "license",
+					},
+					{
+						Name: "header",
+					},
+					{
+						Name: "prmessage",
+					},
+				},
+				ResourceTemplates: []triggersv1.TriggerResourceTemplate{
+					{
+						RawExtension: runtime.RawExtension{Raw: pr1Bytes},
+					},
+					{
+						RawExtension: runtime.RawExtension{Raw: pr2Bytes},
+					},
+				},
+			},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating TriggerTemplate: %s", err)
@@ -203,13 +228,25 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// TriggerBinding
 	tb, err := c.TriggersClient.TriggersV1alpha1().TriggerBindings(namespace).Create(context.Background(),
-		bldr.TriggerBinding("my-triggerbinding", "",
-			bldr.TriggerBindingSpec(
-				bldr.TriggerBindingParam("oneparam", "$(body.action)"),
-				bldr.TriggerBindingParam("twoparamname", "$(body.pull_request.state)"),
-				bldr.TriggerBindingParam("prmessage", "$(body.pull_request.body)"),
-			),
-		), metav1.CreateOptions{},
+		&triggersv1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-triggerbinding"},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{
+					{
+						Name:  "oneparam",
+						Value: "$(body.action)",
+					},
+					{
+						Name:  "twoparamname",
+						Value: "$(body.pull_request.state)",
+					},
+					{
+						Name:  "prmessage",
+						Value: "$(body.pull_request.body)",
+					},
+				},
+			},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating TriggerBinding: %s", err)
@@ -217,12 +254,21 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// ClusterTriggerBinding
 	ctb, err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Create(context.Background(),
-		bldr.ClusterTriggerBinding("my-clustertriggerbinding",
-			bldr.ClusterTriggerBindingSpec(
-				bldr.TriggerBindingParam("license", "$(body.repository.license)"),
-				bldr.TriggerBindingParam("header", "$(header)"),
-			),
-		), metav1.CreateOptions{},
+		&triggersv1.ClusterTriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-clustertriggerbinding"},
+			Spec: triggersv1.TriggerBindingSpec{
+				Params: []triggersv1.Param{
+					{
+						Name:  "license",
+						Value: "$(body.repository.license)",
+					},
+					{
+						Name:  "header",
+						Value: "$(header)",
+					},
+				},
+			},
+		}, metav1.CreateOptions{},
 	)
 	if err != nil {
 		t.Fatalf("Error creating ClusterTriggerBinding: %s", err)
