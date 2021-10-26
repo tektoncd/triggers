@@ -285,13 +285,13 @@ github.com/tektoncd/pipeline/pkg/substitution
 ## explicit
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tidwall/gjson v1.9.0
+# github.com/tidwall/gjson v1.10.2
 github.com/tidwall/gjson
-# github.com/tidwall/match v1.0.3
+# github.com/tidwall/match v1.1.1
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.2.0
 github.com/tidwall/pretty
-# github.com/tidwall/sjson v1.2.1
+# github.com/tidwall/sjson v1.2.3
 ## explicit
 github.com/tidwall/sjson
 # go.opencensus.io v0.23.0
