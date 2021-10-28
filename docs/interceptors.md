@@ -181,7 +181,7 @@ For reference, below is an example legacy GitHub `Interceptor` definition:
  
 ```
 
-For more information, see our [example](../examples/github) of using this `Interceptor`.
+For more information, see our [example](../examples/v1beta1/github) of using this `Interceptor`.
 
 ### GitLab Interceptors
 
