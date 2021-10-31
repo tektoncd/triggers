@@ -428,3 +428,31 @@ which can be accessed by indexing.
     </td>
   </tr>
 </table>
+
+## Troubleshooting CEL expressions
+
+You can use the `cel-eval` tool to evaluate your CEL expressions against a specific HTTP request.
+
+To install the `cel-eval` tool use the following command:
+
+```sh
+$ go get -u github.com/tektoncd/triggers/cmd/cel-eval
+```
+
+Below is an example of using the tool to evaluate a CEL expression:
+
+```sh
+$ cat testdata/expression.txt
+body.test.nested == "value"
+
+$ cat testdata/http.txt
+POST /foo HTTP/1.1
+Content-Length: 29
+Content-Type: application/json
+X-Header: tacocat
+
+{"test": {"nested": "value"}}
+
+$ cel-eval -e testdata/expression.txt -r testdata/http.txt
+true
+```
