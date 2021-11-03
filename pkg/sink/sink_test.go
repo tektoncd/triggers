@@ -223,9 +223,7 @@ func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 		t.Fatalf("Error reading response body: %s", err)
 	}
 	wantBody := Response{
-		EventListener:    elName,
 		EventListenerUID: elUID,
-		Namespace:        namespace,
 		EventID:          eventID,
 	}
 	if diff := cmp.Diff(wantBody, gotBody); diff != "" {

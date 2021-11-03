@@ -43,9 +43,7 @@ func (r Sink) IsValidPayload(eventHandler http.Handler) http.Handler {
 				response.WriteHeader(http.StatusBadRequest)
 				response.Header().Set("Content-Type", "application/json")
 				body := Response{
-					EventListener: r.EventListenerName,
-					Namespace:     r.EventListenerNamespace,
-					ErrorMessage:  errMsg,
+					ErrorMessage: errMsg,
 				}
 				if err := json.NewEncoder(response).Encode(body); err != nil {
 					r.Logger.Errorf("failed to write back sink response: %v", err)

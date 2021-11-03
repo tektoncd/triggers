@@ -77,12 +77,6 @@ type Sink struct {
 
 // Response defines the HTTP body that the Sink responds to events with.
 type Response struct {
-	// EventListener is the name of the eventListener.
-	// Deprecated: use EventListenerUID instead.
-	EventListener string `json:"eventListener"`
-	// Namespace is the namespace that the eventListener is running in.
-	// Deprecated: use EventListenerUID instead.
-	Namespace string `json:"namespace,omitempty"`
 	// EventListenerUID is the UID of the EventListener
 	EventListenerUID string `json:"eventListenerUID"`
 	// EventID is a uniqueID that gets assigned to each incoming request
@@ -154,9 +148,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	response.WriteHeader(http.StatusAccepted)
 	response.Header().Set("Content-Type", "application/json")
 	body := Response{
-		EventListener:    r.EventListenerName,
 		EventListenerUID: elUID,
-		Namespace:        r.EventListenerNamespace,
 		EventID:          eventID,
 	}
 	if err := json.NewEncoder(response).Encode(body); err != nil {
