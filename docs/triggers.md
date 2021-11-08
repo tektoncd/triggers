@@ -7,7 +7,7 @@ weight: 9
 # `Triggers`
 
 A `Trigger` specifies what happens when the [`EventListener`](./eventlisteners.md) detects an event. A `Trigger` specifies a [`TriggerTemplate`](./triggertemplates.md),
-a [`TriggerBinding`](./triggerbindings.md), and optionally an [`Interceptor`](./eventlisteners.md#interceptors).
+a [`TriggerBinding`](./triggerbindings.md), and optionally an [`Interceptor`](./interceptors.md).
 
 ## Structure of a `Trigger`
 

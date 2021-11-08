@@ -14,7 +14,7 @@ If you want to test Triggers from `HEAD`, see the
 
 ## Prerequisites
 
-You must satisfy the following prerequisties to set up Tekton Triggers:
+You must satisfy the following prerequisites to set up Tekton Triggers:
 
 * You must have a Kubernetes Cluster running Kubernetes 1.18 or above.
 

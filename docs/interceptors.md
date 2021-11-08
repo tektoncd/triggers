@@ -24,7 +24,7 @@ the payload data to the `TriggerBinding`. You can also use an `Interceptor` to m
 Tekton Triggers currently supports two distinct `Interceptor` implementations:
 - Standalone `Interceptors`, which are instances of the [`ClusterInterceptor`](./clusterinterceptors.md) Custom Resource Definition (CRD). You specify these `Interceptors` by referencing them,
   along with the desired parameters, within your  `EventListener`. You can use the `ClusterInterceptor` CRD to implement your own custom `Interceptors`.
-- Legacy `Interceptors`, which you define entirely as part of of the `EventListener` definition. This implementation will eventually be deprecated, so please consider
+- Legacy `Interceptors`, which you define entirely as part of the `EventListener` definition. This implementation will eventually be deprecated, so please consider
   transitioning to standalone `Interceptors` as soon as possible. See [TEP-0026](https://github.com/tektoncd/community/blob/main/teps/0026-interceptor-plugins.md) for more context on this change.
 
 Tekton Triggers ships with the following `Interceptors` to help you get started:
@@ -307,7 +307,7 @@ spec:
 ### CEL Interceptors
 
 A CEL `Interceptor` allows you to filter and modify the payloads of incoming events using
-the [CEL]https://github.com/google/cel-spec/blob/master/doc/langdef.md) expression language.
+the [CEL](https://github.com/google/cel-spec/blob/master/doc/langdef.md) expression language.
 
 CEL `Interceptors` support `overlays`, which are CEL expressions that Tekton Triggers adds
 to the event payload in the top-level `extensions` field. `overlays` are accessible from

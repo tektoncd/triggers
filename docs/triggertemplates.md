@@ -85,7 +85,7 @@ Keep the following in mind:
 
 * As of Tekton Pipelines [0.8.0](https://github.com/tektoncd/pipeline/releases/tag/v0.8.0), you can embed resource definitions directly in
   your `TriggerTemplate` definition. To prevent a race condition between creating and using resources, you **must** embed each resource definition
-  witihn the `PipelineRun` or `TaskRun` that uses that resource.
+  within the `PipelineRun` or `TaskRun` that uses that resource.
 
 ## Specifying parameters
 
@@ -93,7 +93,7 @@ A `TriggerTemplate` allows you to declare parameters supplied by the associated 
 
 * Declare your parameters in the `params` section of the `TriggerTemplate` definition.
 
-* You must specify a `name` and can optionally specifiy a `description` and a `default` value.
+* You must specify a `name` and can optionally specify a `description` and a `default` value.
 
 * Tekton applies the value of the `default` field for each entry in the `params` array of your `TriggerTemplate` if it can't find a corresponding
   value in the associated `TriggerBinding` or cannot successfully extract the value from an HTTP header or body payload.
