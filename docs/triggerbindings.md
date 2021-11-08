@@ -7,7 +7,7 @@ weight: 4
 # `TriggerBindings`
 
 A `TriggerBinding` is a resource that specifies the fields in the event payload from which you want to extract data as well as the fields in your
-corresponding [`TriggerTemplate`](.docs/triggertemplates.md) to populate with the extracted values. In other words, it *binds* payload fields to
+corresponding [`TriggerTemplate`](./triggertemplates.md) to populate with the extracted values. In other words, it *binds* payload fields to
 fields in the [`TriggerTemplate`] and for this to work the fields specified in the [`TriggerBinding`] And the corresponding [`TriggerTemplate`]
 **must** match. You can then use the populated fields in your [`TriggerTemplate`] to populate fields in the [`TaskRun`] or [`PipelineRun`] associated
 with that [`TriggerTemplate`]. Tekton also supports a cluster-scoped version called a `ClusterTriggerBinding` to encourage reusability across your
