@@ -29,42 +29,412 @@ spec:
     plural: triggers
     singular: trigger
     shortNames:
-    - tri
+      - tri
     categories:
-    - tekton
-    - tekton-triggers
+      - tekton
+      - tekton-triggers
   versions:
-  - name: v1beta1
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    subresources:
-      status: {}
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Trigger defines a mapping of an input event to parameters. This is used to extract information from events to be passed to TriggerTemplates within a Trigger.
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the Trigger
+              type: object
+              required:
+                - bindings
+                - template
+              properties:
+                bindings:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      apiversion:
+                        description: APIVersion of the binding ref
+                        type: string
+                      kind:
+                        description: Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
+                        type: string
+                      name:
+                        description: Name is the name of the binding param Mutually exclusive with Ref
+                        type: string
+                      ref:
+                        description: Ref is a reference to a TriggerBinding kind. Mutually exclusive with Name
+                        type: string
+                      value:
+                        description: Value is the value of the binding param. Can contain JSONPath Has to be pointer since "" is a valid value Required if Name is also specified.
+                        type: string
+                interceptors:
+                  type: array
+                  items:
+                    description: TriggerInterceptor provides a hook to intercept and pre-process events
+                    type: object
+                    required:
+                      - ref
+                    properties:
+                      name:
+                        description: Optional name to identify the current interceptor configuration
+                        type: string
+                      params:
+                        description: Params are the params to send to the interceptor
+                        type: array
+                        items:
+                          description: InterceptorParams defines a key-value pair that can be passed on an interceptor
+                          type: object
+                          required:
+                            - name
+                            - value
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              x-kubernetes-preserve-unknown-fields: true
+                      ref:
+                        description: Ref refers to the Interceptor to use
+                        type: object
+                        properties:
+                          apiVersion:
+                            description: API version of the referent
+                            type: string
+                          kind:
+                            description: InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one
+                            type: string
+                          name:
+                            description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                            type: string
+                      webhook:
+                        description: WebhookInterceptor refers to an old style webhook interceptor service
+                        type: object
+                        properties:
+                          header:
+                            description: Header is a group of key-value pairs that can be appended to the interceptor request headers. This allows the interceptor to make decisions specific to an EventListenerTrigger.
+                            type: array
+                            items:
+                              description: Param declares an ArrayOrString to use for the parameter called name.
+                              type: object
+                              required:
+                                - name
+                                - value
+                              properties:
+                                name:
+                                  type: string
+                                value:
+                                  description: ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.
+                                  type: object
+                                  required:
+                                    - arrayVal
+                                    - stringVal
+                                    - type
+                                  properties:
+                                    arrayVal:
+                                      type: array
+                                      items:
+                                        type: string
+                                    stringVal:
+                                      type: string
+                                    type:
+                                      description: ParamType indicates the type of an input parameter; Used to distinguish between a single string and an array of strings.
+                                      type: string
+                          objectRef:
+                            description: ObjectRef is a reference to an object that will resolve to a cluster DNS name to use as the EventInterceptor. Either objectRef or url can be specified
+                            type: object
+                            properties:
+                              apiVersion:
+                                description: API version of the referent.
+                                type: string
+                              kind:
+                                description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                type: string
+                          url:
+                            type: string
+                name:
+                  type: string
+                serviceAccountName:
+                  description: ServiceAccountName optionally associates credentials with each trigger; Unlike EventListeners, this should be scoped to the same namespace as the Trigger itself
+                  type: string
+                template:
+                  type: object
+                  properties:
+                    apiversion:
+                      type: string
+                    ref:
+                      type: string
+                    spec:
+                      description: TriggerTemplateSpec holds the desired state of TriggerTemplate
+                      type: object
+                      properties:
+                        params:
+                          type: array
+                          items:
+                            description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                            type: object
+                            required:
+                              - name
+                            properties:
+                              default:
+                                description: Default is the value a parameter takes if no input value via a Param is supplied.
+                                type: string
+                              description:
+                                description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                                type: string
+                              name:
+                                description: Name declares the name by which a parameter is referenced.
+                                type: string
+                        resourcetemplates:
+                          type: array
+                          items:
+                            description: TriggerResourceTemplate describes a resource to create
+                            type: object
+      subresources:
+        status: {}
+    - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          description: Trigger defines a mapping of an input event to parameters. This is used to extract information from events to be passed to TriggerTemplates within a Trigger.
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the Trigger
+              type: object
+              required:
+                - bindings
+                - template
+              properties:
+                bindings:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      apiversion:
+                        description: APIVersion of the binding ref
+                        type: string
+                      kind:
+                        description: Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
+                        type: string
+                      name:
+                        description: Name is the name of the binding param Mutually exclusive with Ref
+                        type: string
+                      ref:
+                        description: Ref is a reference to a TriggerBinding kind. Mutually exclusive with Name
+                        type: string
+                      value:
+                        description: Value is the value of the binding param. Can contain JSONPath Has to be pointer since "" is a valid value Required if Name is also specified.
+                        type: string
+                interceptors:
+                  type: array
+                  items:
+                    description: TriggerInterceptor provides a hook to intercept and pre-process events
+                    type: object
+                    required:
+                      - ref
+                    properties:
+                      bitbucket:
+                        description: BitbucketInterceptor provides a webhook to intercept and pre-process events
+                        type: object
+                        properties:
+                          eventTypes:
+                            type: array
+                            items:
+                              type: string
+                          secretRef:
+                            description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                            type: object
+                            properties:
+                              secretKey:
+                                type: string
+                              secretName:
+                                type: string
+                      cel:
+                        description: CELInterceptor provides a webhook to intercept and pre-process events
+                        type: object
+                        properties:
+                          filter:
+                            type: string
+                          overlays:
+                            type: array
+                            items:
+                              description: CELOverlay provides a way to modify the request body using DeprecatedCEL expressions
+                              type: object
+                              properties:
+                                expression:
+                                  type: string
+                                key:
+                                  type: string
+                      github:
+                        description: Deprecated old fields below
+                        type: object
+                        properties:
+                          eventTypes:
+                            type: array
+                            items:
+                              type: string
+                          secretRef:
+                            description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                            type: object
+                            properties:
+                              secretKey:
+                                type: string
+                              secretName:
+                                type: string
+                      gitlab:
+                        description: GitLabInterceptor provides a webhook to intercept and pre-process events
+                        type: object
+                        properties:
+                          eventTypes:
+                            type: array
+                            items:
+                              type: string
+                          secretRef:
+                            description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                            type: object
+                            properties:
+                              secretKey:
+                                type: string
+                              secretName:
+                                type: string
+                      name:
+                        description: Optional name to identify the current interceptor configuration
+                        type: string
+                      params:
+                        description: Params are the params to send to the interceptor
+                        type: array
+                        items:
+                          description: InterceptorParams defines a key-value pair that can be passed on an interceptor
+                          type: object
+                          required:
+                            - name
+                            - value
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              x-kubernetes-preserve-unknown-fields: true
+                      ref:
+                        description: Ref refers to the Interceptor to use
+                        type: object
+                        properties:
+                          apiVersion:
+                            description: API version of the referent
+                            type: string
+                          kind:
+                            description: InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one
+                            type: string
+                          name:
+                            description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                            type: string
+                      webhook:
+                        description: WebhookInterceptor refers to an old style webhook interceptor service
+                        type: object
+                        properties:
+                          header:
+                            description: Header is a group of key-value pairs that can be appended to the interceptor request headers. This allows the interceptor to make decisions specific to an EventListenerTrigger.
+                            type: array
+                            items:
+                              description: Param declares an ArrayOrString to use for the parameter called name.
+                              type: object
+                              required:
+                                - name
+                                - value
+                              properties:
+                                name:
+                                  type: string
+                                value:
+                                  description: ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.
+                                  type: object
+                                  required:
+                                    - arrayVal
+                                    - stringVal
+                                    - type
+                                  properties:
+                                    arrayVal:
+                                      type: array
+                                      items:
+                                        type: string
+                                    stringVal:
+                                      type: string
+                                    type:
+                                      description: ParamType indicates the type of an input parameter; Used to distinguish between a single string and an array of strings.
+                                      type: string
+                          objectRef:
+                            description: ObjectRef is a reference to an object that will resolve to a cluster DNS name to use as the EventInterceptor. Either objectRef or url can be specified
+                            type: object
+                            properties:
+                              apiVersion:
+                                description: API version of the referent.
+                                type: string
+                              kind:
+                                description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                type: string
+                          url:
+                            type: string
+                name:
+                  type: string
+                serviceAccountName:
+                  description: ServiceAccountName optionally associates credentials with each trigger; Unlike EventListeners, this should be scoped to the same namespace as the Trigger itself
+                  type: string
+                template:
+                  type: object
+                  properties:
+                    apiversion:
+                      type: string
+                    ref:
+                      type: string
+                    spec:
+                      description: TriggerTemplateSpec holds the desired state of TriggerTemplate
+                      type: object
+                      properties:
+                        params:
+                          type: array
+                          items:
+                            description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                            type: object
+                            required:
+                              - name
+                            properties:
+                              default:
+                                description: Default is the value a parameter takes if no input value via a Param is supplied.
+                                type: string
+                              description:
+                                description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                                type: string
+                              name:
+                                description: Name declares the name by which a parameter is referenced.
+                                type: string
+                        resourcetemplates:
+                          type: array
+                          items:
+                            description: TriggerResourceTemplate describes a resource to create
+                            type: object
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}

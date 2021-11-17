@@ -29,44 +29,106 @@ spec:
     plural: triggertemplates
     singular: triggertemplate
     shortNames:
-    - tt
+      - tt
     categories:
-    - tekton
-    - tekton-triggers
+      - tekton
+      - tekton-triggers
   versions:
-  - name: v1beta1
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: TriggerTemplate takes parameters and uses them to create CRDs
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the TriggerTemplate from the client
+              type: object
+              properties:
+                params:
+                  type: array
+                  items:
+                    description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      default:
+                        description: Default is the value a parameter takes if no input value via a Param is supplied.
+                        type: string
+                      description:
+                        description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                        type: string
+                      name:
+                        description: Name declares the name by which a parameter is referenced.
+                        type: string
+                resourcetemplates:
+                  type: array
+                  items:
+                    description: TriggerResourceTemplate describes a resource to create
+                    type: object
+            status:
+              description: TriggerTemplateStatus describes the desired state of TriggerTemplate
+              type: object
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}
+    - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          description: TriggerTemplate takes parameters and uses them to create CRDs
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the TriggerTemplate from the client
+              type: object
+              properties:
+                params:
+                  type: array
+                  items:
+                    description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      default:
+                        description: Default is the value a parameter takes if no input value via a Param is supplied.
+                        type: string
+                      description:
+                        description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                        type: string
+                      name:
+                        description: Name declares the name by which a parameter is referenced.
+                        type: string
+                resourcetemplates:
+                  type: array
+                  items:
+                    description: TriggerResourceTemplate describes a resource to create
+                    type: object
+            status:
+              description: TriggerTemplateStatus describes the desired state of TriggerTemplate
+              type: object
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}

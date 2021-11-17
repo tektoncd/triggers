@@ -3,7 +3,6 @@ module github.com/tektoncd/triggers
 go 1.15
 
 require (
-	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go/v2 v2.4.1
 	github.com/golang/protobuf v1.5.2
 	github.com/google/cel-go v0.7.3

@@ -29,77 +29,1084 @@ spec:
     plural: eventlisteners
     singular: eventlistener
     shortNames:
-    - el
+      - el
     categories:
-    - tekton
-    - tekton-triggers
+      - tekton
+      - tekton-triggers
   versions:
-  - name: v1beta1
-    served: true
-    storage: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    additionalPrinterColumns:
-    - name: Address
-      type: string
-      jsonPath: .status.address.url
-    - name: Available
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Available')].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Available')].reason"
-    - name: Ready
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Ready')].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Ready')].reason"
-
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
-    additionalPrinterColumns:
-    - name: Address
-      type: string
-      jsonPath: .status.address.url
-    - name: Available
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Available')].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Available')].reason"
-    - name: Ready
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Ready')].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type=='Ready')].reason"
+    - name: v1beta1
+      served: true
+      storage: true
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          description: EventListener exposes a service to accept HTTP event payloads.
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the EventListener from the client
+              type: object
+              properties:
+                labelSelector:
+                  description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                  type: object
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                      type: array
+                      items:
+                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                        type: object
+                        required:
+                          - key
+                          - operator
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                            type: array
+                            items:
+                              type: string
+                    matchLabels:
+                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                      type: object
+                      additionalProperties:
+                        type: string
+                namespaceSelector:
+                  description: NamespaceSelector is a selector for selecting either all namespaces or a list of namespaces.
+                  type: object
+                  properties:
+                    matchNames:
+                      description: List of namespace names.
+                      type: array
+                      items:
+                        type: string
+                resources:
+                  type: object
+                  properties:
+                    customResource:
+                      type: object
+                    kubernetesResource:
+                      type: object
+                      properties:
+                        replicas:
+                          type: integer
+                          format: int32
+                        serviceType:
+                          description: Service Type string describes ingress methods for a service
+                          type: string
+                        spec:
+                          description: WithPodSpec is the shell around the PodSpecable within WithPod.
+                          type: object
+                          properties:
+                            template:
+                              description: PodSpecable is implemented by types containing a PodTemplateSpec in the manner of ReplicaSet, Deployment, DaemonSet, StatefulSet.
+                              type: object
+                              properties:
+                                metadata:
+                                  description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+                                  type: object
+                                  properties:
+                                    annotations:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    finalizers:
+                                      type: array
+                                      items:
+                                        type: string
+                                    labels:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    name:
+                                      type: string
+                                    namespace:
+                                      type: string
+                                spec:
+                                  description: 'Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
+                                  type: object
+                                  required:
+                                    - containers
+                                  properties:
+                                    containers:
+                                      description: List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
+                                      type: array
+                                      items:
+                                        description: A single application container that you want to run within a pod.
+                                        type: object
+                                        properties:
+                                          env:
+                                            description: List of environment variables to set in the container. Cannot be updated.
+                                            type: array
+                                            items:
+                                              description: EnvVar represents an environment variable present in a Container.
+                                              type: object
+                                              required:
+                                                - name
+                                              properties:
+                                                name:
+                                                  description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                                  type: string
+                                                valueFrom:
+                                                  description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                                  type: object
+                                                  properties:
+                                                    secretKeyRef:
+                                                      description: Selects a key of a secret in the pod's namespace
+                                                      type: object
+                                                      required:
+                                                        - key
+                                                      properties:
+                                                        key:
+                                                          description: The key of the secret to select from.  Must be a valid secret key.
+                                                          type: string
+                                                        name:
+                                                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                                          type: string
+                                                        optional:
+                                                          description: Specify whether the Secret or its key must be defined
+                                                          type: boolean
+                                                  x-kubernetes-preserve-unknown-fields: true
+                                          resources:
+                                            description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                            type: object
+                                            properties:
+                                              limits:
+                                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                                type: object
+                                                additionalProperties:
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  anyOf:
+                                                    - type: integer
+                                                    - type: string
+                                                  x-kubernetes-int-or-string: true
+                                              requests:
+                                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                                type: object
+                                                additionalProperties:
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  anyOf:
+                                                    - type: integer
+                                                    - type: string
+                                                  x-kubernetes-int-or-string: true
+                                    nodeSelector:
+                                      description: 'NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node''s labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    serviceAccountName:
+                                      description: 'ServiceAccountName is the name of the ServiceAccount to use to run this pod. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/'
+                                      type: string
+                                    tolerations:
+                                      description: If specified, the pod's tolerations.
+                                      type: array
+                                      items:
+                                        description: The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
+                                        type: object
+                                        properties:
+                                          effect:
+                                            description: Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                                            type: string
+                                          key:
+                                            description: Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                                            type: string
+                                          operator:
+                                            description: Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+                                            type: string
+                                          tolerationSeconds:
+                                            description: TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
+                                            type: integer
+                                            format: int64
+                                          value:
+                                            description: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.
+                                            type: string
+                                  x-kubernetes-preserve-unknown-fields: true
+                serviceAccountName:
+                  type: string
+                triggerGroups:
+                  description: Trigger groups allow for centralized processing of an interceptor chain
+                  type: array
+                  items:
+                    description: EventListenerTriggerGroup defines a group of Triggers that share a common set of interceptors
+                    type: object
+                    required:
+                      - interceptors
+                      - name
+                      - triggerSelector
+                    properties:
+                      interceptors:
+                        type: array
+                        items:
+                          description: TriggerInterceptor provides a hook to intercept and pre-process events
+                          type: object
+                          required:
+                            - ref
+                          properties:
+                            name:
+                              description: Optional name to identify the current interceptor configuration
+                              type: string
+                            params:
+                              description: Params are the params to send to the interceptor
+                              type: array
+                              items:
+                                description: InterceptorParams defines a key-value pair that can be passed on an interceptor
+                                type: object
+                                required:
+                                  - name
+                                  - value
+                                properties:
+                                  name:
+                                    type: string
+                                  value:
+                                    x-kubernetes-preserve-unknown-fields: true
+                            ref:
+                              description: Ref refers to the Interceptor to use
+                              type: object
+                              properties:
+                                apiVersion:
+                                  description: API version of the referent
+                                  type: string
+                                kind:
+                                  description: InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one
+                                  type: string
+                                name:
+                                  description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                  type: string
+                            webhook:
+                              description: WebhookInterceptor refers to an old style webhook interceptor service
+                              type: object
+                              properties:
+                                header:
+                                  description: Header is a group of key-value pairs that can be appended to the interceptor request headers. This allows the interceptor to make decisions specific to an EventListenerTrigger.
+                                  type: array
+                                  items:
+                                    description: Param declares an ArrayOrString to use for the parameter called name.
+                                    type: object
+                                    required:
+                                      - name
+                                      - value
+                                    properties:
+                                      name:
+                                        type: string
+                                      value:
+                                        description: ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.
+                                        type: object
+                                        required:
+                                          - arrayVal
+                                          - stringVal
+                                          - type
+                                        properties:
+                                          arrayVal:
+                                            type: array
+                                            items:
+                                              type: string
+                                          stringVal:
+                                            type: string
+                                          type:
+                                            description: ParamType indicates the type of an input parameter; Used to distinguish between a single string and an array of strings.
+                                            type: string
+                                objectRef:
+                                  description: ObjectRef is a reference to an object that will resolve to a cluster DNS name to use as the EventInterceptor. Either objectRef or url can be specified
+                                  type: object
+                                  properties:
+                                    apiVersion:
+                                      description: API version of the referent.
+                                      type: string
+                                    kind:
+                                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                      type: string
+                                    name:
+                                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                      type: string
+                                url:
+                                  type: string
+                      name:
+                        type: string
+                      triggerSelector:
+                        description: EventListenerTriggerSelector  defines ways to select a group of triggers using their metadata
+                        type: object
+                        properties:
+                          labelSelector:
+                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                            type: object
+                            properties:
+                              matchExpressions:
+                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                type: array
+                                items:
+                                  description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                  type: object
+                                  required:
+                                    - key
+                                    - operator
+                                  properties:
+                                    key:
+                                      description: key is the label key that the selector applies to.
+                                      type: string
+                                    operator:
+                                      description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                      type: string
+                                    values:
+                                      description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                      type: array
+                                      items:
+                                        type: string
+                              matchLabels:
+                                description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                type: object
+                                additionalProperties:
+                                  type: string
+                          namespaceSelector:
+                            description: NamespaceSelector is a selector for selecting either all namespaces or a list of namespaces.
+                            type: object
+                            properties:
+                              matchNames:
+                                description: List of namespace names.
+                                type: array
+                                items:
+                                  type: string
+                triggers:
+                  type: array
+                  items:
+                    description: EventListenerTrigger represents a connection between TriggerBinding, Params, and TriggerTemplate; TriggerBinding provides extracted values for TriggerTemplate to then create resources from. TriggerRef can also be provided instead of TriggerBinding, Interceptors and TriggerTemplate
+                    type: object
+                    properties:
+                      bindings:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            apiversion:
+                              description: APIVersion of the binding ref
+                              type: string
+                            kind:
+                              description: Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
+                              type: string
+                            name:
+                              description: Name is the name of the binding param Mutually exclusive with Ref
+                              type: string
+                            ref:
+                              description: Ref is a reference to a TriggerBinding kind. Mutually exclusive with Name
+                              type: string
+                            value:
+                              description: Value is the value of the binding param. Can contain JSONPath Has to be pointer since "" is a valid value Required if Name is also specified.
+                              type: string
+                      interceptors:
+                        type: array
+                        items:
+                          description: TriggerInterceptor provides a hook to intercept and pre-process events
+                          type: object
+                          required:
+                            - ref
+                          properties:
+                            name:
+                              description: Optional name to identify the current interceptor configuration
+                              type: string
+                            params:
+                              description: Params are the params to send to the interceptor
+                              type: array
+                              items:
+                                description: InterceptorParams defines a key-value pair that can be passed on an interceptor
+                                type: object
+                                required:
+                                  - name
+                                  - value
+                                properties:
+                                  name:
+                                    type: string
+                                  value:
+                                    x-kubernetes-preserve-unknown-fields: true
+                            ref:
+                              description: Ref refers to the Interceptor to use
+                              type: object
+                              properties:
+                                apiVersion:
+                                  description: API version of the referent
+                                  type: string
+                                kind:
+                                  description: InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one
+                                  type: string
+                                name:
+                                  description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                  type: string
+                            webhook:
+                              description: WebhookInterceptor refers to an old style webhook interceptor service
+                              type: object
+                              properties:
+                                header:
+                                  description: Header is a group of key-value pairs that can be appended to the interceptor request headers. This allows the interceptor to make decisions specific to an EventListenerTrigger.
+                                  type: array
+                                  items:
+                                    description: Param declares an ArrayOrString to use for the parameter called name.
+                                    type: object
+                                    required:
+                                      - name
+                                      - value
+                                    properties:
+                                      name:
+                                        type: string
+                                      value:
+                                        description: ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.
+                                        type: object
+                                        required:
+                                          - arrayVal
+                                          - stringVal
+                                          - type
+                                        properties:
+                                          arrayVal:
+                                            type: array
+                                            items:
+                                              type: string
+                                          stringVal:
+                                            type: string
+                                          type:
+                                            description: ParamType indicates the type of an input parameter; Used to distinguish between a single string and an array of strings.
+                                            type: string
+                                objectRef:
+                                  description: ObjectRef is a reference to an object that will resolve to a cluster DNS name to use as the EventInterceptor. Either objectRef or url can be specified
+                                  type: object
+                                  properties:
+                                    apiVersion:
+                                      description: API version of the referent.
+                                      type: string
+                                    kind:
+                                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                      type: string
+                                    name:
+                                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                      type: string
+                                url:
+                                  type: string
+                      name:
+                        type: string
+                      serviceAccountName:
+                        description: ServiceAccountName optionally associates credentials with each trigger; more granular authorization for who is allowed to utilize the associated pipeline vs. defaulting to whatever permissions are associated with the entire EventListener and associated sink facilitates multi-tenant model based scenarios
+                        type: string
+                      template:
+                        type: object
+                        properties:
+                          apiversion:
+                            type: string
+                          ref:
+                            type: string
+                          spec:
+                            description: TriggerTemplateSpec holds the desired state of TriggerTemplate
+                            type: object
+                            properties:
+                              params:
+                                type: array
+                                items:
+                                  description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                                  type: object
+                                  required:
+                                    - name
+                                  properties:
+                                    default:
+                                      description: Default is the value a parameter takes if no input value via a Param is supplied.
+                                      type: string
+                                    description:
+                                      description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                                      type: string
+                                    name:
+                                      description: Name declares the name by which a parameter is referenced.
+                                      type: string
+                              resourcetemplates:
+                                type: array
+                                items:
+                                  description: TriggerResourceTemplate describes a resource to create
+                                  type: object
+                      triggerRef:
+                        type: string
+            status:
+              description: EventListenerStatus holds the status of the EventListener
+              type: object
+              required:
+                - configuration
+              properties:
+                address:
+                  description: "Addressable provides a generic mechanism for a custom resource definition to indicate a destination for message delivery. \n Addressable is the schema for the destination information. This is typically stored in the object's `status`, as this information may be generated by the controller."
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                annotations:
+                  description: Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition transitioned from one status to another. We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic differences (all other things held constant).
+                        type: string
+                        format: date-time
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: Severity with which to treat failures of this type of condition. When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                configuration:
+                  description: Configuration stores configuration for the EventListener service
+                  type: object
+                  required:
+                    - generatedName
+                  properties:
+                    generatedName:
+                      description: GeneratedResourceName is the name given to all resources reconciled by the EventListener
+                      type: string
+                observedGeneration:
+                  description: ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.
+                  type: integer
+                  format: int64
+      additionalPrinterColumns:
+        - name: Address
+          type: string
+          jsonPath: .status.address.url
+        - name: Available
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Available')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Available')].reason"
+        - name: Ready
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].reason"
+    - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          description: EventListener exposes a service to accept HTTP event payloads.
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the EventListener from the client
+              type: object
+              required:
+                - triggers
+              properties:
+                labelSelector:
+                  description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                  type: object
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                      type: array
+                      items:
+                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                        type: object
+                        required:
+                          - key
+                          - operator
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                            type: array
+                            items:
+                              type: string
+                    matchLabels:
+                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                      type: object
+                      additionalProperties:
+                        type: string
+                namespaceSelector:
+                  description: NamespaceSelector is a selector for selecting either all namespaces or a list of namespaces.
+                  type: object
+                  properties:
+                    matchNames:
+                      description: List of namespace names.
+                      type: array
+                      items:
+                        type: string
+                resources:
+                  type: object
+                  properties:
+                    customResource:
+                      type: object
+                    kubernetesResource:
+                      type: object
+                      properties:
+                        replicas:
+                          type: integer
+                          format: int32
+                        serviceType:
+                          description: Service Type string describes ingress methods for a service
+                          type: string
+                        spec:
+                          description: WithPodSpec is the shell around the PodSpecable within WithPod.
+                          type: object
+                          properties:
+                            template:
+                              description: PodSpecable is implemented by types containing a PodTemplateSpec in the manner of ReplicaSet, Deployment, DaemonSet, StatefulSet.
+                              type: object
+                              properties:
+                                metadata:
+                                  description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+                                  type: object
+                                  properties:
+                                    annotations:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    finalizers:
+                                      type: array
+                                      items:
+                                        type: string
+                                    labels:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    name:
+                                      type: string
+                                    namespace:
+                                      type: string
+                                spec:
+                                  description: 'Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
+                                  type: object
+                                  required:
+                                    - containers
+                                  properties:
+                                    containers:
+                                      description: List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
+                                      type: array
+                                      items:
+                                        description: A single application container that you want to run within a pod.
+                                        type: object
+                                        properties:
+                                          env:
+                                            description: List of environment variables to set in the container. Cannot be updated.
+                                            type: array
+                                            items:
+                                              description: EnvVar represents an environment variable present in a Container.
+                                              type: object
+                                              required:
+                                                - name
+                                              properties:
+                                                name:
+                                                  description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                                  type: string
+                                                valueFrom:
+                                                  description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                                  type: object
+                                                  properties:
+                                                    secretKeyRef:
+                                                      description: Selects a key of a secret in the pod's namespace
+                                                      type: object
+                                                      required:
+                                                        - key
+                                                      properties:
+                                                        key:
+                                                          description: The key of the secret to select from.  Must be a valid secret key.
+                                                          type: string
+                                                        name:
+                                                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                                          type: string
+                                                        optional:
+                                                          description: Specify whether the Secret or its key must be defined
+                                                          type: boolean
+                                                  x-kubernetes-preserve-unknown-fields: true
+                                          resources:
+                                            description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                            type: object
+                                            properties:
+                                              limits:
+                                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                                type: object
+                                                additionalProperties:
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  anyOf:
+                                                    - type: integer
+                                                    - type: string
+                                                  x-kubernetes-int-or-string: true
+                                              requests:
+                                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                                type: object
+                                                additionalProperties:
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  anyOf:
+                                                    - type: integer
+                                                    - type: string
+                                                  x-kubernetes-int-or-string: true
+                                    nodeSelector:
+                                      description: 'NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node''s labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    serviceAccountName:
+                                      description: 'ServiceAccountName is the name of the ServiceAccount to use to run this pod. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/'
+                                      type: string
+                                    tolerations:
+                                      description: If specified, the pod's tolerations.
+                                      type: array
+                                      items:
+                                        description: The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
+                                        type: object
+                                        properties:
+                                          effect:
+                                            description: Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                                            type: string
+                                          key:
+                                            description: Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                                            type: string
+                                          operator:
+                                            description: Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+                                            type: string
+                                          tolerationSeconds:
+                                            description: TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
+                                            type: integer
+                                            format: int64
+                                          value:
+                                            description: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.
+                                            type: string
+                                  x-kubernetes-preserve-unknown-fields: true
+                serviceAccountName:
+                  type: string
+                triggers:
+                  type: array
+                  items:
+                    description: EventListenerTrigger represents a connection between TriggerBinding, Params, and TriggerTemplate; TriggerBinding provides extracted values for TriggerTemplate to then create resources from. TriggerRef can also be provided instead of TriggerBinding, Interceptors and TriggerTemplate
+                    type: object
+                    properties:
+                      bindings:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            apiversion:
+                              description: APIVersion of the binding ref
+                              type: string
+                            kind:
+                              description: Kind can only be provided if Ref is also provided. Defaults to TriggerBinding
+                              type: string
+                            name:
+                              description: Name is the name of the binding param Mutually exclusive with Ref
+                              type: string
+                            ref:
+                              description: Ref is a reference to a TriggerBinding kind. Mutually exclusive with Name
+                              type: string
+                            value:
+                              description: Value is the value of the binding param. Can contain JSONPath Has to be pointer since "" is a valid value Required if Name is also specified.
+                              type: string
+                      interceptors:
+                        type: array
+                        items:
+                          description: TriggerInterceptor provides a hook to intercept and pre-process events
+                          type: object
+                          required:
+                            - ref
+                          properties:
+                            bitbucket:
+                              description: BitbucketInterceptor provides a webhook to intercept and pre-process events
+                              type: object
+                              properties:
+                                eventTypes:
+                                  type: array
+                                  items:
+                                    type: string
+                                secretRef:
+                                  description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                                  type: object
+                                  properties:
+                                    secretKey:
+                                      type: string
+                                    secretName:
+                                      type: string
+                            cel:
+                              description: CELInterceptor provides a webhook to intercept and pre-process events
+                              type: object
+                              properties:
+                                filter:
+                                  type: string
+                                overlays:
+                                  type: array
+                                  items:
+                                    description: CELOverlay provides a way to modify the request body using DeprecatedCEL expressions
+                                    type: object
+                                    properties:
+                                      expression:
+                                        type: string
+                                      key:
+                                        type: string
+                            github:
+                              description: Deprecated old fields below
+                              type: object
+                              properties:
+                                eventTypes:
+                                  type: array
+                                  items:
+                                    type: string
+                                secretRef:
+                                  description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                                  type: object
+                                  properties:
+                                    secretKey:
+                                      type: string
+                                    secretName:
+                                      type: string
+                            gitlab:
+                              description: GitLabInterceptor provides a webhook to intercept and pre-process events
+                              type: object
+                              properties:
+                                eventTypes:
+                                  type: array
+                                  items:
+                                    type: string
+                                secretRef:
+                                  description: SecretRef contains the information required to reference a single secret string This is needed because the other secretRef types are not cross-namespace and do not actually contain the "SecretName" field, which allows us to access a single secret value.
+                                  type: object
+                                  properties:
+                                    secretKey:
+                                      type: string
+                                    secretName:
+                                      type: string
+                            name:
+                              description: Optional name to identify the current interceptor configuration
+                              type: string
+                            params:
+                              description: Params are the params to send to the interceptor
+                              type: array
+                              items:
+                                description: InterceptorParams defines a key-value pair that can be passed on an interceptor
+                                type: object
+                                required:
+                                  - name
+                                  - value
+                                properties:
+                                  name:
+                                    type: string
+                                  value:
+                                    x-kubernetes-preserve-unknown-fields: true
+                            ref:
+                              description: Ref refers to the Interceptor to use
+                              type: object
+                              properties:
+                                apiVersion:
+                                  description: API version of the referent
+                                  type: string
+                                kind:
+                                  description: InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one
+                                  type: string
+                                name:
+                                  description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                  type: string
+                            webhook:
+                              description: WebhookInterceptor refers to an old style webhook interceptor service
+                              type: object
+                              properties:
+                                header:
+                                  description: Header is a group of key-value pairs that can be appended to the interceptor request headers. This allows the interceptor to make decisions specific to an EventListenerTrigger.
+                                  type: array
+                                  items:
+                                    description: Param declares an ArrayOrString to use for the parameter called name.
+                                    type: object
+                                    required:
+                                      - name
+                                      - value
+                                    properties:
+                                      name:
+                                        type: string
+                                      value:
+                                        description: ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.
+                                        type: object
+                                        required:
+                                          - arrayVal
+                                          - stringVal
+                                          - type
+                                        properties:
+                                          arrayVal:
+                                            type: array
+                                            items:
+                                              type: string
+                                          stringVal:
+                                            type: string
+                                          type:
+                                            description: ParamType indicates the type of an input parameter; Used to distinguish between a single string and an array of strings.
+                                            type: string
+                                objectRef:
+                                  description: ObjectRef is a reference to an object that will resolve to a cluster DNS name to use as the EventInterceptor. Either objectRef or url can be specified
+                                  type: object
+                                  properties:
+                                    apiVersion:
+                                      description: API version of the referent.
+                                      type: string
+                                    kind:
+                                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                      type: string
+                                    name:
+                                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                      type: string
+                                url:
+                                  type: string
+                      name:
+                        type: string
+                      serviceAccountName:
+                        description: ServiceAccountName optionally associates credentials with each trigger; more granular authorization for who is allowed to utilize the associated pipeline vs. defaulting to whatever permissions are associated with the entire EventListener and associated sink facilitates multi-tenant model based scenarios
+                        type: string
+                      template:
+                        type: object
+                        properties:
+                          apiversion:
+                            type: string
+                          ref:
+                            type: string
+                          spec:
+                            description: TriggerTemplateSpec holds the desired state of TriggerTemplate
+                            type: object
+                            properties:
+                              params:
+                                type: array
+                                items:
+                                  description: ParamSpec defines an arbitrary named  input whose value can be supplied by a `Param`.
+                                  type: object
+                                  required:
+                                    - name
+                                  properties:
+                                    default:
+                                      description: Default is the value a parameter takes if no input value via a Param is supplied.
+                                      type: string
+                                    description:
+                                      description: Description is a user-facing description of the parameter that may be used to populate a UI.
+                                      type: string
+                                    name:
+                                      description: Name declares the name by which a parameter is referenced.
+                                      type: string
+                              resourcetemplates:
+                                type: array
+                                items:
+                                  description: TriggerResourceTemplate describes a resource to create
+                                  type: object
+                      triggerRef:
+                        type: string
+            status:
+              description: EventListenerStatus holds the status of the EventListener
+              type: object
+              required:
+                - configuration
+              properties:
+                address:
+                  description: "Addressable provides a generic mechanism for a custom resource definition to indicate a destination for message delivery. \n Addressable is the schema for the destination information. This is typically stored in the object's `status`, as this information may be generated by the controller."
+                  type: object
+                  properties:
+                    hostname:
+                      type: string
+                    url:
+                      type: string
+                annotations:
+                  description: Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: 'Condition defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the last time the condition transitioned from one status to another. We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic differences (all other things held constant).
+                        type: string
+                        format: date-time
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: Severity with which to treat failures of this type of condition. When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                configuration:
+                  description: Configuration stores configuration for the EventListener service
+                  type: object
+                  required:
+                    - generatedName
+                  properties:
+                    generatedName:
+                      description: GeneratedResourceName is the name given to all resources reconciled by the EventListener
+                      type: string
+                observedGeneration:
+                  description: ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.
+                  type: integer
+                  format: int64
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Address
+          type: string
+          jsonPath: .status.address.url
+        - name: Available
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Available')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Available')].reason"
+        - name: Ready
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type=='Ready')].reason"

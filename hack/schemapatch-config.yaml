@@ -1,0 +1,47 @@
+# This is the config file for schema generation via controller-tool's schemapatch
+# command. It's used by update-schemas.sh.
+k8s.io/api/core/v1.PodSpec:
+  preserveUnknownFields: true # for feature flagged fields
+  allowedFields:
+    - ServiceAccountName
+    - Containers
+    - Tolerations
+    - NodeSelector
+k8s.io/api/core/v1.Container:
+  allowedFields:
+    - Env
+    - Resources
+  fieldOverrides:
+    Name:
+      optional: true
+    Ports:
+      optional: true
+k8s.io/api/core/v1.EnvVar:
+  allowedFields:
+    - Name
+    - ValueFrom
+k8s.io/api/core/v1.EnvVarSource:
+  preserveUnknownFields: true # for feature flagged fields
+  allowedFields:
+    - SecretKeyRef
+k8s.io/api/core/v1.LocalObjectReference:
+  allowedFields:
+    - Name
+k8s.io/api/core/v1.SecretKeySelectorMask:
+  allowedFields:
+    - Key
+    - Optional
+    - LocalObjectReference
+k8s.io/api/core/v1.SecretEnvSource:
+  allowedFields:
+    - Optional
+    - LocalObjectReference
+k8s.io/api/core/v1.ResourceRequirementsMask:
+  allowedFields:
+    - Limits
+    - Requests
+k8s.io/api/core/v1.ObjectReference:
+  allowedFields:
+    - APIVersion
+    - Kind
+    - Name
