@@ -53,14 +53,6 @@ func Test_TriggerBindingValidate(t *testing.T) {
 		name string
 		tb   *v1beta1.TriggerBinding
 	}{{
-		name: "empty",
-		tb: &v1beta1.TriggerBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-		},
-	}, {
 		name: "multiple params",
 		tb: &v1beta1.TriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -133,6 +125,15 @@ func Test_TriggerBindingValidate_error(t *testing.T) {
 		tb     *v1beta1.TriggerBinding
 		errMsg string
 	}{{
+		name: "empty",
+		tb: &v1beta1.TriggerBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+		},
+		errMsg: "missing field(s): spec",
+	}, {
 		name: "duplicate params",
 		tb: &v1beta1.TriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{
