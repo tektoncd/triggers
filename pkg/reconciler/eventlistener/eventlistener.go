@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
-	listers "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"golang.org/x/xerrors"
@@ -78,10 +77,8 @@ type Reconciler struct {
 	TriggersClientSet triggersclientset.Interface
 
 	// listers index properties about resources
-	configmapLister     corev1lister.ConfigMapLister
-	deploymentLister    appsv1lister.DeploymentLister
-	eventListenerLister listers.EventListenerLister
-	serviceLister       corev1lister.ServiceLister
+	deploymentLister appsv1lister.DeploymentLister
+	serviceLister    corev1lister.ServiceLister
 
 	// config accessor for observability/logging/tracing
 	configAcc reconcilersource.ConfigAccessor

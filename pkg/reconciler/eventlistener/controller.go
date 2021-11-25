@@ -32,7 +32,6 @@ import (
 	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	filtereddeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/filtered"
-	configmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap"
 	filteredserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -52,15 +51,13 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 		serviceInformer := filteredserviceinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
 
 		reconciler := &Reconciler{
-			DynamicClientSet:    dynamicclientset,
-			KubeClientSet:       kubeclientset,
-			TriggersClientSet:   triggersclientset,
-			configmapLister:     configmapinformer.Get(ctx).Lister(),
-			deploymentLister:    deploymentInformer.Lister(),
-			eventListenerLister: eventListenerInformer.Lister(),
-			serviceLister:       serviceInformer.Lister(),
-			configAcc:           reconcilersource.WatchConfigurations(ctx, "eventlistener", cmw),
-			config:              config,
+			DynamicClientSet:  dynamicclientset,
+			KubeClientSet:     kubeclientset,
+			TriggersClientSet: triggersclientset,
+			deploymentLister:  deploymentInformer.Lister(),
+			serviceLister:     serviceInformer.Lister(),
+			configAcc:         reconcilersource.WatchConfigurations(ctx, "eventlistener", cmw),
+			config:            config,
 		}
 
 		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {

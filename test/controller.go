@@ -53,7 +53,6 @@ import (
 	duckinformerfake "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakefiltereddeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/filtered/fake"
-	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
 	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	fakefilteredserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/filtered/fake"
@@ -81,7 +80,6 @@ type Resources struct {
 	Triggers               []*v1beta1.Trigger
 	Deployments            []*appsv1.Deployment
 	Services               []*corev1.Service
-	ConfigMaps             []*corev1.ConfigMap
 	Secrets                []*corev1.Secret
 	ServiceAccounts        []*corev1.ServiceAccount
 	Pods                   []*corev1.Pod
@@ -146,7 +144,6 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	trInformer := faketriggerinformer.Get(ctx)
 	deployInformer := fakefiltereddeployinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
 	serviceInformer := fakefilteredserviceinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
-	configMapInformer := fakeconfigmapinformer.Get(ctx)
 	secretInformer := fakesecretinformer.Get(ctx)
 	saInformer := fakeserviceaccountinformer.Get(ctx)
 	podInformer := fakepodinformer.Get(ctx)
@@ -221,15 +218,6 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		}
 
 		if _, err := c.Kube.CoreV1().Services(svc.Namespace).Create(context.Background(), svc, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	for _, cfg := range r.ConfigMaps {
-		if err := configMapInformer.Informer().GetIndexer().Add(cfg); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := c.Kube.CoreV1().ConfigMaps(cfg.Namespace).Create(context.Background(), cfg, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -348,14 +336,6 @@ func GetResourcesFromClients(c Clients) (*Resources, error) {
 		}
 		for _, svc := range svcList.Items {
 			testResources.Services = append(testResources.Services, svc.DeepCopy())
-		}
-		// Add ConfigMaps
-		cfgList, err := c.Kube.CoreV1().ConfigMaps(ns.Name).List(context.Background(), metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, cfg := range cfgList.Items {
-			testResources.ConfigMaps = append(testResources.ConfigMaps, cfg.DeepCopy())
 		}
 		// Add Secrets
 		secretsList, err := c.Kube.CoreV1().Secrets(ns.Name).List(context.Background(), metav1.ListOptions{})
