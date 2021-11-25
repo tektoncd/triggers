@@ -985,6 +985,12 @@ func schema_pkg_apis_triggers_v1beta1_KubernetesResource(ref common.ReferenceCal
 							Format: "",
 						},
 					},
+					"servicePort": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},

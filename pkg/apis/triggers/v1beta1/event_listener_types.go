@@ -80,6 +80,7 @@ type CustomResource struct {
 type KubernetesResource struct {
 	Replicas           *int32             `json:"replicas,omitempty"`
 	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
+	ServicePort        *int32             `json:"servicePort,omitempty"`
 	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
 

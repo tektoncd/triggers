@@ -24,6 +24,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Specifying `TriggerGroups`](#specifying-triggergroups)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
+    - [Specifying `Service` configuration](#specifying-service-configuration)
     - [Specifying `Replicas`](#specifying-replicas)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
     - [Contract for the `CustomResource` object](#contract-for-the-customresource-object)
@@ -281,6 +282,7 @@ spec:
   resources:
     kubernetesResource:
       serviceType: NodePort
+      servicePort: 80
       spec:
         template:
           metadata:
@@ -297,6 +299,18 @@ spec:
               value: value
               operator: Equal
               effect: NoSchedule
+```
+
+#### Specifying `Service` configuration
+
+The type and port for the `Service` created for the `EventListener` can be configured via the `ServiceType` and `ServicePort`
+specifications respectively. By default, the `Service` type is set to `ClusterIP` and port is set to `8080`.
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+      servicePort: 8128
 ```
 
 #### Specifying `Replicas`
