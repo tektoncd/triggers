@@ -120,12 +120,6 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Name:      "my-service2",
 		},
 	}
-	configMap1 := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "my-config-map-1",
-		},
-	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -249,13 +243,6 @@ func TestGetResourcesFromClients(t *testing.T) {
 			Resources: Resources{
 				Namespaces: []*corev1.Namespace{nsFoo, nsTektonPipelines},
 				Services:   []*corev1.Service{service1},
-			},
-		},
-		{
-			name: "only ConfigMaps (and namespaces)",
-			Resources: Resources{
-				Namespaces: []*corev1.Namespace{nsFoo, nsTektonPipelines},
-				ConfigMaps: []*corev1.ConfigMap{configMap1},
 			},
 		}, {
 			name: "only secrets (and namespaces)",
