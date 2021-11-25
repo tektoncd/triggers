@@ -3835,6 +3835,16 @@ Kubernetes core/v1.ServiceType
 </tr>
 <tr>
 <td>
+<code>servicePort</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>spec</code><br/>
 <em>
 <a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#WithPodSpec">

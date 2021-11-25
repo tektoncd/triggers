@@ -489,6 +489,11 @@ func (in *KubernetesResource) DeepCopyInto(out *KubernetesResource) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.ServicePort != nil {
+		in, out := &in.ServicePort, &out.ServicePort
+		*out = new(int32)
+		**out = **in
+	}
 	in.WithPodSpec.DeepCopyInto(&out.WithPodSpec)
 	return
 }

@@ -1,0 +1,18 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: listener-serviceconfig
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: foo-trig
+      bindings:
+        - ref: pipeline-binding
+        - ref: message-binding
+      template:
+        ref: pipeline-template
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+      servicePort: 5050
