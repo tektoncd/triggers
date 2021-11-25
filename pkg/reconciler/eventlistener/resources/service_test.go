@@ -68,11 +68,7 @@ func TestService(t *testing.T) {
 		},
 	}, {
 		name: "EventListener with type: LoadBalancer",
-		el: makeEL(func(el *v1beta1.EventListener) {
-			el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
-				ServiceType: "LoadBalancer",
-			}
-		}, withStatus),
+		el:   makeEL(withServiceTypeLoadBalancer, withStatus),
 		want: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      generatedResourceName,
@@ -90,6 +86,35 @@ func TestService(t *testing.T) {
 					Name:     eventListenerServicePortName,
 					Protocol: corev1.ProtocolTCP,
 					Port:     int32(*config.Port),
+					TargetPort: intstr.IntOrString{
+						IntVal: int32(eventListenerContainerPort),
+					},
+				}, metricsPort},
+				Selector: map[string]string{
+					"app.kubernetes.io/managed-by": "EventListener",
+					"app.kubernetes.io/part-of":    "Triggers",
+					"eventlistener":                eventListenerName,
+				},
+			},
+		}}, {
+		name: "EventListener with service port: 80",
+		el:   makeEL(withServicePort80, withStatus),
+		want: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      generatedResourceName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "EventListener",
+					"app.kubernetes.io/part-of":    "Triggers",
+					"eventlistener":                eventListenerName,
+				},
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{{
+					Name:     eventListenerServicePortName,
+					Protocol: corev1.ProtocolTCP,
+					Port:     int32(80),
 					TargetPort: intstr.IntOrString{
 						IntVal: int32(eventListenerContainerPort),
 					},
@@ -118,6 +143,7 @@ func TestServicePort(t *testing.T) {
 		el                  *v1beta1.EventListener
 		config              Config
 		expectedServicePort corev1.ServicePort
+		expectedServiceType corev1.ServiceType
 	}{{
 		name:   "EventListener with status",
 		el:     makeEL(withStatus),
@@ -174,6 +200,22 @@ func TestServicePort(t *testing.T) {
 				IntVal: int32(eventListenerContainerPort),
 			},
 		},
+	}, {
+		name: "EventListener with ServicePort: 80",
+		el:   makeEL(withStatus, withServicePort80),
+		config: *MakeConfig(func(d *Config) {
+			p := 80
+			d.Port = &p
+		}),
+		expectedServicePort: corev1.ServicePort{
+			Name:     eventListenerServicePortName,
+			Protocol: corev1.ProtocolTCP,
+			Port:     int32(80),
+			TargetPort: intstr.IntOrString{
+				IntVal: int32(eventListenerContainerPort),
+			},
+		},
+		expectedServiceType: "LoadBalancer",
 	}}
 
 	for _, tt := range tests {

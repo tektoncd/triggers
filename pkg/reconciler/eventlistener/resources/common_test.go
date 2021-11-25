@@ -87,3 +87,16 @@ func withTLSPort(el *v1beta1.EventListener) {
 		c.Port = &x
 	})))
 }
+
+func withServiceTypeLoadBalancer(el *v1beta1.EventListener) {
+	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+		ServiceType: "LoadBalancer",
+	}
+}
+
+func withServicePort80(el *v1beta1.EventListener) {
+	port := int32(80)
+	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+		ServicePort: &port,
+	}
+}
