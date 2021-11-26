@@ -18,7 +18,6 @@ package bitbucket
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"google.golang.org/grpc/codes"
@@ -80,7 +79,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 		secretToken, err := interceptors.GetSecretToken(nil, w.SecretLister, p.SecretRef, ns)
 		if err != nil {
-			return interceptors.Failf(codes.Internal, fmt.Sprintf("error getting secret: %v", err))
+			return interceptors.Failf(codes.Internal, "error getting secret: %v", err)
 		}
 
 		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
