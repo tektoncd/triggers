@@ -20,12 +20,11 @@ import (
 	"context"
 	"errors"
 
-	"google.golang.org/grpc/codes"
-
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
@@ -84,11 +83,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secret, err := w.SecretLister.Secrets(ns).Get(p.SecretRef.SecretName)
+		secretToken, err := interceptors.GetSecretToken(nil, w.SecretLister, p.SecretRef, ns)
 		if err != nil {
 			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
 		}
-		secretToken := secret.Data[p.SecretRef.SecretKey]
 
 		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
 			return interceptors.Fail(codes.FailedPrecondition, err.Error())
