@@ -19,7 +19,6 @@ package gitlab
 import (
 	"context"
 	"crypto/subtle"
-	"fmt"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -79,7 +78,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 		secretToken, err := interceptors.GetSecretToken(nil, w.SecretLister, p.SecretRef, ns)
 		if err != nil {
-			return interceptors.Fail(codes.Internal, fmt.Sprintf("error getting secret: %v", err))
+			return interceptors.Failf(codes.Internal, "error getting secret: %v", err)
 		}
 
 		// Make sure to use a constant time comparison here.
