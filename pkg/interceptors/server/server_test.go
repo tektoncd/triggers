@@ -15,9 +15,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestServer_ServeHTTP(t *testing.T) {
@@ -73,7 +73,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
 			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())
@@ -133,7 +133,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
 			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())

@@ -62,7 +62,6 @@ import (
 	"knative.dev/pkg/apis"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	"knative.dev/pkg/ptr"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const (
@@ -123,10 +122,10 @@ var (
 
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic client. The returned client is used to
 // create the fake resources and can be used to check if the correct resources were created.
-func getSinkAssets(t *testing.T, resources test.Resources, elName string, webhookInterceptor http.Handler) (Sink, *fakedynamic.FakeDynamicClient) {
+func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInterceptor http.Handler) (Sink, *fakedynamic.FakeDynamicClient) {
 	t.Helper()
-	ctx, _ := rtesting.SetupFakeContext(t)
-	clients := test.SeedResources(t, ctx, resources)
+	ctx, _ := test.SetupFakeContext(t)
+	clients := test.SeedResources(t, ctx, res)
 
 	logger := zaptest.NewLogger(t)
 

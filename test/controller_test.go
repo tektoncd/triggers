@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestGetResourcesFromClients(t *testing.T) {
@@ -274,7 +273,7 @@ func TestGetResourcesFromClients(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := SetupFakeContext(t)
 			clients := SeedResources(t, ctx, tt.Resources)
 			actualResources, err := GetResourcesFromClients(clients)
 			if err != nil {

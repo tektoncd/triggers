@@ -37,11 +37,13 @@ import (
 	faketriggerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/trigger/fake"
 	faketriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding/fake"
 	faketriggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate/fake"
+	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -50,16 +52,21 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckinformerfake "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	fakedeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake"
+	fakefiltereddeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/filtered/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
 	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
-	fakeserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
+	fakefilteredserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/filtered/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
+	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	fakedynamicclientset "knative.dev/pkg/injection/clients/dynamicclient/fake"
+	rtesting "knative.dev/pkg/reconciler/testing"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
+
+	// Import for creating fake filtered factory in the test
+	_ "knative.dev/pkg/client/injection/kube/informers/factory/filtered/fake"
 )
 
 // Resources represents the desired state of the system (i.e. existing resources)
@@ -109,6 +116,12 @@ func init() {
 	})
 }
 
+func SetupFakeContext(t testing.TB) (context.Context, []controller.Informer) {
+	return rtesting.SetupFakeContext(t, func(ctx context.Context) context.Context {
+		return filteredinformerfactory.WithSelectors(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
+	})
+}
+
 // SeedResources returns Clients populated with the given Resources
 // nolint: revive
 func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
@@ -131,8 +144,8 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	ttInformer := faketriggertemplateinformer.Get(ctx)
 	tbInformer := faketriggerbindinginformer.Get(ctx)
 	trInformer := faketriggerinformer.Get(ctx)
-	deployInformer := fakedeployinformer.Get(ctx)
-	serviceInformer := fakeserviceinformer.Get(ctx)
+	deployInformer := fakefiltereddeployinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
+	serviceInformer := fakefilteredserviceinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
 	configMapInformer := fakeconfigmapinformer.Get(ctx)
 	secretInformer := fakesecretinformer.Get(ctx)
 	saInformer := fakeserviceaccountinformer.Get(ctx)

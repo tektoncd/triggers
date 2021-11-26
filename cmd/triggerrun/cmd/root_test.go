@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/ptr"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestTrigger_Error(t *testing.T) {
@@ -253,7 +252,7 @@ func Test_processTriggerSpec(t *testing.T) {
 
 func getFakeTriggersClient(t *testing.T, resources test.Resources) (kubernetes.Interface, triggersclientset.Interface) {
 	t.Helper()
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := test.SetupFakeContext(t)
 	clients := test.SeedResources(t, ctx, resources)
 	return clients.Kube, clients.Triggers
 }

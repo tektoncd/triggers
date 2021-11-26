@@ -35,10 +35,10 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/go-cmp/cmp"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const testNS = "testing-ns"
@@ -278,7 +278,7 @@ func TestInterceptor_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			logger := zaptest.NewLogger(t)
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			secretInformer := fakeSecretInformer.Get(ctx)
 			if err := secretInformer.Informer().GetIndexer().Add(makeSecret()); err != nil {
 				t.Fatal(err)
@@ -621,7 +621,7 @@ func TestExpressionEvaluation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(rt)
+			ctx, _ := test.SetupFakeContext(rt)
 			secretInformer := fakeSecretInformer.Get(ctx)
 			if tt.secret != nil {
 				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
@@ -750,7 +750,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			secretInformer := fakeSecretInformer.Get(ctx)
 			ns := testNS
 			if tt.secretNS != "" {

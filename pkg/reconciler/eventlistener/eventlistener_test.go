@@ -48,7 +48,6 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -114,7 +113,7 @@ func compareEnv(x, y corev1.EnvVar) bool {
 // given test.Resources r where r represents the state of the system
 func getEventListenerTestAssets(t *testing.T, r test.Resources, c *resources.Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := test.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	kubeClient := fakekubeclient.Get(ctx)
 	// Fake client reactor chain ignores non handled reactors until v1.40.0

@@ -41,7 +41,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const testNS = "testing-ns"
@@ -307,7 +306,7 @@ func TestGetSecretToken(t *testing.T) {
 			req := &http.Request{}
 			req = req.WithContext(context.WithValue(req.Context(), interceptors.RequestCacheKey, tt.cache))
 
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			secretInformer := fakeSecretInformer.Get(ctx)
 			secretRef := triggersv1.SecretRef{
 				SecretKey:  "token",
