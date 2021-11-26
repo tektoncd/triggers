@@ -27,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestInterceptor_Process_ShouldContinue(t *testing.T) {
@@ -102,7 +101,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
 			secretInformer := fakeSecretInformer.Get(ctx)
 
@@ -263,7 +262,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := test.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
 			secretInformer := fakeSecretInformer.Get(ctx)
 
@@ -309,7 +308,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 }
 
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := test.SetupFakeContext(t)
 	logger := zaptest.NewLogger(t)
 	secretInformer := fakeSecretInformer.Get(ctx)
 

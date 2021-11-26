@@ -23,6 +23,8 @@ import (
 	elresources "github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
@@ -68,8 +70,10 @@ func main() {
 		SystemNamespace:      systemNamespace,
 	}
 
+	ctx := injection.WithNamespaceScope(signals.NewContext(), corev1.NamespaceAll)
+	ctx = filteredinformerfactory.WithSelectors(ctx, labels.FormatLabels(elresources.DefaultStaticResourceLabels))
 	sharedmain.MainWithConfig(
-		injection.WithNamespaceScope(signals.NewContext(), corev1.NamespaceAll),
+		ctx,
 		ControllerLogKey,
 		cfg,
 		eventlistener.NewController(c),

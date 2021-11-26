@@ -26,13 +26,14 @@ import (
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	duckinformer "knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	deployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
+	filtereddeployinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/filtered"
 	configmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap"
-	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
+	filteredserviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/clients/dynamicclient"
@@ -47,8 +48,8 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 		kubeclientset := kubeclient.Get(ctx)
 		triggersclientset := triggersclient.Get(ctx)
 		eventListenerInformer := eventlistenerinformer.Get(ctx)
-		deploymentInformer := deployinformer.Get(ctx)
-		serviceInformer := serviceinformer.Get(ctx)
+		deploymentInformer := filtereddeployinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
+		serviceInformer := filteredserviceinformer.Get(ctx, labels.FormatLabels(resources.DefaultStaticResourceLabels))
 
 		reconciler := &Reconciler{
 			DynamicClientSet:    dynamicclientset,
