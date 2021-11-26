@@ -77,11 +77,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secret, err := w.SecretLister.Secrets(ns).Get(p.SecretRef.SecretName)
+		secretToken, err := interceptors.GetSecretToken(nil, w.SecretLister, p.SecretRef, ns)
 		if err != nil {
 			return interceptors.Fail(codes.Internal, fmt.Sprintf("error getting secret: %v", err))
 		}
-		secretToken := secret.Data[p.SecretRef.SecretKey]
 
 		// Make sure to use a constant time comparison here.
 		if subtle.ConstantTimeCompare([]byte(header), secretToken) == 0 {

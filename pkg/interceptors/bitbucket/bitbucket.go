@@ -78,11 +78,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			return interceptors.Fail(codes.InvalidArgument, "no X-Hub-Signature header set")
 		}
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secret, err := w.SecretLister.Secrets(ns).Get(p.SecretRef.SecretName)
+		secretToken, err := interceptors.GetSecretToken(nil, w.SecretLister, p.SecretRef, ns)
 		if err != nil {
 			return interceptors.Failf(codes.Internal, fmt.Sprintf("error getting secret: %v", err))
 		}
-		secretToken := secret.Data[p.SecretRef.SecretKey]
 
 		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
 			return interceptors.Failf(codes.FailedPrecondition, err.Error())
