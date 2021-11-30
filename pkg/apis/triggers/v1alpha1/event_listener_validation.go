@@ -56,6 +56,10 @@ func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
+	if s.LabelSelector == nil && len(s.NamespaceSelector.MatchNames) == 0 && len(s.Triggers) == 0 {
+		return apis.ErrMissingOneOf("spec.labelSelector", "spec.namespaceSelector", "spec.triggers")
+	}
+
 	for i, trigger := range s.Triggers {
 		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
 	}
