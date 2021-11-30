@@ -392,6 +392,11 @@ func Test_EventListenerValidate(t *testing.T) {
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: myObjectMeta,
 			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					Template: &triggersv1beta1.EventListenerTemplate{
+						Ref: ptr.String("tt"),
+					},
+				}},
 				Resources: triggersv1beta1.Resources{
 					KubernetesResource: &triggersv1beta1.KubernetesResource{
 						Replicas: ptr.Int32(1),
@@ -1286,6 +1291,16 @@ func TestEventListenerValidate_error(t *testing.T) {
 				},
 			},
 			wantErr: apis.ErrMissingField("spec.triggerGroups[0].interceptors"),
+		}, {
+			name: "empty spec for eventlistener",
+			ctx:  ctxWithAlphaFieldsEnabled,
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+			},
+			wantErr: apis.ErrMissingOneOf("spec.labelSelector", "spec.namespaceSelector", "spec.triggerGroups", "spec.triggers"),
 		}}
 
 	for _, tc := range tests {
