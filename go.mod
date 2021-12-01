@@ -35,9 +35,3 @@ require (
 	knative.dev/serving v0.25.0
 	sigs.k8s.io/yaml v1.2.0
 )
-
-replace (
-	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.13.4
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
-)
