@@ -44,10 +44,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	emptyExtensions = map[string]interface{}{}
-)
-
 // Sink defines the sink resource for processing incoming events for the
 // EventListener.
 type Sink struct {
@@ -136,6 +132,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		go func(t triggersv1.Trigger) {
 			defer r.WGProcessTriggers.Done()
 			localRequest := request.Clone(request.Context())
+			emptyExtensions := make(map[string]interface{})
 			r.processTrigger(t, localRequest, event, eventID, log, emptyExtensions)
 		}(*t)
 	}
