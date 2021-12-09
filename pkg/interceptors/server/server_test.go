@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
@@ -79,7 +80,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
-			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.NewListerSecretGetter(secretLister), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -139,7 +140,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			secretLister := fakeSecretInformer.Get(ctx).Lister()
 
-			server, err := NewWithCoreInterceptors(secretLister, logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.NewListerSecretGetter(secretLister), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}

@@ -32,14 +32,12 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 	celext "github.com/google/cel-go/ext"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	corev1lister "k8s.io/client-go/listers/core/v1"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 )
 
 var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
@@ -48,7 +46,7 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	SecretLister     corev1lister.SecretLister
+	SecretGetter     interceptors.SecretGetter
 	Logger           *zap.SugaredLogger
 	CEL              *triggersv1.CELInterceptor
 	TriggerNamespace string
@@ -61,9 +59,9 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(sl corev1lister.SecretLister, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
-		SecretLister: sl,
+		SecretGetter: sg,
 		Logger:       l,
 	}
 }
@@ -91,10 +89,10 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(ns string, sl corev1lister.SecretLister) (*cel.Env, error) {
+func makeCelEnv(ns string, sg interceptors.SecretGetter) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
-		Triggers(ns, sl),
+		Triggers(ns, sg),
 		celext.Strings(),
 		celext.Encoders(),
 		cel.Declarations(
@@ -126,7 +124,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-	env, err := makeCelEnv(ns, w.SecretLister)
+	env, err := makeCelEnv(ns, w.SecretGetter)
 	if err != nil {
 		return interceptors.Failf(codes.Internal, "error creating cel environment: %v", err)
 	}

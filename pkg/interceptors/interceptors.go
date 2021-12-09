@@ -41,14 +41,28 @@ type Interceptor interface {
 	ExecuteTrigger(req *http.Request) (*http.Response, error)
 }
 
-// GetSecretToken queries Kubernetes for the given secret reference. We use this function
+type SecretGetter interface {
+	Get(triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error)
+}
+
+type listerSecretGetter struct {
+	lister corev1lister.SecretLister
+}
+
+func NewListerSecretGetter(lister corev1lister.SecretLister) SecretGetter {
+	return &listerSecretGetter{
+		lister: lister,
+	}
+}
+
+// Get queries Kubernetes for the given secret reference. We use this function
 // to resolve secret material like GitHub webhook secrets, and call it once for every
 // trigger that references it.
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
-func GetSecretToken(sl corev1lister.SecretLister, sr *triggersv1beta1.SecretRef, triggerNS string) ([]byte, error) {
-	secret, err := sl.Secrets(triggerNS).Get(sr.SecretName)
+func (g *listerSecretGetter) Get(triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error) {
+	secret, err := g.lister.Secrets(triggerNS).Get(sr.SecretName)
 	if err != nil {
 		return nil, err
 	}

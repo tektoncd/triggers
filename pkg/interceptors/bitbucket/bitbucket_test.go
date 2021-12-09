@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
@@ -106,7 +107,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 			secretInformer := fakeSecretInformer.Get(ctx)
 
 			w := &Interceptor{
-				SecretLister: secretInformer.Lister(),
+				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
 				Logger:       logger.Sugar(),
 			}
 
@@ -267,7 +268,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 			secretInformer := fakeSecretInformer.Get(ctx)
 
 			w := &Interceptor{
-				SecretLister: secretInformer.Lister(),
+				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
 				Logger:       logger.Sugar(),
 			}
 
@@ -313,7 +314,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	secretInformer := fakeSecretInformer.Get(ctx)
 
 	w := &Interceptor{
-		SecretLister: secretInformer.Lister(),
+		SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
 		Logger:       logger.Sugar(),
 	}
 

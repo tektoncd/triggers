@@ -35,6 +35,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/go-cmp/cmp"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -284,7 +285,7 @@ func TestInterceptor_Process(t *testing.T) {
 				t.Fatal(err)
 			}
 			w := &Interceptor{
-				SecretLister: secretInformer.Lister(),
+				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
@@ -628,7 +629,7 @@ func TestExpressionEvaluation(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			env, err := makeCelEnv(testNS, secretInformer.Lister())
+			env, err := makeCelEnv(testNS, interceptors.NewListerSecretGetter(secretInformer.Lister()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -759,7 +760,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				}
 				ns = tt.secretNS
 			}
-			env, err := makeCelEnv(ns, secretInformer.Lister())
+			env, err := makeCelEnv(ns, interceptors.NewListerSecretGetter(secretInformer.Lister()))
 			if err != nil {
 				t.Fatal(err)
 			}

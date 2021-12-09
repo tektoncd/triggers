@@ -20,25 +20,23 @@ import (
 	"context"
 	"net/http"
 
-	"google.golang.org/grpc/codes"
-	corev1lister "k8s.io/client-go/listers/core/v1"
-
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 )
 
 var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 
 type Interceptor struct {
-	SecretLister corev1lister.SecretLister
+	SecretGetter interceptors.SecretGetter
 	Logger       *zap.SugaredLogger
 }
 
-func NewInterceptor(sl corev1lister.SecretLister, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
-		SecretLister: sl,
+		SecretGetter: sg,
 		Logger:       l,
 	}
 }
@@ -77,7 +75,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			return interceptors.Fail(codes.InvalidArgument, "no X-Hub-Signature header set")
 		}
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secretToken, err := interceptors.GetSecretToken(w.SecretLister, p.SecretRef, ns)
+		secretToken, err := w.SecretGetter.Get(ns, p.SecretRef)
 		if err != nil {
 			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
 		}

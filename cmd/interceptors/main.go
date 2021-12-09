@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"go.uber.org/zap"
 	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
@@ -61,7 +62,7 @@ func main() {
 	}()
 
 	secretLister := secretInformer.Get(ctx).Lister()
-	service, err := server.NewWithCoreInterceptors(secretLister, logger)
+	service, err := server.NewWithCoreInterceptors(interceptors.NewListerSecretGetter(secretLister), logger)
 	if err != nil {
 		log.Printf("failed to initialize core interceptors: %s", err)
 		return
