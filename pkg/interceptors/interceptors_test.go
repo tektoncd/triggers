@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -38,13 +37,9 @@ import (
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 )
-
-const testNS = "testing-ns"
 
 func TestGetInterceptorParams(t *testing.T) {
 	for _, tc := range []struct {
@@ -282,63 +277,6 @@ func TestGetInterceptorParams_Error(t *testing.T) {
 				t.Fatalf("UnmarshalParams() expected err to contain %s but got %s", tc.wantErrMsg, err.Error())
 			}
 		})
-	}
-}
-
-func TestGetSecretToken(t *testing.T) {
-	tests := []struct {
-		name   string
-		cache  map[string]interface{}
-		wanted []byte
-	}{{
-		name:   "no matching cache entry exists",
-		cache:  make(map[string]interface{}),
-		wanted: []byte("secret from API"),
-	}, {
-		name: "a matching cache entry exists",
-		cache: map[string]interface{}{
-			fmt.Sprintf("secret/%s/test-secret/token", testNS): []byte("secret from cache"),
-		},
-		wanted: []byte("secret from cache"),
-	}}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(rt *testing.T) {
-			req := &http.Request{}
-			req = req.WithContext(context.WithValue(req.Context(), interceptors.RequestCacheKey, tt.cache))
-
-			ctx, _ := test.SetupFakeContext(t)
-			secretInformer := fakeSecretInformer.Get(ctx)
-			secretRef := triggersv1.SecretRef{
-				SecretKey:  "token",
-				SecretName: "test-secret",
-			}
-
-			if err := secretInformer.Informer().GetIndexer().Add(makeSecret("secret from API")); err != nil {
-				t.Fatal(err)
-			}
-
-			secret, err := interceptors.GetSecretToken(req, secretInformer.Lister(), &secretRef, testNS)
-			if err != nil {
-				rt.Error(err)
-			}
-
-			if diff := cmp.Diff(tt.wanted, secret); diff != "" {
-				rt.Errorf("secret value (-want, +got) = %s", diff)
-			}
-		})
-	}
-}
-
-func makeSecret(secretText string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNS,
-			Name:      "test-secret",
-		},
-		Data: map[string][]byte{
-			"token": []byte(secretText),
-		},
 	}
 }
 
