@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
@@ -17,7 +18,6 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"go.uber.org/zap"
-	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 type Server struct {
@@ -33,12 +33,12 @@ func (is *Server) RegisterInterceptor(path string, interceptor triggersv1.Interc
 	is.interceptors[path] = interceptor
 }
 
-func NewWithCoreInterceptors(sl corev1lister.SecretLister, l *zap.SugaredLogger) (*Server, error) {
+func NewWithCoreInterceptors(sg interceptors.SecretGetter, l *zap.SugaredLogger) (*Server, error) {
 	i := map[string]triggersv1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(sl, l),
-		"cel":       cel.NewInterceptor(sl, l),
-		"github":    github.NewInterceptor(sl, l),
-		"gitlab":    gitlab.NewInterceptor(sl, l),
+		"bitbucket": bitbucket.NewInterceptor(sg, l),
+		"cel":       cel.NewInterceptor(sg, l),
+		"github":    github.NewInterceptor(sg, l),
+		"gitlab":    gitlab.NewInterceptor(sg, l),
 	}
 
 	for k, v := range i {
