@@ -326,7 +326,7 @@ func makeCompareSecret(defaultNS string, sl corev1lister.SecretLister) functions
 		// GetSecretToken uses request as a cache key to cache secret lookup. Since multiple
 		// triggers execute concurrently in separate goroutines, this cache is not very effective
 		// for this use case
-		secretToken, err := interceptors.GetSecretToken(nil, sl, secretRef, string(secretNS))
+		secretToken, err := interceptors.GetSecretToken(sl, secretRef, string(secretNS))
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

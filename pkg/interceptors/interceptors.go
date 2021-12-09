@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path"
 
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -41,45 +40,18 @@ type Interceptor interface {
 	ExecuteTrigger(req *http.Request) (*http.Response, error)
 }
 
-type key string
-
-const RequestCacheKey key = "interceptors.RequestCache"
-
-func getCache(req *http.Request) map[string]interface{} {
-	if cache, ok := req.Context().Value(RequestCacheKey).(map[string]interface{}); ok {
-		return cache
-	}
-
-	return make(map[string]interface{})
-}
-
 // GetSecretToken queries Kubernetes for the given secret reference. We use this function
 // to resolve secret material like GitHub webhook secrets, and call it once for every
 // trigger that references it.
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
-func GetSecretToken(req *http.Request, sl corev1lister.SecretLister, sr *triggersv1beta1.SecretRef, triggerNS string) ([]byte, error) {
-	var cache map[string]interface{}
-
-	cacheKey := path.Join("secret", triggerNS, sr.SecretName, sr.SecretKey)
-	if req != nil {
-		cache = getCache(req)
-		if secretValue, ok := cache[cacheKey]; ok {
-			return secretValue.([]byte), nil
-		}
-	}
-
+func GetSecretToken(sl corev1lister.SecretLister, sr *triggersv1beta1.SecretRef, triggerNS string) ([]byte, error) {
 	secret, err := sl.Secrets(triggerNS).Get(sr.SecretName)
 	if err != nil {
 		return nil, err
 	}
-
 	secretValue := secret.Data[sr.SecretKey]
-	if req != nil {
-		cache[cacheKey] = secret.Data[sr.SecretKey]
-	}
-
 	return secretValue, nil
 }
 
