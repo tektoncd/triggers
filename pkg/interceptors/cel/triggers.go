@@ -34,7 +34,6 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
-	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 // Triggers returns a cel.EnvOption to configure extended functions for
@@ -160,13 +159,13 @@ import (
 // 		body.jsonObjectOrList.marshalJSON()
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, sl corev1lister.SecretLister) cel.EnvOption {
-	return cel.Lib(triggersLib{defaultNS: ns, secretLister: sl})
+func Triggers(ns string, sg interceptors.SecretGetter) cel.EnvOption {
+	return cel.Lib(triggersLib{defaultNS: ns, secretGetter: sg})
 }
 
 type triggersLib struct {
 	defaultNS    string
-	secretLister corev1lister.SecretLister
+	secretGetter interceptors.SecretGetter
 }
 
 func (triggersLib) CompileOptions() []cel.EnvOption {
@@ -231,7 +230,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.defaultNS, t.secretLister)},
+				Function: makeCompareSecret(t.defaultNS, t.secretGetter)},
 			&functions.Overload{
 				Operator: "marshalJSON",
 				Unary:    marshalJSON},
@@ -299,7 +298,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, sl corev1lister.SecretLister) functions.FunctionOp {
+func makeCompareSecret(defaultNS string, sg interceptors.SecretGetter) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -326,7 +325,7 @@ func makeCompareSecret(defaultNS string, sl corev1lister.SecretLister) functions
 		// GetSecretToken uses request as a cache key to cache secret lookup. Since multiple
 		// triggers execute concurrently in separate goroutines, this cache is not very effective
 		// for this use case
-		secretToken, err := interceptors.GetSecretToken(sl, secretRef, string(secretNS))
+		secretToken, err := sg.Get(string(secretNS), secretRef)
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}

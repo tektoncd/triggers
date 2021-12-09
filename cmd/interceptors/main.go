@@ -28,6 +28,7 @@ import (
 	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -81,7 +82,7 @@ func main() {
 	}
 
 	secretLister := secretInformer.Get(ctx).Lister()
-	service, err := server.NewWithCoreInterceptors(secretLister, logger)
+	service, err := server.NewWithCoreInterceptors(interceptors.NewListerSecretGetter(secretLister), logger)
 	if err != nil {
 		logger.Errorf("failed to initialize core interceptors: %s", err)
 		return
