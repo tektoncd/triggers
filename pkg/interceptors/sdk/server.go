@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"strings"
 	"time"
@@ -26,9 +27,11 @@ type Server struct {
 	interceptors map[string]triggersv1.InterceptorInterface
 }
 
-func NewWithInterceptors(k kubernetes.Interface, l *zap.SugaredLogger, i map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface) (*Server, error) {
+// InterceptorFunc returns a new Interceptor
+type InterceptorFunc = func(p kubernetes.Interface, logger *zap.SugaredLogger)triggersv1.InterceptorInterface
 
-	interceptors := map[string]v1alpha1.InterceptorInterface{}
+func NewWithInterceptors(k kubernetes.Interface, l *zap.SugaredLogger, i map[string]InterceptorFunc) (*Server, error) {
+	interceptors := map[string]triggersv1.InterceptorInterface{}
 	for key, v := range i {
 		interceptors[key] = v(k, l)
 		if interceptors[key] == nil {

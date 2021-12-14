@@ -46,8 +46,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 	"github.com/tektoncd/triggers/pkg/interceptors/sdk"
-	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/signals"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )

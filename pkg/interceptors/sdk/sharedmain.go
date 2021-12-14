@@ -8,16 +8,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/logging"
 )
 
-func InterceptorMainWithConfig(ctx context.Context, component string, interceptors map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface) {
-	cfg := sharedmain.ParseAndGetConfigOrDie()
+func InterceptorMainWithConfig(ctx context.Context, component string, interceptors map[string]InterceptorFunc) {
+	cfg := injection.ParseAndGetRESTConfigOrDie()
 	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)

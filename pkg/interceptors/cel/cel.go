@@ -38,6 +38,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
+
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 )
 
 // Interceptor implements a CEL based interceptor that uses CEL expressions
@@ -59,7 +63,7 @@ var (
 // NewInterceptor creates a prepopulated Interceptor.
 func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
-		SecretGetter: sg,
+		//SecretLister: sl,
 		Logger:       l,
 	}
 }

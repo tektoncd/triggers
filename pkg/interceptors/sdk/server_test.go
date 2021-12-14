@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"io/ioutil"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/grpc/codes"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -80,7 +83,8 @@ func TestServer_ServeHTTP(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+
+			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]InterceptorFunc{
 				"cel": cel.NewInterceptor,
 			})
 			if err != nil {
@@ -141,7 +145,8 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+
+			server, err := NewWithInterceptors(kubeClient, logger.Sugar(), map[string]InterceptorFunc {
 				"cel": cel.NewInterceptor,
 			})
 			if err != nil {

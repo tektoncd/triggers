@@ -24,6 +24,8 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
+	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 type Interceptor struct {
@@ -33,7 +35,6 @@ type Interceptor struct {
 
 func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
-		SecretGetter: sg,
 		Logger:       l,
 	}
 }

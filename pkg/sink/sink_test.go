@@ -173,7 +173,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := sdk.NewWithInterceptors(k, l, map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+	coreInterceptors, err := sdk.NewWithInterceptors(k, l, map[string]sdk.InterceptorFunc {
 		"cel":       celinterceptor.NewInterceptor,
 		"bitbucket": bitbucketinterceptor.NewInterceptor,
 		"github":    githubinterceptor.NewInterceptor,
