@@ -40,7 +40,6 @@ or more [`Interceptors`](./interceptors.md).
 - [Configuring logging for `EventListeners`](#configuring-logging-for-eventlisteners)
 - [Exposing an `EventListener` outside of the cluster](#exposing-an-eventlistener-outside-of-the-cluster)
   - [Exposing an `EventListener` using a Kubernetes `Ingress` object](#exposing-an-eventlistener-using-a-kubernetes-ingress-object)
-  - [Exposing an `EventListener` using the NGINX Ingress Controller](#exposing-an-eventlistener-using-the-nginx-ingress-controller)
   - [Exposing an `EventListener` using OpenShift Route](#exposing-an-eventlistener-using-openshift-route)
 - [Understanding the deployment of an `EventListener`](#understanding-the-deployment-of-an-eventlistener)
 - [Deploying `EventListeners` in multi-tenant scenarios](#deploying-eventlisteners-in-multi-tenant-scenarios)
@@ -563,61 +562,44 @@ See [the Knative documentation](https://github.com/knative/pkg/blob/main/metrics
 
 ## Exposing an `EventListener` outside of the cluster
 
-By default, `ClusterIP` services such as `EventListeners` are only accessible within the cluster on which they are running. 
-You can expose them outside the cluster in one of the following ways:
+`EventListeners` create an underlying Kubernetes service (unless a user specifies a `customResource` EventListener deployment). 
+By convention, this service is the same name as the EventListener prefixed with `el`. So, an EventListener named `foo` 
+will create a service called `el-foo`.
+
+This service, by default is of type `ClusterIP` which means it is only accessible within the cluster on which it is running. 
+You can expose this service as you would with any regular Kubernetes service. A few ways are highlighted below:
+- Using a `LoadBalancer` Service type
 - Using a Kubernetes `Ingress` object
 - Using the NGINX Ingress Controller
 - Using OpenShift Route
 
+### Exposing an `EventListener` using a `LoadBalancer` Service
+
+If your Kuberentes cluster supports [external load balancers](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer), 
+you can set the `serviceType` field to `LoadBalancer` to switch the Kubernetes service type:
+
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+```
+
+**Note:** You can find the external IP of this service by running `kubectl get svc/el-${EVENTLISTENER-NAME} -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+
 ### Exposing an `EventListener` using a Kubernetes `Ingress` object
 
-Use the Tekton [`create-ingress`](./getting-started/create-ingress.yaml) task to configure an `Ingress` object using self-signed certificates.
-If you are using a cloud-based Kubernetes solution such as Google Kubernetes Engine, the Kubernetes `Ingress` object will not work. Instead,
-use the NGINX Ingress Controller as described in the next section.
+You can expose the service created by the EventListener using a regular [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+To do this, you may first have to change the `serviceType` to `NodePort`:
 
-### Exposing an `EventListener` using the NGINX Ingress Controller
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: NodePort
+```
 
-Below are instructions for installing and configuring the NGINX Ingress Controller with Tekton Triggers on Google Kubernetes Cluster version `1.13.7-gke.24`.
-For instructions on installing the NGINX Ingress Controller on other Kubernetes services as well as additional installation options for the example below,
-see the [NGINX Ingress Controller Installation Guide](https://kubernetes.github.io/ingress-nginx/deploy/).
-
-1. Install the NGINX Ingress Controller:
-   ```sh
-   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.1/deploy/static/provider/cloud/deploy.yaml
-   ```
-   
-2. Obtain the name of your `EventListener` service:
-   ```sh
-    kubectl get el <EVENTLISTENR_NAME> -o=jsonpath='{.status.configuration.generatedName}{"\n"}'
-   ```
-   
-3. Instantiate the `Ingress` object:
-   ```yaml
-   apiVersion: extensions/v1beta1
-   kind: Ingress
-   metadata:
-     name: ingress-resource
-     annotations:
-       kubernetes.io/ingress.class: nginx
-       nginx.ingress.kubernetes.io/ssl-redirect: "false"
-   spec:
-     rules:
-       - http:
-           paths:
-             - path: /
-               backend:
-                 serviceName: EVENT_LISTENER_SERVICE_NAME # REPLACE WITH YOUR SERVICE NAME FROM STEP 2
-                servicePort: 8080
-   ```
-
-   See [NGINX Configuration](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/) for more information on configuring the NGINX Ingress Controller.
-
-4. Obtain the IP address of the `Ingress` object:
-   ```   
-   kubectl get ingress ingress-resource
-   ``` 
-
-5. Test the configuration with `curl` or set up a GitHub Webhook that sends events to it.
+You can also use the Tekton [`create-ingress`](./getting-started/create-ingress.yaml) task to configure an `Ingress` object using self-signed certificates.
 
 ## Exposing an `EventListener` using Openshift Route
 
@@ -708,7 +690,7 @@ However, this approach has the following drawbacks:
   Kubernetes `etcd` store; on large clusters, the capacity of the `etcd` store can become a concern.
 - Since each `EventListener` requires its own HTTP port to listen for events, you must configure your network
   to allow access to each corresponding IP address and port combination unless you configure an ingress abstraction
-  layer, such as the Kubernetes `Ingress` object, the NGINX Ingress Controller, or OpenShift Route.
+  layer, such as the Kubernetes `Ingress` object,or OpenShift Route.
 
 ### Deploying multiple `EventListeners` in the same namespace
 
