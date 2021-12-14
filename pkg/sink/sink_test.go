@@ -18,8 +18,10 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"knative.dev/pkg/logging"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -36,6 +38,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	interceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
@@ -61,10 +64,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
-	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
-	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/ptr"
 )
@@ -131,14 +132,14 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 	t.Helper()
 	ctx, _ := test.SetupFakeContext(t)
 	clients := test.SeedResources(t, ctx, res)
-
-	logger := zaptest.NewLogger(t)
+	logger := logging.FromContext(ctx)
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
+	//secretLister := fakeSecretInformer.Get(ctx).Lister()
 
 	// Setup a handler for core interceptors using httptest
-	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
+	httpClient := setupInterceptors(t, ctx, webhookInterceptor)
 
 	ceClient, _ := cloudeventstest.NewMockSenderClient(t, 1)
 
@@ -170,10 +171,10 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 
 // setupInterceptors creates a httptest server with all coreInterceptors and any passed in webhook interceptor
 // It returns a http.Client that can be used to talk to these interceptors
-func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
+func setupInterceptors(t *testing.T, ctx context.Context, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := sdk.NewWithInterceptors(k, l, map[string]sdk.InterceptorFunc {
+	coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]sdk.InterceptorFunc {
 		"cel":       celinterceptor.NewInterceptor,
 		"bitbucket": bitbucketinterceptor.NewInterceptor,
 		"github":    githubinterceptor.NewInterceptor,
@@ -1284,7 +1285,7 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 func TestExecuteInterceptor_Sequential(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
-	httpClient := setupInterceptors(t, fakekubeclient.Get(ctx), logger.Sugar(), &sequentialInterceptor{})
+	httpClient := setupInterceptors(t, ctx, &sequentialInterceptor{})
 
 	r := Sink{
 		HTTPClient: httpClient,
@@ -1349,7 +1350,8 @@ func (e *errorInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestExecuteInterceptor_error(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	ctx, _ := test.SetupFakeContext(t)
+	logger := logging.FromContext(ctx)
 	// Route requests to either the error interceptor or sequential interceptor based on the host.
 	errHost := "error"
 	match := func(r *http.Request, _ *mux.RouteMatch) bool {
@@ -1359,12 +1361,12 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	r.MatcherFunc(match).Handler(&errorInterceptor{})
 	si := &sequentialInterceptor{}
 	r.Handle("/", si)
-	ctx, _ := test.SetupFakeContext(t)
-	httpClient := setupInterceptors(t, fakekubeclient.Get(ctx), logger.Sugar(), r)
+
+	httpClient := setupInterceptors(t, ctx, r)
 
 	s := Sink{
 		HTTPClient: httpClient,
-		Logger:     logger.Sugar(),
+		Logger:     logger,
 	}
 
 	trigger := triggersv1beta1.Trigger{
@@ -1393,7 +1395,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err == nil {
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil,s.Logger, eventID, map[string]interface{}{}); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 

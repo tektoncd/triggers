@@ -8,20 +8,15 @@ import (
 	"net/http"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/logging"
 )
 
+// TODO: Use sharedmain.MainWithConfig to simplify this
 func InterceptorMainWithConfig(ctx context.Context, component string, interceptors map[string]InterceptorFunc) {
 	cfg := injection.ParseAndGetRESTConfigOrDie()
 	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
-
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Fatalf("Failed to get the Kubernetes client set: %v", err)
-	}
 
 	logger, atomicLevel := sharedmain.SetupLoggerOrDie(ctx, component)
 
@@ -36,8 +31,10 @@ func InterceptorMainWithConfig(ctx context.Context, component string, intercepto
 	cmw := sharedmain.SetupConfigMapWatchOrDie(ctx, logger)
 
 	sharedmain.WatchLoggingConfigOrDie(ctx, cmw, logger, atomicLevel, component)
+	// Register logger
+	// Register injection context
 
-	service, err := NewWithInterceptors(kubeClient, logger, interceptors)
+	service, err := NewWithInterceptors(ctx, interceptors)
 	if err != nil {
 		log.Fatalf("failed to initialize core interceptors: %s", err)
 	}

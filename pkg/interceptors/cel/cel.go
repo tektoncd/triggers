@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"knative.dev/pkg/logging"
 	"net/http"
 	"reflect"
 
@@ -38,8 +39,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"k8s.io/client-go/kubernetes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 )
@@ -50,8 +51,6 @@ import (
 type Interceptor struct {
 	SecretGetter     interceptors.SecretGetter
 	Logger           *zap.SugaredLogger
-	CEL              *triggersv1.CELInterceptor
-	TriggerNamespace string
 }
 
 var (
@@ -61,10 +60,10 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(ctx context.Context) triggersv1.InterceptorInterface {
 	return &Interceptor{
-		//SecretLister: sl,
-		Logger:       l,
+		SecretLister: secretinformer.Get(ctx).Lister(),
+		Logger:       logging.FromContext(ctx),
 	}
 }
 

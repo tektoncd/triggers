@@ -18,13 +18,17 @@ package bitbucket
 
 import (
 	"context"
+	"knative.dev/pkg/logging"
 	"net/http"
+
+	"google.golang.org/grpc/codes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 )
 
 type Interceptor struct {
@@ -32,9 +36,8 @@ type Interceptor struct {
 	Logger       *zap.SugaredLogger
 }
 
-func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(ctx context.Context) triggersv1.InterceptorInterface {
 	return &Interceptor{
-		Logger:       l,
 	}
 }
 
@@ -72,7 +75,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			return interceptors.Fail(codes.InvalidArgument, "no X-Hub-Signature header set")
 		}
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secretToken, err := w.SecretGetter.Get(ctx, ns, p.SecretRef)
+		secretToken, err := interceptors.GetSecretToken(w.SecretLister, p.SecretRef, ns)
 		if err != nil {
 			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
 		}

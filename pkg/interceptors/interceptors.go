@@ -69,27 +69,14 @@ func NewKubeClientSecretGetter(getter v1.SecretsGetter, cacheSize int, ttl time.
 // Get queries Kubernetes for the given secret reference. We use this function
 // to resolve secret material like GitHub webhook secrets, and call it once for every
 // trigger that references it.
-//
-// As we may have many triggers that all use the same secret, we cache the secret values
-// in the request cache.
-func (g *kubeclientSecretGetter) Get(ctx context.Context, triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error) {
-	key := cacheKey{
-		triggerNS: triggerNS,
-		sr:        *sr,
-	}
-	val, ok := g.cache.Get(key)
-	if ok {
-		return val.([]byte), nil
-	}
-	secret, err := g.getter.Secrets(triggerNS).Get(ctx, sr.SecretName, metav1.GetOptions{})
+func GetSecretToken(sl corev1lister.SecretLister, sr *triggersv1beta1.SecretRef, triggerNS string) ([]byte, error) {
+	secret, err := sl.Secrets(triggerNS).Get(sr.SecretName)
 	if err != nil {
 		return nil, err
 	}
-	secretValue, ok := secret.Data[sr.SecretKey]
-	if !ok {
-		return nil, fmt.Errorf("cannot find %s key in secret %s/%s", sr.SecretKey, triggerNS, sr.SecretName)
-	}
-	g.cache.Add(key, secretValue, g.ttl)
+
+	secretValue := secret.Data[sr.SecretKey]
+
 	return secretValue, nil
 }
 

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/logging"
 	"net/http"
 	"strings"
 	"time"
@@ -28,18 +28,18 @@ type Server struct {
 }
 
 // InterceptorFunc returns a new Interceptor
-type InterceptorFunc = func(p kubernetes.Interface, logger *zap.SugaredLogger)triggersv1.InterceptorInterface
+type InterceptorFunc = func(ctx context.Context)triggersv1.InterceptorInterface
 
-func NewWithInterceptors(k kubernetes.Interface, l *zap.SugaredLogger, i map[string]InterceptorFunc) (*Server, error) {
+func NewWithInterceptors(ctx context.Context, i map[string]InterceptorFunc) (*Server, error) {
 	interceptors := map[string]triggersv1.InterceptorInterface{}
 	for key, v := range i {
-		interceptors[key] = v(k, l)
+		interceptors[key] = v(ctx)
 		if interceptors[key] == nil {
-			return nil, fmt.Errorf("interceptor %s failed to initialize", k)
+			return nil, fmt.Errorf("interceptor %s failed to initialize", key)
 		}
 	}
 	s := Server{
-		Logger:       l,
+		Logger:       logging.FromContext(ctx),
 		interceptors: interceptors,
 	}
 	return &s, nil
@@ -81,7 +81,7 @@ func (se HTTPError) Error() string {
 	return se.Err.Error()
 }
 
-// Returns our HTTP status code.
+// Status returns our HTTP status code.
 func (se HTTPError) Status() int {
 	return se.Code
 }

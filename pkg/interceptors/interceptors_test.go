@@ -36,12 +36,9 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/sdk"
 	"github.com/tektoncd/triggers/test"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -286,6 +283,40 @@ func TestGetInterceptorParams_Error(t *testing.T) {
 	}
 }
 
+func TestGetSecretToken(t *testing.T) {
+	ctx, _ := test.SetupFakeContext(t)
+	secretInformer := fakeSecretInformer.Get(ctx)
+	secretRef := triggersv1.SecretRef{
+		SecretKey:  "token",
+		SecretName: "test-secret",
+	}
+
+	if err := secretInformer.Informer().GetIndexer().Add(makeSecret("secret from API")); err != nil {
+		t.Fatal(err)
+	}
+
+	secret, err := interceptors.GetSecretToken(secretInformer.Lister(), &secretRef, testNS)
+	if err != nil {
+		t.Error(err)
+	}
+	want := []byte("secret from API")
+	if diff := cmp.Diff(want, secret); diff != "" {
+		t.Errorf("secret value (-want, +got) = %s", diff)
+	}
+}
+
+func makeSecret(secretText string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNS,
+			Name:      "test-secret",
+		},
+		Data: map[string][]byte{
+			"token": []byte(secretText),
+		},
+	}
+}
+
 func TestResolveToURL(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -428,7 +459,8 @@ func TestExecute(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			coreInterceptors, err := sdk.NewWithInterceptors(nil, zaptest.NewLogger(t).Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+			ctx, _ := test.SetupFakeContext(t)
+			coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]func(ctx context.Context) triggersv1.InterceptorInterface{
 				"cel": cel.NewInterceptor,
 			})
 			if err != nil {
@@ -461,7 +493,8 @@ func TestExecute_Error(t *testing.T) {
 			"filter": `header.match("Content-Type", "application/json")`,
 		},
 	}
-	coreInterceptors, err := sdk.NewWithInterceptors(nil, zaptest.NewLogger(t).Sugar(), map[string]func(kubernetes.Interface, *zap.SugaredLogger) triggersv1.InterceptorInterface{
+	ctx, _ := test.SetupFakeContext(t)
+	coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]func(ctx context.Context) triggersv1.InterceptorInterface{
 		"cel": cel.NewInterceptor,
 	})
 	if err != nil {

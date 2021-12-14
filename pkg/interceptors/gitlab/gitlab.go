@@ -19,13 +19,14 @@ package gitlab
 import (
 	"context"
 	"crypto/subtle"
+	"knative.dev/pkg/logging"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
-	"k8s.io/client-go/kubernetes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 )
 
 type Interceptor struct {
@@ -33,9 +34,10 @@ type Interceptor struct {
 	Logger       *zap.SugaredLogger
 }
 
-func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(ctx context.Context) triggersv1.InterceptorInterface {
 	return &Interceptor{
-		Logger:       l,
+		Logger:       logging.FromContext(ctx),
+		SecretLister: secretinformer.Get(ctx).Lister(),
 	}
 }
 
@@ -74,7 +76,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secretToken, err := w.SecretGetter.Get(ctx, ns, p.SecretRef)
+		secretToken, err := interceptors.GetSecretToken(w.SecretLister, p.SecretRef, ns)
 		if err != nil {
 			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
 		}
