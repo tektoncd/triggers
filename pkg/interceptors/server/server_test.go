@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 
 	"google.golang.org/grpc/codes"
 
@@ -158,5 +161,28 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 				t.Fatalf("ServeHTTP() expected response to contain : %s \n but got %s: ", tc.wantResponseBody, string(respBody))
 			}
 		})
+	}
+}
+
+type fakeInterceptor struct{}
+
+func (i fakeInterceptor) Process(ctx context.Context, r *v1beta1.InterceptorRequest) *v1beta1.InterceptorResponse {
+	return nil
+}
+
+func TestServer_RegisterInterceptor(t *testing.T) {
+	s := Server{}
+	s.RegisterInterceptor("first", fakeInterceptor{})
+	want := map[string]v1beta1.InterceptorInterface{
+		"first": fakeInterceptor{},
+	}
+	if diff := cmp.Diff(want, s.interceptors); diff != "" {
+		t.Errorf("RegisterInterceptor first (-want/+got): %s", diff)
+	}
+
+	s.RegisterInterceptor("second", fakeInterceptor{})
+	want["second"] = fakeInterceptor{}
+	if diff := cmp.Diff(want, s.interceptors); diff != "" {
+		t.Errorf("RegisterInterceptor second (-want/+got): %s", diff)
 	}
 }

@@ -25,8 +25,15 @@ type Server struct {
 	interceptors map[string]triggersv1.InterceptorInterface
 }
 
-func NewWithCoreInterceptors(sl corev1lister.SecretLister, l *zap.SugaredLogger) (*Server, error) {
+// RegisterInterceptor sets up the interceptor to be served at the specfied path
+func (is *Server) RegisterInterceptor(path string, interceptor triggersv1.InterceptorInterface) {
+	if is.interceptors == nil {
+		is.interceptors = map[string]triggersv1.InterceptorInterface{}
+	}
+	is.interceptors[path] = interceptor
+}
 
+func NewWithCoreInterceptors(sl corev1lister.SecretLister, l *zap.SugaredLogger) (*Server, error) {
 	i := map[string]triggersv1.InterceptorInterface{
 		"bitbucket": bitbucket.NewInterceptor(sl, l),
 		"cel":       cel.NewInterceptor(sl, l),
