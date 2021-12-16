@@ -6,17 +6,46 @@ weight: 4
 -->
 # `TriggerBindings`
 
-A `TriggerBinding` is a resource that specifies the fields in the event payload from which you want to extract data as well as the fields in your
-corresponding [`TriggerTemplate`](./triggertemplates.md) to populate with the extracted values. In other words, it *binds* payload fields to
-fields in the [`TriggerTemplate`] and for this to work the fields specified in the [`TriggerBinding`] And the corresponding [`TriggerTemplate`]
-**must** match. You can then use the populated fields in your [`TriggerTemplate`] to populate fields in the [`TaskRun`] or [`PipelineRun`] associated
-with that [`TriggerTemplate`]. Tekton also supports a cluster-scoped version called a `ClusterTriggerBinding` to encourage reusability across your
-entire cluster.
+A `TriggerBinding` allows you to extract fields from an event payload and bind them to named parameters that can then be
+used in a [`TriggerTemplate`](./triggertemplates.md). For instance, one can extract the commit SHA from an incoming event
+and pass it on to create a TaskRun that clones a repo at that particular commit.
+
+**Note:** Trigger uses the parameter name to match TriggerBinding params to TriggerTemplate params. In order to pass
+information, the param name used in the binding must match the param name used in the template.
 
 ## Structure of a `TriggerBinding`
 
-Below is an example `TriggerBinding` definition:
+There are 3 way of declaring a `TriggerBinding`:
 
+1. Inline or embedded inside a `Trigger`
+
+2. Using the `TriggerBinding` custom resource so that the binding params can be reused across multiple trigger
+
+3. Using the `ClusterTriggerBinding` custom resource in order to promote reuse within an entire cluster
+
+
+### Inline bindings
+
+The simplest way to declare bindings is within a Trigger itself:
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: push-trigger
+spec:
+  bindings:
+  - name: gitrevision
+    value: $(body.head_commit.id)
+  - name: gitrepositoryurl
+    value: $(body.repository.url)
+  template:
+    ref: git-clone-template
+```
+
+### `TriggerBindings`
+
+The binding used above can be put in a `TriggerBinding` CRD in order to be reused across multiple triggers:
 <!-- FILE: examples/v1beta1/triggerbindings/triggerbinding.yaml -->
 ```YAML
 apiVersion: triggers.tekton.dev/v1beta1
@@ -33,10 +62,24 @@ spec:
     value: $(header.Content-Type)
 ```
 
-## `TriggerBindings` vs. `ClusterTriggerBindings`
+A `Trigger` resource can then refer to this binding:
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: push-trigger
+spec:
+  bindings:
+  - ref: pipeline-binding
+  template:
+    ref: git-clone-template
+```
+
+###  `ClusterTriggerBindings`
 
 A `ClusterTriggerBinding` is a cluster-scoped `TriggerBinding` that you can reuse across your entire cluster.
-You can reference a `ClusterTriggerBinding` in any `EventListener` in any namespace. You can specify multiple
+You can reference a `ClusterTriggerBinding` in any `Trigger` in any namespace. You can specify multiple
 `ClusterTriggerBindings` within your `Trigger` as well as specify the same `ClusterTriggerBinding` in multiple
 `Triggers`.
 
@@ -111,6 +154,35 @@ as the JSONPath expression. For example:
 ```shell script
 $($(body.b)) # Parsed as $(body.b)
 $($($(body.b))) # Parsed as $(body.b)
+```
+
+
+## Accessing data added by [`Interceptors`](./interceptors.md)
+
+An `interceptor` can add additional useful data that can be used by a `TriggerBinding`. Data added by interceptors can be
+accessed under the top-level `extensions` field e.g. `$(extensions.field-name)`. In the following example, the CEL
+interceptor adds a field that is then accessed by the trigger binding:
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: push-trigger
+spec:
+  interceptors:
+    - name: add-truncated-sha
+      ref:
+        name: "cel"
+      params:
+        - name: "overlays"
+          value:
+          - key: truncated_sha
+            expression: "body.pull_request.head.sha.truncate(7)"
+  bindings:
+    - name: truncated_sha
+      value: $(extensions.truncated_sha)
+  template:
+    ref: git-clone-template
 ```
 
 ## Accessing JSON keys containing periods (`.`)
