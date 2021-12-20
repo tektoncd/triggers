@@ -26,7 +26,6 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"go.uber.org/zap"
-	"k8s.io/client-go/rest"
 	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -45,12 +44,9 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.NewContext()
 
-	clusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Failed to build config: %v", err)
-	}
+	cfg := injection.ParseAndGetRESTConfigOrDie()
 
-	ctx, startInformer := injection.EnableInjectionOrDie(ctx, clusterConfig)
+	ctx, startInformer := injection.EnableInjectionOrDie(ctx, cfg)
 
 	zap, err := zap.NewProduction()
 	if err != nil {
