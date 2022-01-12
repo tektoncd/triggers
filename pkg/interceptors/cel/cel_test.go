@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
@@ -283,7 +284,7 @@ func TestInterceptor_Process(t *testing.T) {
 			var clientset *fake.Clientset
 			ctx, clientset = fakekubeclient.With(ctx, makeSecret())
 			w := &Interceptor{
-				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
@@ -625,7 +626,7 @@ func TestExpressionEvaluation(t *testing.T) {
 			if tt.secret != nil {
 				_, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			env, err := makeCelEnv(context.Background(), testNS, interceptors.NewKubeClientSecretGetter(clientset.CoreV1()))
+			env, err := makeCelEnv(context.Background(), testNS, interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -754,7 +755,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				_, clientset = fakekubeclient.With(ctx, makeSecret())
 				ns = tt.secretNS
 			}
-			env, err := makeCelEnv(context.Background(), ns, interceptors.NewKubeClientSecretGetter(clientset.CoreV1()))
+			env, err := makeCelEnv(context.Background(), ns, interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}

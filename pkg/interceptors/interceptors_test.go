@@ -24,11 +24,11 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
@@ -36,8 +36,10 @@ import (
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 )
 
 func TestGetInterceptorParams(t *testing.T) {
@@ -484,5 +486,45 @@ func TestExecute_Error(t *testing.T) {
 				t.Fatalf("Execute() did not get expected error. Response was %+v", got)
 			}
 		})
+	}
+}
+
+func TestCacheSecrets(t *testing.T) {
+	ctx, _ := test.SetupFakeContext(t)
+	_, clientset := fakekubeclient.With(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "ns",
+		},
+		Data: map[string][]byte{
+			"key": []byte("foobar"),
+		},
+	})
+	getter := interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second)
+
+	bin, err := getter.Get(context.Background(), "ns", &triggersv1.SecretRef{
+		SecretKey:  "key",
+		SecretName: "name",
+	})
+	if err != nil {
+		t.Fatalf("Get() unexpected error: %s", err)
+	}
+	if string(bin) != "foobar" {
+		t.Fatalf("Unexpected payload. Got: %s", string(bin))
+	}
+
+	if err := clientset.CoreV1().Secrets("ns").Delete(context.Background(), "name", metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("Cannot delete secret: %s", err)
+	}
+
+	bin, err = getter.Get(context.Background(), "ns", &triggersv1.SecretRef{
+		SecretKey:  "key",
+		SecretName: "name",
+	})
+	if err != nil {
+		t.Fatalf("Get() unexpected error: %s", err)
+	}
+	if string(bin) != "foobar" {
+		t.Fatalf("Unexpected payload. Got: %s", string(bin))
 	}
 }
