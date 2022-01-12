@@ -19,6 +19,7 @@ package gitlab
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -122,7 +123,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 			w := &Interceptor{
-				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
@@ -275,7 +276,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 			w := &Interceptor{
-				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
@@ -291,7 +292,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	w := &Interceptor{
-		SecretGetter: interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
+		SecretGetter: interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second),
 		Logger:       logger.Sugar(),
 	}
 
