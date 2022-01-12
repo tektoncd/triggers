@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"google.golang.org/grpc/codes"
@@ -78,7 +79,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -137,7 +138,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}

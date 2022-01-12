@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	cloudeventstest "github.com/cloudevents/sdk-go/v2/client/test"
 	"github.com/google/go-cmp/cmp"
@@ -169,7 +170,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogger, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(k.CoreV1()), l)
+	coreInterceptors, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(k.CoreV1(), 1024, 5*time.Second), l)
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}
