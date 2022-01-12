@@ -27,7 +27,8 @@ import (
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"google.golang.org/grpc/codes"
-	corev1lister "k8s.io/client-go/listers/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -41,16 +42,16 @@ type Interceptor interface {
 }
 
 type SecretGetter interface {
-	Get(triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error)
+	Get(ctx context.Context, triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error)
 }
 
-type listerSecretGetter struct {
-	lister corev1lister.SecretLister
+type kubeclientSecretGetter struct {
+	getter v1.SecretsGetter
 }
 
-func NewListerSecretGetter(lister corev1lister.SecretLister) SecretGetter {
-	return &listerSecretGetter{
-		lister: lister,
+func NewKubeClientSecretGetter(getter v1.SecretsGetter) SecretGetter {
+	return &kubeclientSecretGetter{
+		getter: getter,
 	}
 }
 
@@ -60,8 +61,8 @@ func NewListerSecretGetter(lister corev1lister.SecretLister) SecretGetter {
 //
 // As we may have many triggers that all use the same secret, we cache the secret values
 // in the request cache.
-func (g *listerSecretGetter) Get(triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error) {
-	secret, err := g.lister.Secrets(triggerNS).Get(sr.SecretName)
+func (g *kubeclientSecretGetter) Get(ctx context.Context, triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error) {
+	secret, err := g.getter.Secrets(triggerNS).Get(ctx, sr.SecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

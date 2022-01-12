@@ -16,6 +16,7 @@ limitations under the License.
 package cel
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -159,11 +160,12 @@ import (
 // 		body.jsonObjectOrList.marshalJSON()
 
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
-func Triggers(ns string, sg interceptors.SecretGetter) cel.EnvOption {
-	return cel.Lib(triggersLib{defaultNS: ns, secretGetter: sg})
+func Triggers(ctx context.Context, ns string, sg interceptors.SecretGetter) cel.EnvOption {
+	return cel.Lib(triggersLib{ctx: ctx, defaultNS: ns, secretGetter: sg})
 }
 
 type triggersLib struct {
+	ctx          context.Context
 	defaultNS    string
 	secretGetter interceptors.SecretGetter
 }
@@ -230,7 +232,7 @@ func (t triggersLib) ProgramOptions() []cel.ProgramOption {
 				Unary:    parseURLString},
 			&functions.Overload{
 				Operator: "compareSecret",
-				Function: makeCompareSecret(t.defaultNS, t.secretGetter)},
+				Function: makeCompareSecret(t.ctx, t.defaultNS, t.secretGetter)},
 			&functions.Overload{
 				Operator: "marshalJSON",
 				Unary:    marshalJSON},
@@ -298,7 +300,7 @@ func decodeB64String(val ref.Val) ref.Val {
 
 // makeCompareSecret creates and returns a functions.FunctionOp that wraps the
 // ns and client in a closure with a function that can compare the string.
-func makeCompareSecret(defaultNS string, sg interceptors.SecretGetter) functions.FunctionOp {
+func makeCompareSecret(ctx context.Context, defaultNS string, sg interceptors.SecretGetter) functions.FunctionOp {
 	return func(vals ...ref.Val) ref.Val {
 		var ok bool
 		compareString, ok := vals[0].(types.String)
@@ -325,7 +327,7 @@ func makeCompareSecret(defaultNS string, sg interceptors.SecretGetter) functions
 		// GetSecretToken uses request as a cache key to cache secret lookup. Since multiple
 		// triggers execute concurrently in separate goroutines, this cache is not very effective
 		// for this use case
-		secretToken, err := sg.Get(string(secretNS), secretRef)
+		secretToken, err := sg.Get(ctx, string(secretNS), secretRef)
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}
