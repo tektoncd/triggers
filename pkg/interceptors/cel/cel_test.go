@@ -28,7 +28,6 @@ import (
 	"testing"
 
 	"go.uber.org/zap/zaptest"
-
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/cel-go/common/types"
@@ -39,7 +38,8 @@ import (
 	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
+	"k8s.io/client-go/kubernetes/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 )
 
 const testNS = "testing-ns"
@@ -280,12 +280,10 @@ func TestInterceptor_Process(t *testing.T) {
 		t.Run(tt.name, func(rt *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
-			secretInformer := fakeSecretInformer.Get(ctx)
-			if err := secretInformer.Informer().GetIndexer().Add(makeSecret()); err != nil {
-				t.Fatal(err)
-			}
+			var clientset *fake.Clientset
+			ctx, clientset = fakekubeclient.With(ctx, makeSecret())
 			w := &Interceptor{
-				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
@@ -623,13 +621,11 @@ func TestExpressionEvaluation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			ctx, _ := test.SetupFakeContext(rt)
-			secretInformer := fakeSecretInformer.Get(ctx)
+			clientset := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
-				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
-					t.Fatal(err)
-				}
+				_, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			env, err := makeCelEnv(testNS, interceptors.NewListerSecretGetter(secretInformer.Lister()))
+			env, err := makeCelEnv(context.Background(), testNS, interceptors.NewKubeClientSecretGetter(clientset.CoreV1()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -752,15 +748,13 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
-			secretInformer := fakeSecretInformer.Get(ctx)
 			ns := testNS
+			clientset := fakekubeclient.Get(ctx)
 			if tt.secretNS != "" {
-				if err := secretInformer.Informer().GetIndexer().Add(makeSecret()); err != nil {
-					t.Fatal(err)
-				}
+				_, clientset = fakekubeclient.With(ctx, makeSecret())
 				ns = tt.secretNS
 			}
-			env, err := makeCelEnv(ns, interceptors.NewListerSecretGetter(secretInformer.Lister()))
+			env, err := makeCelEnv(context.Background(), ns, interceptors.NewKubeClientSecretGetter(clientset.CoreV1()))
 			if err != nil {
 				t.Fatal(err)
 			}

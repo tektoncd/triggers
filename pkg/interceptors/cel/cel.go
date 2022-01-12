@@ -89,10 +89,10 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 	return out, nil
 }
 
-func makeCelEnv(ns string, sg interceptors.SecretGetter) (*cel.Env, error) {
+func makeCelEnv(ctx context.Context, ns string, sg interceptors.SecretGetter) (*cel.Env, error) {
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	return cel.NewEnv(
-		Triggers(ns, sg),
+		Triggers(ctx, ns, sg),
 		celext.Strings(),
 		celext.Encoders(),
 		cel.Declarations(
@@ -124,7 +124,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-	env, err := makeCelEnv(ns, w.SecretGetter)
+	env, err := makeCelEnv(ctx, ns, w.SecretGetter)
 	if err != nil {
 		return interceptors.Failf(codes.Internal, "error creating cel environment: %v", err)
 	}

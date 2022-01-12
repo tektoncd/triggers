@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakeSecretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 )
 
 func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
@@ -95,7 +95,6 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
-			secretInformer := fakeSecretInformer.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -117,14 +116,13 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			if tt.eventType != "" {
 				req.Header["X-GitLab-Event"] = []string{tt.eventType}
 			}
+			clientset := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
-					t.Fatal(err)
-				}
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 			w := &Interceptor{
-				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
@@ -250,7 +248,6 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			logger := zaptest.NewLogger(t)
-			secretInformer := fakeSecretInformer.Get(ctx)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -272,14 +269,13 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 			if tt.eventType != "" {
 				req.Header["X-interceptorParams-Event"] = []string{tt.eventType}
 			}
+			clientset := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				if err := secretInformer.Informer().GetIndexer().Add(tt.secret); err != nil {
-					t.Fatal(err)
-				}
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 			w := &Interceptor{
-				SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
+				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1()),
 				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
@@ -293,10 +289,9 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 	logger := zaptest.NewLogger(t)
-	secretInformer := fakeSecretInformer.Get(ctx)
 
 	w := &Interceptor{
-		SecretGetter: interceptors.NewListerSecretGetter(secretInformer.Lister()),
+		SecretGetter: interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
 		Logger:       logger.Sugar(),
 	}
 
