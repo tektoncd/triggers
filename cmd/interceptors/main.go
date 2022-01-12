@@ -36,6 +36,7 @@ import (
 	kubeclientset "k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -82,7 +83,7 @@ func main() {
 	}
 
 	secretLister := secretInformer.Get(ctx).Lister()
-	service, err := server.NewWithCoreInterceptors(interceptors.NewListerSecretGetter(secretLister), logger)
+	service, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(kubeclient.Get(ctx).CoreV1()), logger)
 	if err != nil {
 		logger.Errorf("failed to initialize core interceptors: %s", err)
 		return
