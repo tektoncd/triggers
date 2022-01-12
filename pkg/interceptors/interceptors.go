@@ -65,7 +65,10 @@ func (g *listerSecretGetter) Get(triggerNS string, sr *triggersv1beta1.SecretRef
 	if err != nil {
 		return nil, err
 	}
-	secretValue := secret.Data[sr.SecretKey]
+	secretValue, ok := secret.Data[sr.SecretKey]
+	if !ok {
+		return nil, fmt.Errorf("cannot find %s key in secret %s/%s", sr.SecretKey, triggerNS, sr.SecretName)
+	}
 	return secretValue, nil
 }
 
