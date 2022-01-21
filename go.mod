@@ -27,6 +27,7 @@ require (
 	k8s.io/apimachinery v0.22.5
 	k8s.io/client-go v0.22.5
 	k8s.io/code-generator v0.22.5
+	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
 	knative.dev/eventing v0.25.0
 	knative.dev/pkg v0.0.0-20220104185830-52e42b760b54
