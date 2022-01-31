@@ -38,15 +38,16 @@ const (
 )
 
 var (
-	image              = flag.String("el-image", elresources.DefaultImage, "The container image for the EventListener Pod.")
-	port               = flag.Int("el-port", elresources.DefaultPort, "The container port for the EventListener to listen on.")
-	setSecurityContext = flag.Bool("el-security-context", elresources.DefaultSetSecurityContext, "Add a security context to the event listener deployment.")
-	readTimeOut        = flag.Int64("el-readtimeout", elresources.DefaultReadTimeout, "The read timeout for EventListener Server.")
-	writeTimeOut       = flag.Int64("el-writetimeout", elresources.DefaultWriteTimeout, "The write timeout for EventListener Server.")
-	idleTimeOut        = flag.Int64("el-idletimeout", elresources.DefaultIdleTimeout, "The idle timeout for EventListener Server.")
-	timeOutHandler     = flag.Int64("el-timeouthandler", elresources.DefaultTimeOutHandler, "The timeout for Timeout Handler of EventListener Server.")
-	periodSeconds      = flag.Int("period-seconds", elresources.DefaultPeriodSeconds, "The Period Seconds for the EventListener Liveness and Readiness Probes.")
-	failureThreshold   = flag.Int("failure-threshold", elresources.DefaultFailureThreshold, "The Failure Threshold for the EventListener Liveness and Readiness Probes.")
+	image                 = flag.String("el-image", elresources.DefaultImage, "The container image for the EventListener Pod.")
+	port                  = flag.Int("el-port", elresources.DefaultPort, "The container port for the EventListener to listen on.")
+	setSecurityContext    = flag.Bool("el-security-context", elresources.DefaultSetSecurityContext, "Add a security context to the event listener deployment.")
+	setEventListenerEvent = flag.String("el-events", elresources.DefaultEventListenerEvent, "Enable events for event listener deployment.")
+	readTimeOut           = flag.Int64("el-readtimeout", elresources.DefaultReadTimeout, "The read timeout for EventListener Server.")
+	writeTimeOut          = flag.Int64("el-writetimeout", elresources.DefaultWriteTimeout, "The write timeout for EventListener Server.")
+	idleTimeOut           = flag.Int64("el-idletimeout", elresources.DefaultIdleTimeout, "The idle timeout for EventListener Server.")
+	timeOutHandler        = flag.Int64("el-timeouthandler", elresources.DefaultTimeOutHandler, "The timeout for Timeout Handler of EventListener Server.")
+	periodSeconds         = flag.Int("period-seconds", elresources.DefaultPeriodSeconds, "The Period Seconds for the EventListener Liveness and Readiness Probes.")
+	failureThreshold      = flag.Int("failure-threshold", elresources.DefaultFailureThreshold, "The Failure Threshold for the EventListener Liveness and Readiness Probes.")
 
 	staticResourceLabels = elresources.DefaultStaticResourceLabels
 	systemNamespace      = os.Getenv("SYSTEM_NAMESPACE")
@@ -56,15 +57,16 @@ func main() {
 	cfg := injection.ParseAndGetRESTConfigOrDie()
 
 	c := elresources.Config{
-		Image:              image,
-		Port:               port,
-		SetSecurityContext: setSecurityContext,
-		ReadTimeOut:        readTimeOut,
-		WriteTimeOut:       writeTimeOut,
-		IdleTimeOut:        idleTimeOut,
-		TimeOutHandler:     timeOutHandler,
-		PeriodSeconds:      periodSeconds,
-		FailureThreshold:   failureThreshold,
+		Image:                 image,
+		Port:                  port,
+		SetSecurityContext:    setSecurityContext,
+		SetEventListenerEvent: setEventListenerEvent,
+		ReadTimeOut:           readTimeOut,
+		WriteTimeOut:          writeTimeOut,
+		IdleTimeOut:           idleTimeOut,
+		TimeOutHandler:        timeOutHandler,
+		PeriodSeconds:         periodSeconds,
+		FailureThreshold:      failureThreshold,
 
 		StaticResourceLabels: staticResourceLabels,
 		SystemNamespace:      systemNamespace,

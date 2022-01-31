@@ -29,23 +29,18 @@ Resource            |Event      |Event Type
 ##Note
 By default Kubernetes events are disabled for EventListener.
 
-To enable Kubernetes events for each EventListener need to add below annotation
+To enable Kubernetes events add/update controller.yaml with below arg
 ```yaml
-  annotations:
-    enable-eventlistener-events: "true"
+    spec:
+      serviceAccountName: tekton-triggers-controller
+      containers:
+      - name: tekton-triggers-controller
+        image: "ko://github.com/tektoncd/triggers/cmd/controller"
+        args: [
+          "-el-events", "enable",
 ```
+Default value is **disable**.
 
-ex:
-```yaml
-apiVersion: triggers.tekton.dev/v1beta1
-kind: EventListener
-metadata:
-  name: github-listener
-  annotations:
-    enable-eventlistener-events: "true"
-spec:
----
-```
 To view the events execute below command
 
 `kubectl get events`

@@ -66,6 +66,9 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		}, {
 			Name:  "NAME",
 			Value: el.Name,
+		}, {
+			Name:  "EL_EVENT",
+			Value: *c.SetEventListenerEvent,
 		}}...),
 	}
 

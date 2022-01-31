@@ -69,6 +69,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -118,6 +121,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -189,6 +195,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -228,6 +237,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}}

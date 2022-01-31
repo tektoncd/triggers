@@ -23,6 +23,8 @@ var (
 	DefaultPort = 8080
 	// DefaultSetSecurityContext is the SetSecurityContext value used by default.
 	DefaultSetSecurityContext = true
+	// DefaultEventListenerEvent is the EventListenerEvent value used by default.
+	DefaultEventListenerEvent = "disable"
 	// DefaultReadTimeout is the ReadTimeout used by default.
 	DefaultReadTimeout = int64(5)
 	// DefaultWriteTimeout is the WriteTimeout used by default.
@@ -51,6 +53,8 @@ type Config struct {
 	Port *int
 	// SetSecurityContext defines if the security context is set.
 	SetSecurityContext *bool
+	// SetEventListenerEvent defines to enable or disable of emitting events for EventListener.
+	SetEventListenerEvent *string
 	// ReadTimeOut defines the read timeout for EventListener Server.
 	ReadTimeOut *int64
 	// WriteTimeOut defines the write timeout for EventListener Server.
@@ -75,15 +79,16 @@ type ConfigOption func(d *Config)
 // It generates a default Config for the EventListener without any flags set and accepts functions for modification.
 func MakeConfig(ops ...ConfigOption) *Config {
 	c := &Config{
-		Image:              &DefaultImage,
-		Port:               &DefaultPort,
-		SetSecurityContext: &DefaultSetSecurityContext,
-		ReadTimeOut:        &DefaultReadTimeout,
-		WriteTimeOut:       &DefaultWriteTimeout,
-		IdleTimeOut:        &DefaultIdleTimeout,
-		TimeOutHandler:     &DefaultTimeOutHandler,
-		PeriodSeconds:      &DefaultPeriodSeconds,
-		FailureThreshold:   &DefaultFailureThreshold,
+		Image:                 &DefaultImage,
+		Port:                  &DefaultPort,
+		SetSecurityContext:    &DefaultSetSecurityContext,
+		SetEventListenerEvent: &DefaultEventListenerEvent,
+		ReadTimeOut:           &DefaultReadTimeout,
+		WriteTimeOut:          &DefaultWriteTimeout,
+		IdleTimeOut:           &DefaultIdleTimeout,
+		TimeOutHandler:        &DefaultTimeOutHandler,
+		PeriodSeconds:         &DefaultPeriodSeconds,
+		FailureThreshold:      &DefaultFailureThreshold,
 
 		StaticResourceLabels: DefaultStaticResourceLabels,
 		SystemNamespace:      DefaultSystemNamespace,

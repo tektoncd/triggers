@@ -147,7 +147,8 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			Name: "SYSTEM_NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
+					APIVersion: "v1",
+					FieldPath:  "metadata.namespace",
 				}},
 		}, corev1.EnvVar{
 			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint

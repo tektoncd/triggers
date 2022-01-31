@@ -249,10 +249,14 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							Name:  "NAME",
 							Value: eventListenerName,
 						}, {
+							Name:  "EL_EVENT",
+							Value: "disable",
+						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
-									FieldPath: "metadata.namespace",
+									APIVersion: "v1",
+									FieldPath:  "metadata.namespace",
 								},
 							},
 						}, {
@@ -388,6 +392,9 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						}, {
 							Name:  "NAME",
 							Value: eventListenerName,
+						}, {
+							Name:  "EL_EVENT",
+							Value: "disable",
 						}, {
 							Name:  "SYSTEM_NAMESPACE",
 							Value: namespace,
@@ -543,6 +550,10 @@ func TestReconcile(t *testing.T) {
 
 	configWithSetSecurityContextFalse := resources.MakeConfig(func(c *resources.Config) {
 		c.SetSecurityContext = ptr.Bool(false)
+	})
+
+	configWithSetEventListenerEventEnable := resources.MakeConfig(func(c *resources.Config) {
+		c.SetEventListenerEvent = ptr.String("enable")
 	})
 
 	configWithPortSet := resources.MakeConfig(func(c *resources.Config) {
@@ -837,6 +848,38 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
 	})
 
+	deploymentEventListenerEvent := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
+			Name: "K_LOGGING_CONFIG",
+		}, {
+			Name:  "K_METRICS_CONFIG",
+			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+		}, {
+			Name:  "K_TRACING_CONFIG",
+			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+		}, {
+			Name:  "NAMESPACE",
+			Value: namespace,
+		}, {
+			Name:  "NAME",
+			Value: eventListenerName,
+		}, {
+			Name:  "EL_EVENT",
+			Value: "enable",
+		}, {
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.namespace",
+				},
+			},
+		}, {
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: "9000",
+		}}
+	})
+
 	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.ServiceAccountName = "k8sresource"
 		d.Spec.Template.Spec.NodeSelector = map[string]string{"key": "value"}
@@ -892,6 +935,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "NAME",
 			Value: eventListenerName,
+		}, {
+			Name:  "EL_EVENT",
+			Value: "disable",
 		}, {
 			Name: "key",
 			ValueFrom: &corev1.EnvVarSource{
@@ -1259,6 +1305,21 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext}, // SecurityContext is cleared
+			Services:       []*corev1.Service{elService},
+		},
+	}, {
+		name:   "eventlistener with SetEventListenerEvent enable",
+		key:    reconcileKey,
+		config: configWithSetEventListenerEventEnable,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1beta1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1beta1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentEventListenerEvent}, // SecurityContext is cleared
 			Services:       []*corev1.Service{elService},
 		},
 	}, {
