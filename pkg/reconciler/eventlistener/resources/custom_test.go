@@ -89,6 +89,10 @@ func TestCustomObject(t *testing.T) {
 			"name":  "NAME",
 			"value": eventListenerName,
 		},
+		map[string]interface{}{
+			"name":  "EL_EVENT",
+			"value": "disable",
+		},
 	}
 
 	customEnv := []interface{}{
