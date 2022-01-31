@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
@@ -38,12 +39,14 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	v1 "knative.dev/pkg/apis/duck/v1"
 )
 
 // Sink defines the sink resource for processing incoming events for the
@@ -91,7 +94,7 @@ type Response struct {
 }
 
 func (r Sink) emitEvents(recorder record.EventRecorder, el *triggersv1.EventListener, eventType string, err error) {
-	if el.Annotations[events.EnableEventListenerEvents] == "true" {
+	if os.Getenv("EL_EVENT") == "enable" {
 		events.Emit(recorder, eventType, el, err)
 	}
 }
@@ -110,10 +113,27 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.EventListenerName,
 			Namespace: r.EventListenerNamespace,
-			Annotations: map[string]string{
-				// enabled by default for temporary EL
-				events.EnableEventListenerEvents: "true",
-			}}}
+		},
+		Spec: triggersv1.EventListenerSpec{
+			Resources: triggersv1.Resources{
+				KubernetesResource: &triggersv1.KubernetesResource{
+					WithPodSpec: v1.WithPodSpec{
+						Template: v1.PodSpecable{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									// enabled by default for temporary EL
+									Env: []corev1.EnvVar{{
+										Name:  "EL_EVENT",
+										Value: "true",
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
 	el, err := r.EventListenerLister.EventListeners(r.EventListenerNamespace).Get(r.EventListenerName)
 	if err != nil {

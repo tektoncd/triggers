@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	// Emit events if user provides enable-eventlistener-events: "true"
-	EnableEventListenerEvents = "enable-eventlistener-events"
 	// TriggerProcessingStartedV1 is sent for Sink Triggers when a trigger is started
 	TriggerProcessingStartedV1 = "dev.tekton.event.triggers.started.v1"
 	// TriggerProcessingSuccessfulV1 is sent for Sink Triggers when a trigger is successful

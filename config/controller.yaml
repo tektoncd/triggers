@@ -56,6 +56,7 @@ spec:
           "-el-image", "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
           "-el-port", "8080",
           "-el-security-context=true",
+          "-el-events", "disable",
           "-el-readtimeout", "5",
           "-el-writetimeout", "40",
           "-el-idletimeout", "120",
