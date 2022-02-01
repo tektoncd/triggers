@@ -149,7 +149,7 @@ github.com/go-kit/log
 github.com/go-kit/log/level
 # github.com/go-logfmt/logfmt v0.5.0
 github.com/go-logfmt/logfmt
-# github.com/go-logr/logr v0.4.0
+# github.com/go-logr/logr v1.2.2
 github.com/go-logr/logr
 # github.com/go-openapi/jsonpointer v0.19.5
 github.com/go-openapi/jsonpointer
@@ -1055,10 +1055,8 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/klog v1.0.0
+# k8s.io/klog/v2 v2.40.1
 ## explicit
-k8s.io/klog
-# k8s.io/klog/v2 v2.9.0
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
 ## explicit
@@ -1089,7 +1087,7 @@ knative.dev/eventing/pkg/reconciler/source
 knative.dev/networking/pkg
 knative.dev/networking/pkg/apis/networking
 knative.dev/networking/pkg/apis/networking/v1alpha1
-# knative.dev/pkg v0.0.0-20220104185830-52e42b760b54
+# knative.dev/pkg v0.0.0-20220131144930-f4b57aef0006
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
