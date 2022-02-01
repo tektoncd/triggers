@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
+	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20210609063737-0067dc6dcea2
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/cel-go v0.7.3
