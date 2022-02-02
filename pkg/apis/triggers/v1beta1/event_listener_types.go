@@ -66,6 +66,7 @@ type EventListenerSpec struct {
 	NamespaceSelector NamespaceSelector           `json:"namespaceSelector,omitempty"`
 	LabelSelector     *metav1.LabelSelector       `json:"labelSelector,omitempty"`
 	Resources         Resources                   `json:"resources,omitempty"`
+	CloudEventURI     string                      `json:"cloudEventURI,omitempty"`
 }
 
 type Resources struct {

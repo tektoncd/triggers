@@ -89,6 +89,13 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 			}
 		}
 	}
+
+	if s.CloudEventURI != "" {
+		err := ValidateEnabledAPIFields(ctx, "spec.CloudEventURI", config.AlphaAPIFieldValue)
+		if err != nil {
+			errs = errs.Also(err)
+		}
+	}
 	return errs
 }
 

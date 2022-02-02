@@ -74,6 +74,7 @@ func TestCustomObject(t *testing.T) {
 		"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 		"--is-multi-ns=" + strconv.FormatBool(false),
 		"--payload-validation=" + strconv.FormatBool(true),
+		"--cloudevent-uri=",
 	}
 
 	containerEnv := []interface{}{

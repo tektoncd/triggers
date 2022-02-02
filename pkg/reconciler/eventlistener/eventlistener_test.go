@@ -238,6 +238,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(resources.DefaultHTTPClientExpectContinueTimeout, 10),
 							"--is-multi-ns=false",
 							"--payload-validation=true",
+							"--cloudevent-uri=",
 							"--tls-cert=",
 							"--tls-key=",
 						},
@@ -389,6 +390,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(resources.DefaultHTTPClientExpectContinueTimeout, 10),
 							"--is-multi-ns=" + strconv.FormatBool(false),
 							"--payload-validation=" + strconv.FormatBool(true),
+							"--cloudevent-uri=",
 						},
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
