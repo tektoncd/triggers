@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	cloudeventstest "github.com/cloudevents/sdk-go/v2/client/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
@@ -136,6 +137,8 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 	// Setup a handler for core interceptors using httptest
 	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
 
+	ceClient, _ := cloudeventstest.NewMockSenderClient(t, 1)
+
 	recorder, _ := NewRecorder()
 	r := Sink{
 		EventListenerName:           elName,
@@ -145,6 +148,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 		KubeClientSet:               clients.Kube,
 		TriggersClient:              clients.Triggers,
 		HTTPClient:                  httpClient,
+		CEClient:                    ceClient,
 		Logger:                      logger.Sugar(),
 		Auth:                        DefaultAuthOverride{},
 		WGProcessTriggers:           &sync.WaitGroup{},

@@ -28,6 +28,9 @@ const (
 	TriggerProcessingSuccessfulV1 = "dev.tekton.event.triggers.successful.v1"
 	// TriggerProcessingFailedEventV1 is sent for Sink Triggers when we fail to process trigger
 	TriggerProcessingFailedV1 = "dev.tekton.event.triggers.failed.v1"
+	// TriggerProcessingDoneV1 is sent for Sink Triggers when we are done
+	// with eventlistener handler
+	TriggerProcessingDoneV1 = "dev.tekton.event.triggers.done.v1"
 )
 
 // Emit emits events for object

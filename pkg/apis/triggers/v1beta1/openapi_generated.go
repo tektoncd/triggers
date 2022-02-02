@@ -474,6 +474,12 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerSpec(ref common.ReferenceCall
 							Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Resources"),
 						},
 					},
+					"cloudEventURI": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 				},
 			},
 		},
