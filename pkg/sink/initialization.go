@@ -17,10 +17,12 @@ limitations under the License.
 package sink
 
 import (
+	"context"
 	"flag"
 	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
+	"github.com/tektoncd/triggers/pkg/sink/cloudevent"
 	"golang.org/x/xerrors"
 	discoveryclient "k8s.io/client-go/discovery"
 	kubeclientset "k8s.io/client-go/kubernetes"
@@ -69,6 +71,7 @@ var (
 		"The filename for the TLS key.")
 	payloadValidation = flag.Bool("payload-validation", true,
 		"Whether to disable payload validation or not.")
+	cloudEventURI = flag.String("cloudevent-uri", "", "uri for cloudevent")
 )
 
 // Args define the arguments for Sink.
@@ -105,6 +108,8 @@ type Args struct {
 	Cert string
 	// PayloadValidation defines whether to validate payload or not
 	PayloadValidation bool
+	// CloudEventURI refers to the location where cloudevent data need to be send
+	CloudEventURI string
 }
 
 // Clients define the set of client dependencies Sink requires.
@@ -113,6 +118,7 @@ type Clients struct {
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
 	K8sClient       *kubeclientset.Clientset
+	CEClient        cloudevent.CEClient
 }
 
 // GetArgs returns the flagged Args
@@ -145,11 +151,12 @@ func GetArgs() (Args, error) {
 		ElHTTPClientExpectContinueTimeout: time.Duration(*elHTTPClientExpectContinueTimeout),
 		Cert:                              *tlsCertFlag,
 		Key:                               *tlsKeyFlag,
+		CloudEventURI:                     *cloudEventURI,
 	}, nil
 }
 
 // ConfigureClients returns the kubernetes and triggers clientsets
-func ConfigureClients(clusterConfig *rest.Config) (Clients, error) {
+func ConfigureClients(ctx context.Context, clusterConfig *rest.Config) (Clients, error) {
 	kubeClient, err := kubeclientset.NewForConfig(clusterConfig)
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create KubeClient: %s", err)
@@ -158,10 +165,13 @@ func ConfigureClients(clusterConfig *rest.Config) (Clients, error) {
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
+	ceClient := cloudevent.Get(ctx)
+
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
 		K8sClient:       kubeClient,
+		CEClient:        ceClient,
 	}, nil
 }

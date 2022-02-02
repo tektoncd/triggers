@@ -1244,6 +1244,22 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrGeneric("spec.triggerGroups requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	}, {
+		name: "cloudEventURI is not allowed if alpha fields are not enabled",
+		ctx:  context.Background(), // By default, enable-api-felds is set to stable, not alpha
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					TriggerRef: "test",
+				}},
+				CloudEventURI: "http://localhost",
+			},
+		},
+		wantErr: apis.ErrGeneric("spec.CloudEventURI requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	},
 		{
 			name: "missing label and namespace selector",

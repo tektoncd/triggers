@@ -64,6 +64,7 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(*c.HTTPClientExpectContinueTimeout, 10),
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 			"--payload-validation=" + strconv.FormatBool(payloadValidation),
+			"--cloudevent-uri=" + el.Spec.CloudEventURI,
 		},
 		Env: append(ev, []corev1.EnvVar{{
 			Name:  "NAMESPACE",

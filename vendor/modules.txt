@@ -67,6 +67,7 @@ github.com/cloudevents/sdk-go/v2/binding
 github.com/cloudevents/sdk-go/v2/binding/format
 github.com/cloudevents/sdk-go/v2/binding/spec
 github.com/cloudevents/sdk-go/v2/client
+github.com/cloudevents/sdk-go/v2/client/test
 github.com/cloudevents/sdk-go/v2/context
 github.com/cloudevents/sdk-go/v2/event
 github.com/cloudevents/sdk-go/v2/event/datacodec
@@ -75,7 +76,9 @@ github.com/cloudevents/sdk-go/v2/event/datacodec/text
 github.com/cloudevents/sdk-go/v2/event/datacodec/xml
 github.com/cloudevents/sdk-go/v2/observability
 github.com/cloudevents/sdk-go/v2/protocol
+github.com/cloudevents/sdk-go/v2/protocol/gochan
 github.com/cloudevents/sdk-go/v2/protocol/http
+github.com/cloudevents/sdk-go/v2/test
 github.com/cloudevents/sdk-go/v2/types
 # github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4
 github.com/cncf/udpa/go/udpa/type/v1
@@ -278,6 +281,8 @@ github.com/openzipkin/zipkin-go/reporter
 github.com/openzipkin/zipkin-go/reporter/http
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/prometheus/client_golang v1.11.0
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
@@ -311,6 +316,9 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/stoewer/go-strcase v1.2.0
 github.com/stoewer/go-strcase
+# github.com/stretchr/testify v1.7.0
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # github.com/tektoncd/pipeline v0.31.1-0.20220105002759-3e137645be61
 ## explicit
 github.com/tektoncd/pipeline/pkg/apis/config
