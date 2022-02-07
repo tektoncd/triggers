@@ -29,6 +29,7 @@ import (
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"github.com/tektoncd/triggers/pkg/reconciler/metrics"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -86,6 +87,9 @@ type Reconciler struct {
 	config             resources.Config
 	podspecableTracker dynamicduck.ListableTracker
 	onlyOnce           sync.Once
+
+	// Metrics Recorder config
+	Metrics *metrics.Recorder
 }
 
 var (
