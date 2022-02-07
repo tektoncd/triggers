@@ -26,6 +26,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"github.com/tektoncd/triggers/pkg/reconciler/metrics"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -114,6 +115,7 @@ func compareEnv(x, y corev1.EnvVar) bool {
 func getEventListenerTestAssets(t *testing.T, r test.Resources, c *resources.Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := test.SetupFakeContext(t)
+	ctx = metrics.WithClient(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	kubeClient := fakekubeclient.Get(ctx)
 	// Fake client reactor chain ignores non handled reactors until v1.40.0
