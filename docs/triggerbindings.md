@@ -124,7 +124,7 @@ spec:
         ref: pipeline-template
 ```
 
-## Specifying paramters
+## Specifying parameters
 
 A `TriggerBinding` allows you to specify parameters (`params`) that Tekton passes to the corresponding `TriggerTemplate`.
 For each parameter, you must specify a `name` and a `value` field with the appropriate values.
