@@ -61,6 +61,11 @@ spec:
           "-el-writetimeout", "40",
           "-el-idletimeout", "120",
           "-el-timeouthandler", "30",
+          "-el-httpclient-readtimeout", "30",
+          "-el-httpclient-keep-alive", "30",
+          "-el-httpclient-tlshandshaketimeout", "10",
+          "-el-httpclient-responseheadertimeout", "10",
+          "-el-httpclient-expectcontinuetimeout", "1",
           "-period-seconds", "10",
           "-failure-threshold", "1"
         ]

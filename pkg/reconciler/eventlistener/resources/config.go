@@ -37,6 +37,16 @@ var (
 	DefaultPeriodSeconds = 10
 	// DefaultFailureThreshold is the FailureThreshold used by default.
 	DefaultFailureThreshold = 3
+	// DefaultHTTPClientReadTimeOut is the HTTPClient ReadTimeOut used by default.
+	DefaultHTTPClientReadTimeOut = int64(30)
+	// DefaultHTTPClientKeepAlive is the HTTPClient KeepAlive used by default
+	DefaultHTTPClientKeepAlive = int64(30)
+	// DefaultHTTPClientTLSHandshakeTimeout is the HTTPClient TLS Handshake timeout used by default
+	DefaultHTTPClientTLSHandshakeTimeout = int64(10)
+	// DefaultHTTPClientResponseHeaderTimeout is the HTTPClient Response Header Timeout
+	DefaultHTTPClientResponseHeaderTimeout = int64(10)
+	// DefaultHTTPClientExpectContinueTimeout is the HTTPClient Expect Continue Timeout
+	DefaultHTTPClientExpectContinueTimeout = int64(1)
 	// DefaultStaticResourceLabels are the StaticResourceLabels used by default.
 	DefaultStaticResourceLabels = map[string]string{
 		"app.kubernetes.io/managed-by": "EventListener",
@@ -63,6 +73,16 @@ type Config struct {
 	IdleTimeOut *int64
 	// TimeOutHandler defines the timeout for Timeout Handler of EventListener Server.
 	TimeOutHandler *int64
+	// HTTPClientReadTimeOut defines the Read timeout for HTTP Client
+	HTTPClientReadTimeOut *int64
+	// HTTPClientKeepAlive defines the Keep Alive for HTTP Client
+	HTTPClientKeepAlive *int64
+	// HTTPClientTLSHandshakeTimeout defines the Handshake timeout for HTTP Client
+	HTTPClientTLSHandshakeTimeout *int64
+	// HTTPClientResponseHeaderTimeout defines the Response Header timeout for HTTP Client
+	HTTPClientResponseHeaderTimeout *int64
+	// HTTPClientExpectContinueTimeout defines the Expect timeout for HTTP Client
+	HTTPClientExpectContinueTimeout *int64
 	// PeriodSeconds defines Period Seconds for the EventListener Liveness and Readiness Probes.
 	PeriodSeconds *int
 	// FailureThreshold defines the Failure Threshold for the EventListener Liveness and Readiness Probes.
@@ -83,12 +103,18 @@ func MakeConfig(ops ...ConfigOption) *Config {
 		Port:                  &DefaultPort,
 		SetSecurityContext:    &DefaultSetSecurityContext,
 		SetEventListenerEvent: &DefaultEventListenerEvent,
-		ReadTimeOut:           &DefaultReadTimeout,
-		WriteTimeOut:          &DefaultWriteTimeout,
-		IdleTimeOut:           &DefaultIdleTimeout,
-		TimeOutHandler:        &DefaultTimeOutHandler,
-		PeriodSeconds:         &DefaultPeriodSeconds,
-		FailureThreshold:      &DefaultFailureThreshold,
+
+		ReadTimeOut:                     &DefaultReadTimeout,
+		WriteTimeOut:                    &DefaultWriteTimeout,
+		IdleTimeOut:                     &DefaultIdleTimeout,
+		TimeOutHandler:                  &DefaultTimeOutHandler,
+		HTTPClientReadTimeOut:           &DefaultHTTPClientReadTimeOut,
+		HTTPClientKeepAlive:             &DefaultHTTPClientKeepAlive,
+		HTTPClientTLSHandshakeTimeout:   &DefaultHTTPClientTLSHandshakeTimeout,
+		HTTPClientResponseHeaderTimeout: &DefaultHTTPClientResponseHeaderTimeout,
+		HTTPClientExpectContinueTimeout: &DefaultHTTPClientExpectContinueTimeout,
+		PeriodSeconds:                   &DefaultPeriodSeconds,
+		FailureThreshold:                &DefaultFailureThreshold,
 
 		StaticResourceLabels: DefaultStaticResourceLabels,
 		SystemNamespace:      DefaultSystemNamespace,
