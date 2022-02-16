@@ -19,6 +19,7 @@ package adapter
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -93,13 +94,22 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 }
 
 func (s *sinker) Start(ctx context.Context) error {
+
 	// Create EventListener Sink
 	r := sink.Sink{
-		KubeClientSet:          kubeclient.Get(ctx),
-		DiscoveryClient:        s.Clients.DiscoveryClient,
-		DynamicClient:          dynamicclient.Get(ctx),
-		TriggersClient:         s.Clients.TriggersClient,
-		HTTPClient:             http.DefaultClient,
+		KubeClientSet:   kubeclient.Get(ctx),
+		DiscoveryClient: s.Clients.DiscoveryClient,
+		DynamicClient:   dynamicclient.Get(ctx),
+		TriggersClient:  s.Clients.TriggersClient,
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second,
+					KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,
+				}).Dial,
+				TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,
+				ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,
+				ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}},
 		EventListenerName:      s.Args.ElName,
 		EventListenerNamespace: s.Args.ElNamespace,
 		PayloadValidation:      s.Args.PayloadValidation,

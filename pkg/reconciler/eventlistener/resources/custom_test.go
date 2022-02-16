@@ -67,6 +67,11 @@ func TestCustomObject(t *testing.T) {
 		"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 		"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 		"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+		"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+		"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+		"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+		"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+		"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 		"--is-multi-ns=" + strconv.FormatBool(false),
 		"--payload-validation=" + strconv.FormatBool(true),
 	}

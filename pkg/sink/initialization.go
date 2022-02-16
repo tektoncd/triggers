@@ -51,6 +51,16 @@ var (
 		"The idle timeout for EventListener Server.")
 	elTimeOutHandler = flag.Int64("timeouthandler", 5,
 		"The timeout for Timeout Handler of EventListener Server.")
+	elHTTPClientReadTimeOut = flag.Int64("httpclient-readtimeout", 30,
+		"The HTTP Client read timeout for EventListener Server.")
+	elHTTPClientKeepAlive = flag.Int64("httpclient-keep-alive", 30,
+		"The HTTP Client read timeout for EventListener Server.")
+	elHTTPClientTLSHandshakeTimeout = flag.Int64("httpclient-tlshandshaketimeout", 10,
+		"The HTTP Client read timeout for EventListener Server.")
+	elHTTPClientResponseHeaderTimeout = flag.Int64("httpclient-responseheadertimeout", 10,
+		"The HTTP Client read timeout for EventListener Server.")
+	elHTTPClientExpectContinueTimeout = flag.Int64("httpclient-expectcontinuetimeout", 1,
+		"The HTTP Client read timeout for EventListener Server.")
 	isMultiNSFlag = flag.Bool("is-multi-ns", false,
 		"Whether EventListener serve Multiple NS.")
 	tlsCertFlag = flag.String("tls-cert", "",
@@ -77,6 +87,16 @@ type Args struct {
 	ELIdleTimeOut time.Duration
 	// ELTimeOutHandler defines the timeout for Timeout Handler of EventListener Server
 	ELTimeOutHandler time.Duration
+	// ElHTTPClientReadTimeOut defines the Read timeout for HTTP Client
+	ElHTTPClientReadTimeOut time.Duration
+	// ElHTTPClientKeepAlive defines the Keep Alive for HTTP Client
+	ElHTTPClientKeepAlive time.Duration
+	// ElTLSHandshakeTimeout defines the Handshake timeout for HTTP Client
+	ElHTTPClientTLSHandshakeTimeout time.Duration
+	// ElResponseHeaderTimeout defines the Response Header timeout for HTTP Client
+	ElHTTPClientResponseHeaderTimeout time.Duration
+	// ElExpectContinueTimeout defines the Expect timeout for HTTP Client
+	ElHTTPClientExpectContinueTimeout time.Duration
 	// IsMultiNS determines whether el functions as namespaced or clustered
 	IsMultiNS bool
 	// Key defines the filename for tls Key.
@@ -109,17 +129,22 @@ func GetArgs() (Args, error) {
 	}
 
 	return Args{
-		ElName:            *nameFlag,
-		ElNamespace:       *namespaceFlag,
-		Port:              *portFlag,
-		IsMultiNS:         *isMultiNSFlag,
-		PayloadValidation: *payloadValidation,
-		ELReadTimeOut:     time.Duration(*elReadTimeOut),
-		ELWriteTimeOut:    time.Duration(*elWriteTimeOut),
-		ELIdleTimeOut:     time.Duration(*elIdleTimeOut),
-		ELTimeOutHandler:  time.Duration(*elTimeOutHandler),
-		Cert:              *tlsCertFlag,
-		Key:               *tlsKeyFlag,
+		ElName:                            *nameFlag,
+		ElNamespace:                       *namespaceFlag,
+		Port:                              *portFlag,
+		IsMultiNS:                         *isMultiNSFlag,
+		PayloadValidation:                 *payloadValidation,
+		ELReadTimeOut:                     time.Duration(*elReadTimeOut),
+		ELWriteTimeOut:                    time.Duration(*elWriteTimeOut),
+		ELIdleTimeOut:                     time.Duration(*elIdleTimeOut),
+		ELTimeOutHandler:                  time.Duration(*elTimeOutHandler),
+		ElHTTPClientReadTimeOut:           time.Duration(*elHTTPClientReadTimeOut),
+		ElHTTPClientKeepAlive:             time.Duration(*elHTTPClientKeepAlive),
+		ElHTTPClientTLSHandshakeTimeout:   time.Duration(*elHTTPClientTLSHandshakeTimeout),
+		ElHTTPClientResponseHeaderTimeout: time.Duration(*elHTTPClientResponseHeaderTimeout),
+		ElHTTPClientExpectContinueTimeout: time.Duration(*elHTTPClientExpectContinueTimeout),
+		Cert:                              *tlsCertFlag,
+		Key:                               *tlsKeyFlag,
 	}, nil
 }
 
