@@ -23,3 +23,4 @@ go run github.com/ahmetb/gen-crd-api-reference-docs \
     -api-dir "github.com/tektoncd/triggers/pkg/apis" \
     -template-dir "./hack/reference-docs-template" \
     -out-file "./docs/triggers-api.md"
+sed -i '1s/^/<!--\n---\ntitle: Triggers API\nlinkTitle: Triggers API\nweight: 1000\n---\n-->\n\n/' ./docs/triggers-api.md
