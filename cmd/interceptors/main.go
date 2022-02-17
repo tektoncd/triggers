@@ -56,9 +56,8 @@ func main() {
 	ctx := sdk.WithOptions(signals.NewContext(), sdk.Options{
 		Port: 8082,
 	})
-
 	// FIXME: call getCerts
-	sdk.InterceptorMainWithConfig(ctx, "interceptors", map[string]func(kubernetes.Interface, *zap.SugaredLogger) v1alpha1.InterceptorInterface{
+	sdk.InterceptorMainWithConfig(ctx, "interceptors", map[string]sdk.InterceptorFunc{
 		"bitbucket": bitbucket.NewInterceptor,
 		"cel":       cel.NewInterceptor,
 		"github":    github.NewInterceptor,

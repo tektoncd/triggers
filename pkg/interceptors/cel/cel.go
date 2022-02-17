@@ -49,8 +49,8 @@ import (
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
 type Interceptor struct {
-	SecretGetter     interceptors.SecretGetter
-	Logger           *zap.SugaredLogger
+	SecretLister corev1lister.SecretLister
+	Logger       *zap.SugaredLogger
 }
 
 var (

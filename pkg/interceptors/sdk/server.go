@@ -28,7 +28,7 @@ type Server struct {
 }
 
 // InterceptorFunc returns a new Interceptor
-type InterceptorFunc = func(ctx context.Context)triggersv1.InterceptorInterface
+type InterceptorFunc = func(ctx context.Context) triggersv1.InterceptorInterface
 
 func NewWithInterceptors(ctx context.Context, i map[string]InterceptorFunc) (*Server, error) {
 	interceptors := map[string]triggersv1.InterceptorInterface{}

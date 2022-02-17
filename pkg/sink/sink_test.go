@@ -174,7 +174,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 func setupInterceptors(t *testing.T, ctx context.Context, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
-	coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]sdk.InterceptorFunc {
+	coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]sdk.InterceptorFunc{
 		"cel":       celinterceptor.NewInterceptor,
 		"bitbucket": bitbucketinterceptor.NewInterceptor,
 		"github":    githubinterceptor.NewInterceptor,
@@ -1395,7 +1395,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil,s.Logger, eventID, map[string]interface{}{}); err == nil {
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, s.Logger, eventID, map[string]interface{}{}); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 

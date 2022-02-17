@@ -141,7 +141,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 
 			//secretLister := fakeSecretInformer.Get(ctx).Lister()
 
-			server, err := NewWithInterceptors(ctx, map[string]InterceptorFunc {
+			server, err := NewWithInterceptors(ctx, map[string]InterceptorFunc{
 				"cel": cel.NewInterceptor,
 			})
 			if err != nil {
