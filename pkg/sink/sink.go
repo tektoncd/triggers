@@ -232,6 +232,11 @@ func (r Sink) sendCloudEvents(headers http.Header, el triggersv1.EventListener, 
 		return
 	}
 
+	// If no cloudEventURI, then don't try to sendCloudEvents
+	if r.CloudEventURI == "" {
+		return
+	}
+
 	resource := cloudevent.Resource{
 		EventID:   eventID,
 		EventType: eventType,
