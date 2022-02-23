@@ -1441,6 +1441,20 @@
         "pipelineTaskName": {
           "type": "string"
         },
+        "sidecarOverrides": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.TaskRunSidecarOverride"
+          }
+        },
+        "stepOverrides": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.TaskRunStepOverride"
+          }
+        },
         "taskPodTemplate": {
           "$ref": "#/definitions/pod.Template"
         },
@@ -1468,6 +1482,44 @@
         "optional": {
           "description": "Optional marks a Workspace as not being required in PipelineRuns. By default this field is false and so declared workspaces are required.",
           "type": "boolean"
+        }
+      }
+    },
+    "v1beta1.ResolverParam": {
+      "description": "ResolverParam is a single parameter passed to a resolver.",
+      "type": "object",
+      "required": [
+        "Name",
+        "Value"
+      ],
+      "properties": {
+        "Name": {
+          "description": "Name is the name of the parameter that will be passed to the resolver.",
+          "type": "string",
+          "default": ""
+        },
+        "Value": {
+          "description": "Value is the string value of the parameter that will be passed to the resolver.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1beta1.ResolverRef": {
+      "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+      "type": "object",
+      "properties": {
+        "resolver": {
+          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.ResolverParam"
+          }
         }
       }
     },
@@ -2191,6 +2243,26 @@
         }
       }
     },
+    "v1beta1.TaskRunSidecarOverride": {
+      "description": "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
+      "type": "object",
+      "required": [
+        "Name",
+        "Resources"
+      ],
+      "properties": {
+        "Name": {
+          "description": "The name of the Sidecar to override.",
+          "type": "string",
+          "default": ""
+        },
+        "Resources": {
+          "description": "The resource requirements to apply to the Sidecar.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        }
+      }
+    },
     "v1beta1.TaskRunSpec": {
       "description": "TaskRunSpec defines the desired state of TaskRun",
       "type": "object",
@@ -2216,9 +2288,25 @@
           "type": "string",
           "default": ""
         },
+        "sidecarOverrides": {
+          "description": "Overrides to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarOverride, the value from the SidecarOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.TaskRunSidecarOverride"
+          }
+        },
         "status": {
           "description": "Used for cancelling a taskrun (and maybe more later on)",
           "type": "string"
+        },
+        "stepOverrides": {
+          "description": "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.TaskRunStepOverride"
+          }
         },
         "taskRef": {
           "description": "no more than one of the TaskRef and TaskSpec may be specified.",
@@ -2409,6 +2497,26 @@
         "taskSpec": {
           "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
           "$ref": "#/definitions/v1beta1.TaskSpec"
+        }
+      }
+    },
+    "v1beta1.TaskRunStepOverride": {
+      "description": "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
+      "type": "object",
+      "required": [
+        "Name",
+        "Resources"
+      ],
+      "properties": {
+        "Name": {
+          "description": "The name of the Step to override.",
+          "type": "string",
+          "default": ""
+        },
+        "Resources": {
+          "description": "The resource requirements to apply to the Step.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },

@@ -2731,6 +2731,16 @@ Resources
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>cloudEventURI</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3226,6 +3236,16 @@ Kubernetes meta/v1.LabelSelector
 <a href="#triggers.tekton.dev/v1beta1.Resources">
 Resources
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>cloudEventURI</code><br/>
+<em>
+string
 </em>
 </td>
 <td>
