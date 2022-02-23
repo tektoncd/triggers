@@ -16,6 +16,7 @@ retrieving those events using the `kubectl get events` command.
 
 - `Started`: emitted the first time when the `EventListener` received request.
 - `Succeeded`: emitted when eventlistener received request and process all triggers request.
+- `Done`: emitted when its done with eventlistener handler.
 - `Failed`: emitted if triggers failed to process the request.
 
 ## Events format
@@ -24,6 +25,7 @@ Resource            |Event      |Event Type
 :-------------------|:---------:|:----------------------------------------------------------
 `EventListener`     | `Started` | `dev.tekton.event.triggers.started.v1`
 `EventListener`     | `Succeed` | `dev.tekton.event.triggers.successful.v1`
+`EventListener`     | `Done`    | `dev.tekton.event.triggers.done.v1`
 `EventListener`     | `Failed`  | `dev.tekton.event.triggers.failed.v1`
 
 ##Note
