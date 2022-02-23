@@ -221,7 +221,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 		r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingFailedV1)
 	}
-	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingSuccessfulV1, nil)
+	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingDoneV1, nil)
 	r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingDoneV1)
 }
 
@@ -409,6 +409,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 		return
 	}
 	go r.recordResourceCreation(resources)
+	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingSuccessfulV1, nil)
 	r.sendCloudEvents(request.Header, *el, eventID, events.TriggerProcessingSuccessfulV1)
 
 }
