@@ -21,7 +21,6 @@ import (
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-
 	"github.com/stoewer/go-strcase"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -258,6 +257,7 @@ func (m *baseMap) Equal(other ref.Val) ref.Val {
 		return False
 	}
 	it := m.Iterator()
+	var maybeErr ref.Val
 	for it.HasNext() == True {
 		key := it.Next()
 		thisVal, _ := m.Find(key)
@@ -266,12 +266,21 @@ func (m *baseMap) Equal(other ref.Val) ref.Val {
 			if otherVal == nil {
 				return False
 			}
-			return MaybeNoSuchOverloadErr(otherVal)
+			if maybeErr == nil {
+				maybeErr = MaybeNoSuchOverloadErr(otherVal)
+			}
+			continue
 		}
 		valEq := thisVal.Equal(otherVal)
-		if valEq != True {
-			return valEq
+		if valEq == False {
+			return False
 		}
+		if maybeErr == nil && IsUnknownOrError(valEq) {
+			maybeErr = valEq
+		}
+	}
+	if maybeErr != nil {
+		return maybeErr
 	}
 	return True
 }
@@ -321,7 +330,7 @@ type jsonStructAccessor struct {
 func (a *jsonStructAccessor) Find(key ref.Val) (ref.Val, bool) {
 	strKey, ok := key.(String)
 	if !ok {
-		return MaybeNoSuchOverloadErr(key), false
+		return ValOrErr(key, "unsupported key type: %v", key.Type()), false
 	}
 	keyVal, found := a.st[string(strKey)]
 	if !found {
@@ -370,29 +379,32 @@ func (a *reflectMapAccessor) Find(key ref.Val) (ref.Val, bool) {
 	if IsUnknownOrError(key) {
 		return MaybeNoSuchOverloadErr(key), false
 	}
-	k, err := key.ConvertToNative(a.keyType)
-	if err != nil {
-		return &Err{err}, false
-	}
-	var refKey reflect.Value
-	switch k := k.(type) {
-	case reflect.Value:
-		refKey = k
-	default:
-		refKey = reflect.ValueOf(k)
-	}
-	val := a.refValue.MapIndex(refKey)
-	if !val.IsValid() {
+	if a.refValue.Len() == 0 {
 		return nil, false
 	}
-	return a.NativeToValue(val.Interface()), true
+	k, err := key.ConvertToNative(a.keyType)
+	if err != nil {
+		return NewErr("unsupported key type: %v", key.Type()), false
+	}
+	refKey := reflect.ValueOf(k)
+	val := a.refValue.MapIndex(refKey)
+	if val.IsValid() {
+		return a.NativeToValue(val.Interface()), true
+	}
+	mapIt := a.refValue.MapRange()
+	for mapIt.Next() {
+		if refKey.Kind() == mapIt.Key().Kind() {
+			return nil, false
+		}
+	}
+	return NewErr("unsupported key type: %v", key.Type()), false
 }
 
 // Iterator creates a Golang reflection based traits.Iterator.
 func (a *reflectMapAccessor) Iterator() traits.Iterator {
 	return &mapIterator{
 		TypeAdapter: a.TypeAdapter,
-		mapKeys:     a.refValue.MapKeys(),
+		mapKeys:     a.refValue.MapRange(),
 		len:         a.refValue.Len(),
 	}
 }
@@ -413,15 +425,26 @@ func (a *refValMapAccessor) Find(key ref.Val) (ref.Val, bool) {
 	if IsUnknownOrError(key) {
 		return key, false
 	}
+	if len(a.mapVal) == 0 {
+		return nil, false
+	}
 	keyVal, found := a.mapVal[key]
-	return keyVal, found
+	if found {
+		return keyVal, true
+	}
+	for k := range a.mapVal {
+		if k.Type().TypeName() == key.Type().TypeName() {
+			return nil, false
+		}
+	}
+	return NewErr("unsupported key type: %v", key.Type()), found
 }
 
 // Iterator produces a new traits.Iterator which iterates over the map keys via Golang reflection.
 func (a *refValMapAccessor) Iterator() traits.Iterator {
 	return &mapIterator{
 		TypeAdapter: DefaultTypeAdapter,
-		mapKeys:     reflect.ValueOf(a.mapVal).MapKeys(),
+		mapKeys:     reflect.ValueOf(a.mapVal).MapRange(),
 		len:         len(a.mapVal),
 	}
 }
@@ -442,7 +465,7 @@ type stringMapAccessor struct {
 func (a *stringMapAccessor) Find(key ref.Val) (ref.Val, bool) {
 	strKey, ok := key.(String)
 	if !ok {
-		return MaybeNoSuchOverloadErr(key), false
+		return ValOrErr(key, "unsupported key type: %v", key.Type()), false
 	}
 	keyVal, found := a.mapVal[string(strKey)]
 	if !found {
@@ -486,7 +509,7 @@ type stringIfaceMapAccessor struct {
 func (a *stringIfaceMapAccessor) Find(key ref.Val) (ref.Val, bool) {
 	strKey, ok := key.(String)
 	if !ok {
-		return MaybeNoSuchOverloadErr(key), false
+		return ValOrErr(key, "unsupported key type: %v", key.Type()), false
 	}
 	keyVal, found := a.mapVal[string(strKey)]
 	if !found {
@@ -617,10 +640,10 @@ func (m *protoMap) ConvertToType(typeVal ref.Type) ref.Val {
 
 // Equal implements the ref.Val interface method.
 func (m *protoMap) Equal(other ref.Val) ref.Val {
-	if MapType != other.Type() {
+	otherMap, ok := other.(traits.Mapper)
+	if !ok {
 		return MaybeNoSuchOverloadErr(other)
 	}
-	otherMap := other.(traits.Mapper)
 	if m.value.Map.Len() != int(otherMap.Size().(Int)) {
 		return False
 	}
@@ -660,7 +683,7 @@ func (m *protoMap) Find(key ref.Val) (ref.Val, bool) {
 	// Convert the input key to the expected protobuf key type.
 	ntvKey, err := key.ConvertToNative(m.value.KeyType.ReflectType())
 	if err != nil {
-		return &Err{err}, false
+		return NewErr("unsupported key type: %v", key.Type()), false
 	}
 	// Use protoreflection to get the key value.
 	val := m.value.Get(protoreflect.ValueOf(ntvKey).MapKey())
@@ -719,7 +742,7 @@ func (m *protoMap) Value() interface{} {
 type mapIterator struct {
 	*baseIterator
 	ref.TypeAdapter
-	mapKeys []reflect.Value
+	mapKeys *reflect.MapIter
 	cursor  int
 	len     int
 }
@@ -731,10 +754,9 @@ func (it *mapIterator) HasNext() ref.Val {
 
 // Next implements the traits.Iterator interface method.
 func (it *mapIterator) Next() ref.Val {
-	if it.HasNext() == True {
-		index := it.cursor
+	if it.HasNext() == True && it.mapKeys.Next() {
 		it.cursor++
-		refKey := it.mapKeys[index]
+		refKey := it.mapKeys.Key()
 		return it.NativeToValue(refKey.Interface())
 	}
 	return nil

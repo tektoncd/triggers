@@ -25,6 +25,18 @@ import (
 
 // CheckedExprToAst converts a checked expression proto message to an Ast.
 func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) *Ast {
+	return CheckedExprToAstWithSource(checkedExpr, nil)
+}
+
+// CheckedExprToAstWithSource converts a checked expression proto message to an Ast,
+// using the provided Source as the textual contents.
+//
+// In general the source is not necessary unless the AST has been modified between the
+// `Parse` and `Check` calls as an `Ast` created from the `Parse` step will carry the source
+// through future calls.
+//
+// Prefer CheckedExprToAst if loading expressions from storage.
+func CheckedExprToAstWithSource(checkedExpr *exprpb.CheckedExpr, src common.Source) *Ast {
 	refMap := checkedExpr.GetReferenceMap()
 	if refMap == nil {
 		refMap = map[int64]*exprpb.Reference{}
@@ -33,10 +45,17 @@ func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) *Ast {
 	if typeMap == nil {
 		typeMap = map[int64]*exprpb.Type{}
 	}
+	si := checkedExpr.GetSourceInfo()
+	if si == nil {
+		si = &exprpb.SourceInfo{}
+	}
+	if src == nil {
+		src = common.NewInfoSource(si)
+	}
 	return &Ast{
 		expr:    checkedExpr.GetExpr(),
-		info:    checkedExpr.GetSourceInfo(),
-		source:  common.NewInfoSource(checkedExpr.GetSourceInfo()),
+		info:    si,
+		source:  src,
 		refMap:  refMap,
 		typeMap: typeMap,
 	}
@@ -59,14 +78,28 @@ func AstToCheckedExpr(a *Ast) (*exprpb.CheckedExpr, error) {
 
 // ParsedExprToAst converts a parsed expression proto message to an Ast.
 func ParsedExprToAst(parsedExpr *exprpb.ParsedExpr) *Ast {
+	return ParsedExprToAstWithSource(parsedExpr, nil)
+}
+
+// ParsedExprToAstWithSource converts a parsed expression proto message to an Ast,
+// using the provided Source as the textual contents.
+//
+// In general you only need this if you need to recheck a previously checked
+// expression, or if you need to separately check a subset of an expression.
+//
+// Prefer ParsedExprToAst if loading expressions from storage.
+func ParsedExprToAstWithSource(parsedExpr *exprpb.ParsedExpr, src common.Source) *Ast {
 	si := parsedExpr.GetSourceInfo()
 	if si == nil {
 		si = &exprpb.SourceInfo{}
 	}
+	if src == nil {
+		src = common.NewInfoSource(si)
+	}
 	return &Ast{
 		expr:   parsedExpr.GetExpr(),
 		info:   si,
-		source: common.NewInfoSource(si),
+		source: src,
 	}
 }
 

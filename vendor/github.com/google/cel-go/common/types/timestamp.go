@@ -37,6 +37,22 @@ type Timestamp struct {
 	time.Time
 }
 
+func timestampOf(t time.Time) Timestamp {
+	// Note that this function does not validate that time.Time is in our supported range.
+	return Timestamp{Time: t}
+}
+
+const (
+	// The number of seconds between year 1 and year 1970. This is borrowed from
+	// https://golang.org/src/time/time.go.
+	unixToInternal int64 = (1969*365 + 1969/4 - 1969/100 + 1969/400) * (60 * 60 * 24)
+
+	// Number of seconds between `0001-01-01T00:00:00Z` and the Unix epoch.
+	minUnixTime int64 = -62135596800
+	// Number of seconds between `9999-12-31T23:59:59.999999999Z` and the Unix epoch.
+	maxUnixTime int64 = 253402300799
+)
+
 var (
 	// TimestampType singleton.
 	TimestampType = NewTypeValue("google.protobuf.Timestamp",
@@ -52,24 +68,24 @@ func (t Timestamp) Add(other ref.Val) ref.Val {
 	case DurationType:
 		return other.(Duration).Add(t)
 	}
-	return ValOrErr(other, "no such overload")
+	return MaybeNoSuchOverloadErr(other)
 }
 
 // Compare implements traits.Comparer.Compare.
 func (t Timestamp) Compare(other ref.Val) ref.Val {
 	if TimestampType != other.Type() {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	ts1 := t.Time
 	ts2 := other.(Timestamp).Time
-	ts := ts1.Sub(ts2)
-	if ts < 0 {
+	switch {
+	case ts1.Before(ts2):
 		return IntNegOne
-	}
-	if ts > 0 {
+	case ts1.After(ts2):
 		return IntOne
+	default:
+		return IntZero
 	}
-	return IntZero
 }
 
 // ConvertToNative implements ref.Val.ConvertToNative.
@@ -104,7 +120,7 @@ func (t Timestamp) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 func (t Timestamp) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case StringType:
-		return String(t.Format(time.RFC3339))
+		return String(t.Format(time.RFC3339Nano))
 	case IntType:
 		// Return the Unix time in seconds since 1970
 		return Int(t.Unix())
@@ -136,7 +152,7 @@ func (t Timestamp) Receive(function string, overload string, args []ref.Val) ref
 			return f(t.Time, args[0])
 		}
 	}
-	return NewErr("no such overload")
+	return NoSuchOverloadErr()
 }
 
 // Subtract implements traits.Subtractor.Subtract.
@@ -144,12 +160,20 @@ func (t Timestamp) Subtract(subtrahend ref.Val) ref.Val {
 	switch subtrahend.Type() {
 	case DurationType:
 		dur := subtrahend.(Duration)
-		return Timestamp{Time: t.Time.Add(-dur.Duration)}
+		val, err := subtractTimeDurationChecked(t.Time, dur.Duration)
+		if err != nil {
+			return wrapErr(err)
+		}
+		return timestampOf(val)
 	case TimestampType:
 		t2 := subtrahend.(Timestamp).Time
-		return Duration{Duration: t.Time.Sub(t2)}
+		val, err := subtractTimeChecked(t.Time, t2)
+		if err != nil {
+			return wrapErr(err)
+		}
+		return durationOf(val)
 	}
-	return ValOrErr(subtrahend, "no such overload")
+	return MaybeNoSuchOverloadErr(subtrahend)
 }
 
 // Type implements ref.Val.Type.
@@ -259,14 +283,14 @@ func timestampGetMillisecondsWithTz(t time.Time, tz ref.Val) ref.Val {
 func timeZone(tz ref.Val, visitor timestampVisitor) timestampVisitor {
 	return func(t time.Time) ref.Val {
 		if StringType != tz.Type() {
-			return ValOrErr(tz, "no such overload")
+			return MaybeNoSuchOverloadErr(tz)
 		}
 		val := string(tz.(String))
 		ind := strings.Index(val, ":")
 		if ind == -1 {
 			loc, err := time.LoadLocation(val)
 			if err != nil {
-				return &Err{err}
+				return wrapErr(err)
 			}
 			return visitor(t.In(loc))
 		}
@@ -275,11 +299,11 @@ func timeZone(tz ref.Val, visitor timestampVisitor) timestampVisitor {
 		// in the format ^(+|-)(0[0-9]|1[0-4]):[0-5][0-9]$. The numerical input is parsed in terms of hours and minutes.
 		hr, err := strconv.Atoi(string(val[0:ind]))
 		if err != nil {
-			return &Err{err}
+			return wrapErr(err)
 		}
 		min, err := strconv.Atoi(string(val[ind+1]))
 		if err != nil {
-			return &Err{err}
+			return wrapErr(err)
 		}
 		var offset int
 		if string(val[0]) == "-" {

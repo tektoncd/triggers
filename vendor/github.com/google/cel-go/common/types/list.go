@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -228,13 +227,20 @@ func (l *baseList) Equal(other ref.Val) ref.Val {
 	if l.Size() != otherList.Size() {
 		return False
 	}
+	var maybeErr ref.Val
 	for i := IntZero; i < l.Size().(Int); i++ {
 		thisElem := l.Get(i)
 		otherElem := otherList.Get(i)
 		elemEq := thisElem.Equal(otherElem)
-		if elemEq != True {
-			return elemEq
+		if elemEq == False {
+			return False
 		}
+		if maybeErr == nil && IsUnknownOrError(elemEq) {
+			maybeErr = elemEq
+		}
+	}
+	if maybeErr != nil {
+		return maybeErr
 	}
 	return True
 }
@@ -348,13 +354,20 @@ func (l *concatList) Equal(other ref.Val) ref.Val {
 	if l.Size() != otherList.Size() {
 		return False
 	}
+	var maybeErr ref.Val
 	for i := IntZero; i < l.Size().(Int); i++ {
 		thisElem := l.Get(i)
 		otherElem := otherList.Get(i)
 		elemEq := thisElem.Equal(otherElem)
-		if elemEq != True {
-			return elemEq
+		if elemEq == False {
+			return False
 		}
+		if maybeErr == nil && IsUnknownOrError(elemEq) {
+			maybeErr = elemEq
+		}
+	}
+	if maybeErr != nil {
+		return maybeErr
 	}
 	return True
 }

@@ -57,7 +57,7 @@ var (
 func (s String) Add(other ref.Val) ref.Val {
 	otherString, ok := other.(String)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return s + otherString
 }
@@ -66,7 +66,7 @@ func (s String) Add(other ref.Val) ref.Val {
 func (s String) Compare(other ref.Val) ref.Val {
 	otherString, ok := other.(String)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return Int(strings.Compare(s.Value().(string), otherString.Value().(string)))
 }
@@ -131,11 +131,14 @@ func (s String) ConvertToType(typeVal ref.Type) ref.Val {
 		return Bytes(s)
 	case DurationType:
 		if d, err := time.ParseDuration(s.Value().(string)); err == nil {
-			return Duration{Duration: d}
+			return durationOf(d)
 		}
 	case TimestampType:
 		if t, err := time.Parse(time.RFC3339, s.Value().(string)); err == nil {
-			return Timestamp{Time: t}
+			if t.Unix() < minUnixTime || t.Unix() > maxUnixTime {
+				return celErrTimestampOverflow
+			}
+			return timestampOf(t)
 		}
 	case StringType:
 		return s
@@ -149,7 +152,7 @@ func (s String) ConvertToType(typeVal ref.Type) ref.Val {
 func (s String) Equal(other ref.Val) ref.Val {
 	otherString, ok := other.(String)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return Bool(s == otherString)
 }
@@ -158,7 +161,7 @@ func (s String) Equal(other ref.Val) ref.Val {
 func (s String) Match(pattern ref.Val) ref.Val {
 	pat, ok := pattern.(String)
 	if !ok {
-		return ValOrErr(pattern, "no such overload")
+		return MaybeNoSuchOverloadErr(pattern)
 	}
 	matched, err := regexp.MatchString(pat.Value().(string), s.Value().(string))
 	if err != nil {
@@ -175,7 +178,7 @@ func (s String) Receive(function string, overload string, args []ref.Val) ref.Va
 			return f(s, args[0])
 		}
 	}
-	return NewErr("no such overload")
+	return NoSuchOverloadErr()
 }
 
 // Size implements traits.Sizer.Size.
@@ -196,7 +199,7 @@ func (s String) Value() interface{} {
 func stringContains(s String, sub ref.Val) ref.Val {
 	subStr, ok := sub.(String)
 	if !ok {
-		return ValOrErr(sub, "no such overload")
+		return MaybeNoSuchOverloadErr(sub)
 	}
 	return Bool(strings.Contains(string(s), string(subStr)))
 }
@@ -204,7 +207,7 @@ func stringContains(s String, sub ref.Val) ref.Val {
 func stringEndsWith(s String, suf ref.Val) ref.Val {
 	sufStr, ok := suf.(String)
 	if !ok {
-		return ValOrErr(suf, "no such overload")
+		return MaybeNoSuchOverloadErr(suf)
 	}
 	return Bool(strings.HasSuffix(string(s), string(sufStr)))
 }
@@ -212,7 +215,7 @@ func stringEndsWith(s String, suf ref.Val) ref.Val {
 func stringStartsWith(s String, pre ref.Val) ref.Val {
 	preStr, ok := pre.(String)
 	if !ok {
-		return ValOrErr(pre, "no such overload")
+		return MaybeNoSuchOverloadErr(pre)
 	}
 	return Bool(strings.HasPrefix(string(s), string(preStr)))
 }

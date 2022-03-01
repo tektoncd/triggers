@@ -34,7 +34,7 @@ const (
 	kindWellKnown
 	kindWrapper
 	kindNull
-	kindAbstract // TODO: Update the checker protos to include abstract
+	kindAbstract
 	kindType
 	kindList
 	kindMap
@@ -190,11 +190,11 @@ func internalIsAssignable(m *mapping, t1 *exprpb.Type, t2 *exprpb.Type) bool {
 	if kind2 == kindTypeParam {
 		if t2Sub, found := m.find(t2); found {
 			// If the types are compatible, pick the more general type and return true
-			if internalIsAssignable(m, t1, t2Sub) {
-				m.add(t2, mostGeneral(t1, t2Sub))
-				return true
+			if !internalIsAssignable(m, t1, t2Sub) {
+				return false
 			}
-			return false
+			m.add(t2, mostGeneral(t1, t2Sub))
+			return true
 		}
 		if notReferencedIn(m, t2, t1) {
 			m.add(t2, t1)
@@ -207,11 +207,11 @@ func internalIsAssignable(m *mapping, t1 *exprpb.Type, t2 *exprpb.Type) bool {
 		// become if we generalize type unification.
 		if t1Sub, found := m.find(t1); found {
 			// If the types are compatible, pick the more general type and return true
-			if internalIsAssignable(m, t1Sub, t2) {
-				m.add(t1, mostGeneral(t1Sub, t2))
-				return true
+			if !internalIsAssignable(m, t1Sub, t2) {
+				return false
 			}
-			return false
+			m.add(t1, mostGeneral(t1Sub, t2))
+			return true
 		}
 		if notReferencedIn(m, t1, t2) {
 			m.add(t1, t2)
@@ -242,15 +242,11 @@ func internalIsAssignable(m *mapping, t1 *exprpb.Type, t2 *exprpb.Type) bool {
 	switch kind1 {
 	// ERROR, TYPE_PARAM, and DYN handled above.
 	case kindAbstract:
-		return internalIsAssignableAbstractType(m,
-			t1.GetAbstractType(), t2.GetAbstractType())
+		return internalIsAssignableAbstractType(m, t1.GetAbstractType(), t2.GetAbstractType())
 	case kindFunction:
-		return internalIsAssignableFunction(m,
-			t1.GetFunction(), t2.GetFunction())
+		return internalIsAssignableFunction(m, t1.GetFunction(), t2.GetFunction())
 	case kindList:
-		return internalIsAssignable(m,
-			t1.GetListType().GetElemType(),
-			t2.GetListType().GetElemType())
+		return internalIsAssignable(m, t1.GetListType().GetElemType(), t2.GetListType().GetElemType())
 	case kindMap:
 		return internalIsAssignableMap(m, t1.GetMapType(), t2.GetMapType())
 	case kindObject:
@@ -389,6 +385,8 @@ func kindOf(t *exprpb.Type) int {
 		return kindObject
 	case *exprpb.Type_TypeParam:
 		return kindTypeParam
+	case *exprpb.Type_AbstractType_:
+		return kindAbstract
 	}
 	return kindUnknown
 }

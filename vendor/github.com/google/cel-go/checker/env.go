@@ -231,34 +231,26 @@ func sanitizeFunction(decl *exprpb.Decl) *exprpb.Decl {
 	}
 
 	// Sanitize all of the overloads if any overload requires an update to its type references.
-	overloads := make([]*exprpb.Decl_FunctionDecl_Overload, 0, len(fn.GetOverloads()))
+	overloads := make([]*exprpb.Decl_FunctionDecl_Overload, len(fn.GetOverloads()))
 	for i, o := range fn.GetOverloads() {
-		var sanitized bool
 		rt := o.GetResultType()
 		if isObjectWellKnownType(rt) {
 			rt = getObjectWellKnownType(rt)
-			sanitized = true
 		}
-		params := make([]*exprpb.Type, 0, len(o.GetParams()))
+		params := make([]*exprpb.Type, len(o.GetParams()))
 		copy(params, o.GetParams())
 		for j, p := range params {
 			if isObjectWellKnownType(p) {
 				params[j] = getObjectWellKnownType(p)
-				sanitized = true
 			}
 		}
 		// If sanitized, replace the overload definition.
-		if sanitized {
-			if o.IsInstanceFunction {
-				overloads[i] =
-					decls.NewInstanceOverload(o.GetOverloadId(), params, rt)
-			} else {
-				overloads[i] =
-					decls.NewOverload(o.GetOverloadId(), params, rt)
-			}
+		if o.IsInstanceFunction {
+			overloads[i] =
+				decls.NewInstanceOverload(o.GetOverloadId(), params, rt)
 		} else {
-			// Otherwise, preserve the original overload.
-			overloads[i] = o
+			overloads[i] =
+				decls.NewOverload(o.GetOverloadId(), params, rt)
 		}
 	}
 	return decls.NewFunction(decl.GetName(), overloads...)

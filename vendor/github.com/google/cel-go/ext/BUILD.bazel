@@ -5,13 +5,14 @@ package(
 )
 
 go_library(
-    name = "go_strings_library",
+    name = "go_default_library",
     srcs = [
         "encoders.go",
         "guards.go",
         "strings.go",
     ],
     importpath = "github.com/google/cel-go/ext",
+    visibility = ["//visibility:public"],
     deps = [
         "//cel:go_default_library",
         "//checker/decls:go_default_library",
@@ -20,9 +21,7 @@ go_library(
         "//interpreter/functions:go_default_library",
         "@org_golang_google_genproto//googleapis/api/expr/v1alpha1:go_default_library",
     ],
-    visibility = ["//visibility:public"],
 )
-
 
 go_test(
     name = "go_default_test",
@@ -32,7 +31,7 @@ go_test(
         "strings_test.go",
     ],
     embed = [
-        ":go_strings_library",
+        ":go_default_library",
     ],
     deps = [
         "//cel:go_default_library",

@@ -52,7 +52,7 @@ func (ast *Ast) Expr() *exprpb.Expr {
 
 // IsChecked returns whether the Ast value has been successfully type-checked.
 func (ast *Ast) IsChecked() bool {
-	return ast.refMap != nil && ast.typeMap != nil
+	return ast.typeMap != nil && len(ast.typeMap) > 0
 }
 
 // SourceInfo returns character offset and newling position information about expression elements.
