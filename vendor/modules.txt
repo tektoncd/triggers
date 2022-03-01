@@ -43,7 +43,7 @@ github.com/PuerkitoBio/urlesc
 # github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20210609063737-0067dc6dcea2
 ## explicit
 github.com/ahmetb/gen-crd-api-reference-docs
-# github.com/antlr/antlr4 v0.0.0-20200503195918-621b933c7a7f
+# github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20210826220005-b48c857c3a0e
 github.com/antlr/antlr4/runtime/Go/antlr
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
@@ -128,7 +128,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/google/cel-go v0.7.3
+# github.com/google/cel-go v0.9.0
 ## explicit
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
@@ -138,6 +138,7 @@ github.com/google/cel-go/common/containers
 github.com/google/cel-go/common/debug
 github.com/google/cel-go/common/operators
 github.com/google/cel-go/common/overloads
+github.com/google/cel-go/common/runes
 github.com/google/cel-go/common/types
 github.com/google/cel-go/common/types/pb
 github.com/google/cel-go/common/types/ref

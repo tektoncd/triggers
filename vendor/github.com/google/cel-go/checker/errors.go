@@ -41,32 +41,9 @@ func (e *typeErrors) undefinedField(l common.Location, field string) {
 	e.ReportError(l, "undefined field '%s'", field)
 }
 
-func (e *typeErrors) fieldDoesNotSupportPresenceCheck(l common.Location, field string) {
-	e.ReportError(l, "field '%s' does not support presence check", field)
-}
-
-func (e *typeErrors) overlappingOverload(l common.Location, name string, overloadID1 string, f1 *exprpb.Type,
-	overloadID2 string, f2 *exprpb.Type) {
-	e.ReportError(l, "overlapping overload for name '%s' (type '%s' with overloadId: '%s' cannot be distinguished from '%s' with "+
-		"overloadId: '%s')", name, FormatCheckedType(f1), overloadID1, FormatCheckedType(f2), overloadID2)
-}
-
-func (e *typeErrors) overlappingMacro(l common.Location, name string, args int) {
-	e.ReportError(l, "overload for name '%s' with %d argument(s) overlaps with predefined macro",
-		name, args)
-}
-
 func (e *typeErrors) noMatchingOverload(l common.Location, name string, args []*exprpb.Type, isInstance bool) {
 	signature := formatFunction(nil, args, isInstance)
 	e.ReportError(l, "found no matching overload for '%s' applied to '%s'", name, signature)
-}
-
-func (e *typeErrors) aggregateTypeMismatch(l common.Location, aggregate *exprpb.Type, member *exprpb.Type) {
-	e.ReportError(
-		l,
-		"type '%s' does not match previous type '%s' in aggregate. Use 'dyn(x)' to make the aggregate dynamic.",
-		FormatCheckedType(member),
-		FormatCheckedType(aggregate))
 }
 
 func (e *typeErrors) notAType(l common.Location, t *exprpb.Type) {

@@ -23,52 +23,264 @@ import (
 	"sync"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
-
 	"github.com/google/cel-go/common"
 	"github.com/google/cel-go/common/operators"
+	"github.com/google/cel-go/common/runes"
 	"github.com/google/cel-go/parser/gen"
 
-	structpb "google.golang.org/protobuf/types/known/structpb"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
+
+// Parser encapsulates the context necessary to perform parsing for different expressions.
+type Parser struct {
+	options
+}
+
+// NewParser builds and returns a new Parser using the provided options.
+func NewParser(opts ...Option) (*Parser, error) {
+	p := &Parser{}
+	for _, opt := range opts {
+		if err := opt(&p.options); err != nil {
+			return nil, err
+		}
+	}
+	if p.maxRecursionDepth == 0 {
+		p.maxRecursionDepth = 200
+	}
+	if p.maxRecursionDepth == -1 {
+		p.maxRecursionDepth = int((^uint(0)) >> 1)
+	}
+	if p.errorRecoveryTokenLookaheadLimit == 0 {
+		p.errorRecoveryTokenLookaheadLimit = 256
+	}
+	if p.errorRecoveryLimit == 0 {
+		p.errorRecoveryLimit = 30
+	}
+	if p.errorRecoveryLimit == -1 {
+		p.errorRecoveryLimit = int((^uint(0)) >> 1)
+	}
+	if p.expressionSizeCodePointLimit == 0 {
+		p.expressionSizeCodePointLimit = 100_000
+	}
+	if p.expressionSizeCodePointLimit == -1 {
+		p.expressionSizeCodePointLimit = int((^uint(0)) >> 1)
+	}
+	// Bool is false by default, so populateMacroCalls will be false by default
+	return p, nil
+}
+
+// mustNewParser does the work of NewParser and panics if an error occurs.
+//
+// This function is only intended for internal use and is for backwards compatibility in Parse and
+// ParseWithMacros, where we know the options will result in an error.
+func mustNewParser(opts ...Option) *Parser {
+	p, err := NewParser(opts...)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+// Parse parses the expression represented by source and returns the result.
+func (p *Parser) Parse(source common.Source) (*exprpb.ParsedExpr, *common.Errors) {
+	impl := parser{
+		errors:                           &parseErrors{common.NewErrors(source)},
+		helper:                           newParserHelper(source),
+		macros:                           p.macros,
+		maxRecursionDepth:                p.maxRecursionDepth,
+		errorRecoveryLimit:               p.errorRecoveryLimit,
+		errorRecoveryLookaheadTokenLimit: p.errorRecoveryTokenLookaheadLimit,
+		populateMacroCalls:               p.populateMacroCalls,
+	}
+	buf, ok := source.(runes.Buffer)
+	if !ok {
+		buf = runes.NewBuffer(source.Content())
+	}
+	var e *exprpb.Expr
+	if buf.Len() > p.expressionSizeCodePointLimit {
+		e = impl.reportError(common.NoLocation,
+			"expression code point size exceeds limit: size: %d, limit %d",
+			buf.Len(), p.expressionSizeCodePointLimit)
+	} else {
+		e = impl.parse(buf, source.Description())
+	}
+	return &exprpb.ParsedExpr{
+		Expr:       e,
+		SourceInfo: impl.helper.getSourceInfo(),
+	}, impl.errors.Errors
+}
 
 // reservedIds are not legal to use as variables.  We exclude them post-parse, as they *are* valid
 // field names for protos, and it would complicate the grammar to distinguish the cases.
-var reservedIds = []string{
-	"as", "break", "const", "continue", "else", "false", "for", "function", "if",
-	"import", "in", "let", "loop", "package", "namespace", "null", "return",
-	"true", "var", "void", "while",
+var reservedIds = map[string]struct{}{
+	"as":        {},
+	"break":     {},
+	"const":     {},
+	"continue":  {},
+	"else":      {},
+	"false":     {},
+	"for":       {},
+	"function":  {},
+	"if":        {},
+	"import":    {},
+	"in":        {},
+	"let":       {},
+	"loop":      {},
+	"package":   {},
+	"namespace": {},
+	"null":      {},
+	"return":    {},
+	"true":      {},
+	"var":       {},
+	"void":      {},
+	"while":     {},
 }
 
 // Parse converts a source input a parsed expression.
 // This function calls ParseWithMacros with AllMacros.
+//
+// Deprecated: Use NewParser().Parse() instead.
 func Parse(source common.Source) (*exprpb.ParsedExpr, *common.Errors) {
 	return ParseWithMacros(source, AllMacros)
 }
 
 // ParseWithMacros converts a source input and macros set to a parsed expression.
+//
+// Deprecated: Use NewParser().Parse() instead.
 func ParseWithMacros(source common.Source, macros []Macro) (*exprpb.ParsedExpr, *common.Errors) {
-	macroMap := make(map[string]Macro)
-	for _, m := range macros {
-		macroMap[m.MacroKey()] = m
-	}
-	p := parser{
-		errors: &parseErrors{common.NewErrors(source)},
-		helper: newParserHelper(source),
-		macros: macroMap,
-	}
-	e := p.parse(source.Content())
-	return &exprpb.ParsedExpr{
-		Expr:       e,
-		SourceInfo: p.helper.getSourceInfo(),
-	}, p.errors.Errors
+	return mustNewParser(Macros(macros...)).Parse(source)
 }
+
+type recursionError struct {
+	message string
+}
+
+// Error implements error.
+func (re *recursionError) Error() string {
+	return re.message
+}
+
+var _ error = &recursionError{}
+
+type recursionListener struct {
+	maxDepth      int
+	ruleTypeDepth map[int]*int
+}
+
+func (rl *recursionListener) VisitTerminal(node antlr.TerminalNode) {}
+
+func (rl *recursionListener) VisitErrorNode(node antlr.ErrorNode) {}
+
+func (rl *recursionListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
+	if ctx == nil {
+		return
+	}
+	ruleIndex := ctx.GetRuleIndex()
+	depth, found := rl.ruleTypeDepth[ruleIndex]
+	if !found {
+		var counter = 1
+		rl.ruleTypeDepth[ruleIndex] = &counter
+		depth = &counter
+	} else {
+		*depth++
+	}
+	if *depth >= rl.maxDepth {
+		panic(&recursionError{
+			message: fmt.Sprintf("expression recursion limit exceeded: %d", rl.maxDepth),
+		})
+	}
+}
+
+func (rl *recursionListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
+	if ctx == nil {
+		return
+	}
+	ruleIndex := ctx.GetRuleIndex()
+	if depth, found := rl.ruleTypeDepth[ruleIndex]; found && *depth > 0 {
+		*depth--
+	}
+}
+
+var _ antlr.ParseTreeListener = &recursionListener{}
+
+type recoveryLimitError struct {
+	message string
+}
+
+// Error implements error.
+func (rl *recoveryLimitError) Error() string {
+	return rl.message
+}
+
+type lookaheadLimitError struct {
+	message string
+}
+
+func (ll *lookaheadLimitError) Error() string {
+	return ll.message
+}
+
+var _ error = &recoveryLimitError{}
+
+type recoveryLimitErrorStrategy struct {
+	*antlr.DefaultErrorStrategy
+	errorRecoveryLimit               int
+	errorRecoveryTokenLookaheadLimit int
+	recoveryAttempts                 int
+}
+
+type lookaheadConsumer struct {
+	antlr.Parser
+	errorRecoveryTokenLookaheadLimit int
+	lookaheadAttempts                int
+}
+
+func (lc *lookaheadConsumer) Consume() antlr.Token {
+	if lc.lookaheadAttempts >= lc.errorRecoveryTokenLookaheadLimit {
+		panic(&lookaheadLimitError{
+			message: fmt.Sprintf("error recovery token lookahead limit exceeded: %d", lc.errorRecoveryTokenLookaheadLimit),
+		})
+	}
+	lc.lookaheadAttempts++
+	return lc.Parser.Consume()
+}
+
+func (rl *recoveryLimitErrorStrategy) Recover(recognizer antlr.Parser, e antlr.RecognitionException) {
+	rl.checkAttempts(recognizer)
+	lc := &lookaheadConsumer{Parser: recognizer, errorRecoveryTokenLookaheadLimit: rl.errorRecoveryTokenLookaheadLimit}
+	rl.DefaultErrorStrategy.Recover(lc, e)
+}
+
+func (rl *recoveryLimitErrorStrategy) RecoverInline(recognizer antlr.Parser) antlr.Token {
+	rl.checkAttempts(recognizer)
+	lc := &lookaheadConsumer{Parser: recognizer, errorRecoveryTokenLookaheadLimit: rl.errorRecoveryTokenLookaheadLimit}
+	return rl.DefaultErrorStrategy.RecoverInline(lc)
+}
+
+func (rl *recoveryLimitErrorStrategy) checkAttempts(recognizer antlr.Parser) {
+	if rl.recoveryAttempts == rl.errorRecoveryLimit {
+		rl.recoveryAttempts++
+		msg := fmt.Sprintf("error recovery attempt limit exceeded: %d", rl.errorRecoveryLimit)
+		recognizer.NotifyErrorListeners(msg, nil, nil)
+		panic(&recoveryLimitError{
+			message: msg,
+		})
+	}
+	rl.recoveryAttempts++
+}
+
+var _ antlr.ErrorStrategy = &recoveryLimitErrorStrategy{}
 
 type parser struct {
 	gen.BaseCELVisitor
-	errors *parseErrors
-	helper *parserHelper
-	macros map[string]Macro
+	errors                           *parseErrors
+	helper                           *parserHelper
+	macros                           map[string]Macro
+	maxRecursionDepth                int
+	errorRecoveryLimit               int
+	errorRecoveryLookaheadTokenLimit int
+	populateMacroCalls               bool
 }
 
 var (
@@ -76,30 +288,70 @@ var (
 
 	lexerPool *sync.Pool = &sync.Pool{
 		New: func() interface{} {
-			return gen.NewCELLexer(nil)
+			l := gen.NewCELLexer(nil)
+			l.RemoveErrorListeners()
+			return l
 		},
 	}
 
 	parserPool *sync.Pool = &sync.Pool{
 		New: func() interface{} {
-			return gen.NewCELParser(nil)
+			p := gen.NewCELParser(nil)
+			p.RemoveErrorListeners()
+			return p
 		},
 	}
 )
 
-func (p *parser) parse(expression string) *exprpb.Expr {
+func (p *parser) parse(expr runes.Buffer, desc string) *exprpb.Expr {
 	lexer := lexerPool.Get().(*gen.CELLexer)
-	lexer.SetInputStream(antlr.NewInputStream(expression))
-	defer lexerPool.Put(lexer)
-
 	prsr := parserPool.Get().(*gen.CELParser)
-	prsr.SetInputStream(antlr.NewCommonTokenStream(lexer, 0))
-	defer parserPool.Put(prsr)
 
-	lexer.RemoveErrorListeners()
-	prsr.RemoveErrorListeners()
+	// Unfortunately ANTLR Go runtime is missing (*antlr.BaseParser).RemoveParseListeners, so this is
+	// good enough until that is exported.
+	prsrListener := &recursionListener{
+		maxDepth:      p.maxRecursionDepth,
+		ruleTypeDepth: map[int]*int{},
+	}
+
+	defer func() {
+		// Reset the lexer and parser before putting them back in the pool.
+		lexer.RemoveErrorListeners()
+		prsr.RemoveParseListener(prsrListener)
+		prsr.RemoveErrorListeners()
+		lexer.SetInputStream(nil)
+		prsr.SetInputStream(nil)
+		lexerPool.Put(lexer)
+		parserPool.Put(prsr)
+	}()
+
+	lexer.SetInputStream(newCharStream(expr, desc))
+	prsr.SetInputStream(antlr.NewCommonTokenStream(lexer, 0))
+
 	lexer.AddErrorListener(p)
 	prsr.AddErrorListener(p)
+	prsr.AddParseListener(prsrListener)
+
+	prsr.SetErrorHandler(&recoveryLimitErrorStrategy{
+		DefaultErrorStrategy:             antlr.NewDefaultErrorStrategy(),
+		errorRecoveryLimit:               p.errorRecoveryLimit,
+		errorRecoveryTokenLookaheadLimit: p.errorRecoveryLookaheadTokenLimit,
+	})
+
+	defer func() {
+		if val := recover(); val != nil {
+			switch err := val.(type) {
+			case *lookaheadLimitError:
+				p.errors.ReportError(common.NoLocation, err.Error())
+			case *recursionError:
+				p.errors.ReportError(common.NoLocation, err.Error())
+			case *recoveryLimitError:
+				// do nothing, listeners already notified and error reported.
+			default:
+				panic(val)
+			}
+		}
+	}()
 
 	return p.Visit(prsr.Start()).(*exprpb.Expr)
 }
@@ -372,10 +624,8 @@ func (p *parser) VisitIdentOrGlobalCall(ctx *gen.IdentOrGlobalCallContext) inter
 	}
 	// Handle reserved identifiers.
 	id := ctx.GetId().GetText()
-	for _, r := range reservedIds {
-		if r == id {
-			return p.reportError(ctx, "reserved identifier: %s", r)
-		}
+	if _, ok := reservedIds[id]; ok {
+		return p.reportError(ctx, "reserved identifier: %s", id)
 	}
 	identName += id
 	if ctx.GetOp() != nil {
@@ -557,7 +807,7 @@ func (p *parser) extractQualifiedName(e *exprpb.Expr) (string, bool) {
 	}
 	switch e.ExprKind.(type) {
 	case *exprpb.Expr_IdentExpr:
-		return e.GetIdentExpr().Name, true
+		return e.GetIdentExpr().GetName(), true
 	case *exprpb.Expr_SelectExpr:
 		s := e.GetSelectExpr()
 		if prefix, found := p.extractQualifiedName(s.Operand); found {
@@ -565,7 +815,7 @@ func (p *parser) extractQualifiedName(e *exprpb.Expr) (string, bool) {
 		}
 	}
 	// TODO: Add a method to Source to get location from character offset.
-	location := p.helper.getLocation(e.Id)
+	location := p.helper.getLocation(e.GetId())
 	p.reportError(location, "expected a qualified name")
 	return "", false
 }
@@ -586,7 +836,7 @@ func (p *parser) reportError(ctx interface{}, format string, args ...interface{}
 		location = ctx.(common.Location)
 	case antlr.Token, antlr.ParserRuleContext:
 		err := p.helper.newExpr(ctx)
-		location = p.helper.getLocation(err.Id)
+		location = p.helper.getLocation(err.GetId())
 	}
 	err := p.helper.newExpr(ctx)
 	// Provide arguments to the report error.
@@ -645,6 +895,9 @@ func (p *parser) expandMacro(exprID int64, function string, target *exprpb.Expr,
 			return p.reportError(err.Location, err.Message), true
 		}
 		return p.reportError(p.helper.getLocation(exprID), err.Message), true
+	}
+	if p.populateMacroCalls {
+		p.helper.addMacroCall(expr.GetId(), function, target, args...)
 	}
 	return expr, true
 }

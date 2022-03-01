@@ -24,16 +24,18 @@ import (
 )
 
 type parserHelper struct {
-	source    common.Source
-	nextID    int64
-	positions map[int64]int32
+	source     common.Source
+	nextID     int64
+	positions  map[int64]int32
+	macroCalls map[int64]*exprpb.Expr
 }
 
 func newParserHelper(source common.Source) *parserHelper {
 	return &parserHelper{
-		source:    source,
-		nextID:    1,
-		positions: make(map[int64]int32),
+		source:     source,
+		nextID:     1,
+		positions:  make(map[int64]int32),
+		macroCalls: make(map[int64]*exprpb.Expr),
 	}
 }
 
@@ -41,7 +43,8 @@ func (p *parserHelper) getSourceInfo() *exprpb.SourceInfo {
 	return &exprpb.SourceInfo{
 		Location:    p.source.Description(),
 		Positions:   p.positions,
-		LineOffsets: p.source.LineOffsets()}
+		LineOffsets: p.source.LineOffsets(),
+		MacroCalls:  p.macroCalls}
 }
 
 func (p *parserHelper) newLiteral(ctx interface{}, value *exprpb.Constant) *exprpb.Expr {
@@ -205,6 +208,68 @@ func (p *parserHelper) getLocation(id int64) common.Location {
 	characterOffset := p.positions[id]
 	location, _ := p.source.OffsetLocation(characterOffset)
 	return location
+}
+
+// buildMacroCallArg iterates the expression and returns a new expression
+// where all macros have been replaced by their IDs in MacroCalls
+func (p *parserHelper) buildMacroCallArg(expr *exprpb.Expr) *exprpb.Expr {
+	if _, found := p.macroCalls[expr.GetId()]; found {
+		return &exprpb.Expr{Id: expr.GetId()}
+	}
+
+	switch expr.ExprKind.(type) {
+	case *exprpb.Expr_CallExpr:
+		// Iterate the AST from `expr` recursively looking for macros. Because we are at most
+		// starting from the top level macro, this recursion is bounded by the size of the AST. This
+		// means that the depth check on the AST during parsing will catch recursion overflows
+		// before we get to here.
+		macroTarget := expr.GetCallExpr().GetTarget()
+		if macroTarget != nil {
+			macroTarget = p.buildMacroCallArg(macroTarget)
+		}
+		macroArgs := make([]*exprpb.Expr, len(expr.GetCallExpr().GetArgs()))
+		for index, arg := range expr.GetCallExpr().GetArgs() {
+			macroArgs[index] = p.buildMacroCallArg(arg)
+		}
+		return &exprpb.Expr{
+			Id: expr.GetId(),
+			ExprKind: &exprpb.Expr_CallExpr{
+				CallExpr: &exprpb.Expr_Call{
+					Target:   macroTarget,
+					Function: expr.GetCallExpr().GetFunction(),
+					Args:     macroArgs,
+				},
+			},
+		}
+	}
+
+	return expr
+}
+
+// addMacroCall adds the macro the the MacroCalls map in source info. If a macro has args/subargs/target
+// that are macros, their ID will be stored instead for later self-lookups.
+func (p *parserHelper) addMacroCall(exprID int64, function string, target *exprpb.Expr, args ...*exprpb.Expr) {
+	macroTarget := target
+	if target != nil {
+		if _, found := p.macroCalls[target.GetId()]; found {
+			macroTarget = &exprpb.Expr{Id: target.GetId()}
+		}
+	}
+
+	macroArgs := make([]*exprpb.Expr, len(args))
+	for index, arg := range args {
+		macroArgs[index] = p.buildMacroCallArg(arg)
+	}
+
+	p.macroCalls[exprID] = &exprpb.Expr{
+		ExprKind: &exprpb.Expr_CallExpr{
+			CallExpr: &exprpb.Expr_Call{
+				Target:   macroTarget,
+				Function: function,
+				Args:     macroArgs,
+			},
+		},
+	}
 }
 
 // balancer performs tree balancing on operators whose arguments are of equal precedence.

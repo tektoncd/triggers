@@ -633,23 +633,23 @@ func (p *planner) planConst(expr *exprpb.Expr) (Interpretable, error) {
 func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 	switch c.ConstantKind.(type) {
 	case *exprpb.Constant_BoolValue:
-		return types.Bool(c.GetBoolValue()), nil
+		return p.adapter.NativeToValue(c.GetBoolValue()), nil
 	case *exprpb.Constant_BytesValue:
-		return types.Bytes(c.GetBytesValue()), nil
+		return p.adapter.NativeToValue(c.GetBytesValue()), nil
 	case *exprpb.Constant_DoubleValue:
-		return types.Double(c.GetDoubleValue()), nil
+		return p.adapter.NativeToValue(c.GetDoubleValue()), nil
 	case *exprpb.Constant_DurationValue:
-		return types.Duration{Duration: c.GetDurationValue().AsDuration()}, nil
+		return p.adapter.NativeToValue(c.GetDurationValue().AsDuration()), nil
 	case *exprpb.Constant_Int64Value:
-		return types.Int(c.GetInt64Value()), nil
+		return p.adapter.NativeToValue(c.GetInt64Value()), nil
 	case *exprpb.Constant_NullValue:
-		return types.Null(c.GetNullValue()), nil
+		return p.adapter.NativeToValue(c.GetNullValue()), nil
 	case *exprpb.Constant_StringValue:
-		return types.String(c.GetStringValue()), nil
+		return p.adapter.NativeToValue(c.GetStringValue()), nil
 	case *exprpb.Constant_TimestampValue:
-		return types.Timestamp{Time: c.GetTimestampValue().AsTime()}, nil
+		return p.adapter.NativeToValue(c.GetTimestampValue().AsTime()), nil
 	case *exprpb.Constant_Uint64Value:
-		return types.Uint(c.GetUint64Value()), nil
+		return p.adapter.NativeToValue(c.GetUint64Value()), nil
 	}
 	return nil, fmt.Errorf("unknown constant type: %v", c)
 }

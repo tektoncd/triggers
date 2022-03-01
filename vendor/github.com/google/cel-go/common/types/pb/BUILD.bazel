@@ -32,12 +32,12 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "small",
     srcs = [
         "file_test.go",
         "pb_test.go",
         "type_test.go",
     ],
-    size = "small",
     embed = [":go_default_library"],
     deps = [
         "//checker/decls:go_default_library",

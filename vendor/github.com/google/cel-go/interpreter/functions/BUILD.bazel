@@ -18,5 +18,5 @@ go_library(
         "//common/types:go_default_library",
         "//common/types/ref:go_default_library",
         "//common/types/traits:go_default_library",
-    ]
+    ],
 )
