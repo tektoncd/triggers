@@ -28,15 +28,3 @@ type parseErrors struct {
 func (e *parseErrors) syntaxError(l common.Location, message string) {
 	e.ReportError(l, fmt.Sprintf("Syntax error: %s", message))
 }
-
-func (e *parseErrors) invalidHasArgument(l common.Location) {
-	e.ReportError(l, "Argument to the function 'has' must be a field selection")
-}
-
-func (e *parseErrors) argumentIsNotIdent(l common.Location) {
-	e.ReportError(l, "Argument must be a simple name")
-}
-
-func (e *parseErrors) notAQualifiedName(l common.Location) {
-	e.ReportError(l, "Expected a qualified name")
-}

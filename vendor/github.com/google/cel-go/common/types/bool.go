@@ -41,7 +41,7 @@ var (
 )
 
 // Boolean constants
-var (
+const (
 	False = Bool(false)
 	True  = Bool(true)
 )

@@ -15,12 +15,12 @@ go_library(
         "cel_parser.go",
         "cel_visitor.go",
     ],
-    importpath = "github.com/google/cel-go/parser/gen",
-    deps = [
-        "@com_github_antlr//runtime/Go/antlr:go_default_library",
-    ],
     data = [
         "CEL.tokens",
         "CELLexer.tokens",
+    ],
+    importpath = "github.com/google/cel-go/parser/gen",
+    deps = [
+        "@com_github_antlr//runtime/Go/antlr:go_default_library",
     ],
 )

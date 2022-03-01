@@ -15,6 +15,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -29,6 +30,23 @@ type Err struct {
 var (
 	// ErrType singleton.
 	ErrType = NewTypeValue("error")
+
+	// errDivideByZero is an error indicating a division by zero of an integer value.
+	errDivideByZero = errors.New("division by zero")
+	// errModulusByZero is an error indicating a modulus by zero of an integer value.
+	errModulusByZero = errors.New("modulus by zero")
+	// errIntOverflow is an error representing integer overflow.
+	errIntOverflow = errors.New("integer overflow")
+	// errUintOverflow is an error representing unsigned integer overflow.
+	errUintOverflow = errors.New("unsigned integer overflow")
+	// errDurationOverflow is an error representing duration overflow.
+	errDurationOverflow = errors.New("duration overflow")
+	// errTimestampOverflow is an error representing timestamp overflow.
+	errTimestampOverflow    = errors.New("timestamp overflow")
+	celErrTimestampOverflow = &Err{error: errTimestampOverflow}
+
+	// celErrNoSuchOverload indicates that the call arguments did not match a supported method signature.
+	celErrNoSuchOverload = NewErr("no such overload")
 )
 
 // NewErr creates a new Err described by the format string and args.
@@ -39,7 +57,7 @@ func NewErr(format string, args ...interface{}) ref.Val {
 
 // NoSuchOverloadErr returns a new types.Err instance with a no such overload message.
 func NoSuchOverloadErr() ref.Val {
-	return NewErr("no such overload")
+	return celErrNoSuchOverload
 }
 
 // UnsupportedRefValConversionErr returns a types.NewErr instance with a no such conversion
@@ -66,6 +84,11 @@ func ValOrErr(val ref.Val, format string, args ...interface{}) ref.Val {
 	default:
 		return NewErr(format, args...)
 	}
+}
+
+// wrapErr wraps an existing Go error value into a CEL Err value.
+func wrapErr(err error) ref.Val {
+	return &Err{error: err}
 }
 
 // ConvertToNative implements ref.Val.ConvertToNative.

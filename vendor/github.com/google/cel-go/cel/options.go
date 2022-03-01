@@ -17,17 +17,18 @@ package cel
 import (
 	"fmt"
 
+	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/google/cel-go/parser"
-
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/dynamicpb"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	descpb "google.golang.org/protobuf/types/descriptorpb"
@@ -375,5 +376,76 @@ func EvalOptions(opts ...EvalOption) ProgramOption {
 			p.evalOpts |= opt
 		}
 		return p, nil
+	}
+}
+
+func fieldToCELType(field protoreflect.FieldDescriptor) (*exprpb.Type, error) {
+	if field.Kind() == protoreflect.MessageKind {
+		msgName := (string)(field.Message().FullName())
+		wellKnownType, found := pb.CheckedWellKnowns[msgName]
+		if found {
+			return wellKnownType, nil
+		}
+		return decls.NewObjectType(msgName), nil
+	}
+	if primitiveType, found := pb.CheckedPrimitives[field.Kind()]; found {
+		return primitiveType, nil
+	}
+	if field.Kind() == protoreflect.EnumKind {
+		return decls.Int, nil
+	}
+	return nil, fmt.Errorf("field %s type %s not implemented", field.FullName(), field.Kind().String())
+}
+
+func fieldToDecl(field protoreflect.FieldDescriptor) (*exprpb.Decl, error) {
+	name := string(field.Name())
+	if field.IsMap() {
+		mapKey := field.MapKey()
+		mapValue := field.MapValue()
+		keyType, err := fieldToCELType(mapKey)
+		if err != nil {
+			return nil, err
+		}
+		valueType, err := fieldToCELType(mapValue)
+		if err != nil {
+			return nil, err
+		}
+		return decls.NewVar(name, decls.NewMapType(keyType, valueType)), nil
+	} else if field.IsList() {
+		elemType, err := fieldToCELType(field)
+		if err != nil {
+			return nil, err
+		}
+		return decls.NewVar(name, decls.NewListType(elemType)), nil
+	} else {
+		celType, err := fieldToCELType(field)
+		if err != nil {
+			return nil, err
+		}
+		return decls.NewVar(name, celType), nil
+	}
+}
+
+// DeclareContextProto returns an option to extend CEL environment with declarations from the given context proto.
+// Each field of the proto defines a variable of the same name in the environment.
+// https://github.com/google/cel-spec/blob/master/doc/langdef.md#evaluation-environment
+func DeclareContextProto(descriptor protoreflect.MessageDescriptor) EnvOption {
+	return func(e *Env) (*Env, error) {
+		var decls []*exprpb.Decl
+		fields := descriptor.Fields()
+		for i := 0; i < fields.Len(); i++ {
+			field := fields.Get(i)
+			decl, err := fieldToDecl(field)
+			if err != nil {
+				return nil, err
+			}
+			decls = append(decls, decl)
+		}
+		var err error
+		e, err = Declarations(decls...)(e)
+		if err != nil {
+			return nil, err
+		}
+		return Types(dynamicpb.NewMessage(descriptor))(e)
 	}
 }

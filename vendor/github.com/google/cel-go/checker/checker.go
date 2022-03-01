@@ -112,7 +112,8 @@ func (c *checker) check(e *exprpb.Expr) {
 	case *exprpb.Expr_ComprehensionExpr:
 		c.checkComprehension(e)
 	default:
-		panic(fmt.Sprintf("Unrecognized ast type: %v", reflect.TypeOf(e)))
+		c.errors.ReportError(
+			c.location(e), "Unrecognized ast type: %v", reflect.TypeOf(e))
 	}
 }
 
@@ -572,7 +573,9 @@ func (c *checker) lookupFieldType(l common.Location, messageType string, fieldNa
 
 func (c *checker) setType(e *exprpb.Expr, t *exprpb.Type) {
 	if old, found := c.types[e.Id]; found && !proto.Equal(old, t) {
-		panic(fmt.Sprintf("(Incompatible) Type already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, t))
+		c.errors.ReportError(c.location(e),
+			"(Incompatible) Type already exists for expression: %v(%d) old:%v, new:%v", e, e.GetId(), old, t)
+		return
 	}
 	c.types[e.Id] = t
 }
@@ -583,7 +586,9 @@ func (c *checker) getType(e *exprpb.Expr) *exprpb.Type {
 
 func (c *checker) setReference(e *exprpb.Expr, r *exprpb.Reference) {
 	if old, found := c.references[e.Id]; found && !proto.Equal(old, r) {
-		panic(fmt.Sprintf("Reference already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, r))
+		c.errors.ReportError(c.location(e),
+			"Reference already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, r)
+		return
 	}
 	c.references[e.Id] = r
 }
