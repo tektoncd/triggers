@@ -286,6 +286,10 @@ func (t *EventListenerTrigger) validate(ctx context.Context) (errs *apis.FieldEr
 
 	// Validate optional Interceptors
 	for i, interceptor := range t.Interceptors {
+		// No continuation if provided interceptor is nil.
+		if interceptor == nil {
+			return errs.Also(apis.ErrInvalidValue(fmt.Sprintf("interceptor '%v' must be a valid value", interceptor), fmt.Sprintf("interceptors[%d]", i)))
+		}
 		errs = errs.Also(interceptor.validate(ctx).ViaField(fmt.Sprintf("interceptors[%d]", i)))
 	}
 
