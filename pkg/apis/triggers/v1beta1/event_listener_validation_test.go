@@ -1317,6 +1317,33 @@ func TestEventListenerValidate_error(t *testing.T) {
 				},
 			},
 			wantErr: apis.ErrMissingOneOf("spec.labelSelector", "spec.namespaceSelector", "spec.triggerGroups", "spec.triggers"),
+		}, {
+			name: "invalid interceptor for eventlistener",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+						Name: "test",
+						Interceptors: []*triggersv1beta1.EventInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{
+								Name: "cel",
+							},
+						},
+							nil,
+						},
+					}},
+				},
+			},
+			wantErr: &apis.FieldError{
+				Message: "invalid value: interceptor '<nil>' must be a valid value",
+				Paths:   []string{"spec.triggers[0].interceptors[1]"},
+			},
 		}}
 
 	for _, tc := range tests {
