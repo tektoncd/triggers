@@ -98,36 +98,28 @@ the triggers repo, a terminal window and a text editor.
     TEKTON_PACKAGE=tektoncd/triggers
     ```
 
-    1. Create a `PipelineResource` of type `git`
-
-    ```shell
-    cat <<EOF | kubectl --context dogfooding create -f -
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: tekton-triggers-$(echo $VERSION_TAG | tr '.' '-')
-      namespace: default
-    spec:
-      type: git
-      params:
-        - name: url
-          value: 'https://github.com/tektoncd/triggers'
-        - name: revision
-          value: ${TRIGGERS_RELEASE_GIT_SHA}
-    EOF
+    1. Find the Rekor UUID for the release
+    ```bash
+    RELEASE_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | sed -n 's/"//g;s/.*gcr\.io.*controller.*@//p;')
+    REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
+    echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
     1. Execute the Draft Release task.
 
     ```bash
-    tkn --context dogfooding task start \
-      -i source="tekton-triggers-$(echo $VERSION_TAG | tr '.' '-')" \
-      -i release-bucket=tekton-triggers-bucket \
-      -p package=tektoncd/triggers \
-      -p release-tag="${VERSION_TAG}" \
-      -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
-      -p release-name="Tekton Triggers" \
-      create-draft-release
+    tkn --context dogfooding pipeline start \
+        --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+        --workspace name=credentials,secret=release-secret \
+        -p package="${TEKTON_PACKAGE}" \
+        -p git-revision="${TRIGGERS_RELEASE_GIT_SHA}" \
+        -p release-tag="${VERSION_TAG}" \
+        -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
+        -p release-name="Tekton Triggers" \
+        -p bucket="gs://tekton-releases/triggers" \
+        -p rekor-uuid="$REKOR_UUID" \
+        release-draft
     ```
 
     1. Watch logs of create-draft-release
@@ -160,6 +152,9 @@ the triggers repo, a terminal window and a text editor.
     # NOTE: Some older releases might not have a separate interceptors.yaml as they used to be bundled in release.yaml
     kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/interceptors.yaml
     ```
+
+1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
+   to include the new release.
 
 1. Announce the release in Slack channels #general, #triggers and #announcements.
 
