@@ -615,6 +615,17 @@ string
 <tbody>
 <tr>
 <td>
+<code>caBundle</code><br/>
+<em>
+[]byte
+</em>
+</td>
+<td>
+<p>CaBundle is a PEM encoded CA bundle which will be used to validate the clusterinterceptor server certificate</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>url</code><br/>
 <em>
 <a href="https://pkg.go.dev/knative.dev/pkg/apis#URL">
