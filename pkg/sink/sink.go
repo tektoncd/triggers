@@ -479,7 +479,6 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			return nil, nil, nil, fmt.Errorf("could not resolve interceptor URL: %w", err)
 		}
 
-		// TODO: Plumb through context from EL
 		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
 		if err != nil {
 			return nil, nil, nil, err

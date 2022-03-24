@@ -62,12 +62,47 @@ func TestResolveAddress(t *testing.T) {
 						Name:      "my-svc",
 						Namespace: "default",
 						Path:      "blah",
-						Port:      ptr.Int32(8081),
+						Port:      ptr.Int32(8888),
 					},
 				},
 			},
 		},
-		want: "http://my-svc.default.svc:8081/blah",
+		want: "http://my-svc.default.svc:8888/blah",
+	}, {
+		name: "clientConfig.service without port and scheme so it uses defaultHTTPPort",
+		it: &v1alpha1.ClusterInterceptor{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "my-interceptor",
+			},
+			Spec: v1alpha1.ClusterInterceptorSpec{
+				ClientConfig: v1alpha1.ClientConfig{
+					Service: &v1alpha1.ServiceReference{
+						Name:      "my-svc",
+						Namespace: "default",
+						Path:      "blah",
+					},
+				},
+			},
+		},
+		want: "http://my-svc.default.svc:80/blah",
+	}, {
+		name: "clientConfig with provided caBundle",
+		it: &v1alpha1.ClusterInterceptor{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "my-interceptor",
+			},
+			Spec: v1alpha1.ClusterInterceptorSpec{
+				ClientConfig: v1alpha1.ClientConfig{
+					CaBundle: []byte("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM5ekNDQXB5Z0F3SUJBZ0lRSllLcEFVeXc2dStvY1JhV1VtRVRoREFLQmdncWhrak9QUVFEQWpCWE1SUXcKRWdZRFZRUUtFd3RyYm1GMGFYWmxMbVJsZGpFL01EMEdBMVVFQXhNMmRHVnJkRzl1TFhSeWFXZG5aWEp6TFdOdgpjbVV0YVc1MFpYSmpaWEIwYjNKekxuUmxhM1J2Ymkxd2FYQmxiR2x1WlhNdWMzWmpNQ0FYRFRJeU1EUXhOVEUyCk1ERTFPRm9ZRHpJeE1qSXdNekl5TVRZd01UVTRXakJYTVJRd0VnWURWUVFLRXd0cmJtRjBhWFpsTG1SbGRqRS8KTUQwR0ExVUVBeE0yZEdWcmRHOXVMWFJ5YVdkblpYSnpMV052Y21VdGFXNTBaWEpqWlhCMGIzSnpMblJsYTNSdgpiaTF3YVhCbGJHbHVaWE11YzNaak1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUFHcHp1RjlQCjY5VnFhN0xIY0tmNGpWY2JqblJNWDAxYWRnakh0Zy9kZFdIaVBWdXVJZER1WnZzVTREaVp5Smh2WnpmaHQ0ZmsKT3FJc3dJeVlmbkpLRnFPQ0FVWXdnZ0ZDTUE0R0ExVWREd0VCL3dRRUF3SUNoREFkQmdOVkhTVUVGakFVQmdncgpCZ0VGQlFjREFRWUlLd1lCQlFVSEF3SXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVQRXFjCnEvRFJHd2FDUTdmOFc0dmlucGN5a09zd2dlQUdBMVVkRVFTQjJEQ0IxWUloZEdWcmRHOXVMWFJ5YVdkblpYSnoKTFdOdmNtVXRhVzUwWlhKalpYQjBiM0p6Z2pKMFpXdDBiMjR0ZEhKcFoyZGxjbk10WTI5eVpTMXBiblJsY21ObApjSFJ2Y25NdWRHVnJkRzl1TFhCcGNHVnNhVzVsYzRJMmRHVnJkRzl1TFhSeWFXZG5aWEp6TFdOdmNtVXRhVzUwClpYSmpaWEIwYjNKekxuUmxhM1J2Ymkxd2FYQmxiR2x1WlhNdWMzWmpna1IwWld0MGIyNHRkSEpwWjJkbGNuTXQKWTI5eVpTMXBiblJsY21ObGNIUnZjbk11ZEdWcmRHOXVMWEJwY0dWc2FXNWxjeTV6ZG1NdVkyeDFjM1JsY2k1cwpiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkpBREJHQWlFQTlhWFBtUFZzRVA3R0xTbzI0SnNmNnRGTmpyQWJRbEl0CjRCYXllcjBnaU5jQ0lRQ09XSm1NTXQxQkE1RXgwa0FYTWRtZjlFdXV4LzlyUUkzMm9VNjVSYm9mNEE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="),
+					Service: &v1alpha1.ServiceReference{
+						Name:      "my-svc",
+						Namespace: "default",
+						Path:      "blah",
+					},
+				},
+			},
+		},
+		want: "https://my-svc.default.svc:8443/blah",
 	}}
 
 	for _, tc := range tests {

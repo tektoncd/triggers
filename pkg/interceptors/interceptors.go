@@ -25,12 +25,11 @@ import (
 	"net/http"
 	"path"
 
-	"google.golang.org/grpc/codes"
-	"knative.dev/pkg/apis"
-
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"google.golang.org/grpc/codes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 const (
