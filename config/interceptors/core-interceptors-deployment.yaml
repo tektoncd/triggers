@@ -50,6 +50,8 @@ spec:
       containers:
       - name: tekton-triggers-core-interceptors
         image: "ko://github.com/tektoncd/triggers/cmd/interceptors"
+        ports:
+          - containerPort: 8443
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
@@ -65,11 +67,16 @@ spec:
           value: config-observability-triggers
         - name: METRICS_DOMAIN
           value: tekton.dev/triggers
+        # assuming service and deployment names are same always for consistency
+        - name: INTERCEPTOR_TLS_SVC_NAME
+          value: tekton-triggers-core-interceptors
+        - name: INTERCEPTOR_TLS_SECRET_NAME
+          value: tekton-triggers-core-interceptors-certs
         readinessProbe:
           httpGet:
             path: /ready
-            port: 8082
-            scheme: HTTP
+            port: 8443
+            scheme: HTTPS
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
@@ -98,9 +105,8 @@ metadata:
   namespace: tekton-pipelines
 spec:
   ports:
-    - name: "http"
-      port: 80
-      targetPort: 8082
+    - name: "https"
+      port: 8443
   selector:
     app.kubernetes.io/name: core-interceptors
     app.kubernetes.io/component: interceptors

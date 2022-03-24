@@ -61,3 +61,29 @@ The Kubernetes object running the custom business logic for your `ClusterInterce
 - Returns an HTTP 200 OK response that contains an [`InterceptorResponse`](https://pkg.go.dev/github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1#InterceptorResponse) 
   as a JSON body. If the trigger processing should continue, the interceptor should set the `continue` field in the response to `true`. If the processing should be stopped, the interceptor should set the `continue` field to `false` and also provide additional information detailing the error in the `status` field.
 - Returns a response other than HTTP 200 OK only if payload processing halts due to a catastrophic failure. 
+
+### Running ClusterInterceptor as HTTPS
+
+Triggers now run clusterinterceptor as `https` server in order to support end to end secure connection and here is a [TEP](https://github.com/tektoncd/community/blob/main/teps/0102-https-connection-to-triggers-interceptor.md) which gives more detail about this support.
+
+By default Triggers run all core interceptor (GitHub, GitLab, BitBucket, CEL) as `HTTPS`.
+
+Triggers expose a new optional field `caBundle` as part of clusterinterceptor spec.
+
+Example:
+```yaml
+spec:
+  clientConfig:
+    caBundle: <cert data>
+    service:
+      name: "my-interceptor-svc"
+      namespace: "default"
+      path: "/optional-path" # optional
+      port: 8443
+```
+
+Triggers uses knative pkg to generate key, cert, cacert and fill caBundle for core interceptors (GitHub, GitLab, BitBucket, CEL).
+
+Triggers now support writing custom interceptor for both `http` and `https`. Support of `http` for custom interceptor will be there for 1-2 releases, later it will be removed and only `https` will be supported. 
+ 
+End user who write `https` custom interceptor need to pass `caBundle` in order to make secure connection with eventlistener

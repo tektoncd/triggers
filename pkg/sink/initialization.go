@@ -166,7 +166,6 @@ func ConfigureClients(ctx context.Context, clusterConfig *rest.Config) (Clients,
 		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
 	ceClient := cloudevent.Get(ctx)
-
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),

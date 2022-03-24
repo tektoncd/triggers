@@ -158,6 +158,10 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 				APIGroups: []string{triggers.GroupName},
 				Resources: []string{"clustertriggerbindings", "clusterinterceptors"},
 				Verbs:     []string{"get", "list", "watch"},
+			}, {
+				APIGroups: []string{""},
+				Resources: []string{"secrets"},
+				Verbs:     []string{"get", "list", "watch"},
 			}},
 		}, metav1.CreateOptions{},
 	)

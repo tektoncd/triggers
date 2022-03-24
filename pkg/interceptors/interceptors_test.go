@@ -18,6 +18,8 @@ package interceptors_test
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -356,7 +358,7 @@ func TestResolveToURL(t *testing.T) {
 
 // testServer creates a httptest server with the passed in handler and returns a http.Client that
 // can be used to talk to these interceptors
-func testServer(t testing.TB, handler http.Handler) *http.Client {
+func testServer(t testing.TB, handler http.Handler, d ...*http.Transport) *http.Client {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(func() {
@@ -367,8 +369,12 @@ func testServer(t testing.TB, handler http.Handler) *http.Client {
 	if err != nil {
 		t.Fatalf("testServer() url parse err: %v", err)
 	}
-	httpClient.Transport = &http.Transport{
-		Proxy: http.ProxyURL(u),
+	if d != nil {
+		httpClient.Transport = d[0] // as we are passing only one data so referring 0th index
+	} else {
+		httpClient.Transport = &http.Transport{
+			Proxy: http.ProxyURL(u),
+		}
 	}
 	return httpClient
 }
@@ -478,10 +484,29 @@ func TestExecute_Error(t *testing.T) {
 		svr: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte(`not_json`))
 		}),
+	}, {
+		name: "HTTPS URL",
+		req:  defaultReq,
+		url:  "https://interceptorurl.com",
+		svr:  coreInterceptors,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			client := testServer(t, tc.svr)
-			got, err := interceptors.Execute(context.Background(), client, tc.req, tc.url)
+			var (
+				got *triggersv1.InterceptorResponse
+				err error
+			)
+			if strings.Contains(tc.url, "https") {
+				client := testServer(t, tc.svr, &http.Transport{
+					TLSClientConfig: &tls.Config{
+						RootCAs:    x509.NewCertPool(),
+						MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
+					},
+				})
+				got, err = interceptors.Execute(context.Background(), client, tc.req, tc.url)
+			} else {
+				client := testServer(t, tc.svr)
+				got, err = interceptors.Execute(context.Background(), client, tc.req, tc.url)
+			}
 			if err == nil {
 				t.Fatalf("Execute() did not get expected error. Response was %+v", got)
 			}
