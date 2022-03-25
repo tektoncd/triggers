@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20210609063737-0067dc6dcea2
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.9.0
+	github.com/google/cel-go v0.11.2
 	github.com/google/go-cmp v0.5.7
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.3.0
@@ -21,7 +21,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	google.golang.org/genproto v0.0.0-20220207164111-0872dc986b00
+	google.golang.org/genproto v0.0.0-20220310185008-1973136f34c6
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.5

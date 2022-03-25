@@ -461,7 +461,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		},
 		"upperMsg":  "THIS IS LOWER CASE",
 		"b64value":  "ZXhhbXBsZQ==",
-		"json_body": `{"testing": "value"}`,
+		"json_body": `{"testing": "value", "number": 2}`,
 		"yaml_body": "key1: value1\nkey2: value2\nkey3: value3\n",
 		"testURL":   "https://user:password@site.example.com/path/to?query=search#first",
 		"multiURL":  "https://user:password@site.example.com/path/to?query=search&query=results",
@@ -493,7 +493,7 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name: "boolean body value",
 			expr: "body.value == 'testing'",
-			want: types.Bool(true),
+			want: types.True,
 		},
 		{
 			name: "truncate a long string",
@@ -513,12 +513,12 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name: "split a string on a character",
 			expr: "body.ref.split('/')",
-			want: types.NewStringList(reg, refParts),
+			want: reg.NativeToValue(refParts),
 		},
 		{
 			name: "extract a branch from a non refs string",
 			expr: "body.value.split('/')",
-			want: types.NewStringList(reg, []string{"testing"}),
+			want: reg.NativeToValue([]string{"testing"}),
 		},
 		{
 			name: "combine split and truncate",
@@ -548,45 +548,70 @@ func TestExpressionEvaluation(t *testing.T) {
 		{
 			name:   "compare string against secret",
 			expr:   "'secrettoken'.compareSecret('token', 'test-secret', 'testing-ns') ",
-			want:   types.Bool(true),
+			want:   types.True,
 			secret: makeSecret(),
 		},
 		{
 			name:   "compare string against secret with no match",
 			expr:   "'nomatch'.compareSecret('token', 'test-secret', 'testing-ns') ",
-			want:   types.Bool(false),
+			want:   types.False,
 			secret: makeSecret(),
 		},
 		{
 			name:   "compare string against secret in the default namespace",
 			expr:   "'secrettoken'.compareSecret('token', 'test-secret') ",
-			want:   types.Bool(true),
+			want:   types.True,
 			secret: makeSecret(),
 		},
 		{
 			name: "parse JSON body in a string",
 			expr: "body.json_body.parseJSON().testing == 'value'",
-			want: types.Bool(true),
+			want: types.True,
+		},
+		{
+			name: "compare a JSON number to an integer variable",
+			expr: "body.json_body.parseJSON().number == body.jsonObject.integer",
+			want: types.True,
+		},
+		{
+			name: "compare a JSON number to an int literal",
+			expr: "body.json_body.parseJSON().number > 1",
+			want: types.True,
+		},
+		{
+			name: "compare a JSON number to a uint literal",
+			expr: "body.json_body.parseJSON().number < 3u",
+			want: types.True,
+		},
+		{
+			name: "compare a JSON number to a double literal",
+			expr: "body.json_body.parseJSON().number == 2.0",
+			want: types.True,
+		},
+		{
+			name: "compare a JSON field to null",
+			expr: "body.json_body.parseJSON().number == null",
+			want: types.False,
 		},
 		{
 			name: "parse YAML body in a string",
 			expr: "body.yaml_body.parseYAML().key1 == 'value1'",
-			want: types.Bool(true),
+			want: types.True,
 		},
 		{
 			name: "parse URL",
 			expr: "body.testURL.parseURL().path == '/path/to'",
-			want: types.Bool(true),
+			want: types.True,
 		},
 		{
 			name: "parse URL and extract single string",
 			expr: "body.testURL.parseURL().query['query'] == 'search'",
-			want: types.Bool(true),
+			want: types.True,
 		},
 		{
 			name: "parse URL and extract multiple strings",
 			expr: "body.multiURL.parseURL().queryStrings['query']",
-			want: types.NewStringList(reg, []string{"search", "results"}),
+			want: reg.NativeToValue([]string{"search", "results"}),
 		},
 		{
 			name: "parse request url",
@@ -617,6 +642,16 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "extension base64 encoding",
 			expr: "base64.encode(b'example')",
 			want: types.String("ZXhhbXBsZQ=="),
+		},
+		{
+			name: "extension string join",
+			expr: "body.jsonArray.join(', ')",
+			want: types.String("one, two"),
+		},
+		{
+			name: "extension string join",
+			expr: "body.jsonArray.join(', ')",
+			want: types.String("one, two"),
 		},
 	}
 	for _, tt := range tests {
