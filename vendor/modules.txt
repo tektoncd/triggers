@@ -43,7 +43,7 @@ github.com/PuerkitoBio/urlesc
 # github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20210609063737-0067dc6dcea2
 ## explicit
 github.com/ahmetb/gen-crd-api-reference-docs
-# github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20210826220005-b48c857c3a0e
+# github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220209173558-ad29539cd2e9
 github.com/antlr/antlr4/runtime/Go/antlr
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
@@ -128,7 +128,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/google/cel-go v0.9.0
+# github.com/google/cel-go v0.11.2
 ## explicit
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
@@ -451,7 +451,7 @@ google.golang.org/appengine/internal/socket
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/socket
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20220207164111-0872dc986b00
+# google.golang.org/genproto v0.0.0-20220310185008-1973136f34c6
 ## explicit
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/expr/v1alpha1

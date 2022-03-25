@@ -21,7 +21,8 @@ extensions to the CEL specification for manipulating strings.
 For example:
 
 ```javascript
-'refs/heads/master'.split('/') // result = list ['refs', 'heads', 'master']
+'refs/heads/main'.split('/') // result = list ['refs', 'heads', 'main']
+['refs', 'heads', 'main'].join('/') // result = string 'refs/heads/main'
 'my place'.replace('my ',' ') // result = string 'place'
 'this that another'.replace('th ',' ', 2) // result = 'is at another'
 ```
@@ -44,7 +45,7 @@ For example:
 }
 ```
 
-In the JSON above, both numbers are parsed as CEL double (Go float64) values.
+In the JSON above, both numbers are parsed as CEL double (Go `float64`) values.
 
 This means that if you want to do integer arithmetic, you'll need to
 [use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
@@ -163,9 +164,9 @@ base64.decode(body.b64value) == bytes('hello') # convert to bytes.
 
 ### Returning Bytes
 
-Confusingly, if you decode a base64 string with the cel-go base64 decoder, it will
-appear in the extension as a base64 encoded string, you will need to explicitly
-convert it to a CEL string.
+If you decode a base64 string with the cel-go base64 decoder, the result will
+be a set of base64 decoded bytes. To ensure the result is encoded as a string
+you will need to explicitly convert it to a CEL string.
 
 ```yaml
 interceptors:
@@ -301,13 +302,27 @@ interceptor.
       split
     </th>
     <td>
-      <pre>&lt;string&gt;.split(string) -> string(dyn)</pre>
+      <pre>&lt;string&gt;.split(string) -> list(string)</pre>
     </td>
     <td>
       Splits a string on the provided separator value.
     </td>
     <td>
      <pre>body.ref.split('/')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      join
+    </th>
+    <td>
+      <pre>&lt;list(string)&gt;.join(string) -> string</pre>
+    </td>
+    <td>
+      Joins a list of strings on the provided separator value.
+    </td>
+    <td>
+     <pre>['body', 'refs', 'main'].join('/')</pre>
     </td>
   </tr>
   <tr>
