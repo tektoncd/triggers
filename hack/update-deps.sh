@@ -21,14 +21,18 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 cd ${REPO_ROOT_DIR}
 
-# Update when you want to pin knative.dev/pkg
-VERSION="master"
-
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg@${VERSION}"
-  "github.com/tektoncd/pipeline@master"
+  "knative.dev/pkg" # latest "tagged" version
+  "github.com/tektoncd/pipeline@v0.33.0" # FIXME(remove v0.33.0 once 0.34.1 is fixed) latest "tagged" version
+  "knative.dev/serving" # latest "tagged" version 🙏
+  # tooling
+  "github.com/spf13/cobra"
+  "go.uber.org/zap"
+  "github.com/google/cel-go"
+  "github.com/google/go-cmp"
+  "github.com/gorilla/mux"
 )
 
 # Parse flags to determine any we should pass to dep.
