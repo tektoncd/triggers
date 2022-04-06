@@ -410,12 +410,12 @@ Below is an example `namespaceSelector` field that configures the `EventListener
     - bar
 ```
 
-If you want your `EventListener` to recognize `Triggers` across your entire cluster, use a wildcard as the only namespace:
+If you want your `EventListener` to recognize `Triggers` across your entire cluster, use a wildcard  between quote as the only namespace:
 
 ```yaml
   namespaceSelector:
     matchNames:
-    - *
+    - "*"
 ```
 
 ## Constraining `EventListeners` to specific labels
