@@ -185,9 +185,6 @@ spec:
 [TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for
 a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked.
 
-`TriggerGroups` is currently an `alpha` feature. To use it, you use the v1beta1 API version with the
-`enable-api-fields`  [feature flag set to `alpha`](./install.md#Customizing-the-Triggers-Controller-behavior).
-
 You can optionally specify one or more `Triggers` that define the actions to take when the `EventListener` detects a qualifying event. You can specify *either* a reference to an
 external `Trigger` object *or* reference/define the `TriggerBindings`, `TriggerTemplates`, and `Interceptors` in the `Trigger` definition. A `TriggerGroup` definition specifies the following fields:
 

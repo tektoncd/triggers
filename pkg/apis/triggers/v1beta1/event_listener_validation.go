@@ -80,13 +80,8 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 	}
 
 	if len(s.TriggerGroups) > 0 {
-		err := ValidateEnabledAPIFields(ctx, "spec.triggerGroups", config.AlphaAPIFieldValue)
-		if err != nil {
-			errs = errs.Also(err)
-		} else {
-			for i, group := range s.TriggerGroups {
-				errs = errs.Also(group.validate(ctx).ViaField(fmt.Sprintf("spec.triggerGroups[%d]", i)))
-			}
+		for i, group := range s.TriggerGroups {
+			errs = errs.Also(group.validate(ctx).ViaField(fmt.Sprintf("spec.triggerGroups[%d]", i)))
 		}
 	}
 
