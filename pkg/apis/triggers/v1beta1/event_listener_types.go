@@ -85,19 +85,6 @@ type KubernetesResource struct {
 	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
 
-type PodTemplate struct {
-	// If specified, the pod's tolerations.
-	// +optional
-	// +listType=atomic
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-}
-
 // EventListenerTrigger represents a connection between TriggerBinding, Params,
 // and TriggerTemplate; TriggerBinding provides extracted values for
 // TriggerTemplate to then create resources from. TriggerRef can also be
