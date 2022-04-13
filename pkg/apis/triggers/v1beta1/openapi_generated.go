@@ -54,7 +54,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.NamespaceSelector":            schema_pkg_apis_triggers_v1beta1_NamespaceSelector(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Param":                        schema_pkg_apis_triggers_v1beta1_Param(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ParamSpec":                    schema_pkg_apis_triggers_v1beta1_ParamSpec(ref),
-		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.PodTemplate":                  schema_pkg_apis_triggers_v1beta1_PodTemplate(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Resources":                    schema_pkg_apis_triggers_v1beta1_Resources(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef":                    schema_pkg_apis_triggers_v1beta1_SecretRef(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Status":                       schema_pkg_apis_triggers_v1beta1_Status(ref),
@@ -1106,55 +1105,6 @@ func schema_pkg_apis_triggers_v1beta1_ParamSpec(ref common.ReferenceCallback) co
 				Required: []string{"name"},
 			},
 		},
-	}
-}
-
-func schema_pkg_apis_triggers_v1beta1_PodTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"tolerations": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "If specified, the pod's tolerations.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Toleration"),
-									},
-								},
-							},
-						},
-					},
-					"nodeSelector": {
-						SchemaProps: spec.SchemaProps{
-							Description: "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.Toleration"},
 	}
 }
 
