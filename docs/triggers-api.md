@@ -4024,48 +4024,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="triggers.tekton.dev/v1beta1.PodTemplate">PodTemplate
-</h3>
-<div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>tolerations</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#toleration-v1-core">
-[]Kubernetes core/v1.Toleration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>If specified, the pod&rsquo;s tolerations.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>nodeSelector</code><br/>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>NodeSelector is a selector which must be true for the pod to fit on a node.
-Selector which must match a node&rsquo;s labels for the pod to be scheduled on that node.
-More info: <a href="https://kubernetes.io/docs/concepts/configuration/assign-pod-node/">https://kubernetes.io/docs/concepts/configuration/assign-pod-node/</a></p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="triggers.tekton.dev/v1beta1.Resources">Resources
 </h3>
 <p>
