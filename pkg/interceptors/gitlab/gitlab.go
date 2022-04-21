@@ -19,7 +19,6 @@ package gitlab
 import (
 	"context"
 	"crypto/subtle"
-	"knative.dev/pkg/logging"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -27,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
+	"knative.dev/pkg/logging"
 )
 
 type Interceptor struct {

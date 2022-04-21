@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"knative.dev/pkg/logging"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +19,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"go.uber.org/zap"
+	"knative.dev/pkg/logging"
 )
 
 type Server struct {

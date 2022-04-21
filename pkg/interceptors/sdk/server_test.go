@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,10 +16,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/grpc/codes"
-
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/test"
+	"google.golang.org/grpc/codes"
 )
 
 func TestServer_ServeHTTP(t *testing.T) {
@@ -76,8 +75,6 @@ func TestServer_ServeHTTP(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
-
-			//secretLister := fakeSecretInformer.Get(ctx).Lister()
 
 			server, err := NewWithInterceptors(ctx, map[string]InterceptorFunc{
 				"cel": cel.NewInterceptor,
@@ -138,9 +135,6 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
-
-			//secretLister := fakeSecretInformer.Get(ctx).Lister()
-
 			server, err := NewWithInterceptors(ctx, map[string]InterceptorFunc{
 				"cel": cel.NewInterceptor,
 			})
@@ -167,32 +161,3 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 		})
 	}
 }
-
-//type fakeInterceptor struct{}
-//
-//func (i fakeInterceptor) Process(ctx context.Context, r *v1beta1.InterceptorRequest) *v1beta1.InterceptorResponse {
-//	return nil
-//}
-//
-//// TODO: Probably an easier way to do this
-//func newFake(ctx context.Context) v1beta1.InterceptorInterface {
-//	return fakeInterceptor{}
-//}
-
-//func TestServer_RegisterInterceptor(t *testing.T) {
-//	s, err := NewWithInterceptors(context.Background(), map[string]InterceptorFunc{
-//		"first": newFake,
-//	})
-//	want := map[string]v1beta1.InterceptorInterface{
-//		"first": fakeInterceptor{},
-//	}
-//	if diff := cmp.Diff(want, s.interceptors); diff != "" {
-//		t.Errorf("RegisterInterceptor first (-want/+got): %s", diff)
-//	}
-//
-//	s.RegisterInterceptor("second", fakeInterceptor{})
-//	want["second"] = fakeInterceptor{}
-//	if diff := cmp.Diff(want, s.interceptors); diff != "" {
-//		t.Errorf("RegisterInterceptor second (-want/+got): %s", diff)
-//	}
-//}

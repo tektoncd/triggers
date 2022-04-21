@@ -19,7 +19,6 @@ package github
 import (
 	"context"
 	"errors"
-	"knative.dev/pkg/logging"
 
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -28,6 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
+	"knative.dev/pkg/logging"
 )
 
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
