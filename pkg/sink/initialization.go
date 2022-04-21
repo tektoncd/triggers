@@ -26,7 +26,6 @@ import (
 	"golang.org/x/xerrors"
 	discoveryclient "k8s.io/client-go/discovery"
 	kubeclientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -156,7 +155,7 @@ func GetArgs() (Args, error) {
 }
 
 // ConfigureClients returns the kubernetes and triggers clientsets
-func ConfigureClients(ctx context.Context, clusterConfig *rest.Config) (Clients, error) {
+func ConfigureClients(ctx context.Context, clusterConfig *restclient.Config) (Clients, error) {
 	kubeClient, err := kubeclientset.NewForConfig(clusterConfig)
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create KubeClient: %s", err)

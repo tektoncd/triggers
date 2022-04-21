@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"knative.dev/pkg/logging"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -30,6 +29,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"knative.dev/pkg/logging"
 
 	cloudeventstest "github.com/cloudevents/sdk-go/v2/client/test"
 	"github.com/google/go-cmp/cmp"
@@ -153,7 +154,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 		TriggersClient:              clients.Triggers,
 		HTTPClient:                  httpClient,
 		CEClient:                    ceClient,
-		Logger:                      logger.Sugar(),
+		Logger:                      logger,
 		Auth:                        DefaultAuthOverride{},
 		WGProcessTriggers:           &sync.WaitGroup{},
 		EventRecorder:               controller.GetEventRecorder(ctx),
