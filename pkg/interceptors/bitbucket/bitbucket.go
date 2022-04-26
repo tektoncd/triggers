@@ -18,17 +18,16 @@ package bitbucket
 
 import (
 	"context"
-	"knative.dev/pkg/logging"
 	"net/http"
-
-	"google.golang.org/grpc/codes"
-	corev1lister "k8s.io/client-go/listers/core/v1"
-	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 
 	gh "github.com/google/go-github/v31/github"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
+	"knative.dev/pkg/logging"
 )
 
 type Interceptor struct {

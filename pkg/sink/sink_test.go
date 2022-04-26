@@ -137,9 +137,6 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-	//secretLister := fakeSecretInformer.Get(ctx).Lister()
-
-	// Setup a handler for core interceptors using httptest
 	httpClient := setupInterceptors(t, ctx, webhookInterceptor)
 
 	ceClient, _ := cloudeventstest.NewMockSenderClient(t, 1)

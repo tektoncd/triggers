@@ -20,11 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"knative.dev/pkg/logging"
 	"net/http"
 	"reflect"
-
-	"github.com/tektoncd/triggers/pkg/interceptors"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
@@ -34,6 +31,7 @@ import (
 	"github.com/google/cel-go/common/types/traits"
 	celext "github.com/google/cel-go/ext"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -41,8 +39,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
-
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"knative.dev/pkg/logging"
 )
 
 // Interceptor implements a CEL based interceptor that uses CEL expressions

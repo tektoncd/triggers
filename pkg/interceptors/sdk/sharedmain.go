@@ -31,12 +31,10 @@ func InterceptorMainWithConfig(ctx context.Context, component string, intercepto
 	cmw := sharedmain.SetupConfigMapWatchOrDie(ctx, logger)
 
 	sharedmain.WatchLoggingConfigOrDie(ctx, cmw, logger, atomicLevel, component)
-	// Register logger
-	// Register injection context
 
 	service, err := NewWithInterceptors(ctx, interceptors)
 	if err != nil {
-		log.Fatalf("failed to initialize core interceptors: %s", err)
+		logger.Fatalf("failed to initialize core interceptors: %s", err)
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", service)
