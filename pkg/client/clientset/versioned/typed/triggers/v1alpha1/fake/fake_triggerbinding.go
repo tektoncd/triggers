@@ -117,7 +117,7 @@ func (c *FakeTriggerBindings) UpdateStatus(ctx context.Context, triggerBinding *
 // Delete takes name of the triggerBinding and deletes it. Returns an error if one occurs.
 func (c *FakeTriggerBindings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(triggerbindingsResource, c.ns, name), &v1alpha1.TriggerBinding{})
+		Invokes(testing.NewDeleteActionWithOptions(triggerbindingsResource, c.ns, name, opts), &v1alpha1.TriggerBinding{})
 
 	return err
 }
