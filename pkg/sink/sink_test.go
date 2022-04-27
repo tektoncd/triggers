@@ -137,7 +137,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
-	httpClient := setupInterceptors(t, ctx, webhookInterceptor)
+	httpClient := setupInterceptors(ctx, t, webhookInterceptor)
 
 	ceClient, _ := cloudeventstest.NewMockSenderClient(t, 1)
 
@@ -169,7 +169,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 
 // setupInterceptors creates a httptest server with all coreInterceptors and any passed in webhook interceptor
 // It returns a http.Client that can be used to talk to these interceptors
-func setupInterceptors(t *testing.T, ctx context.Context, webhookInterceptor http.Handler) *http.Client {
+func setupInterceptors(ctx context.Context, t *testing.T, webhookInterceptor http.Handler) *http.Client {
 	t.Helper()
 	// Setup a handler for core interceptors using httptest
 	coreInterceptors, err := sdk.NewWithInterceptors(ctx, map[string]sdk.InterceptorFunc{
@@ -1283,7 +1283,7 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 func TestExecuteInterceptor_Sequential(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
-	httpClient := setupInterceptors(t, ctx, &sequentialInterceptor{})
+	httpClient := setupInterceptors(ctx, t, &sequentialInterceptor{})
 
 	r := Sink{
 		HTTPClient: httpClient,
@@ -1360,7 +1360,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	si := &sequentialInterceptor{}
 	r.Handle("/", si)
 
-	httpClient := setupInterceptors(t, ctx, r)
+	httpClient := setupInterceptors(ctx, t, r)
 
 	s := Sink{
 		HTTPClient: httpClient,

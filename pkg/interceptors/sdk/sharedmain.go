@@ -38,9 +38,8 @@ func InterceptorMainWithConfig(ctx context.Context, component string, intercepto
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", service)
-	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		fmt.Fprint(w, "ok")
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
 	options := GetOptions(ctx)
