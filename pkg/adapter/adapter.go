@@ -134,7 +134,7 @@ func (s *sinker) Start(ctx context.Context) error {
 	eventHandler := http.HandlerFunc(r.HandleEvent)
 	metricsRecorder := &sink.MetricsHandler{Handler: r.IsValidPayload(eventHandler)}
 
-	mux.HandleFunc("/", http.HandlerFunc(metricsRecorder.Intercept(r.NewMetricsRecorderInterceptor())))
+	mux.HandleFunc("/", metricsRecorder.Intercept(r.NewMetricsRecorderInterceptor()))
 
 	// For handling Liveness Probe
 	// TODO(dibyom): Livness, metrics etc. should be on a separate port

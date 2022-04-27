@@ -5,14 +5,30 @@ run:
   - vendor
   - pkg/client/clientset/(.*)/fake
   - pkg/client/injection
+  skip-files:
+  - .*/zz_generated.deepcopy.go
+  - pkg/apis/triggers/v1beta1/openapi_generated.go
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
 linters:
   enable:
+  - deadcode
   - errcheck
   - gofmt
   - goimports
+  - gomodguard
   - gosec
   - gocritic
   - revive
+  - misspell
+  - unconvert
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  # TODO(abayer): Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment, like we do in Pipeline.
