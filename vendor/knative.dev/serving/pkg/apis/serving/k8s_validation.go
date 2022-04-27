@@ -85,12 +85,7 @@ var (
 func ValidateVolumes(ctx context.Context, vs []corev1.Volume, mountedVolumes sets.String) (map[string]corev1.Volume, *apis.FieldError) {
 	volumes := make(map[string]corev1.Volume, len(vs))
 	var errs *apis.FieldError
-	features := config.FromContextOrDefaults(ctx).Features
 	for i, volume := range vs {
-		if volume.EmptyDir != nil && features.PodSpecVolumesEmptyDir != config.Enabled {
-			errs = errs.Also((&apis.FieldError{Message: fmt.Sprintf("EmptyDir volume support is off, "+
-				"but found EmptyDir volume %s", volume.Name)}).ViaIndex(i))
-		}
 		if _, ok := volumes[volume.Name]; ok {
 			errs = errs.Also((&apis.FieldError{
 				Message: fmt.Sprintf("duplicate volume name %q", volume.Name),
@@ -109,14 +104,36 @@ func ValidateVolumes(ctx context.Context, vs []corev1.Volume, mountedVolumes set
 	return volumes, errs
 }
 
+func validatePersistentVolumeClaims(volume corev1.VolumeSource, features *config.Features) *apis.FieldError {
+	var errs *apis.FieldError
+	if volume.PersistentVolumeClaim == nil {
+		return nil
+	}
+	if features.PodSpecPersistentVolumeClaim != config.Enabled {
+		errs = errs.Also(&apis.FieldError{Message: fmt.Sprintf("Persistent volume claim support is disabled, "+
+			"but found persistent volume claim %s", volume.PersistentVolumeClaim.ClaimName)})
+	}
+	isWriteEnabled := features.PodSpecPersistentVolumeWrite == config.Enabled
+	if !volume.PersistentVolumeClaim.ReadOnly && !isWriteEnabled {
+		errs = errs.Also(&apis.FieldError{Message: fmt.Sprintf("Persistent volume write support is disabled, "+
+			"but found persistent volume claim %s that is not read-only", volume.PersistentVolumeClaim.ClaimName)})
+	}
+	return errs
+}
+
 func validateVolume(ctx context.Context, volume corev1.Volume) *apis.FieldError {
-	errs := apis.CheckDisallowedFields(volume, *VolumeMask(ctx, &volume))
+	features := config.FromContextOrDefaults(ctx).Features
+	errs := validatePersistentVolumeClaims(volume.VolumeSource, features)
+	if volume.EmptyDir != nil && features.PodSpecVolumesEmptyDir != config.Enabled {
+		errs = errs.Also(&apis.FieldError{Message: fmt.Sprintf("EmptyDir volume support is disabled, "+
+			"but found EmptyDir volume %s", volume.Name)})
+	}
+	errs = errs.Also(apis.CheckDisallowedFields(volume, *VolumeMask(ctx, &volume)))
 	if volume.Name == "" {
 		errs = apis.ErrMissingField("name")
 	} else if len(validation.IsDNS1123Label(volume.Name)) != 0 {
 		errs = apis.ErrInvalidValue(volume.Name, "name")
 	}
-
 	vs := volume.VolumeSource
 	errs = errs.Also(apis.CheckDisallowedFields(vs, *VolumeSourceMask(ctx, &vs)))
 	var specified []string
@@ -142,11 +159,19 @@ func validateVolume(ctx context.Context, volume corev1.Volume) *apis.FieldError 
 		specified = append(specified, "emptyDir")
 		errs = errs.Also(validateEmptyDirFields(vs.EmptyDir).ViaField("emptyDir"))
 	}
+
+	if vs.PersistentVolumeClaim != nil {
+		specified = append(specified, "persistentVolumeClaim")
+	}
+
 	if len(specified) == 0 {
 		fieldPaths := []string{"secret", "configMap", "projected"}
 		cfg := config.FromContextOrDefaults(ctx)
 		if cfg.Features.PodSpecVolumesEmptyDir == config.Enabled {
 			fieldPaths = append(fieldPaths, "emptyDir")
+		}
+		if cfg.Features.PodSpecPersistentVolumeClaim == config.Enabled {
+			fieldPaths = append(fieldPaths, "persistentVolumeClaim")
 		}
 		errs = errs.Also(apis.ErrMissingOneOf(fieldPaths...))
 	} else if len(specified) > 1 {
@@ -247,7 +272,7 @@ func validateEnvValueFrom(ctx context.Context, source *corev1.EnvVarSource) *api
 }
 
 func getReservedEnvVarsPerContainerType(ctx context.Context) sets.String {
-	if IsInSidecarContainer(ctx) {
+	if IsInSidecarContainer(ctx) || IsInitContainer(ctx) {
 		return reservedSidecarEnvVars
 	}
 	return reservedEnvVars
@@ -316,42 +341,79 @@ func ValidatePodSpec(ctx context.Context, ps corev1.PodSpec) *apis.FieldError {
 
 	errs = errs.Also(ValidatePodSecurityContext(ctx, ps.SecurityContext).ViaField("securityContext"))
 
-	volumes, err := ValidateVolumes(ctx, ps.Volumes, AllMountedVolumes(ps.Containers))
-	if err != nil {
-		errs = errs.Also(err.ViaField("volumes"))
-	}
+	volumes, err := ValidateVolumes(ctx, ps.Volumes, AllMountedVolumes(append(ps.InitContainers, ps.Containers...)))
+	errs = errs.Also(err.ViaField("volumes"))
+
+	errs = errs.Also(validateInitContainers(ctx, ps.InitContainers, ps.Containers, volumes))
+
+	port, err := validateContainersPorts(ps.Containers)
+	errs = errs.Also(err.ViaField("containers[*]"))
 
 	switch len(ps.Containers) {
 	case 0:
 		errs = errs.Also(apis.ErrMissingField("containers"))
 	case 1:
-		errs = errs.Also(ValidateContainer(ctx, ps.Containers[0], volumes).
+		errs = errs.Also(ValidateContainer(ctx, ps.Containers[0], volumes, port).
 			ViaFieldIndex("containers", 0))
 	default:
-		errs = errs.Also(validateContainers(ctx, ps.Containers, volumes))
+		errs = errs.Also(validateContainers(ctx, ps.Containers, volumes, port))
 	}
 	if ps.ServiceAccountName != "" {
-		for range validation.IsDNS1123Subdomain(ps.ServiceAccountName) {
-			errs = errs.Also(apis.ErrInvalidValue("serviceAccountName", ps.ServiceAccountName))
+		for _, err := range validation.IsDNS1123Subdomain(ps.ServiceAccountName) {
+			errs = errs.Also(apis.ErrInvalidValue(ps.ServiceAccountName, "serviceAccountName", err))
 		}
 	}
 	return errs
 }
 
-func validateContainers(ctx context.Context, containers []corev1.Container, volumes map[string]corev1.Volume) (errs *apis.FieldError) {
+func validateInitContainers(ctx context.Context, containers, otherContainers []corev1.Container, volumes map[string]corev1.Volume) (errs *apis.FieldError) {
+	if len(containers) == 0 {
+		return nil
+	}
+	features := config.FromContextOrDefaults(ctx).Features
+	if features.PodSpecInitContainers != config.Enabled {
+		return errs.Also(&apis.FieldError{Message: fmt.Sprintf("pod spec support for init-containers is off, "+
+			"but found %d init containers", len(containers))})
+	}
+	allNames := make(sets.String, len(otherContainers)+len(containers))
+	for _, ctr := range otherContainers {
+		allNames.Insert(ctr.Name)
+	}
+	for i := range containers {
+		if allNames.Has(containers[i].Name) {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("duplicate container name %q", containers[i].Name),
+				Paths:   []string{"name"},
+			}).ViaFieldIndex("containers", i)
+		}
+		errs = errs.Also(validateInitContainer(ctx, containers[i], volumes).ViaFieldIndex("containers", i))
+	}
+	return errs
+}
+
+func validateContainers(ctx context.Context, containers []corev1.Container, volumes map[string]corev1.Volume, port corev1.ContainerPort) (errs *apis.FieldError) {
 	features := config.FromContextOrDefaults(ctx).Features
 	if features.MultiContainer != config.Enabled {
 		return errs.Also(&apis.FieldError{Message: fmt.Sprintf("multi-container is off, "+
 			"but found %d containers", len(containers))})
 	}
-	errs = errs.Also(validateContainersPorts(containers).ViaField("containers"))
+	allNames := make(sets.String, len(containers))
 	for i := range containers {
+		if allNames.Has(containers[i].Name) {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("duplicate container name %q", containers[i].Name),
+				Paths:   []string{"name"},
+			}).ViaFieldIndex("containers", i)
+		} else {
+			allNames.Insert(containers[i].Name)
+		}
 		// Probes are not allowed on other than serving container,
 		// ref: http://bit.ly/probes-condition
 		if len(containers[i].Ports) == 0 {
+			// Note, if we allow readiness/liveness checks on sidecars, we should pass in an *empty* port here, not the main container's port.
 			errs = errs.Also(validateSidecarContainer(WithinSidecarContainer(ctx), containers[i], volumes).ViaFieldIndex("containers", i))
 		} else {
-			errs = errs.Also(ValidateContainer(WithinUserContainer(ctx), containers[i], volumes).ViaFieldIndex("containers", i))
+			errs = errs.Also(ValidateContainer(WithinUserContainer(ctx), containers[i], volumes, port).ViaFieldIndex("containers", i))
 		}
 	}
 	return errs
@@ -368,21 +430,41 @@ func AllMountedVolumes(containers []corev1.Container) sets.String {
 	return volumeNames
 }
 
-// validateContainersPorts validates port when specified multiple containers
-func validateContainersPorts(containers []corev1.Container) *apis.FieldError {
+// validateContainersPorts validates that the expected number of container ports are present
+// and returns the single serving port if error is nil.
+func validateContainersPorts(containers []corev1.Container) (corev1.ContainerPort, *apis.FieldError) {
 	var count int
+	var port corev1.ContainerPort
 	for i := range containers {
-		count += len(containers[i].Ports)
+		if c := len(containers[i].Ports); c > 0 {
+			count += c
+			port = containers[i].Ports[0]
+		}
 	}
+
+	if port.Name == "" {
+		port.Name = "http"
+	}
+
+	if port.ContainerPort == 0 {
+		port.ContainerPort = 8080
+	}
+
 	// When no container ports are specified.
-	if count == 0 {
-		return apis.ErrMissingField("ports")
+	if count == 0 && len(containers) > 1 {
+		return port, apis.ErrMissingField("ports")
 	}
+
 	// More than one container sections have ports.
 	if count > 1 {
-		return apis.ErrMultipleOneOf("ports")
+		return port, &apis.FieldError{
+			Message: "more than one container port is set",
+			Paths:   []string{"ports"},
+			Details: "Only a single port is allowed across all containers",
+		}
 	}
-	return nil
+
+	return port, nil
 }
 
 // validateSidecarContainer validate fields for non serving containers
@@ -398,26 +480,43 @@ func validateSidecarContainer(ctx context.Context, container corev1.Container, v
 	return errs.Also(validate(ctx, container, volumes))
 }
 
-// ValidateContainer validate fields for serving containers
-func ValidateContainer(ctx context.Context, container corev1.Container, volumes map[string]corev1.Volume) (errs *apis.FieldError) {
-	// Single container cannot have multiple ports
-	errs = errs.Also(portValidation(container.Ports).ViaField("ports"))
-	// Liveness Probes
-	errs = errs.Also(validateProbe(container.LivenessProbe).ViaField("livenessProbe"))
-	// Readiness Probes
-	errs = errs.Also(validateReadinessProbe(container.ReadinessProbe).ViaField("readinessProbe"))
-	return errs.Also(validate(ctx, container, volumes))
+func validateInitContainer(ctx context.Context, container corev1.Container, volumes map[string]corev1.Volume) (errs *apis.FieldError) {
+	// This is checked at the K8s side for init containers so better validate early if possible
+	// ref: https://bit.ly/3tLZJV1
+	if container.LivenessProbe != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "field not allowed in an init container",
+			Paths:   []string{"livenessProbe"},
+		})
+	}
+	if container.ReadinessProbe != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "field not allowed in an init container",
+			Paths:   []string{"readinessProbe"},
+		})
+	}
+	if container.StartupProbe != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "field not allowed in an init container",
+			Paths:   []string{"startupProbe"},
+		})
+	}
+	if container.Lifecycle != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "field not allowed in an init container",
+			Paths:   []string{"lifecycle"},
+		})
+	}
+	return errs.Also(validate(WithinInitContainer(ctx), container, volumes))
 }
 
-func portValidation(containerPorts []corev1.ContainerPort) *apis.FieldError {
-	if len(containerPorts) > 1 {
-		return &apis.FieldError{
-			Message: "More than one container port is set",
-			Paths:   []string{apis.CurrentField},
-			Details: "Only a single port is allowed",
-		}
-	}
-	return nil
+// ValidateContainer validate fields for serving containers
+func ValidateContainer(ctx context.Context, container corev1.Container, volumes map[string]corev1.Volume, port corev1.ContainerPort) (errs *apis.FieldError) {
+	// Liveness Probes
+	errs = errs.Also(validateProbe(container.LivenessProbe, port).ViaField("livenessProbe"))
+	// Readiness Probes
+	errs = errs.Also(validateReadinessProbe(container.ReadinessProbe, port).ViaField("readinessProbe"))
+	return errs.Also(validate(ctx, container, volumes))
 }
 
 func validate(ctx context.Context, container corev1.Container, volumes map[string]corev1.Volume) *apis.FieldError {
@@ -450,7 +549,11 @@ func validate(ctx context.Context, container corev1.Container, volumes map[strin
 		errs = errs.Also(fe)
 	}
 	// Ports
-	errs = errs.Also(validateContainerPorts(container.Ports).ViaField("ports"))
+	if IsInitContainer(ctx) {
+		errs = errs.Also(validateInitContainerPorts(container.Ports).ViaField("ports"))
+	} else {
+		errs = errs.Also(validateContainerPorts(container.Ports).ViaField("ports"))
+	}
 	// Resources
 	errs = errs.Also(validateResources(&container.Resources).ViaField("resources"))
 	// SecurityContext
@@ -538,8 +641,21 @@ func validateVolumeMounts(mounts []corev1.VolumeMount, volumes map[string]corev1
 		}
 		seenMountPath.Insert(filepath.Clean(vm.MountPath))
 
-		if volumes[vm.Name].EmptyDir == nil && !vm.ReadOnly {
-			errs = errs.Also(apis.ErrMissingField("readOnly").ViaIndex(i))
+		shouldCheckReadOnlyVolume := volumes[vm.Name].EmptyDir == nil && volumes[vm.Name].PersistentVolumeClaim == nil
+		if shouldCheckReadOnlyVolume && !vm.ReadOnly {
+			errs = errs.Also((&apis.FieldError{
+				Message: "volume mount should be readOnly for this type of volume",
+				Paths:   []string{"readOnly"},
+			}).ViaIndex(i))
+		}
+
+		if volumes[vm.Name].PersistentVolumeClaim != nil {
+			if volumes[vm.Name].PersistentVolumeClaim.ReadOnly && !vm.ReadOnly {
+				errs = errs.Also((&apis.FieldError{
+					Message: "volume is readOnly but volume mount is not",
+					Paths:   []string{"readOnly"},
+				}).ViaIndex(i))
+			}
 		}
 	}
 	return errs
@@ -557,21 +673,11 @@ func validateContainerPorts(ports []corev1.ContainerPort) *apis.FieldError {
 	// if user didn't set any port, it will set default port user-port=8080.
 	userPort := ports[0]
 
-	errs = errs.Also(apis.CheckDisallowedFields(userPort, *ContainerPortMask(&userPort)))
+	errs = errs.Also(validateContainerPortBasic(userPort))
 
 	// Only allow empty (defaulting to "TCP") or explicit TCP for protocol
 	if userPort.Protocol != "" && userPort.Protocol != corev1.ProtocolTCP {
 		errs = errs.Also(apis.ErrInvalidValue(userPort.Protocol, "protocol"))
-	}
-
-	// Don't allow userPort to conflict with knative system reserved ports
-	if reservedPorts.Has(userPort.ContainerPort) {
-		errs = errs.Also(apis.ErrInvalidValue(userPort.ContainerPort, "containerPort"))
-	}
-
-	if userPort.ContainerPort < 0 || userPort.ContainerPort > 65535 {
-		errs = errs.Also(apis.ErrOutOfBoundsValue(userPort.ContainerPort,
-			0, 65535, "containerPort"))
 	}
 
 	if !validPortNames.Has(userPort.Name) {
@@ -585,12 +691,38 @@ func validateContainerPorts(ports []corev1.ContainerPort) *apis.FieldError {
 	return errs
 }
 
-func validateReadinessProbe(p *corev1.Probe) *apis.FieldError {
+func validateInitContainerPorts(ports []corev1.ContainerPort) *apis.FieldError {
+	var errs *apis.FieldError
+	if len(ports) == 0 {
+		return nil
+	}
+	for _, p := range ports {
+		errs = errs.Also(validateContainerPortBasic(p))
+	}
+	return errs
+}
+
+func validateContainerPortBasic(port corev1.ContainerPort) *apis.FieldError {
+	var errs *apis.FieldError
+	errs = errs.Also(apis.CheckDisallowedFields(port, *ContainerPortMask(&port)))
+
+	if reservedPorts.Has(port.ContainerPort) {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%d is a reserved port", port.ContainerPort), "containerPort",
+			fmt.Sprintf("%d is a reserved port, please use a different value", port.ContainerPort)))
+	}
+
+	if port.ContainerPort < 0 || port.ContainerPort > 65535 {
+		errs = errs.Also(apis.ErrOutOfBoundsValue(port.ContainerPort, 0, 65535, "containerPort"))
+	}
+	return errs
+}
+
+func validateReadinessProbe(p *corev1.Probe, port corev1.ContainerPort) *apis.FieldError {
 	if p == nil {
 		return nil
 	}
 
-	errs := validateProbe(p)
+	errs := validateProbe(p, port)
 
 	if p.PeriodSeconds < 0 {
 		errs = errs.Also(apis.ErrOutOfBoundsValue(p.PeriodSeconds, 0, math.MaxInt32, "periodSeconds"))
@@ -632,13 +764,13 @@ func validateReadinessProbe(p *corev1.Probe) *apis.FieldError {
 	return errs
 }
 
-func validateProbe(p *corev1.Probe) *apis.FieldError {
+func validateProbe(p *corev1.Probe, port corev1.ContainerPort) *apis.FieldError {
 	if p == nil {
 		return nil
 	}
 	errs := apis.CheckDisallowedFields(*p, *ProbeMask(p))
 
-	h := p.Handler
+	h := p.ProbeHandler
 	errs = errs.Also(apis.CheckDisallowedFields(h, *HandlerMask(&h)))
 
 	var handlers []string
@@ -646,10 +778,18 @@ func validateProbe(p *corev1.Probe) *apis.FieldError {
 	if h.HTTPGet != nil {
 		handlers = append(handlers, "httpGet")
 		errs = errs.Also(apis.CheckDisallowedFields(*h.HTTPGet, *HTTPGetActionMask(h.HTTPGet))).ViaField("httpGet")
+		getPort := h.HTTPGet.Port
+		if getPort.StrVal != "" && getPort.StrVal != port.Name {
+			errs = errs.Also(apis.ErrInvalidValue(getPort.String(), "httpGet.port", "Probe port must match container port"))
+		}
 	}
 	if h.TCPSocket != nil {
 		handlers = append(handlers, "tcpSocket")
 		errs = errs.Also(apis.CheckDisallowedFields(*h.TCPSocket, *TCPSocketActionMask(h.TCPSocket))).ViaField("tcpSocket")
+		tcpPort := h.TCPSocket.Port
+		if tcpPort.StrVal != "" && tcpPort.StrVal != port.Name {
+			errs = errs.Also(apis.ErrInvalidValue(tcpPort.String(), "tcpSocket.port", "Probe port must match container port"))
+		}
 	}
 	if h.Exec != nil {
 		handlers = append(handlers, "exec")
@@ -755,4 +895,19 @@ func WithinSidecarContainer(ctx context.Context) context.Context {
 // IsInSidecarContainer checks if we are in the context of a sidecar container in the revision.
 func IsInSidecarContainer(ctx context.Context) bool {
 	return ctx.Value(sidecarContainer{}) != nil
+}
+
+// This is attached to contexts as they are passed down through an init container
+// being validated.
+type initContainer struct{}
+
+// WithinInitContainer notes on the context that further validation or defaulting
+// is within the context of an init container in the revision.
+func WithinInitContainer(ctx context.Context) context.Context {
+	return context.WithValue(ctx, initContainer{}, struct{}{})
+}
+
+// IsInitContainer checks if we are in the context of an init container in the revision.
+func IsInitContainer(ctx context.Context) bool {
+	return ctx.Value(initContainer{}) != nil
 }

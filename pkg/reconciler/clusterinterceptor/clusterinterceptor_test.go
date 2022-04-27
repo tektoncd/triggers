@@ -35,7 +35,7 @@ func TestReconcileKind(t *testing.T) {
 		initial *triggersv1.ClusterInterceptor // State of the world before we call Reconcile
 		want    *triggersv1.ClusterInterceptor // Expected State of the world after calling Reconcile
 	}{{
-		name: "inital status is nil",
+		name: "initial status is nil",
 		initial: &triggersv1.ClusterInterceptor{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "my-interceptor",
