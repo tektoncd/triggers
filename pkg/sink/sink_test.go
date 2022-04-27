@@ -1263,7 +1263,7 @@ func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request
 	for _, v := range r.Header[key] {
 		w.Header().Add(key, v)
 	}
-	w.Header().Add(key, strconv.Itoa(int(data["i"])))
+	w.Header().Add(key, strconv.Itoa(data["i"]))
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))

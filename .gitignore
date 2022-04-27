@@ -39,3 +39,15 @@
 
 # Python
 *.pyc
+
+# Release-generated source archives, just in case they get committed
+# accidentally.
+cmd/*/kodata/source.tar.gz
+
+# binaries
+/.bin/
+/bin/
+
+# Temporary GOPATH used during code gen if user's Tekton checkout is
+# not already in GOPATH.
+.gopath

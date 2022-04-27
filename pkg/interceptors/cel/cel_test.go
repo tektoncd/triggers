@@ -435,7 +435,7 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	if res.Continue {
 		t.Fatalf("cel.Process() uexpectedly returned continue: true. Response: %+v", res)
 	}
-	if codes.InvalidArgument != codes.Code(res.Status.Code) {
+	if codes.InvalidArgument != res.Status.Code {
 		t.Errorf("cel.Process() unexpected status.Code. wanted: %v, got: %v. Status is: %+v", codes.InvalidArgument, res.Status.Code, res.Status.Err())
 	}
 	wantErrMsg := "failed to marshal json"

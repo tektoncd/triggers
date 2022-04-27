@@ -110,7 +110,7 @@ func (c *FakeClusterTriggerBindings) UpdateStatus(ctx context.Context, clusterTr
 // Delete takes name of the clusterTriggerBinding and deletes it. Returns an error if one occurs.
 func (c *FakeClusterTriggerBindings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clustertriggerbindingsResource, name), &v1alpha1.ClusterTriggerBinding{})
+		Invokes(testing.NewRootDeleteActionWithOptions(clustertriggerbindingsResource, name, opts), &v1alpha1.ClusterTriggerBinding{})
 	return err
 }
 

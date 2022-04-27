@@ -117,7 +117,7 @@ func (c *FakeEventListeners) UpdateStatus(ctx context.Context, eventListener *v1
 // Delete takes name of the eventListener and deletes it. Returns an error if one occurs.
 func (c *FakeEventListeners) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(eventlistenersResource, c.ns, name), &v1alpha1.EventListener{})
+		Invokes(testing.NewDeleteActionWithOptions(eventlistenersResource, c.ns, name, opts), &v1alpha1.EventListener{})
 
 	return err
 }

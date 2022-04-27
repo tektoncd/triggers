@@ -110,7 +110,7 @@ func (c *FakeClusterInterceptors) UpdateStatus(ctx context.Context, clusterInter
 // Delete takes name of the clusterInterceptor and deletes it. Returns an error if one occurs.
 func (c *FakeClusterInterceptors) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clusterinterceptorsResource, name), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootDeleteActionWithOptions(clusterinterceptorsResource, name, opts), &v1alpha1.ClusterInterceptor{})
 	return err
 }
 
