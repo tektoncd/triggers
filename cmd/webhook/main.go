@@ -134,7 +134,7 @@ func main() {
 	// Set up a signal context with our webhook options
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
 		ServiceName: serviceName,
-		Port:        8443,
+		Port:        webhook.PortFromEnv(8443),
 		SecretName:  secretName,
 	})
 
