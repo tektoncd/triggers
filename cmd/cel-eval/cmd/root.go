@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,10 +15,8 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	celext "github.com/google/cel-go/ext"
 	"github.com/spf13/cobra"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggerscel "github.com/tektoncd/triggers/pkg/interceptors/cel"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	corev1lister "k8s.io/client-go/listers/core/v1"
 )
 
 var (
@@ -48,17 +47,9 @@ func rootRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-type secretLister struct{}
+type secretGetter struct{}
 
-func (sl secretLister) List(selector labels.Selector) (ret []*v1.Secret, err error) {
-	return nil, nil
-}
-
-func (sl secretLister) Secrets(namespace string) corev1lister.SecretNamespaceLister {
-	return secretLister{}
-}
-
-func (sl secretLister) Get(name string) (*v1.Secret, error) {
+func (sg secretGetter) Get(ctx context.Context, triggerNS string, sr *triggersv1beta1.SecretRef) ([]byte, error) {
 	return nil, nil
 }
 
@@ -82,7 +73,7 @@ func evalCEL(w io.Writer, expressionPath, httpPath string) error {
 
 	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
 	env, err := cel.NewEnv(
-		triggerscel.Triggers("default", secretLister{}),
+		triggerscel.Triggers(context.Background(), "default", secretGetter{}),
 		celext.Strings(),
 		celext.Encoders(),
 		cel.Declarations(
