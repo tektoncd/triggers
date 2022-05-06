@@ -1209,6 +1209,28 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Namespace: "namespace",
 			},
 		},
+	}, {
+		name: "invalid interceptor for eventlistener",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Name: "test",
+					Interceptors: []*v1alpha1.EventInterceptor{{
+						Ref: v1alpha1.InterceptorRef{
+							Name:       "cel",
+							Kind:       v1alpha1.ClusterInterceptorKind,
+							APIVersion: "triggers.tekton.dev/v1alpha1",
+						},
+					},
+						nil,
+					},
+				}},
+			},
+		},
 	}}
 
 	for _, tc := range tests {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"github.com/tektoncd/triggers/pkg/reconciler/metrics"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -114,6 +115,7 @@ func compareEnv(x, y corev1.EnvVar) bool {
 func getEventListenerTestAssets(t *testing.T, r test.Resources, c *resources.Config) (test.Assets, context.CancelFunc) {
 	t.Helper()
 	ctx, _ := test.SetupFakeContext(t)
+	ctx = metrics.WithClient(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	kubeClient := fakekubeclient.Get(ctx)
 	// Fake client reactor chain ignores non handled reactors until v1.40.0
@@ -200,7 +202,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							Protocol:      corev1.ProtocolTCP,
 						}},
 						LivenessProbe: &corev1.Probe{
-							Handler: corev1.Handler{
+							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
@@ -211,7 +213,7 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							FailureThreshold: int32(resources.DefaultFailureThreshold),
 						},
 						ReadinessProbe: &corev1.Probe{
-							Handler: corev1.Handler{
+							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
@@ -229,8 +231,14 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							"--writetimeout=" + strconv.FormatInt(resources.DefaultWriteTimeout, 10),
 							"--idletimeout=" + strconv.FormatInt(resources.DefaultIdleTimeout, 10),
 							"--timeouthandler=" + strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+							"--httpclient-readtimeout=" + strconv.FormatInt(resources.DefaultHTTPClientReadTimeOut, 10),
+							"--httpclient-keep-alive=" + strconv.FormatInt(resources.DefaultHTTPClientKeepAlive, 10),
+							"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(resources.DefaultHTTPClientTLSHandshakeTimeout, 10),
+							"--httpclient-responseheadertimeout=" + strconv.FormatInt(resources.DefaultHTTPClientResponseHeaderTimeout, 10),
+							"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(resources.DefaultHTTPClientExpectContinueTimeout, 10),
 							"--is-multi-ns=false",
 							"--payload-validation=true",
+							"--cloudevent-uri=",
 							"--tls-cert=",
 							"--tls-key=",
 						},
@@ -249,10 +257,14 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							Name:  "NAME",
 							Value: eventListenerName,
 						}, {
+							Name:  "EL_EVENT",
+							Value: "disable",
+						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
-									FieldPath: "metadata.namespace",
+									APIVersion: "v1",
+									FieldPath:  "metadata.namespace",
 								},
 							},
 						}, {
@@ -371,8 +383,14 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							"--writetimeout=" + strconv.FormatInt(resources.DefaultWriteTimeout, 10),
 							"--idletimeout=" + strconv.FormatInt(resources.DefaultIdleTimeout, 10),
 							"--timeouthandler=" + strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+							"--httpclient-readtimeout=" + strconv.FormatInt(resources.DefaultHTTPClientReadTimeOut, 10),
+							"--httpclient-keep-alive=" + strconv.FormatInt(resources.DefaultHTTPClientKeepAlive, 10),
+							"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(resources.DefaultHTTPClientTLSHandshakeTimeout, 10),
+							"--httpclient-responseheadertimeout=" + strconv.FormatInt(resources.DefaultHTTPClientResponseHeaderTimeout, 10),
+							"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(resources.DefaultHTTPClientExpectContinueTimeout, 10),
 							"--is-multi-ns=" + strconv.FormatBool(false),
 							"--payload-validation=" + strconv.FormatBool(true),
+							"--cloudevent-uri=",
 						},
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
@@ -389,6 +407,9 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							Name:  "NAME",
 							Value: eventListenerName,
 						}, {
+							Name:  "EL_EVENT",
+							Value: "disable",
+						}, {
 							Name:  "SYSTEM_NAMESPACE",
 							Value: namespace,
 						}, {
@@ -396,7 +417,7 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							Value: "9000",
 						}},
 						ReadinessProbe: &corev1.Probe{
-							Handler: corev1.Handler{
+							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/live",
 									Scheme: corev1.URISchemeHTTP,
@@ -543,6 +564,10 @@ func TestReconcile(t *testing.T) {
 
 	configWithSetSecurityContextFalse := resources.MakeConfig(func(c *resources.Config) {
 		c.SetSecurityContext = ptr.Bool(false)
+	})
+
+	configWithSetEventListenerEventEnable := resources.MakeConfig(func(c *resources.Config) {
+		c.SetEventListenerEvent = ptr.String("enable")
 	})
 
 	configWithPortSet := resources.MakeConfig(func(c *resources.Config) {
@@ -837,6 +862,38 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
 	})
 
+	deploymentEventListenerEvent := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
+			Name: "K_LOGGING_CONFIG",
+		}, {
+			Name:  "K_METRICS_CONFIG",
+			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
+		}, {
+			Name:  "K_TRACING_CONFIG",
+			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+		}, {
+			Name:  "NAMESPACE",
+			Value: namespace,
+		}, {
+			Name:  "NAME",
+			Value: eventListenerName,
+		}, {
+			Name:  "EL_EVENT",
+			Value: "enable",
+		}, {
+			Name: "SYSTEM_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.namespace",
+				},
+			},
+		}, {
+			Name:  "METRICS_PROMETHEUS_PORT",
+			Value: "9000",
+		}}
+	})
+
 	deploymentForKubernetesResource := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.ServiceAccountName = "k8sresource"
 		d.Spec.Template.Spec.NodeSelector = map[string]string{"key": "value"}
@@ -892,6 +949,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "NAME",
 			Value: eventListenerName,
+		}, {
+			Name:  "EL_EVENT",
+			Value: "disable",
 		}, {
 			Name: "key",
 			ValueFrom: &corev1.EnvVarSource{
@@ -1259,6 +1319,21 @@ func TestReconcile(t *testing.T) {
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
 			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext}, // SecurityContext is cleared
+			Services:       []*corev1.Service{elService},
+		},
+	}, {
+		name:   "eventlistener with SetEventListenerEvent enable",
+		key:    reconcileKey,
+		config: configWithSetEventListenerEventEnable,
+		startResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1beta1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{elDeployment},
+		},
+		endResources: test.Resources{
+			Namespaces:     []*corev1.Namespace{namespaceResource},
+			EventListeners: []*v1beta1.EventListener{elWithStatus},
+			Deployments:    []*appsv1.Deployment{deploymentEventListenerEvent}, // SecurityContext is cleared
 			Services:       []*corev1.Service{elService},
 		},
 	}, {

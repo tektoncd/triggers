@@ -26,6 +26,7 @@ import (
 	eventlistenerreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1beta1/eventlistener"
 	dynamicduck "github.com/tektoncd/triggers/pkg/dynamic"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"github.com/tektoncd/triggers/pkg/reconciler/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
@@ -58,6 +59,7 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 			serviceLister:     serviceInformer.Lister(),
 			configAcc:         reconcilersource.WatchConfigurations(ctx, "eventlistener", cmw),
 			config:            config,
+			Metrics:           metrics.Get(ctx),
 		}
 
 		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {

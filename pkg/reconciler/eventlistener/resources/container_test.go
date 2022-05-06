@@ -54,8 +54,14 @@ func TestContainer(t *testing.T) {
 				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(true),
+				"--cloudevent-uri=",
 			},
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
@@ -69,6 +75,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -98,8 +107,14 @@ func TestContainer(t *testing.T) {
 				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(true),
+				"--cloudevent-uri=",
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
@@ -118,6 +133,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -146,8 +164,14 @@ func TestContainer(t *testing.T) {
 				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(true),
+				"--cloudevent-uri=",
 			},
 			Env: []corev1.EnvVar{{
 				Name:  "BAR",
@@ -174,8 +198,14 @@ func TestContainer(t *testing.T) {
 				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 				"--is-multi-ns=" + strconv.FormatBool(true),
 				"--payload-validation=" + strconv.FormatBool(true),
+				"--cloudevent-uri=",
 			},
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
@@ -189,6 +219,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}, {
@@ -213,8 +246,14 @@ func TestContainer(t *testing.T) {
 				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
 				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
 				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
 				"--is-multi-ns=" + strconv.FormatBool(false),
 				"--payload-validation=" + strconv.FormatBool(false),
+				"--cloudevent-uri=",
 			},
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
@@ -228,6 +267,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "NAME",
 				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
 			}},
 		},
 	}}

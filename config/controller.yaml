@@ -56,10 +56,16 @@ spec:
           "-el-image", "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
           "-el-port", "8080",
           "-el-security-context=true",
+          "-el-events", "disable",
           "-el-readtimeout", "5",
           "-el-writetimeout", "40",
           "-el-idletimeout", "120",
           "-el-timeouthandler", "30",
+          "-el-httpclient-readtimeout", "30",
+          "-el-httpclient-keep-alive", "30",
+          "-el-httpclient-tlshandshaketimeout", "10",
+          "-el-httpclient-responseheadertimeout", "10",
+          "-el-httpclient-expectcontinuetimeout", "1",
           "-period-seconds", "10",
           "-failure-threshold", "1"
         ]

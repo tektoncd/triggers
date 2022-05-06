@@ -40,7 +40,7 @@ spec:
                   - image: ubuntu
                     script: |
                       #!/usr/bin/env bash
-                      echo "$(params.sha)"
+                      echo "$(params.git_sha)"
     - name: cel-trig-with-canonical
       interceptors:
         - cel:

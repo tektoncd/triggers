@@ -52,24 +52,29 @@ var (
 func (d Double) Add(other ref.Val) ref.Val {
 	otherDouble, ok := other.(Double)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return d + otherDouble
 }
 
 // Compare implements traits.Comparer.Compare.
 func (d Double) Compare(other ref.Val) ref.Val {
-	otherDouble, ok := other.(Double)
-	if !ok {
-		return ValOrErr(other, "no such overload")
+	if math.IsNaN(float64(d)) {
+		return NewErr("NaN values cannot be ordered")
 	}
-	if d < otherDouble {
-		return IntNegOne
+	switch ov := other.(type) {
+	case Double:
+		if math.IsNaN(float64(ov)) {
+			return NewErr("NaN values cannot be ordered")
+		}
+		return compareDouble(d, ov)
+	case Int:
+		return compareDoubleInt(d, ov)
+	case Uint:
+		return compareDoubleUint(d, ov)
+	default:
+		return MaybeNoSuchOverloadErr(other)
 	}
-	if d > otherDouble {
-		return IntOne
-	}
-	return IntZero
 }
 
 // ConvertToNative implements ref.Val.ConvertToNative.
@@ -127,17 +132,17 @@ func (d Double) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 func (d Double) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case IntType:
-		i := math.Round(float64(d))
-		if i > math.MaxInt64 || i < math.MinInt64 {
-			return NewErr("range error converting %g to int", float64(d))
+		i, err := doubleToInt64Checked(float64(d))
+		if err != nil {
+			return wrapErr(err)
 		}
-		return Int(float64(i))
+		return Int(i)
 	case UintType:
-		i := math.Round(float64(d))
-		if i > math.MaxUint64 || i < 0 {
-			return NewErr("range error converting %g to int", float64(d))
+		i, err := doubleToUint64Checked(float64(d))
+		if err != nil {
+			return wrapErr(err)
 		}
-		return Uint(float64(i))
+		return Uint(i)
 	case DoubleType:
 		return d
 	case StringType:
@@ -152,26 +157,36 @@ func (d Double) ConvertToType(typeVal ref.Type) ref.Val {
 func (d Double) Divide(other ref.Val) ref.Val {
 	otherDouble, ok := other.(Double)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return d / otherDouble
 }
 
 // Equal implements ref.Val.Equal.
 func (d Double) Equal(other ref.Val) ref.Val {
-	otherDouble, ok := other.(Double)
-	if !ok {
-		return ValOrErr(other, "no such overload")
+	if math.IsNaN(float64(d)) {
+		return False
 	}
-	// TODO: Handle NaNs properly.
-	return Bool(d == otherDouble)
+	switch ov := other.(type) {
+	case Double:
+		if math.IsNaN(float64(ov)) {
+			return False
+		}
+		return Bool(d == ov)
+	case Int:
+		return Bool(compareDoubleInt(d, ov) == 0)
+	case Uint:
+		return Bool(compareDoubleUint(d, ov) == 0)
+	default:
+		return False
+	}
 }
 
 // Multiply implements traits.Multiplier.Multiply.
 func (d Double) Multiply(other ref.Val) ref.Val {
 	otherDouble, ok := other.(Double)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	return d * otherDouble
 }
@@ -185,7 +200,7 @@ func (d Double) Negate() ref.Val {
 func (d Double) Subtract(subtrahend ref.Val) ref.Val {
 	subtraDouble, ok := subtrahend.(Double)
 	if !ok {
-		return ValOrErr(subtrahend, "no such overload")
+		return MaybeNoSuchOverloadErr(subtrahend)
 	}
 	return d - subtraDouble
 }

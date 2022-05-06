@@ -32,7 +32,7 @@ EVENTLISTENER_NAME=example-listener
 kubectl port-forward service/el-${EVENTLISTENER_NAME} 8080
 ```
 
-2. Once the port-forward is done, you can invoke the Trigger by make a HTTP request to `localhost:8080` using `curl`.
+2. Once the port-forward is done, you can invoke the Trigger by make an HTTP request to `localhost:8080` using `curl`.
 The HTTP request must be a POST request that contains a JSON payload. The JSON payload should contain any fields that they are referenced via a TriggerBinding within the Trigger. 
    For example, for a Trigger that contains a binding with the value `$(body.commit_sha)`, the payload should contain a field called `commit_sha`.
 

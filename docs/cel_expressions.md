@@ -21,7 +21,8 @@ extensions to the CEL specification for manipulating strings.
 For example:
 
 ```javascript
-'refs/heads/master'.split('/') // result = list ['refs', 'heads', 'master']
+'refs/heads/main'.split('/') // result = list ['refs', 'heads', 'main']
+['refs', 'heads', 'main'].join('/') // result = string 'refs/heads/main'
 'my place'.replace('my ',' ') // result = string 'place'
 'this that another'.replace('th ',' ', 2) // result = 'is at another'
 ```
@@ -44,7 +45,7 @@ For example:
 }
 ```
 
-In the JSON above, both numbers are parsed as CEL double (Go float64) values.
+In the JSON above, both numbers are parsed as CEL double (Go `float64`) values.
 
 This means that if you want to do integer arithmetic, you'll need to
 [use explicit conversion functions](https://github.com/google/cel-spec/blob/master/doc/langdef.md#numeric-values).
@@ -163,9 +164,9 @@ base64.decode(body.b64value) == bytes('hello') # convert to bytes.
 
 ### Returning Bytes
 
-Confusingly, if you decode a base64 string with the cel-go base64 decoder, it will
-appear in the extension as a base64 encoded string, you will need to explicitly
-convert it to a CEL string.
+If you decode a base64 string with the cel-go base64 decoder, the result will
+be a set of base64 decoded bytes. To ensure the result is encoded as a string
+you will need to explicitly convert it to a CEL string.
 
 ```yaml
 interceptors:
@@ -301,13 +302,27 @@ interceptor.
       split
     </th>
     <td>
-      <pre>&lt;string&gt;.split(string) -> string(dyn)</pre>
+      <pre>&lt;string&gt;.split(string) -> list(string)</pre>
     </td>
     <td>
       Splits a string on the provided separator value.
     </td>
     <td>
      <pre>body.ref.split('/')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      join
+    </th>
+    <td>
+      <pre>&lt;list(string)&gt;.join(string) -> string</pre>
+    </td>
+    <td>
+      Joins a list of strings on the provided separator value.
+    </td>
+    <td>
+     <pre>['body', 'refs', 'main'].join('/')</pre>
     </td>
   </tr>
   <tr>
@@ -428,3 +443,31 @@ which can be accessed by indexing.
     </td>
   </tr>
 </table>
+
+## Troubleshooting CEL expressions
+
+You can use the `cel-eval` tool to evaluate your CEL expressions against a specific HTTP request.
+
+To install the `cel-eval` tool use the following command:
+
+```sh
+$ go get -u github.com/tektoncd/triggers/cmd/cel-eval
+```
+
+Below is an example of using the tool to evaluate a CEL expression:
+
+```sh
+$ cat testdata/expression.txt
+body.test.nested == "value"
+
+$ cat testdata/http.txt
+POST /foo HTTP/1.1
+Content-Length: 29
+Content-Type: application/json
+X-Header: tacocat
+
+{"test": {"nested": "value"}}
+
+$ cel-eval -e testdata/expression.txt -r testdata/http.txt
+true
+```

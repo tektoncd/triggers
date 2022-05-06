@@ -53,7 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	sinkClients, err := sink.ConfigureClients(cfg)
+	sinkClients, err := sink.ConfigureClients(ctx, cfg)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

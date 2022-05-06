@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/validation"
 	"knative.dev/pkg/apis"
@@ -68,6 +69,7 @@ func (rts *RevisionTemplateSpec) Validate(ctx context.Context) *apis.FieldError 
 	// it follows the requirements on the name.
 	errs = errs.Also(validateRevisionName(ctx, rts.Name, rts.GenerateName))
 	errs = errs.Also(validateQueueSidecarAnnotation(rts.Annotations).ViaField("metadata.annotations"))
+	errs = errs.Also(validateProgressDeadlineAnnotation(rts.Annotations).ViaField("metadata.annotations"))
 	return errs
 }
 
@@ -178,22 +180,47 @@ func validateTimeoutSeconds(ctx context.Context, timeoutSeconds int64) *apis.Fie
 }
 
 // validateQueueSidecarAnnotation validates QueueSideCarResourcePercentageAnnotation
-func validateQueueSidecarAnnotation(annotations map[string]string) *apis.FieldError {
-	if len(annotations) == 0 {
+func validateQueueSidecarAnnotation(m map[string]string) *apis.FieldError {
+	if len(m) == 0 {
 		return nil
 	}
-	v, ok := annotations[serving.QueueSideCarResourcePercentageAnnotation]
+	k, v, ok := serving.QueueSidecarResourcePercentageAnnotation.Get(m)
 	if !ok {
 		return nil
 	}
 	value, err := strconv.ParseFloat(v, 64)
 	if err != nil {
-		return apis.ErrInvalidValue(v, apis.CurrentField).
-			ViaKey(serving.QueueSideCarResourcePercentageAnnotation)
+		return apis.ErrInvalidValue(v, apis.CurrentField).ViaKey(k)
 	}
 	if value < 0.1 || value > 100 {
-		return apis.ErrOutOfBoundsValue(value, 0.1, 100.0, apis.CurrentField).
-			ViaKey(serving.QueueSideCarResourcePercentageAnnotation)
+		return apis.ErrOutOfBoundsValue(value, 0.1, 100.0, apis.CurrentField).ViaKey(k)
+	}
+	return nil
+}
+
+// ValidateProgressDeadlineAnnotation validates the revision progress deadline annotation.
+func validateProgressDeadlineAnnotation(annos map[string]string) *apis.FieldError {
+	if k, v, _ := serving.ProgressDeadlineAnnotation.Get(annos); v != "" {
+		// Parse as duration.
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return apis.ErrInvalidValue(v, k)
+		}
+		// Validate that it has second precision.
+		if d.Round(time.Second) != d {
+			return &apis.FieldError{
+				// Even if tempting %v won't work here, since it might output the value spelled differently.
+				Message: fmt.Sprintf("progress-deadline=%s is not at second precision", v),
+				Paths:   []string{k},
+			}
+		}
+		// And positive.
+		if d < 0 {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("progress-deadline=%s must be positive", v),
+				Paths:   []string{k},
+			}
+		}
 	}
 	return nil
 }

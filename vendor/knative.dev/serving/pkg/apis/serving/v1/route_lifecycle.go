@@ -64,7 +64,7 @@ func (r *Route) IsFailed() bool {
 // annotation.
 // 0 is returned if missing or cannot be parsed.
 func (r *Route) RolloutDuration() time.Duration {
-	if v, ok := r.Annotations[serving.RolloutDurationKey]; ok && v != "" {
+	if _, v, ok := serving.RolloutDurationAnnotation.Get(r.Annotations); ok && v != "" {
 		// WH should've declined all the invalid values for this annotation.
 		if d, err := time.ParseDuration(v); err == nil {
 			return d
@@ -83,6 +83,13 @@ func (rs *RouteStatus) InitializeConditions() {
 func (rs *RouteStatus) MarkServiceNotOwned(name string) {
 	routeCondSet.Manage(rs).MarkFalse(RouteConditionIngressReady, "NotOwned",
 		fmt.Sprintf("There is an existing placeholder Service %q that we do not own.", name))
+}
+
+// MarkEndpointNotOwned changes the IngressReady status to be false with the reason being that
+// there is a pre-existing placeholder endpoint with the name we wanted to use.
+func (rs *RouteStatus) MarkEndpointNotOwned(name string) {
+	routeCondSet.Manage(rs).MarkFalse(RouteConditionIngressReady, "NotOwned",
+		fmt.Sprintf("There is an existing placeholder Endpoint %q that we do not own.", name))
 }
 
 // MarkIngressRolloutInProgress changes the IngressReady condition to be unknown to reflect

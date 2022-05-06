@@ -1,0 +1,15 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: listener-cloudevent
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  cloudEventURI: http://eventlistener.free.beeceptor.com
+  triggers:
+    - name: foo-trig
+      bindings:
+        - ref: pipeline-binding
+        - ref: message-binding
+      template:
+        ref: pipeline-template

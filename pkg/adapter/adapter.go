@@ -17,8 +17,12 @@ limitations under the License.
 package adapter
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -34,6 +38,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/sink"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -92,19 +97,59 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 	return recorder
 }
 
+func (s *sinker) getHTTPClient(ctx context.Context) (*http.Client, error) {
+	var (
+		caCert    []byte
+		tlsConfig *tls.Config
+	)
+	clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
+	if err != nil {
+		return &http.Client{}, err
+	}
+	for i := range clusterInterceptorList {
+		if !bytes.Equal(clusterInterceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
+			caCert = clusterInterceptorList[i].Spec.ClientConfig.CaBundle
+			certPool := x509.NewCertPool()
+			if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+				return &http.Client{}, fmt.Errorf("unable to parse cert from %s", caCert)
+			}
+			tlsConfig = &tls.Config{
+				RootCAs:    certPool,
+				MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
+			}
+		}
+	}
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+			Dial: (&net.Dialer{
+				Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second,
+				KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,
+			ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,
+			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil
+}
+
 func (s *sinker) Start(ctx context.Context) error {
+	clientObj, err := s.getHTTPClient(ctx)
+	if err != nil {
+		return err
+	}
 	// Create EventListener Sink
 	r := sink.Sink{
 		KubeClientSet:          kubeclient.Get(ctx),
 		DiscoveryClient:        s.Clients.DiscoveryClient,
 		DynamicClient:          dynamicclient.Get(ctx),
 		TriggersClient:         s.Clients.TriggersClient,
-		HTTPClient:             http.DefaultClient,
+		HTTPClient:             clientObj,
+		CEClient:               s.Clients.CEClient,
 		EventListenerName:      s.Args.ElName,
 		EventListenerNamespace: s.Args.ElNamespace,
 		PayloadValidation:      s.Args.PayloadValidation,
 		Logger:                 s.Logger,
 		Recorder:               s.Recorder,
+		CloudEventURI:          s.Args.CloudEventURI,
 		Auth:                   sink.DefaultAuthOverride{},
 		WGProcessTriggers:      &sync.WaitGroup{},
 		EventRecorder:          s.createRecorder(s.injCtx, "EventListener"),
@@ -122,7 +167,7 @@ func (s *sinker) Start(ctx context.Context) error {
 	eventHandler := http.HandlerFunc(r.HandleEvent)
 	metricsRecorder := &sink.MetricsHandler{Handler: r.IsValidPayload(eventHandler)}
 
-	mux.HandleFunc("/", http.HandlerFunc(metricsRecorder.Intercept(r.NewMetricsRecorderInterceptor())))
+	mux.HandleFunc("/", metricsRecorder.Intercept(r.NewMetricsRecorderInterceptor()))
 
 	// For handling Liveness Probe
 	// TODO(dibyom): Livness, metrics etc. should be on a separate port

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -63,6 +64,8 @@ type ClusterInterceptorStatus struct {
 
 // ClientConfig describes how a client can communicate with the Interceptor
 type ClientConfig struct {
+	// CaBundle is a PEM encoded CA bundle which will be used to validate the clusterinterceptor server certificate
+	CaBundle []byte `json:"caBundle,omitempty"`
 	// URL is a fully formed URL pointing to the interceptor
 	// Mutually exclusive with Service
 	URL *apis.URL `json:"url,omitempty"`
@@ -72,7 +75,10 @@ type ClientConfig struct {
 	Service *ServiceReference `json:"service,omitempty"`
 }
 
-var defaultPort = int32(80)
+var (
+	defaultHTTPSPort = int32(8443)
+	defaultHTTPPort  = int32(80)
+)
 
 // ServiceReference is a reference to a Service object
 // with an optional path
@@ -112,14 +118,33 @@ func (it *ClusterInterceptor) ResolveAddress() (*apis.URL, error) {
 	if svc == nil {
 		return nil, ErrNilURL
 	}
-	port := defaultPort
+	var (
+		port *int32
+		url  *apis.URL
+	)
+
 	if svc.Port != nil {
-		port = *svc.Port
+		port = svc.Port
 	}
-	url := &apis.URL{
-		Scheme: "http", // TODO: Support HTTPs if caBundle is present
-		Host:   fmt.Sprintf("%s.%s.svc:%d", svc.Name, svc.Namespace, port),
-		Path:   svc.Path,
+
+	if bytes.Equal(it.Spec.ClientConfig.CaBundle, []byte{}) {
+		if port == nil {
+			port = &defaultHTTPPort
+		}
+		url = formURL("http", svc, port)
+	} else {
+		if port == nil {
+			port = &defaultHTTPSPort
+		}
+		url = formURL("https", svc, port)
 	}
 	return url, nil
+}
+
+func formURL(scheme string, svc *ServiceReference, port *int32) *apis.URL {
+	return &apis.URL{
+		Scheme: scheme,
+		Host:   fmt.Sprintf("%s.%s.svc:%d", svc.Name, svc.Namespace, *port),
+		Path:   svc.Path,
+	}
 }

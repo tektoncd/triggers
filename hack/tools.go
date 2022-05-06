@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 package tools
@@ -16,4 +17,6 @@ import (
 	_ "knative.dev/pkg/codegen/cmd/injection-gen"
 
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
+
+	_ "github.com/ahmetb/gen-crd-api-reference-docs"
 )

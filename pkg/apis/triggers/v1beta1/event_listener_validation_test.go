@@ -1216,7 +1216,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.triggers[0].template or bindings or interceptors", "spec.triggers[0].triggerRef"),
 	}, {
-		name: "triggerGroups is not allowed if alpha fields are not enabled",
+		name: "cloudEventURI is not allowed if alpha fields are not enabled",
 		ctx:  context.Background(), // By default, enable-api-felds is set to stable, not alpha
 		el: &triggersv1beta1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1224,26 +1224,13 @@ func TestEventListenerValidate_error(t *testing.T) {
 				Namespace: "namespace",
 			},
 			Spec: triggersv1beta1.EventListenerSpec{
-				TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
-					Name: "my-group",
-					TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
-						NamespaceSelector: triggersv1beta1.NamespaceSelector{
-							MatchNames: []string{"default"},
-						},
-					},
-					Interceptors: []*triggersv1beta1.TriggerInterceptor{{
-						Ref: triggersv1beta1.InterceptorRef{
-							Name: "cel",
-						},
-						Params: []triggersv1beta1.InterceptorParams{{
-							Name:  "filter",
-							Value: test.ToV1JSON(t, "has(body.repository)"),
-						}},
-					}},
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					TriggerRef: "test",
 				}},
+				CloudEventURI: "http://localhost",
 			},
 		},
-		wantErr: apis.ErrGeneric("spec.triggerGroups requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("spec.CloudEventURI requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	},
 		{
 			name: "missing label and namespace selector",
@@ -1301,6 +1288,33 @@ func TestEventListenerValidate_error(t *testing.T) {
 				},
 			},
 			wantErr: apis.ErrMissingOneOf("spec.labelSelector", "spec.namespaceSelector", "spec.triggerGroups", "spec.triggers"),
+		}, {
+			name: "invalid interceptor for eventlistener",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+						Name: "test",
+						Interceptors: []*triggersv1beta1.EventInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{
+								Name: "cel",
+							},
+						},
+							nil,
+						},
+					}},
+				},
+			},
+			wantErr: &apis.FieldError{
+				Message: "invalid value: interceptor '<nil>' must be a valid value",
+				Paths:   []string{"spec.triggers[0].interceptors[1]"},
+			},
 		}}
 
 	for _, tc := range tests {

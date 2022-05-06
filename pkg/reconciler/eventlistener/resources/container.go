@@ -57,8 +57,14 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			"--writetimeout=" + strconv.FormatInt(*c.WriteTimeOut, 10),
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
 			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
+			"--httpclient-readtimeout=" + strconv.FormatInt(*c.HTTPClientReadTimeOut, 10),
+			"--httpclient-keep-alive=" + strconv.FormatInt(*c.HTTPClientKeepAlive, 10),
+			"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(*c.HTTPClientTLSHandshakeTimeout, 10),
+			"--httpclient-responseheadertimeout=" + strconv.FormatInt(*c.HTTPClientResponseHeaderTimeout, 10),
+			"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(*c.HTTPClientExpectContinueTimeout, 10),
 			"--is-multi-ns=" + strconv.FormatBool(isMultiNS),
 			"--payload-validation=" + strconv.FormatBool(payloadValidation),
+			"--cloudevent-uri=" + el.Spec.CloudEventURI,
 		},
 		Env: append(ev, []corev1.EnvVar{{
 			Name:  "NAMESPACE",
@@ -66,6 +72,9 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		}, {
 			Name:  "NAME",
 			Value: el.Name,
+		}, {
+			Name:  "EL_EVENT",
+			Value: *c.SetEventListenerEvent,
 		}}...),
 	}
 

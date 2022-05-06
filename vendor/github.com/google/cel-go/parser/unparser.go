@@ -15,6 +15,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -46,19 +47,21 @@ func Unparse(expr *exprpb.Expr, info *exprpb.SourceInfo) (string, error) {
 
 // unparser visits an expression to reconstruct a human-readable string from an AST.
 type unparser struct {
-	str    strings.Builder
-	offset int32
-	// TODO: use the source info to rescontruct macros into function calls.
+	str  strings.Builder
 	info *exprpb.SourceInfo
 }
 
 func (un *unparser) visit(expr *exprpb.Expr) error {
+	if expr == nil {
+		return errors.New("unsupported expression")
+	}
+	visited, err := un.visitMaybeMacroCall(expr)
+	if visited || err != nil {
+		return err
+	}
 	switch expr.ExprKind.(type) {
 	case *exprpb.Expr_CallExpr:
 		return un.visitCall(expr)
-	// TODO: Comprehensions are currently not supported.
-	case *exprpb.Expr_ComprehensionExpr:
-		return un.visitComprehension(expr)
 	case *exprpb.Expr_ConstExpr:
 		return un.visitConst(expr)
 	case *exprpb.Expr_IdentExpr:
@@ -69,8 +72,9 @@ func (un *unparser) visit(expr *exprpb.Expr) error {
 		return un.visitSelect(expr)
 	case *exprpb.Expr_StructExpr:
 		return un.visitStruct(expr)
+	default:
+		return fmt.Errorf("unsupported expression: %v", expr)
 	}
-	return fmt.Errorf("unsupported expr: %v", expr)
 }
 
 func (un *unparser) visitCall(expr *exprpb.Expr) error {
@@ -220,12 +224,6 @@ func (un *unparser) visitCallUnary(expr *exprpb.Expr) error {
 	return un.visitMaybeNested(args[0], nested)
 }
 
-func (un *unparser) visitComprehension(expr *exprpb.Expr) error {
-	// TODO: introduce a macro expansion map between the top-level comprehension id and the
-	// function call that the macro replaces.
-	return fmt.Errorf("unimplemented : %v", expr)
-}
-
 func (un *unparser) visitConst(expr *exprpb.Expr) error {
 	c := expr.GetConstExpr()
 	switch c.ConstantKind.(type) {
@@ -255,7 +253,7 @@ func (un *unparser) visitConst(expr *exprpb.Expr) error {
 		un.str.WriteString(ui)
 		un.str.WriteString("u")
 	default:
-		return fmt.Errorf("unimplemented : %v", expr)
+		return fmt.Errorf("unsupported constant: %v", expr)
 	}
 	return nil
 }
@@ -357,6 +355,15 @@ func (un *unparser) visitStructMap(expr *exprpb.Expr) error {
 	return nil
 }
 
+func (un *unparser) visitMaybeMacroCall(expr *exprpb.Expr) (bool, error) {
+	macroCalls := un.info.GetMacroCalls()
+	call, found := macroCalls[expr.GetId()]
+	if !found {
+		return false, nil
+	}
+	return true, un.visit(call)
+}
+
 func (un *unparser) visitMaybeNested(expr *exprpb.Expr, nested bool) error {
 	if nested {
 		un.str.WriteString("(")
@@ -395,9 +402,6 @@ func isSamePrecedence(op string, expr *exprpb.Expr) bool {
 //
 // If the expr is not a Call, the result is false.
 func isLowerPrecedence(op string, expr *exprpb.Expr) bool {
-	if expr.GetCallExpr() == nil {
-		return false
-	}
 	c := expr.GetCallExpr()
 	other := c.GetFunction()
 	return operators.Precedence(op) < operators.Precedence(other)

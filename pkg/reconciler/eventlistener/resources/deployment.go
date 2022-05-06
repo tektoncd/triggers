@@ -147,7 +147,8 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			Name: "SYSTEM_NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
+					APIVersion: "v1",
+					FieldPath:  "metadata.namespace",
 				}},
 		}, corev1.EnvVar{
 			// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
@@ -188,7 +189,7 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 			scheme = corev1.URISchemeHTTP
 		}
 		container.LivenessProbe = &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,
@@ -199,7 +200,7 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 			FailureThreshold: int32(*c.FailureThreshold),
 		}
 		container.ReadinessProbe = &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/live",
 					Scheme: scheme,

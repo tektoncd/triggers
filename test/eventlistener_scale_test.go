@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -156,6 +157,10 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{triggers.GroupName},
 				Resources: []string{"clustertriggerbindings", "clusterinterceptors"},
+				Verbs:     []string{"get", "list", "watch"},
+			}, {
+				APIGroups: []string{""},
+				Resources: []string{"secrets"},
 				Verbs:     []string{"get", "list", "watch"},
 			}},
 		}, metav1.CreateOptions{},

@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
-
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -110,10 +109,8 @@ func (o *protoObj) ConvertToType(typeVal ref.Type) ref.Val {
 }
 
 func (o *protoObj) Equal(other ref.Val) ref.Val {
-	if o.typeDesc.Name() != other.Type().TypeName() {
-		return MaybeNoSuchOverloadErr(other)
-	}
-	return Bool(proto.Equal(o.value, other.Value().(proto.Message)))
+	otherPB, ok := other.Value().(proto.Message)
+	return Bool(ok && pb.Equal(o.value, otherPB))
 }
 
 // IsSet tests whether a field which is defined is set to a non-default value.

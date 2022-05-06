@@ -41,6 +41,7 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
+	"knative.dev/pkg/logging"
 
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -102,11 +103,11 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 		return fmt.Errorf("Failed to build config from the flags: %w", err)
 	}
 
-	logger, _ := zap.NewProduction()
-	sugerLogger := logger.Sugar()
+	ctx := context.Background()
+	logger := logging.FromContext(ctx)
 	eventID := template.UUID()
-	r := newSink(config, sugerLogger)
-	eventLog := sugerLogger.With(zap.String(triggers.EventIDLabelKey, eventID))
+	r := newSink(ctx, config)
+	eventLog := logger.With(zap.String(triggers.EventIDLabelKey, eventID))
 	for _, tri := range triggerConfigs {
 		resources, err := processTriggerSpec(kubeClient, triggerClient, tri,
 			request, body, eventID, eventLog, r)
@@ -241,8 +242,8 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	return resources, nil
 }
 
-func newSink(config *rest.Config, sugerLogger *zap.SugaredLogger) sink.Sink {
-	sinkClients, err := sink.ConfigureClients(config)
+func newSink(ctx context.Context, config *rest.Config) sink.Sink {
+	sinkClients, err := sink.ConfigureClients(ctx, config)
 	if err != nil {
 		log.Fatalf("Failed to get the sink client: %v", err)
 	}
@@ -265,7 +266,7 @@ func newSink(config *rest.Config, sugerLogger *zap.SugaredLogger) sink.Sink {
 		WGProcessTriggers:      &sync.WaitGroup{},
 		DiscoveryClient:        sinkClients.DiscoveryClient,
 		DynamicClient:          dynamicCS,
-		Logger:                 sugerLogger,
+		Logger:                 logging.FromContext(ctx),
 		EventListenerNamespace: "default",
 	}
 

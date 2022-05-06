@@ -77,7 +77,7 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 		return nil, fmt.Errorf("expression %#v check failed: %w", expr, issues.Err())
 	}
 
-	prg, err := env.Program(checked)
+	prg, err := env.Program(checked, cel.EvalOptions(cel.OptOptimize))
 	if err != nil {
 		return nil, fmt.Errorf("expression %#v failed to create a Program: %w", expr, err)
 	}

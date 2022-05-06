@@ -112,7 +112,8 @@ func (c *checker) check(e *exprpb.Expr) {
 	case *exprpb.Expr_ComprehensionExpr:
 		c.checkComprehension(e)
 	default:
-		panic(fmt.Sprintf("Unrecognized ast type: %v", reflect.TypeOf(e)))
+		c.errors.ReportError(
+			c.location(e), "Unrecognized ast type: %v", reflect.TypeOf(e))
 	}
 }
 
@@ -167,11 +168,9 @@ func (c *checker) checkSelect(e *exprpb.Expr) {
 	if found {
 		ident := c.env.LookupIdent(qname)
 		if ident != nil {
-			if sel.TestOnly {
-				c.errors.expressionDoesNotSelectField(c.location(e))
-				c.setType(e, decls.Bool)
-				return
-			}
+			// We don't check for a TestOnly expression here since the `found` result is
+			// always going to be false for TestOnly expressions.
+
 			// Rewrite the node to be a variable reference to the resolved fully-qualified
 			// variable name.
 			c.setType(e, ident.GetIdent().Type)
@@ -207,7 +206,7 @@ func (c *checker) checkSelect(e *exprpb.Expr) {
 			resultType = fieldType.Type
 		}
 	case kindTypeParam:
-		// Set the operand type to DYN to prevent assignment to a potentionally incorrect type
+		// Set the operand type to DYN to prevent assignment to a potentially incorrect type
 		// at a later point in type-checking. The isAssignable call will update the type
 		// substitutions for the type param under the covers.
 		c.isAssignable(decls.Dyn, targetType)
@@ -322,6 +321,12 @@ func (c *checker) resolveOverload(
 	var resultType *exprpb.Type
 	var checkedRef *exprpb.Reference
 	for _, overload := range fn.GetFunction().Overloads {
+		// Determine whether the overload is currently considered.
+		if c.env.isOverloadDisabled(overload.GetOverloadId()) {
+			continue
+		}
+
+		// Ensure the call style for the overload matches.
 		if (target == nil && overload.IsInstanceFunction) ||
 			(target != nil && !overload.IsInstanceFunction) {
 			// not a compatible call style.
@@ -329,26 +334,26 @@ func (c *checker) resolveOverload(
 		}
 
 		overloadType := decls.NewFunctionType(overload.ResultType, overload.Params...)
-		if len(overload.TypeParams) > 0 {
+		if len(overload.GetTypeParams()) > 0 {
 			// Instantiate overload's type with fresh type variables.
 			substitutions := newMapping()
-			for _, typePar := range overload.TypeParams {
+			for _, typePar := range overload.GetTypeParams() {
 				substitutions.add(decls.NewTypeParamType(typePar), c.newTypeVar())
 			}
 			overloadType = substitute(substitutions, overloadType, false)
 		}
 
-		candidateArgTypes := overloadType.GetFunction().ArgTypes
+		candidateArgTypes := overloadType.GetFunction().GetArgTypes()
 		if c.isAssignableList(argTypes, candidateArgTypes) {
 			if checkedRef == nil {
-				checkedRef = newFunctionReference(overload.OverloadId)
+				checkedRef = newFunctionReference(overload.GetOverloadId())
 			} else {
-				checkedRef.OverloadId = append(checkedRef.OverloadId, overload.OverloadId)
+				checkedRef.OverloadId = append(checkedRef.OverloadId, overload.GetOverloadId())
 			}
 
 			// First matching overload, determines result type.
 			fnResultType := substitute(c.mappings,
-				overloadType.GetFunction().ResultType,
+				overloadType.GetFunction().GetResultType(),
 				false)
 			if resultType == nil {
 				resultType = fnResultType
@@ -477,7 +482,7 @@ func (c *checker) checkComprehension(e *exprpb.Expr) {
 		// Ranges over the keys.
 		varType = rangeType.GetMapType().KeyType
 	case kindDyn, kindError, kindTypeParam:
-		// Set the range type to DYN to prevent assignment to a potentionally incorrect type
+		// Set the range type to DYN to prevent assignment to a potentially incorrect type
 		// at a later point in type-checking. The isAssignable call will update the type
 		// substitutions for the type param under the covers.
 		c.isAssignable(decls.Dyn, rangeType)
@@ -572,7 +577,9 @@ func (c *checker) lookupFieldType(l common.Location, messageType string, fieldNa
 
 func (c *checker) setType(e *exprpb.Expr, t *exprpb.Type) {
 	if old, found := c.types[e.Id]; found && !proto.Equal(old, t) {
-		panic(fmt.Sprintf("(Incompatible) Type already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, t))
+		c.errors.ReportError(c.location(e),
+			"(Incompatible) Type already exists for expression: %v(%d) old:%v, new:%v", e, e.GetId(), old, t)
+		return
 	}
 	c.types[e.Id] = t
 }
@@ -583,7 +590,9 @@ func (c *checker) getType(e *exprpb.Expr) *exprpb.Type {
 
 func (c *checker) setReference(e *exprpb.Expr, r *exprpb.Reference) {
 	if old, found := c.references[e.Id]; found && !proto.Equal(old, r) {
-		panic(fmt.Sprintf("Reference already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, r))
+		c.errors.ReportError(c.location(e),
+			"Reference already exists for expression: %v(%d) old:%v, new:%v", e, e.Id, old, r)
+		return
 	}
 	c.references[e.Id] = r
 }

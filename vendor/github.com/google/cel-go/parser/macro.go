@@ -285,7 +285,7 @@ func makeExistsOne(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*ex
 func makeQuantifier(kind quantifierKind, eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	v, found := extractIdent(args[0])
 	if !found {
-		location := eh.OffsetLocation(args[0].Id)
+		location := eh.OffsetLocation(args[0].GetId())
 		return nil, &common.Error{
 			Message:  "argument must be a simple name",
 			Location: location}
@@ -373,14 +373,14 @@ func makeFilter(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprp
 func extractIdent(e *exprpb.Expr) (string, bool) {
 	switch e.ExprKind.(type) {
 	case *exprpb.Expr_IdentExpr:
-		return e.GetIdentExpr().Name, true
+		return e.GetIdentExpr().GetName(), true
 	}
 	return "", false
 }
 
 func makeHas(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if s, ok := args[0].ExprKind.(*exprpb.Expr_SelectExpr); ok {
-		return eh.PresenceTest(s.SelectExpr.Operand, s.SelectExpr.Field), nil
+		return eh.PresenceTest(s.SelectExpr.GetOperand(), s.SelectExpr.GetField()), nil
 	}
 	return nil, &common.Error{Message: "invalid argument to has() macro"}
 }

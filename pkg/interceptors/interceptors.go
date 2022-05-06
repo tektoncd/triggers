@@ -25,14 +25,13 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/grpc/codes"
-	"knative.dev/pkg/apis"
-
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/cache"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 const (

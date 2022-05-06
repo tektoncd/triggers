@@ -15,8 +15,6 @@
 package checker
 
 import (
-	"fmt"
-
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -48,15 +46,4 @@ func (m *mapping) copy() *mapping {
 		c.mapping[k] = v
 	}
 	return c
-}
-
-func (m *mapping) String() string {
-	result := "{"
-
-	for k, v := range m.mapping {
-		result += fmt.Sprintf("%v => %v   ", k, v)
-	}
-
-	result += "}"
-	return result
 }

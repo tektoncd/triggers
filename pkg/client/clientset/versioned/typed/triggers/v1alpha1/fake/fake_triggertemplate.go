@@ -117,7 +117,7 @@ func (c *FakeTriggerTemplates) UpdateStatus(ctx context.Context, triggerTemplate
 // Delete takes name of the triggerTemplate and deletes it. Returns an error if one occurs.
 func (c *FakeTriggerTemplates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(triggertemplatesResource, c.ns, name), &v1alpha1.TriggerTemplate{})
+		Invokes(testing.NewDeleteActionWithOptions(triggertemplatesResource, c.ns, name, opts), &v1alpha1.TriggerTemplate{})
 
 	return err
 }

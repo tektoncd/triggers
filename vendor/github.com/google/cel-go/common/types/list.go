@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -96,6 +95,20 @@ func NewJSONList(adapter ref.TypeAdapter, l *structpb.ListValue) traits.Lister {
 	}
 }
 
+// NewMutableList creates a new mutable list whose internal state can be modified.
+func NewMutableList(adapter ref.TypeAdapter) traits.MutableLister {
+	var mutableValues []ref.Val
+	return &mutableList{
+		baseList: &baseList{
+			TypeAdapter: adapter,
+			value:       mutableValues,
+			size:        0,
+			get:         func(i int) interface{} { return mutableValues[i] },
+		},
+		mutableValues: mutableValues,
+	}
+}
+
 // baseList points to a list containing elements of any type.
 // The `value` is an array of native values, and refValue is its reflection object.
 // The `ref.TypeAdapter` enables native type to CEL type conversions.
@@ -132,27 +145,13 @@ func (l *baseList) Add(other ref.Val) ref.Val {
 
 // Contains implements the traits.Container interface method.
 func (l *baseList) Contains(elem ref.Val) ref.Val {
-	if IsUnknownOrError(elem) {
-		return elem
-	}
-	var err ref.Val
 	for i := 0; i < l.size; i++ {
 		val := l.NativeToValue(l.get(i))
 		cmp := elem.Equal(val)
 		b, ok := cmp.(Bool)
-		// When there is an error on the contain check, this is not necessarily terminal.
-		// The contains call could find the element and return True, just as though the user
-		// had written a per-element comparison in an exists() macro or logical ||, e.g.
-		//    list.exists(e, e == elem)
-		if !ok && err == nil {
-			err = ValOrErr(cmp, "no such overload")
-		}
-		if b == True {
+		if ok && b == True {
 			return True
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return False
 }
@@ -223,7 +222,7 @@ func (l *baseList) ConvertToType(typeVal ref.Type) ref.Val {
 func (l *baseList) Equal(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return MaybeNoSuchOverloadErr(other)
+		return False
 	}
 	if l.Size() != otherList.Size() {
 		return False
@@ -231,9 +230,9 @@ func (l *baseList) Equal(other ref.Val) ref.Val {
 	for i := IntZero; i < l.Size().(Int); i++ {
 		thisElem := l.Get(i)
 		otherElem := otherList.Get(i)
-		elemEq := thisElem.Equal(otherElem)
-		if elemEq != True {
-			return elemEq
+		elemEq := Equal(thisElem, otherElem)
+		if elemEq == False {
+			return False
 		}
 	}
 	return True
@@ -241,16 +240,14 @@ func (l *baseList) Equal(other ref.Val) ref.Val {
 
 // Get implements the traits.Indexer interface method.
 func (l *baseList) Get(index ref.Val) ref.Val {
-	i, ok := index.(Int)
-	if !ok {
-		return ValOrErr(index, "unsupported index type '%s' in list", index.Type())
+	ind, err := indexOrError(index)
+	if err != nil {
+		return ValOrErr(index, err.Error())
 	}
-	iv := int(i)
-	if iv < 0 || iv >= l.size {
-		return NewErr("index '%d' out of range in list size '%d'", i, l.Size())
+	if ind < 0 || ind >= l.size {
+		return NewErr("index '%d' out of range in list size '%d'", ind, l.Size())
 	}
-	elem := l.get(iv)
-	return l.NativeToValue(elem)
+	return l.NativeToValue(l.get(ind))
 }
 
 // Iterator implements the traits.Iterable interface method.
@@ -271,6 +268,37 @@ func (l *baseList) Type() ref.Type {
 // Value implements the ref.Val interface method.
 func (l *baseList) Value() interface{} {
 	return l.value
+}
+
+// mutableList aggregates values into its internal storage. For use with internal CEL variables only.
+type mutableList struct {
+	*baseList
+	mutableValues []ref.Val
+}
+
+// Add copies elements from the other list into the internal storage of the mutable list.
+// The ref.Val returned by Add is the receiver.
+func (l *mutableList) Add(other ref.Val) ref.Val {
+	switch otherList := other.(type) {
+	case *mutableList:
+		l.mutableValues = append(l.mutableValues, otherList.mutableValues...)
+		l.size += len(otherList.mutableValues)
+	case traits.Lister:
+		for i := IntZero; i < otherList.Size().(Int); i++ {
+			l.size++
+			l.mutableValues = append(l.mutableValues, otherList.Get(i))
+		}
+	default:
+		return MaybeNoSuchOverloadErr(otherList)
+	}
+	return l
+}
+
+// ToImmutableList returns an immutable list based on the internal storage of the mutable list.
+func (l *mutableList) ToImmutableList() traits.Lister {
+	// The reference to internal state is guaranteed to be safe as this call is only performed
+	// when mutations have been completed.
+	return NewRefValList(l.TypeAdapter, l.mutableValues)
 }
 
 // concatList combines two list implementations together into a view.
@@ -300,7 +328,7 @@ func (l *concatList) Add(other ref.Val) ref.Val {
 		nextList:    otherList}
 }
 
-// Contains implments the traits.Container interface method.
+// Contains implements the traits.Container interface method.
 func (l *concatList) Contains(elem ref.Val) ref.Val {
 	// The concat list relies on the IsErrorOrUnknown checks against the input element to be
 	// performed by the `prevList` and/or `nextList`.
@@ -343,28 +371,36 @@ func (l *concatList) ConvertToType(typeVal ref.Type) ref.Val {
 func (l *concatList) Equal(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return MaybeNoSuchOverloadErr(other)
+		return False
 	}
 	if l.Size() != otherList.Size() {
 		return False
 	}
+	var maybeErr ref.Val
 	for i := IntZero; i < l.Size().(Int); i++ {
 		thisElem := l.Get(i)
 		otherElem := otherList.Get(i)
-		elemEq := thisElem.Equal(otherElem)
-		if elemEq != True {
-			return elemEq
+		elemEq := Equal(thisElem, otherElem)
+		if elemEq == False {
+			return False
 		}
+		if maybeErr == nil && IsUnknownOrError(elemEq) {
+			maybeErr = elemEq
+		}
+	}
+	if maybeErr != nil {
+		return maybeErr
 	}
 	return True
 }
 
 // Get implements the traits.Indexer interface method.
 func (l *concatList) Get(index ref.Val) ref.Val {
-	i, ok := index.(Int)
-	if !ok {
-		return MaybeNoSuchOverloadErr(index)
+	ind, err := indexOrError(index)
+	if err != nil {
+		return ValOrErr(index, err.Error())
 	}
+	i := Int(ind)
 	if i < l.prevList.Size().(Int) {
 		return l.prevList.Get(i)
 	}
@@ -431,4 +467,23 @@ func (it *listIterator) Next() ref.Val {
 		return it.listValue.Get(index)
 	}
 	return nil
+}
+
+func indexOrError(index ref.Val) (int, error) {
+	switch iv := index.(type) {
+	case Int:
+		return int(iv), nil
+	case Double:
+		if ik, ok := doubleToInt64Lossless(float64(iv)); ok {
+			return int(ik), nil
+		}
+		return -1, fmt.Errorf("unsupported index value %v in list", index)
+	case Uint:
+		if ik, ok := uint64ToInt64Lossless(uint64(iv)); ok {
+			return int(ik), nil
+		}
+		return -1, fmt.Errorf("unsupported index value %v in list", index)
+	default:
+		return -1, fmt.Errorf("unsupported index type '%s' in list", index.Type())
+	}
 }

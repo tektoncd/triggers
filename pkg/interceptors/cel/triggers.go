@@ -269,7 +269,7 @@ func truncateString(lhs, rhs ref.Val) ref.Val {
 		return types.ValOrErr(n, "unexpected type '%v' passed to truncate", rhs.Type())
 	}
 
-	return types.String(str[:max(n, types.Int(len(str)))])
+	return str[:max(n, types.Int(len(str)))]
 }
 
 func canonicalHeader(lhs, rhs ref.Val) ref.Val {
@@ -331,7 +331,7 @@ func makeCompareSecret(ctx context.Context, defaultNS string, sg interceptors.Se
 		if err != nil {
 			return types.NewErr("failed to find secret '%#v' in compareSecret: %w", *secretRef, err)
 		}
-		return types.Bool(subtle.ConstantTimeCompare([]byte(secretToken), []byte(compareString)) == 1)
+		return types.Bool(subtle.ConstantTimeCompare(secretToken, []byte(compareString)) == 1)
 	}
 }
 

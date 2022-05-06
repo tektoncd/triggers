@@ -62,37 +62,46 @@ var (
 func (i Int) Add(other ref.Val) ref.Val {
 	otherInt, ok := other.(Int)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
-	if (otherInt > 0 && i > math.MaxInt64-otherInt) || (otherInt < 0 && i < math.MinInt64-otherInt) {
-		return NewErr("integer overflow")
+	val, err := addInt64Checked(int64(i), int64(otherInt))
+	if err != nil {
+		return wrapErr(err)
 	}
-	return i + otherInt
+	return Int(val)
 }
 
 // Compare implements traits.Comparer.Compare.
 func (i Int) Compare(other ref.Val) ref.Val {
-	otherInt, ok := other.(Int)
-	if !ok {
-		return ValOrErr(other, "no such overload")
+	switch ov := other.(type) {
+	case Double:
+		if math.IsNaN(float64(ov)) {
+			return NewErr("NaN values cannot be ordered")
+		}
+		return compareIntDouble(i, ov)
+	case Int:
+		return compareInt(i, ov)
+	case Uint:
+		return compareIntUint(i, ov)
+	default:
+		return MaybeNoSuchOverloadErr(other)
 	}
-	if i < otherInt {
-		return IntNegOne
-	}
-	if i > otherInt {
-		return IntOne
-	}
-	return IntZero
 }
 
 // ConvertToNative implements ref.Val.ConvertToNative.
 func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
-	case reflect.Int, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int32:
 		// Enums are also mapped as int32 derivations.
 		// Note, the code doesn't convert to the enum value directly since this is not known, but
 		// the net effect with respect to proto-assignment is handled correctly by the reflection
 		// Convert method.
+		v, err := int64ToInt32Checked(int64(i))
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
+	case reflect.Int64:
 		return reflect.ValueOf(i).Convert(typeDesc).Interface(), nil
 	case reflect.Ptr:
 		switch typeDesc {
@@ -100,8 +109,12 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 			// Primitives must be wrapped before being set on an Any field.
 			return anypb.New(wrapperspb.Int64(int64(i)))
 		case int32WrapperType:
-			// Convert the value to a wrapperspb.Int32Value (with truncation).
-			return wrapperspb.Int32(int32(i)), nil
+			// Convert the value to a wrapperspb.Int32Value, error on overflow.
+			v, err := int64ToInt32Checked(int64(i))
+			if err != nil {
+				return nil, err
+			}
+			return wrapperspb.Int32(v), nil
 		case int64WrapperType:
 			// Convert the value to a wrapperspb.Int64Value.
 			return wrapperspb.Int64(int64(i)), nil
@@ -129,7 +142,11 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Int32:
-			v := int32(i)
+			// Convert the value to a wrapperspb.Int32Value, error on overflow.
+			v, err := int64ToInt32Checked(int64(i))
+			if err != nil {
+				return nil, err
+			}
 			p := reflect.New(typeDesc.Elem())
 			p.Elem().Set(reflect.ValueOf(v).Convert(typeDesc.Elem()))
 			return p.Interface(), nil
@@ -157,17 +174,22 @@ func (i Int) ConvertToType(typeVal ref.Type) ref.Val {
 	case IntType:
 		return i
 	case UintType:
-		if i < 0 {
-			return NewErr("range error converting %d to uint", i)
+		u, err := int64ToUint64Checked(int64(i))
+		if err != nil {
+			return wrapErr(err)
 		}
-		return Uint(i)
+		return Uint(u)
 	case DoubleType:
 		return Double(i)
 	case StringType:
 		return String(fmt.Sprintf("%d", int64(i)))
 	case TimestampType:
-		t := time.Unix(int64(i), 0).UTC()
-		return Timestamp{Time: t}
+		// The maximum positive value that can be passed to time.Unix is math.MaxInt64 minus the number
+		// of seconds between year 1 and year 1970. See comments on unixToInternal.
+		if int64(i) < minUnixTime || int64(i) > maxUnixTime {
+			return celErrTimestampOverflow
+		}
+		return timestampOf(time.Unix(int64(i), 0).UTC())
 	case TypeType:
 		return IntType
 	}
@@ -178,79 +200,78 @@ func (i Int) ConvertToType(typeVal ref.Type) ref.Val {
 func (i Int) Divide(other ref.Val) ref.Val {
 	otherInt, ok := other.(Int)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
-	if otherInt == IntZero {
-		return NewErr("divide by zero")
+	val, err := divideInt64Checked(int64(i), int64(otherInt))
+	if err != nil {
+		return wrapErr(err)
 	}
-	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
-	if i == math.MinInt64 && otherInt == -1 {
-		return NewErr("integer overflow")
-	}
-	return i / otherInt
+	return Int(val)
 }
 
 // Equal implements ref.Val.Equal.
 func (i Int) Equal(other ref.Val) ref.Val {
-	otherInt, ok := other.(Int)
-	if !ok {
-		return ValOrErr(other, "no such overload")
+	switch ov := other.(type) {
+	case Double:
+		if math.IsNaN(float64(ov)) {
+			return False
+		}
+		return Bool(compareIntDouble(i, ov) == 0)
+	case Int:
+		return Bool(i == ov)
+	case Uint:
+		return Bool(compareIntUint(i, ov) == 0)
+	default:
+		return False
 	}
-	return Bool(i == otherInt)
 }
 
 // Modulo implements traits.Modder.Modulo.
 func (i Int) Modulo(other ref.Val) ref.Val {
 	otherInt, ok := other.(Int)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
-	if otherInt == IntZero {
-		return NewErr("modulus by zero")
+	val, err := moduloInt64Checked(int64(i), int64(otherInt))
+	if err != nil {
+		return wrapErr(err)
 	}
-	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
-	if i == math.MinInt64 && otherInt == -1 {
-		return NewErr("integer overflow")
-	}
-	return i % otherInt
+	return Int(val)
 }
 
 // Multiply implements traits.Multiplier.Multiply.
 func (i Int) Multiply(other ref.Val) ref.Val {
 	otherInt, ok := other.(Int)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
-	// Detecting multiplication overflow is more complicated than the others. The first two detect
-	// attempting to negate MinInt64, which would result in MaxInt64+1. The other four detect normal
-	// overflow conditions.
-	if (i == -1 && otherInt == math.MinInt64) || (otherInt == -1 && i == math.MinInt64) ||
-		(i > 0 && otherInt > 0 && i > math.MaxInt64/otherInt) || (i > 0 && otherInt < 0 && otherInt < math.MinInt64/i) ||
-		(i < 0 && otherInt > 0 && i < math.MinInt64/otherInt) || (i < 0 && otherInt < 0 && otherInt < math.MaxInt64/i) {
-		return NewErr("integer overflow")
+	val, err := multiplyInt64Checked(int64(i), int64(otherInt))
+	if err != nil {
+		return wrapErr(err)
 	}
-	return i * otherInt
+	return Int(val)
 }
 
 // Negate implements traits.Negater.Negate.
 func (i Int) Negate() ref.Val {
-	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
-	if i == math.MinInt64 {
-		return NewErr("integer overflow")
+	val, err := negateInt64Checked(int64(i))
+	if err != nil {
+		return wrapErr(err)
 	}
-	return -i
+	return Int(val)
 }
 
 // Subtract implements traits.Subtractor.Subtract.
 func (i Int) Subtract(subtrahend ref.Val) ref.Val {
 	subtraInt, ok := subtrahend.(Int)
 	if !ok {
-		return ValOrErr(subtrahend, "no such overload")
+		return MaybeNoSuchOverloadErr(subtrahend)
 	}
-	if (subtraInt < 0 && i > math.MaxInt64+subtraInt) || (subtraInt > 0 && i < math.MinInt64+subtraInt) {
-		return NewErr("integer overflow")
+	val, err := subtractInt64Checked(int64(i), int64(subtraInt))
+	if err != nil {
+		return wrapErr(err)
 	}
-	return i - subtraInt
+	return Int(val)
 }
 
 // Type implements ref.Val.Type.

@@ -24,10 +24,12 @@ or more [`Interceptors`](./interceptors.md).
 - [Specifying `TriggerGroups`](#specifying-triggergroups)
 - [Specifying `Resources`](#specifying-resources)
   - [Specifying a `kubernetesResource` object](#specifying-a-kubernetesresource-object)
+    - [Specifying `Service` configuration](#specifying-service-configuration)
     - [Specifying `Replicas`](#specifying-replicas)
   - [Specifying a `CustomResource` object](#specifying-a-customresource-object)
     - [Contract for the `CustomResource` object](#contract-for-the-customresource-object)
 - [Specifying `Interceptors`](#specifying-interceptors)
+- [Specifying `cloudEventURI`](#specifying-cloudeventuri)
 - [Constraining `EventListeners` to specific namespaces](#constraining-eventlisteners-to-specific-namespaces)
 - [Constraining `EventListeners` to specific labels](#constraining-eventlisteners-to-specific-labels)
 - [Disabling Payload Validation](#disabling-payload-validation)
@@ -45,6 +47,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Deploying `EventListeners` in multi-tenant scenarios](#deploying-eventlisteners-in-multi-tenant-scenarios)
   - [Deploying each `EventListener` in its own namespace](#deploying-each-eventlistener-in-its-own-namespace)
   - [Deploying multiple `EventListeners` in the same namespace](#deploying-multiple-eventlisteners-in-the-same-namespace)
+- [CloudEvents during Trigger Processing](#cloud-events-during-trigger-processing)
 
 
 ## Structure of an `EventListener`
@@ -59,9 +62,9 @@ An `EventListener` definition consists of the following fields:
     - [`serviceAccountName`](#specifying-the-kubernetes-service-account) - Specifies the `ServiceAccount` the `EventListener` will use to instantiate Tekton resources
 - Optional:
   - [`triggers`](#specifying-triggers) - specifies a list of `Triggers` to execute upon event detection
+  - [`cloudEventURI`](#specifying-cloudEventURI) - specifies the URI for cloudevent sink
   - [`resources`](#specifying-resources) - specifies the resources that will be available to the event listening service
-  - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the 
-    specified `Triggers` and stores the Tekton objects it instantiates upon event detection
+  - [`namespaceSelector`](#constraining-eventlisteners-to-specific-namespaces) - specifies the namespace for the `EventListener`; this is where the `EventListener` looks for the specified `Triggers` and stores the Tekton objects it instantiates upon event detection
   - [`labelSelector`](#constraining-eventlisteners-to-specific-labels) - specifies the labels for which your `EventListener` recognizes `Triggers` and instantiates the specified Tekton objects
 
 [kubernetes-overview]:
@@ -154,7 +157,7 @@ triggers:
       - ref: message-binding
     template:
       ref: pipeline-template
-``` 
+```
 
 You must update the `Role` assigned to the service account specified in the `EventListener` as shown below
 to allow it to impersonate the service account specified in the `Trigger`:
@@ -166,15 +169,21 @@ rules:
   verbs: ["impersonate"]
 ```
 
+## Specifying `cloudEventURI`
+
+Specifying the URI for cloud event sink which receives [cloud events during Trigger Processing](#cloud-events-during-trigger-processing).
+
+```yaml
+spec:
+  cloudEventURI: http://eventlistener.free.beeceptor.com
+```
+
 ## Specifying `TriggerGroups`
 
-`TriggerGroups` is a feature that allows you to specify a set of interceptors that will process before a set of 
-`Trigger` resources are processed by the eventlistener. The goal of this feature is described in 
-[TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for 
-a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked. 
-
-`TriggerGroups` is currently an `alpha` feature. To use it, you use the v1beta1 API version with the 
-`enable-api-fields`  [feature flag set to `alpha`](./install.md#Customizing-the-Triggers-Controller-behavior).
+`TriggerGroups` is a feature that allows you to specify a set of interceptors that will process before a set of
+`Trigger` resources are processed by the eventlistener. The goal of this feature is described in
+[TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for
+a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked.
 
 You can optionally specify one or more `Triggers` that define the actions to take when the `EventListener` detects a qualifying event. You can specify *either* a reference to an
 external `Trigger` object *or* reference/define the `TriggerBindings`, `TriggerTemplates`, and `Interceptors` in the `Trigger` definition. A `TriggerGroup` definition specifies the following fields:
@@ -281,6 +290,7 @@ spec:
   resources:
     kubernetesResource:
       serviceType: NodePort
+      servicePort: 80
       spec:
         template:
           metadata:
@@ -297,6 +307,18 @@ spec:
               value: value
               operator: Equal
               effect: NoSchedule
+```
+
+#### Specifying `Service` configuration
+
+The type and port for the `Service` created for the `EventListener` can be configured via the `ServiceType` and `ServicePort`
+specifications respectively. By default, the `Service` type is set to `ClusterIP` and port is set to `8080`.
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+      servicePort: 8128
 ```
 
 #### Specifying `Replicas`
@@ -385,12 +407,12 @@ Below is an example `namespaceSelector` field that configures the `EventListener
     - bar
 ```
 
-If you want your `EventListener` to recognize `Triggers` across your entire cluster, use a wildcard as the only namespace:
+If you want your `EventListener` to recognize `Triggers` across your entire cluster, use a wildcard  between quote as the only namespace:
 
 ```yaml
   namespaceSelector:
     matchNames:
-    - *
+    - "*"
 ```
 
 ## Constraining `EventListeners` to specific labels
@@ -700,3 +722,17 @@ ideal, but you will not incur a significant `etcd` store cost as in the multiple
 and configuration overhead concerns, however, still apply as described earlier. You can also achieve a similar result
 by specifying a separate service account for each `Trigger` used across your `EventListener` pool at the cost of
 increased administration overhead.
+
+## Cloud Events during Trigger Processing
+
+The [cloud event](https://github.com/cloudevents/spec) that is sent to a target `URI` during Trigger processing. The types of events send for now are:
+
+| Type | Description |
+| ---------- | ----------- |
+| dev.tekton.event.triggers.started.v1 | triggers processing started in eventlistener |
+| dev.tekton.event.triggers.successful.v1 | triggers processing successful and a resource created |
+| dev.tekton.event.triggers.failed.v1 | triggers failed in eventlistener |
+| dev.tekton.event.triggers.done.v1 | triggers processing done in eventlistener handle |
+
+
+
