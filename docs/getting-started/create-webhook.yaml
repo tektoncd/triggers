@@ -31,7 +31,7 @@ spec:
     default: '[\"push\",\"pull_request\"]'
   steps:
   - name: create-webhook
-    image: pstauffer/curl:latest
+    image: curlimages/curl:latest
     volumeMounts:
     - name: github-secret
       mountPath: /var/secret
