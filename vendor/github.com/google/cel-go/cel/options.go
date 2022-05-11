@@ -342,7 +342,8 @@ func Functions(funcs ...*functions.Overload) ProgramOption {
 }
 
 // Globals sets the global variable values for a given program. These values may be shadowed by
-// variables with the same name provided to the Eval() call.
+// variables with the same name provided to the Eval() call. If Globals is used in a Library with
+// a Lib EnvOption, vars may shadow variables provided by previously added libraries.
 //
 // The vars value may either be an `interpreter.Activation` instance or a `map[string]interface{}`.
 func Globals(vars interface{}) ProgramOption {
@@ -350,6 +351,9 @@ func Globals(vars interface{}) ProgramOption {
 		defaultVars, err := interpreter.NewActivation(vars)
 		if err != nil {
 			return nil, err
+		}
+		if p.defaultVars != nil {
+			defaultVars = interpreter.NewHierarchicalActivation(p.defaultVars, defaultVars)
 		}
 		p.defaultVars = defaultVars
 		return p, nil

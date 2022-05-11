@@ -334,20 +334,23 @@ func (p *planner) planCallUnary(expr *exprpb.Expr,
 	args []Interpretable) (Interpretable, error) {
 	var fn functions.UnaryOp
 	var trait int
+	var nonStrict bool
 	if impl != nil {
 		if impl.Unary == nil {
 			return nil, fmt.Errorf("no such overload: %s(arg)", function)
 		}
 		fn = impl.Unary
 		trait = impl.OperandTrait
+		nonStrict = impl.NonStrict
 	}
 	return &evalUnary{
-		id:       expr.Id,
-		function: function,
-		overload: overload,
-		arg:      args[0],
-		trait:    trait,
-		impl:     fn,
+		id:        expr.Id,
+		function:  function,
+		overload:  overload,
+		arg:       args[0],
+		trait:     trait,
+		impl:      fn,
+		nonStrict: nonStrict,
 	}, nil
 }
 
@@ -359,21 +362,24 @@ func (p *planner) planCallBinary(expr *exprpb.Expr,
 	args []Interpretable) (Interpretable, error) {
 	var fn functions.BinaryOp
 	var trait int
+	var nonStrict bool
 	if impl != nil {
 		if impl.Binary == nil {
 			return nil, fmt.Errorf("no such overload: %s(lhs, rhs)", function)
 		}
 		fn = impl.Binary
 		trait = impl.OperandTrait
+		nonStrict = impl.NonStrict
 	}
 	return &evalBinary{
-		id:       expr.Id,
-		function: function,
-		overload: overload,
-		lhs:      args[0],
-		rhs:      args[1],
-		trait:    trait,
-		impl:     fn,
+		id:        expr.Id,
+		function:  function,
+		overload:  overload,
+		lhs:       args[0],
+		rhs:       args[1],
+		trait:     trait,
+		impl:      fn,
+		nonStrict: nonStrict,
 	}, nil
 }
 
@@ -385,20 +391,23 @@ func (p *planner) planCallVarArgs(expr *exprpb.Expr,
 	args []Interpretable) (Interpretable, error) {
 	var fn functions.FunctionOp
 	var trait int
+	var nonStrict bool
 	if impl != nil {
 		if impl.Function == nil {
 			return nil, fmt.Errorf("no such overload: %s(...)", function)
 		}
 		fn = impl.Function
 		trait = impl.OperandTrait
+		nonStrict = impl.NonStrict
 	}
 	return &evalVarArgs{
-		id:       expr.Id,
-		function: function,
-		overload: overload,
-		args:     args,
-		trait:    trait,
-		impl:     fn,
+		id:        expr.Id,
+		function:  function,
+		overload:  overload,
+		args:      args,
+		trait:     trait,
+		impl:      fn,
+		nonStrict: nonStrict,
 	}, nil
 }
 
