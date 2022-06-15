@@ -34,6 +34,10 @@ type EventListenerListerExpansion interface{}
 // EventListenerNamespaceLister.
 type EventListenerNamespaceListerExpansion interface{}
 
+// NamespacedInterceptorListerExpansion allows custom methods to be added to
+// NamespacedInterceptorLister.
+type NamespacedInterceptorListerExpansion interface{}
+
 // TriggerListerExpansion allows custom methods to be added to
 // TriggerLister.
 type TriggerListerExpansion interface{}

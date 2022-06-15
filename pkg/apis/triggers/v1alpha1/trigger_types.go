@@ -131,8 +131,10 @@ type InterceptorRef struct {
 type InterceptorKind string
 
 const (
-	// ClusterTaskKind indicates that task type has a cluster scope.
+	// ClusterTaskKind indicates that interceptor type has a cluster scope.
 	ClusterInterceptorKind InterceptorKind = "ClusterInterceptor"
+	// NamespacedInterceptorKind indicated that interceptor has a namespaced scope
+	NamespacedInterceptorKind InterceptorKind = "NamespacedInterceptor"
 )
 
 func (ti *TriggerInterceptor) defaultInterceptorKind() {

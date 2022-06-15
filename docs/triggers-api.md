@@ -600,7 +600,7 @@ string
 <h3 id="triggers.tekton.dev/v1alpha1.ClientConfig">ClientConfig
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.ClusterInterceptorSpec">ClusterInterceptorSpec</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.ClusterInterceptorSpec">ClusterInterceptorSpec</a>, <a href="#triggers.tekton.dev/v1alpha1.NamespacedInterceptorSpec">NamespacedInterceptorSpec</a>)
 </p>
 <div>
 <p>ClientConfig describes how a client can communicate with the Interceptor</p>
@@ -1202,7 +1202,10 @@ SecretRef
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;ClusterInterceptor&#34;</p></td>
-<td><p>ClusterTaskKind indicates that task type has a cluster scope.</p>
+<td><p>ClusterTaskKind indicates that interceptor type has a cluster scope.</p>
+</td>
+</tr><tr><td><p>&#34;NamespacedInterceptor&#34;</p></td>
+<td><p>NamespacedInterceptorKind indicated that interceptor has a namespaced scope</p>
 </td>
 </tr></tbody>
 </table>
@@ -1520,6 +1523,158 @@ list of namespaces.</p>
 </td>
 <td>
 <p>List of namespace names.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.NamespacedInterceptor">NamespacedInterceptor
+</h3>
+<div>
+<p>NamespacedInterceptor describes a pluggable interceptor including configuration
+such as the fields it accepts and its deployment address. The type is based on
+the Validating/MutatingWebhookConfiguration types for configuring AdmissionWebhooks</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.NamespacedInterceptorSpec">
+NamespacedInterceptorSpec
+</a>
+</em>
+</td>
+<td>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>clientConfig</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.ClientConfig">
+ClientConfig
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.NamespacedInterceptorStatus">
+NamespacedInterceptorStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.NamespacedInterceptorSpec">NamespacedInterceptorSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.NamespacedInterceptor">NamespacedInterceptor</a>)
+</p>
+<div>
+<p>NamespacedInterceptorSpec describes the Spec for an NamespacedInterceptor</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>clientConfig</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.ClientConfig">
+ClientConfig
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.NamespacedInterceptorStatus">NamespacedInterceptorStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.NamespacedInterceptor">NamespacedInterceptor</a>)
+</p>
+<div>
+<p>NamespacedInterceptorStatus holds the status of the NamespacedInterceptor</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>AddressStatus</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#AddressStatus">
+knative.dev/pkg/apis/duck/v1.AddressStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>AddressStatus</code> are embedded into this type.)
+</p>
+<p>NamespacedInterceptor is Addressable and exposes the URL where the Interceptor is running</p>
 </td>
 </tr>
 </tbody>

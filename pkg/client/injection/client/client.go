@@ -498,6 +498,133 @@ func (w *wrapTriggersV1alpha1EventListenerImpl) Watch(ctx context.Context, opts 
 	return nil, errors.New("NYI: Watch")
 }
 
+func (w *wrapTriggersV1alpha1) NamespacedInterceptors() typedtriggersv1alpha1.NamespacedInterceptorInterface {
+	return &wrapTriggersV1alpha1NamespacedInterceptorImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "triggers.tekton.dev",
+			Version:  "v1alpha1",
+			Resource: "namespacedinterceptors",
+		}),
+	}
+}
+
+type wrapTriggersV1alpha1NamespacedInterceptorImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+}
+
+var _ typedtriggersv1alpha1.NamespacedInterceptorInterface = (*wrapTriggersV1alpha1NamespacedInterceptorImpl)(nil)
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Create(ctx context.Context, in *v1alpha1.NamespacedInterceptor, opts v1.CreateOptions) (*v1alpha1.NamespacedInterceptor, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "triggers.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "NamespacedInterceptor",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptor{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Delete(ctx, name, opts)
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.NamespacedInterceptor, error) {
+	uo, err := w.dyn.Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptor{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.NamespacedInterceptorList, error) {
+	uo, err := w.dyn.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptorList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.NamespacedInterceptor, err error) {
+	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptor{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Update(ctx context.Context, in *v1alpha1.NamespacedInterceptor, opts v1.UpdateOptions) (*v1alpha1.NamespacedInterceptor, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "triggers.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "NamespacedInterceptor",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptor{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) UpdateStatus(ctx context.Context, in *v1alpha1.NamespacedInterceptor, opts v1.UpdateOptions) (*v1alpha1.NamespacedInterceptor, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "triggers.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "NamespacedInterceptor",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.NamespacedInterceptor{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTriggersV1alpha1NamespacedInterceptorImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapTriggersV1alpha1) Triggers(namespace string) typedtriggersv1alpha1.TriggerInterface {
 	return &wrapTriggersV1alpha1TriggerImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
