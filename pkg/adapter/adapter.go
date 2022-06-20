@@ -39,6 +39,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -57,6 +58,11 @@ type envConfig struct {
 func NewEnvConfig() adapter.EnvConfigAccessor {
 	return &envConfig{}
 }
+
+var (
+	interval = 10 * time.Second
+	timeout  = 1 * time.Minute
+)
 
 // sinker implements the adapter for an event listener.
 type sinker struct {
@@ -97,27 +103,39 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 	return recorder
 }
 
-func (s *sinker) getHTTPClient(ctx context.Context) (*http.Client, error) {
+func (s *sinker) getHTTPClient() (*http.Client, error) {
 	var (
 		caCert    []byte
 		tlsConfig *tls.Config
 	)
-	clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
-	if err != nil {
-		return &http.Client{}, err
-	}
-	for i := range clusterInterceptorList {
-		if !bytes.Equal(clusterInterceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
-			caCert = clusterInterceptorList[i].Spec.ClientConfig.CaBundle
-			certPool := x509.NewCertPool()
-			if ok := certPool.AppendCertsFromPEM(caCert); !ok {
-				return &http.Client{}, fmt.Errorf("unable to parse cert from %s", caCert)
-			}
-			tlsConfig = &tls.Config{
-				RootCAs:    certPool,
-				MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
+
+	certPool := x509.NewCertPool()
+	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+		clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
+		if err != nil {
+			return false, err
+		}
+		var count int
+		for i := range clusterInterceptorList {
+			if !bytes.Equal(clusterInterceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
+				caCert = clusterInterceptorList[i].Spec.ClientConfig.CaBundle
+				if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+					return false, fmt.Errorf("unable to parse cert from %s", caCert)
+				}
+				count++
 			}
 		}
+		if len(clusterInterceptorList) != 0 && len(clusterInterceptorList) == count {
+			return true, nil
+		}
+		return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")
+	})
+	if err != nil {
+		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+	}
+	tlsConfig = &tls.Config{
+		RootCAs:    certPool,
+		MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
 	}
 	return &http.Client{
 		Transport: &http.Transport{
@@ -132,7 +150,7 @@ func (s *sinker) getHTTPClient(ctx context.Context) (*http.Client, error) {
 }
 
 func (s *sinker) Start(ctx context.Context) error {
-	clientObj, err := s.getHTTPClient(ctx)
+	clientObj, err := s.getHTTPClient()
 	if err != nil {
 		return err
 	}
