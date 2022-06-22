@@ -22,6 +22,7 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "cel"
+      port: 8443
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
@@ -33,6 +34,7 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "bitbucket"
+      port: 8443
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
@@ -44,6 +46,7 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "github"
+      port: 8443
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
@@ -55,3 +58,4 @@ spec:
       name: tekton-triggers-core-interceptors
       namespace: tekton-pipelines
       path: "gitlab"
+      port: 8443
