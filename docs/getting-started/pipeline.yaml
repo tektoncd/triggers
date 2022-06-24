@@ -1,7 +1,6 @@
 ---
 # The getting-started Pipeline will run through several tasks:
 # - source is pulled from git
-# - conditions say go test must pass before moving on
 # - source is built into an image by img
 # - image output is pushed to ECR
 # - cloudevent emitted
@@ -22,11 +21,6 @@ spec:
     - name: build-docker-image
       taskRef:
         name: build-docker-image
-      conditions:
-      - conditionRef: "go-test"
-        resources:
-          - name: source-repo
-            resource: source-repo
       params:
         - name: pathToContext
           value: /workspace/source-repo
@@ -105,21 +99,6 @@ spec:
         - --dockerfile=$(params.pathToDockerFile)
         - --destination=$(resources.outputs.builtImage.url)
         - --context=$(params.pathToContext)
----
-apiVersion: tekton.dev/v1alpha1
-kind: Condition
-metadata:
-  name: go-test
-  namespace: getting-started
-spec:
-  resources:
-    - name: source-repo
-      type: git
-  check:
-    image: golang
-    command: ["go"]
-    workingDir: "$(resources.source-repo.path)"
-    args: ['test', "./..."]
 ---
 # Finally, we need something to receive our cloudevent announcing success!
 # That is this services only purpose
