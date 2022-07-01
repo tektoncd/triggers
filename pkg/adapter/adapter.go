@@ -104,15 +104,57 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 }
 
 func (s *sinker) getHTTPClient() (*http.Client, error) {
+	var tlsConfig *tls.Config
+
+	certPool := x509.NewCertPool()
+
+	err := s.getCertFromClusterInterceptor(certPool)
+	if err != nil {
+		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+	}
+
+	// running go routine here to add/update certPool if there is new or change in caCert bundle.
+	// caCert changes if certs expired, if someone adds new ClusterInterceptor with caBundle
+	ticker := time.NewTicker(time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.getCertFromClusterInterceptor(certPool); err != nil {
+					s.Logger.Fatalf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	tlsConfig = &tls.Config{
+		RootCAs:    certPool,
+		MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
+	}
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+			Dial: (&net.Dialer{
+				Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second,
+				KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,
+			ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,
+			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil
+}
+
+func (s *sinker) getCertFromClusterInterceptor(certPool *x509.CertPool) error {
 	var (
 		caCert     []byte
-		tlsConfig  *tls.Config
 		count      int
 		httpsCILen int
 	)
 
-	certPool := x509.NewCertPool()
-	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
 		if err != nil {
 			return false, err
@@ -134,24 +176,10 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 			return true, nil
 		}
 		return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")
-	})
-	if err != nil {
-		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+	}); err != nil {
+		return fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
 	}
-	tlsConfig = &tls.Config{
-		RootCAs:    certPool,
-		MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Dial: (&net.Dialer{
-				Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second,
-				KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,
-			ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,
-			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil
+	return nil
 }
 
 func (s *sinker) Start(ctx context.Context) error {

@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -22,7 +23,13 @@ import (
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	"knative.dev/pkg/system"
+)
+
+const (
+	second = 6 * time.Second
 )
 
 func TestServer_ServeHTTP(t *testing.T) {
@@ -191,67 +198,66 @@ func Test_SecretNotExist(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
-	_, _, _, err := CreateCerts(ctx, clientSet, logger.Sugar())
+	_, _, err := CreateCerts(ctx, clientSet, time.Now().Add(Decade), logger.Sugar())
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		t.Error(err)
 	}
 }
 
-func createSecret(t *testing.T) (string, string, []byte, error) {
-	if err := os.Setenv("INTERCEPTOR_TLS_SVC_NAME", "testsvc"); err != nil {
-		return "", "", []byte{}, err
+func createSecret(t *testing.T, noAfter time.Time) (v1.CoreV1Interface, []byte, []byte, error) {
+	if err := os.Setenv(InterceptorTLSSvcKey, "testsvc"); err != nil {
+		return nil, []byte{}, []byte{}, err
 	}
-	if err := os.Setenv("INTERCEPTOR_TLS_SECRET_NAME", "testsecrets"); err != nil {
-		return "", "", []byte{}, err
+	if err := os.Setenv(InterceptorTLSSecretKey, "testsecrets"); err != nil {
+		return nil, []byte{}, []byte{}, err
 	}
 	if err := os.Setenv("SYSTEM_NAMESPACE", "testns"); err != nil {
-		return "", "", []byte{}, err
+		return nil, []byte{}, []byte{}, err
 	}
-	interceptorSecretName := os.Getenv("INTERCEPTOR_TLS_SECRET_NAME")
-	namespace := os.Getenv("SYSTEM_NAMESPACE")
+	namespace := system.Namespace()
 
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
 	localObject := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      interceptorSecretName,
+			Name:      os.Getenv(InterceptorTLSSecretKey),
 			Namespace: namespace,
 		},
 	}
 	if _, err := clientSet.Secrets(namespace).Create(ctx, localObject, metav1.CreateOptions{}); err != nil {
 		t.Error(err)
 	}
-	key, sKey, crt, err := CreateCerts(ctx, clientSet, logger.Sugar())
-	return key, sKey, crt, err
+	sCert, caCert, err := CreateCerts(ctx, clientSet, noAfter, logger.Sugar())
+	return clientSet, sCert, caCert, err
 }
 
 func Test_CreateSecret(t *testing.T) {
-	key, sKey, crt, err := createSecret(t)
+	_, sCert, caCert, err := createSecret(t, time.Now().Add(Decade))
 	if err != nil {
 		t.Error(err)
 	}
-	if key == "" && sKey == "" && len(crt) == 0 {
-		t.Error("expected key, server and crt to be created")
+	if len(sCert) == 0 && len(caCert) == 0 {
+		t.Error("expected serverCert and caCert to be created")
 	}
 }
 
 func Test_UpdateCRDWithCaCert(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 	logger := zaptest.NewLogger(t)
-	key, sKey, crt, err := createSecret(t)
+	_, sCert, caCert, err := createSecret(t, time.Now().Add(Decade))
 	if err != nil {
 		t.Error(err)
 	}
-	if key == "" && sKey == "" && len(crt) == 0 {
-		t.Error("expected key, server and crt to be created")
+	if len(sCert) == 0 && len(caCert) == 0 {
+		t.Error("expected serverCert and caCert to be created")
 	}
 	server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
 	if err != nil {
 		t.Fatalf("error initializing core interceptors: %v", err)
 	}
 	server.RegisterInterceptor("firstci", fakeInterceptor{})
-	ci := &v1alpha1.ClusterInterceptor{
+	ci := v1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "firstci",
 		},
@@ -263,13 +269,80 @@ func Test_UpdateCRDWithCaCert(t *testing.T) {
 			},
 		},
 	}
-	var ciList []*v1alpha1.ClusterInterceptor
+	var ciList []v1alpha1.ClusterInterceptor
 	ciList = append(ciList, ci)
-	if _, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Create(ctx, ci, metav1.CreateOptions{}); err != nil {
+	if _, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Create(ctx, &ci, metav1.CreateOptions{}); err != nil {
 		t.Error(err)
 	}
 
-	if err := server.UpdateCRDWithCaCert(ctx, faketriggersclient.Get(ctx).TriggersV1alpha1(), ciList, crt); err != nil {
+	if err := server.updateCRDWithCaCert(ctx, faketriggersclient.Get(ctx).TriggersV1alpha1(), ciList, caCert); err != nil {
 		t.Error(err)
+	}
+
+	ciNew, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Get(ctx, "firstci", metav1.GetOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+	if string(ciNew.Spec.ClientConfig.CaBundle) == "" {
+		t.Error("caBundle should exist after successful clusterinterceptor creation")
+	}
+}
+
+func Test_CheckCertValidity(t *testing.T) {
+	ctx, _ := test.SetupFakeContext(t)
+	logger := zaptest.NewLogger(t)
+	clientSet, sCert, caCert, err := createSecret(t, time.Now().Add(second))
+	if err != nil {
+		t.Error(err)
+	}
+	if len(sCert) == 0 && len(caCert) == 0 {
+		t.Error("expected serverCert and caCert to be created")
+	}
+
+	tc := faketriggersclient.Get(ctx)
+
+	server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+	if err != nil {
+		t.Fatalf("error initializing core interceptors: %v", err)
+	}
+	server.RegisterInterceptor("firstciforgoroutine", fakeInterceptor{})
+
+	ci := v1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "firstciforgoroutine",
+		},
+		Spec: v1alpha1.ClusterInterceptorSpec{
+			ClientConfig: v1alpha1.ClientConfig{
+				CaBundle: nil,
+				URL:      nil,
+				Service:  nil,
+			},
+		},
+	}
+	var ciList []v1alpha1.ClusterInterceptor
+	ciList = append(ciList, ci)
+	if _, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Create(ctx, &ci, metav1.CreateOptions{}); err != nil {
+		t.Error(err)
+	}
+
+	if err := server.updateCRDWithCaCert(ctx, faketriggersclient.Get(ctx).TriggersV1alpha1(), ciList, caCert); err != nil {
+		t.Error(err)
+	}
+
+	ciNew, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Get(ctx, "firstciforgoroutine", metav1.GetOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	server.CheckCertValidity(ctx, sCert, caCert, clientSet, logger.Sugar(), tc.TriggersV1alpha1(), 1*time.Second)
+
+	time.Sleep(10 * time.Second)
+	ciNew1, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Get(ctx, "firstciforgoroutine", metav1.GetOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+	// Making sure that certs expired and and generated one is different than old certs
+	if string(ciNew1.Spec.ClientConfig.CaBundle) == "" || string(ciNew1.Spec.ClientConfig.CaBundle) == string(ciNew.Spec.ClientConfig.CaBundle) {
+		t.Error("timeout or failed to regenerate certificate after the certificate expire")
 	}
 }
