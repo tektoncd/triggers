@@ -18,23 +18,26 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	clusterinterceptorsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/labels"
-	kubeclientset "k8s.io/client-go/kubernetes"
+	"golang.org/x/sync/errgroup"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
+	"knative.dev/pkg/system"
+	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
 const (
@@ -65,12 +68,6 @@ func main() {
 		}
 	}()
 
-	kubeClient, err := kubeclientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Errorf("failed to create new Clientset for the given config: %v", err)
-		return
-	}
-
 	service, err := server.NewWithCoreInterceptors(interceptors.DefaultSecretGetter(kubeclient.Get(ctx).CoreV1()), logger)
 	if err != nil {
 		logger.Errorf("failed to initialize core interceptors: %s", err)
@@ -82,26 +79,41 @@ func main() {
 	mux.Handle("/", service)
 	mux.HandleFunc("/ready", handler)
 
-	keyFile, certFile, caCert, err := server.CreateCerts(ctx, kubeClient.CoreV1(), logger)
-	if err != nil {
-		return
-	}
-
 	tc, err := triggersclientset.NewForConfig(cfg)
 	if err != nil {
 		return
 	}
 
-	if err := listAndUpdateClusterInterceptorCRD(ctx, tc, service, caCert); err != nil {
+	serverCert, caCert, err := server.CreateCerts(ctx, kubeclient.Get(ctx).CoreV1(), time.Now().Add(server.Decade), logger)
+	if err != nil {
 		return
 	}
+
+	if err := service.ListAndUpdateClusterInterceptorCRD(ctx, tc.TriggersV1alpha1(), caCert); err != nil {
+		return
+	}
+
+	// After creating certificates using CreateCerts lets validate validity of created certificates
+	service.CheckCertValidity(ctx, serverCert, caCert, kubeclient.Get(ctx).CoreV1(), logger, tc.TriggersV1alpha1(), time.Minute)
+
+	interceptorSecretName := os.Getenv(server.InterceptorTLSSecretKey)
 	ticker := time.NewTicker(time.Minute)
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				if err := listAndUpdateClusterInterceptorCRD(ctx, tc, service, caCert); err != nil {
+				secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
+				if err != nil {
+					logger.Errorf("failed to fetch secret %v", err)
+					return
+				}
+				caCert, ok := secret.Data[certresources.CACert]
+				if !ok {
+					logger.Warn("CACert key missing")
+					return
+				}
+				if err := service.ListAndUpdateClusterInterceptorCRD(ctx, tc.TriggersV1alpha1(), caCert); err != nil {
 					return
 				}
 			case <-quit:
@@ -110,6 +122,43 @@ func main() {
 			}
 		}
 	}()
+
+	tlsData := &tls.Config{
+		MinVersion: tls.VersionTLS13,
+		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
+			if err != nil {
+				logger.Errorf("failed to fetch secret %v", err)
+				return nil, nil
+			}
+
+			serverKey, ok := secret.Data[certresources.ServerKey]
+			if !ok {
+				logger.Warn("server key missing")
+				return nil, nil
+			}
+			serverCert, ok := secret.Data[certresources.ServerCert]
+			if !ok {
+				logger.Warn("server cert missing")
+				return nil, nil
+			}
+			cert, err := tls.X509KeyPair(serverCert, serverKey)
+			if err != nil {
+				return nil, err
+			}
+			return &cert, nil
+		},
+	}
+	if err := startServer(ctx, ctx.Done(), mux, tlsData, logger); err != nil {
+		logger.Fatal(err)
+	}
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, tlsData *tls.Config, logger *zap.SugaredLogger) error {
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
@@ -121,26 +170,32 @@ func main() {
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 		Handler:           mux,
-	}
-	logger.Infof("Listen and serve on port %d", HTTPSPort)
-	if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
-		logger.Fatalf("failed to start interceptors service: %v", err)
+		TLSConfig:         tlsData,
 	}
 
-}
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		logger.Infof("Listen and serve on port %d", HTTPSPort)
+		if err := srv.ListenAndServeTLS("", ""); err != nil {
+			logger.Errorf("failed to start interceptors server: %v", err)
+			return err
+		}
+		return nil
+	})
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
+	select {
+	case <-stop:
+		eg.Go(func() error {
+			// As we start to shutdown, disable keep-alives to avoid clients hanging onto connections.
+			srv.SetKeepAlivesEnabled(false)
 
-func listAndUpdateClusterInterceptorCRD(ctx context.Context, tc *triggersclientset.Clientset, service *server.Server, caCert []byte) error {
-	clusterInterceptorList, err := clusterinterceptorsinformer.Get(ctx).Lister().List(labels.NewSelector())
-	if err != nil {
-		return err
+			return srv.Shutdown(context.Background())
+		})
+
+		// Wait for all outstanding go routined to terminate, including our new one.
+		return eg.Wait()
+
+	case <-ctx.Done():
+		return fmt.Errorf("interceptors server bootstrap failed %w", ctx.Err())
 	}
-
-	if err := service.UpdateCRDWithCaCert(ctx, tc.TriggersV1alpha1(), clusterInterceptorList, caCert); err != nil {
-		return err
-	}
-	return nil
 }

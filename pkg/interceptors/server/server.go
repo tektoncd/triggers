@@ -3,10 +3,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -25,15 +26,20 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"knative.dev/pkg/system"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
 const (
-	keyFile  = "/tmp/server-key.pem"
-	certFile = "/tmp/server-cert.pem"
-
-	decade = 100 * 365 * 24 * time.Hour
+	Decade                  = 100 * 365 * 24 * time.Hour
+	InterceptorTLSSecretKey = "INTERCEPTOR_TLS_SECRET_NAME"
+	InterceptorTLSSvcKey    = "INTERCEPTOR_TLS_SVC_NAME"
 )
+
+type keypairReloader struct {
+	caCertData     []byte
+	serverCertData []byte
+}
 
 type Server struct {
 	Logger       *zap.SugaredLogger
@@ -149,10 +155,10 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	return respBytes, nil
 }
 
-func CreateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, logger *zap.SugaredLogger) (string, string, []byte, error) {
-	interceptorSvcName := os.Getenv("INTERCEPTOR_TLS_SVC_NAME")
-	interceptorSecretName := os.Getenv("INTERCEPTOR_TLS_SECRET_NAME")
-	namespace := os.Getenv("SYSTEM_NAMESPACE")
+func CreateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, noAfter time.Time, logger *zap.SugaredLogger) ([]byte, []byte, error) {
+	interceptorSvcName := os.Getenv(InterceptorTLSSvcKey)
+	interceptorSecretName := os.Getenv(InterceptorTLSSecretKey)
+	namespace := system.Namespace()
 
 	secret, err := coreV1Interface.Secrets(namespace).Get(ctx, interceptorSecretName, metav1.GetOptions{})
 	if err != nil {
@@ -161,78 +167,118 @@ func CreateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, lo
 			// that's responsible for install/updates.  We simply populate the
 			// secret information.
 			logger.Infof("secret %s is missing", interceptorSecretName)
-			return "", "", []byte{}, err
+			return []byte{}, []byte{}, err
 		}
 		logger.Infof("error accessing certificate secret %q: %v", interceptorSecretName, err)
-		return "", "", []byte{}, err
+		return []byte{}, []byte{}, err
 	}
 
-	var (
-		serverKey, serverCert, caCert []byte
-		createCerts                   bool
-	)
-	serverKey, haskey := secret.Data[certresources.ServerKey]
-	if !haskey {
-		logger.Infof("secret %q is missing key %q", secret.Name, certresources.ServerKey)
-		createCerts = true
-	}
-	serverCert, haskey = secret.Data[certresources.ServerCert]
-	if !haskey {
-		logger.Infof("secret %q is missing key %q", secret.Name, certresources.ServerCert)
-		createCerts = true
-	}
-	caCert, haskey = secret.Data[certresources.CACert]
-	if !haskey {
-		logger.Infof("secret %q is missing key %q", secret.Name, certresources.CACert)
-		createCerts = true
+	serverKey, serverCert, caCert, err := certresources.CreateCerts(ctx, interceptorSvcName, namespace, noAfter)
+	if err != nil {
+		logger.Errorf("failed to create certs : %v", err)
+		return []byte{}, []byte{}, err
 	}
 
-	// TODO: Certification validation and rotation is pending
-
-	if createCerts {
-		serverKey, serverCert, caCert, err = certresources.CreateCerts(ctx, interceptorSvcName, namespace, time.Now().Add(decade))
-		if err != nil {
-			logger.Errorf("failed to create certs : %v", err)
-			return "", "", []byte{}, err
-		}
-
-		secret.Data = map[string][]byte{
-			certresources.ServerKey:  serverKey,
-			certresources.ServerCert: serverCert,
-			certresources.CACert:     caCert,
-		}
-		if _, err = coreV1Interface.Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
-			logger.Errorf("failed to update secret : %v", err)
-			return "", "", []byte{}, err
-		}
+	secret.Data = map[string][]byte{
+		certresources.ServerKey:  serverKey,
+		certresources.ServerCert: serverCert,
+		certresources.CACert:     caCert,
+	}
+	if _, err = coreV1Interface.Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+		logger.Errorf("failed to update secret : %v", err)
+		return []byte{}, []byte{}, err
 	}
 
-	// write serverKey to file so that it can be passed while running https server.
-	if err = ioutil.WriteFile(keyFile, serverKey, 0600); err != nil {
-		logger.Errorf("failed to write serverKey file %v", err)
-		return "", "", []byte{}, err
-	}
-
-	// write serverCert to file so that it can be passed while running https server.
-	if err = ioutil.WriteFile(certFile, serverCert, 0600); err != nil {
-		logger.Errorf("failed to write serverCert file %v", err)
-		return "", "", []byte{}, err
-	}
-	return keyFile, certFile, caCert, nil
+	return serverCert, caCert, nil
 }
 
-// UpdateCRDWithCaCert updates clusterinterceptor crd caBundle with caCert
-func (is *Server) UpdateCRDWithCaCert(ctx context.Context, triggersV1Alpha1 triggersv1alpha1.TriggersV1alpha1Interface,
-	ci []*v1alpha1.ClusterInterceptor, caCert []byte) error {
+// updateCRDWithCaCert updates clusterinterceptor crd caBundle with caCert
+func (is *Server) updateCRDWithCaCert(ctx context.Context, triggersV1Alpha1 triggersv1alpha1.TriggersV1alpha1Interface,
+	ci []v1alpha1.ClusterInterceptor, caCert []byte) error {
 	for i := range ci {
 		if _, ok := is.interceptors[ci[i].Name]; ok {
-			if bytes.Equal(ci[i].Spec.ClientConfig.CaBundle, []byte{}) {
+			if bytes.Equal(ci[i].Spec.ClientConfig.CaBundle, []byte{}) || !bytes.Equal(ci[i].Spec.ClientConfig.CaBundle, caCert) {
 				ci[i].Spec.ClientConfig.CaBundle = caCert
-				if _, err := triggersV1Alpha1.ClusterInterceptors().Update(ctx, ci[i], metav1.UpdateOptions{}); err != nil {
+				if _, err := triggersV1Alpha1.ClusterInterceptors().Update(ctx, &ci[i], metav1.UpdateOptions{}); err != nil {
 					return err
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (is *Server) CheckCertValidity(ctx context.Context, serverCert, caCert []byte, coreV1Interface corev1.CoreV1Interface,
+	logger *zap.SugaredLogger, tc triggersv1alpha1.TriggersV1alpha1Interface, tickerTime time.Duration) {
+
+	result := &keypairReloader{
+		caCertData:     caCert,
+		serverCertData: serverCert,
+	}
+
+	ticker := time.NewTicker(tickerTime)
+	quit := make(chan struct{})
+	var (
+		cert *x509.Certificate
+		err  error
+	)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				// Check the expiration date of the certificate to see if it needs to be updated
+				roots := x509.NewCertPool()
+				ok := roots.AppendCertsFromPEM(result.caCertData)
+				if !ok {
+					logger.Error("failed to parse root certificate")
+				}
+				block, _ := pem.Decode(result.serverCertData)
+				if block == nil {
+					logger.Error("failed to parse certificate PEM")
+				} else {
+					cert, err = x509.ParseCertificate(block.Bytes)
+					if err != nil {
+						logger.Errorf("failed to parse certificate: %v", err.Error())
+					}
+				}
+
+				opts := x509.VerifyOptions{
+					Roots: roots,
+				}
+
+				if _, err := cert.Verify(opts); err != nil {
+					logger.Errorf("failed to verify certificate: %v", err.Error())
+
+					serverCertNew, caCertNew, err := CreateCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger)
+					if err != nil {
+						logger.Errorf("failed to create certs %v", err)
+					}
+
+					result = &keypairReloader{
+						caCertData:     caCertNew,
+						serverCertData: serverCertNew,
+					}
+					if err := is.ListAndUpdateClusterInterceptorCRD(ctx, tc, caCertNew); err != nil {
+						logger.Error(err.Error())
+					}
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (is *Server) ListAndUpdateClusterInterceptorCRD(ctx context.Context, tc triggersv1alpha1.TriggersV1alpha1Interface, caCert []byte) error {
+	clusterInterceptorList, err := tc.ClusterInterceptors().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if err := is.updateCRDWithCaCert(ctx, tc, clusterInterceptorList.Items, caCert); err != nil {
+		return err
 	}
 	return nil
 }
