@@ -105,8 +105,10 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 
 func (s *sinker) getHTTPClient() (*http.Client, error) {
 	var (
-		caCert    []byte
-		tlsConfig *tls.Config
+		caCert     []byte
+		tlsConfig  *tls.Config
+		count      int
+		httpsCILen int
 	)
 
 	certPool := x509.NewCertPool()
@@ -115,17 +117,20 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 		if err != nil {
 			return false, err
 		}
-		var count int
+
 		for i := range clusterInterceptorList {
-			if !bytes.Equal(clusterInterceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
-				caCert = clusterInterceptorList[i].Spec.ClientConfig.CaBundle
-				if ok := certPool.AppendCertsFromPEM(caCert); !ok {
-					return false, fmt.Errorf("unable to parse cert from %s", caCert)
+			if v, k := clusterInterceptorList[i].Labels["server/type"]; k && v == "https" {
+				httpsCILen++
+				if !bytes.Equal(clusterInterceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
+					caCert = clusterInterceptorList[i].Spec.ClientConfig.CaBundle
+					if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+						return false, fmt.Errorf("unable to parse cert from %s", caCert)
+					}
+					count++
 				}
-				count++
 			}
 		}
-		if len(clusterInterceptorList) != 0 && len(clusterInterceptorList) == count {
+		if httpsCILen != 0 && httpsCILen == count {
 			return true, nil
 		}
 		return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")

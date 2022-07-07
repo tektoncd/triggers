@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	faketriggersclient "github.com/tektoncd/triggers/pkg/client/injection/client/fake"
 	fakeClusterInterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor/fake"
 	"github.com/tektoncd/triggers/pkg/sink"
@@ -42,9 +42,11 @@ func TestGetHTTPClientEmptyCaBundle(t *testing.T) {
 		Logger:    logging.FromContext(ctx),
 		Namespace: "",
 		Args:      sink.Args{},
-		Clients:   sink.Clients{},
-		Recorder:  recorder,
-		injCtx:    ctx,
+		Clients: sink.Clients{
+			TriggersClient: faketriggersclient.Get(ctx),
+		},
+		Recorder: recorder,
+		injCtx:   ctx,
 	}
 
 	c, err := s.getHTTPClient()
@@ -69,9 +71,11 @@ func TestGetHTTPClient(t *testing.T) {
 		Logger:    logging.FromContext(ctx),
 		Namespace: "",
 		Args:      sink.Args{},
-		Clients:   sink.Clients{},
-		Recorder:  recorder,
-		injCtx:    ctx,
+		Clients: sink.Clients{
+			TriggersClient: faketriggersclient.Get(ctx),
+		},
+		Recorder: recorder,
+		injCtx:   ctx,
 	}
 
 	icInformer := fakeClusterInterceptorinformer.Get(ctx)
@@ -80,6 +84,9 @@ func TestGetHTTPClient(t *testing.T) {
 	ci := &v1alpha1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "github",
+			Labels: map[string]string{
+				"server/type": "https",
+			},
 		},
 		Spec: v1alpha1.ClusterInterceptorSpec{ClientConfig: v1alpha1.ClientConfig{
 			CaBundle: []byte("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM5ekNDQXAyZ0F3SUJBZ0lSQUtQL1liSlF4Q2M5Y3JhVlBPMkhrK0V3Q2dZSUtvWkl6ajBFQXdJd1Z6RVUKTUJJR0ExVUVDaE1MYTI1aGRHbDJaUzVrWlhZeFB6QTlCZ05WQkFNVE5uUmxhM1J2YmkxMGNtbG5aMlZ5Y3kxagpiM0psTFdsdWRHVnlZMlZ3ZEc5eWN5NTBaV3QwYjI0dGNHbHdaV3hwYm1WekxuTjJZekFnRncweU1qQTJNakl4Ck5qRXhNVFZhR0E4eU1USXlNRFV5T1RFMk1URXhOVm93VnpFVU1CSUdBMVVFQ2hNTGEyNWhkR2wyWlM1a1pYWXgKUHpBOUJnTlZCQU1UTm5SbGEzUnZiaTEwY21sbloyVnljeTFqYjNKbExXbHVkR1Z5WTJWd2RHOXljeTUwWld0MApiMjR0Y0dsd1pXeHBibVZ6TG5OMll6QlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJEdVVwTStEClVuZUozY1FieDc0cEpHTGgyTWkxREc1ZU5hNmRtSG5MeHhhQnZXTUxOOXp3Y2dLd2J2NHVJV0hsK2Rqb2laVWgKNFFRaElGUE8vS0NtUnJhamdnRkdNSUlCUWpBT0JnTlZIUThCQWY4RUJBTUNBb1F3SFFZRFZSMGxCQll3RkFZSQpLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGSlcrCjdROVJiZlo3UDFBY0lXdEI2ckNTOWtneE1JSGdCZ05WSFJFRWdkZ3dnZFdDSVhSbGEzUnZiaTEwY21sbloyVnkKY3kxamIzSmxMV2x1ZEdWeVkyVndkRzl5YzRJeWRHVnJkRzl1TFhSeWFXZG5aWEp6TFdOdmNtVXRhVzUwWlhKagpaWEIwYjNKekxuUmxhM1J2Ymkxd2FYQmxiR2x1WlhPQ05uUmxhM1J2YmkxMGNtbG5aMlZ5Y3kxamIzSmxMV2x1CmRHVnlZMlZ3ZEc5eWN5NTBaV3QwYjI0dGNHbHdaV3hwYm1WekxuTjJZNEpFZEdWcmRHOXVMWFJ5YVdkblpYSnoKTFdOdmNtVXRhVzUwWlhKalpYQjBiM0p6TG5SbGEzUnZiaTF3YVhCbGJHbHVaWE11YzNaakxtTnNkWE4wWlhJdQpiRzlqWVd3d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFOOE5SMTBJS0h4YUtXa0o0cFV1d3ljNFpmZG4rNTd6CnplN3RnS050b3hWREFpQWRhQlYvMlRDeStnV2tjUFR4cHo3aE91MHZ6bGZmeDhzV0Z3Wk5XdlVYUEE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="),

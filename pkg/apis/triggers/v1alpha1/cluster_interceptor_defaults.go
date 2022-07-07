@@ -18,7 +18,19 @@ package v1alpha1
 
 import (
 	"context"
+
+	"github.com/tektoncd/triggers/pkg/apis/triggers/contexts"
 )
 
 // SetDefaults sets the defaults on the object.
-func (it *ClusterInterceptor) SetDefaults(ctx context.Context) {}
+func (it *ClusterInterceptor) SetDefaults(ctx context.Context) {
+	if !contexts.IsUpgradeViaDefaulting(ctx) {
+		return
+	}
+	if _, ok := it.GetLabels()["server/type"]; !ok {
+		// if server type is not set its assumed that running server is http
+		it.Labels = map[string]string{
+			"server/type": "http",
+		}
+	}
+}
