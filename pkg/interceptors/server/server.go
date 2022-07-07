@@ -6,18 +6,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/bitbucket"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	certresources "knative.dev/pkg/webhook/certificates/resources"
+)
 
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	"go.uber.org/zap"
+const (
+	keyFile  = "/tmp/server-key.pem"
+	certFile = "/tmp/server-cert.pem"
+
+	decade = 100 * 365 * 24 * time.Hour
 )
 
 type Server struct {
@@ -132,4 +147,92 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 		return nil, internal(err)
 	}
 	return respBytes, nil
+}
+
+func CreateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, logger *zap.SugaredLogger) (string, string, []byte, error) {
+	interceptorSvcName := os.Getenv("INTERCEPTOR_TLS_SVC_NAME")
+	interceptorSecretName := os.Getenv("INTERCEPTOR_TLS_SECRET_NAME")
+	namespace := os.Getenv("SYSTEM_NAMESPACE")
+
+	secret, err := coreV1Interface.Secrets(namespace).Get(ctx, interceptorSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// The secret should be created explicitly by a higher-level system
+			// that's responsible for install/updates.  We simply populate the
+			// secret information.
+			logger.Infof("secret %s is missing", interceptorSecretName)
+			return "", "", []byte{}, err
+		}
+		logger.Infof("error accessing certificate secret %q: %v", interceptorSecretName, err)
+		return "", "", []byte{}, err
+	}
+
+	var (
+		serverKey, serverCert, caCert []byte
+		createCerts                   bool
+	)
+	serverKey, haskey := secret.Data[certresources.ServerKey]
+	if !haskey {
+		logger.Infof("secret %q is missing key %q", secret.Name, certresources.ServerKey)
+		createCerts = true
+	}
+	serverCert, haskey = secret.Data[certresources.ServerCert]
+	if !haskey {
+		logger.Infof("secret %q is missing key %q", secret.Name, certresources.ServerCert)
+		createCerts = true
+	}
+	caCert, haskey = secret.Data[certresources.CACert]
+	if !haskey {
+		logger.Infof("secret %q is missing key %q", secret.Name, certresources.CACert)
+		createCerts = true
+	}
+
+	// TODO: Certification validation and rotation is pending
+
+	if createCerts {
+		serverKey, serverCert, caCert, err = certresources.CreateCerts(ctx, interceptorSvcName, namespace, time.Now().Add(decade))
+		if err != nil {
+			logger.Errorf("failed to create certs : %v", err)
+			return "", "", []byte{}, err
+		}
+
+		secret.Data = map[string][]byte{
+			certresources.ServerKey:  serverKey,
+			certresources.ServerCert: serverCert,
+			certresources.CACert:     caCert,
+		}
+		if _, err = coreV1Interface.Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+			logger.Errorf("failed to update secret : %v", err)
+			return "", "", []byte{}, err
+		}
+	}
+
+	// write serverKey to file so that it can be passed while running https server.
+	if err = ioutil.WriteFile(keyFile, serverKey, 0600); err != nil {
+		logger.Errorf("failed to write serverKey file %v", err)
+		return "", "", []byte{}, err
+	}
+
+	// write serverCert to file so that it can be passed while running https server.
+	if err = ioutil.WriteFile(certFile, serverCert, 0600); err != nil {
+		logger.Errorf("failed to write serverCert file %v", err)
+		return "", "", []byte{}, err
+	}
+	return keyFile, certFile, caCert, nil
+}
+
+// UpdateCRDWithCaCert updates clusterinterceptor crd caBundle with caCert
+func (is *Server) UpdateCRDWithCaCert(ctx context.Context, triggersV1Alpha1 triggersv1alpha1.TriggersV1alpha1Interface,
+	ci []*v1alpha1.ClusterInterceptor, caCert []byte) error {
+	for i := range ci {
+		if _, ok := is.interceptors[ci[i].Name]; ok {
+			if bytes.Equal(ci[i].Spec.ClientConfig.CaBundle, []byte{}) {
+				ci[i].Spec.ClientConfig.CaBundle = caCert
+				if _, err := triggersV1Alpha1.ClusterInterceptors().Update(ctx, ci[i], metav1.UpdateOptions{}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

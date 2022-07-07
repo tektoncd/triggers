@@ -53,7 +53,8 @@ func TestReconcileKind(t *testing.T) {
 		},
 		want: &triggersv1.ClusterInterceptor{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-interceptor",
+				Name:   "my-interceptor",
+				Labels: map[string]string{"server/type": "http"},
 			},
 			Spec: triggersv1.ClusterInterceptorSpec{
 				ClientConfig: triggersv1.ClientConfig{
@@ -94,7 +95,8 @@ func TestReconcileKind(t *testing.T) {
 		},
 		want: &triggersv1.ClusterInterceptor{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-interceptor",
+				Name:   "my-interceptor",
+				Labels: map[string]string{"server/type": "http"},
 			},
 			Spec: triggersv1.ClusterInterceptorSpec{
 				ClientConfig: triggersv1.ClientConfig{
@@ -120,7 +122,8 @@ func TestReconcileKind(t *testing.T) {
 		name: "when provided caBundle",
 		initial: &triggersv1.ClusterInterceptor{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-interceptor",
+				Name:   "my-interceptor",
+				Labels: map[string]string{"server/type": "https"},
 			},
 			Spec: triggersv1.ClusterInterceptorSpec{
 				ClientConfig: triggersv1.ClientConfig{
@@ -135,7 +138,8 @@ func TestReconcileKind(t *testing.T) {
 		},
 		want: &triggersv1.ClusterInterceptor{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-interceptor",
+				Name:   "my-interceptor",
+				Labels: map[string]string{"server/type": "https"},
 			},
 			Spec: triggersv1.ClusterInterceptorSpec{
 				ClientConfig: triggersv1.ClientConfig{

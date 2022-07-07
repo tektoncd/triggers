@@ -86,4 +86,11 @@ Triggers uses knative pkg to generate key, cert, cacert and fill caBundle for co
 
 Triggers now support writing custom interceptor for both `http` and `https`. Support of `http` for custom interceptor will be there for 1-2 releases, later it will be removed and only `https` will be supported. 
  
-End user who write `https` custom interceptor need to pass `caBundle` in order to make secure connection with eventlistener
+End user who write `https` custom interceptor need to pass `caBundle` as well as label
+```yaml
+  labels:
+    server/type: https
+```
+to `ClusterInterceptor` in order to make secure connection with eventlistener.
+
+Here is the reference for writing [https server for custom interceptor](https://github.com/tektoncd/triggers/blob/main/cmd/interceptors/main.go). 
