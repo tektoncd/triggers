@@ -16,6 +16,8 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
   name: cel
+  labels:
+    server/type: https
 spec:
   clientConfig:
     service:
@@ -28,6 +30,8 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
   name: bitbucket
+  labels:
+    server/type: https
 spec:
   clientConfig:
     service:
@@ -40,6 +44,8 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
   name: github
+  labels:
+    server/type: https
 spec:
   clientConfig:
     service:
@@ -52,6 +58,8 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
   name: gitlab
+  labels:
+    server/type: https
 spec:
   clientConfig:
     service:
