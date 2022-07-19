@@ -451,7 +451,7 @@ You can use the `cel-eval` tool to evaluate your CEL expressions against a speci
 To install the `cel-eval` tool use the following command:
 
 ```sh
-$ go get -u github.com/tektoncd/triggers/cmd/cel-eval
+$ go install github.com/tektoncd/triggers/cmd/cel-eval@latest
 ```
 
 Below is an example of using the tool to evaluate a CEL expression:
