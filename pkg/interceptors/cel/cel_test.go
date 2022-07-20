@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/cel-go/common/types"
@@ -279,13 +278,11 @@ func TestInterceptor_Process(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
-			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 			var clientset *fake.Clientset
 			ctx, clientset = fakekubeclient.With(ctx, makeSecret())
 			w := &Interceptor{
 				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
-				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, &triggersv1.InterceptorRequest{
 				Body: string(tt.body),
@@ -380,10 +377,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := zaptest.NewLogger(t)
-			w := &Interceptor{
-				Logger: logger.Sugar(),
-			}
+			w := &Interceptor{}
 			res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
 				Body: string(tt.body),
 				Header: http.Header{
@@ -416,10 +410,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 }
 
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	w := &Interceptor{
-		Logger: logger.Sugar(),
-	}
+	w := &Interceptor{}
 	res := w.Process(context.Background(), &triggersv1.InterceptorRequest{
 		Body:   `{}`,
 		Header: http.Header{},

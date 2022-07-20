@@ -24,7 +24,6 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
-	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -95,7 +94,6 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
-			logger := zaptest.NewLogger(t)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -124,7 +122,6 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			}
 			w := &Interceptor{
 				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
-				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
 			if !res.Continue {
@@ -248,7 +245,6 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
-			logger := zaptest.NewLogger(t)
 			req := &triggersv1.InterceptorRequest{
 				Body: string(tt.payload),
 				Header: http.Header{
@@ -277,7 +273,6 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 			}
 			w := &Interceptor{
 				SecretGetter: interceptors.NewKubeClientSecretGetter(clientset.CoreV1(), 1024, 5*time.Second),
-				Logger:       logger.Sugar(),
 			}
 			res := w.Process(ctx, req)
 			if res.Continue {
@@ -289,11 +284,9 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
-	logger := zaptest.NewLogger(t)
 
 	w := &Interceptor{
 		SecretGetter: interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second),
-		Logger:       logger.Sugar(),
 	}
 
 	req := &triggersv1.InterceptorRequest{
