@@ -92,14 +92,24 @@ func main() {
 		return
 	}
 
-	clusterInterceptorList, err := clusterinterceptorsinformer.Get(ctx).Lister().List(labels.NewSelector())
-	if err != nil {
+	if err := listAndUpdateClusterInterceptorCRD(ctx, tc, service, caCert); err != nil {
 		return
 	}
-
-	if err := service.UpdateCRDWithCaCert(ctx, tc.TriggersV1alpha1(), clusterInterceptorList, caCert); err != nil {
-		return
-	}
+	ticker := time.NewTicker(time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := listAndUpdateClusterInterceptorCRD(ctx, tc, service, caCert); err != nil {
+					return
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
@@ -120,4 +130,16 @@ func main() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func listAndUpdateClusterInterceptorCRD(ctx context.Context, tc *triggersclientset.Clientset, service *server.Server, caCert []byte) error {
+	clusterInterceptorList, err := clusterinterceptorsinformer.Get(ctx).Lister().List(labels.NewSelector())
+	if err != nil {
+		return err
+	}
+
+	if err := service.UpdateCRDWithCaCert(ctx, tc.TriggersV1alpha1(), clusterInterceptorList, caCert); err != nil {
+		return err
+	}
+	return nil
 }
