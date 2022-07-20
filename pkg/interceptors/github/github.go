@@ -34,13 +34,11 @@ var ErrInvalidContentType = errors.New("form parameter encoding not supported, p
 
 type Interceptor struct {
 	SecretGetter interceptors.SecretGetter
-	Logger       *zap.SugaredLogger
 }
 
 func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
-		Logger:       l,
 	}
 }
 

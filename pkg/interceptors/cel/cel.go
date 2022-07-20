@@ -47,7 +47,6 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 // a true value, then the interception is "successful".
 type Interceptor struct {
 	SecretGetter     interceptors.SecretGetter
-	Logger           *zap.SugaredLogger
 	CEL              *triggersv1.CELInterceptor
 	TriggerNamespace string
 }
@@ -62,7 +61,6 @@ var (
 func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
-		Logger:       l,
 	}
 }
 
