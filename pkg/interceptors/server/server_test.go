@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -81,7 +80,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -140,7 +139,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -247,7 +246,7 @@ func Test_UpdateCRDWithCaCert(t *testing.T) {
 	if key == "" && sKey == "" && len(crt) == 0 {
 		t.Error("expected key, server and crt to be created")
 	}
-	server, err := NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(fakekubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger.Sugar())
+	server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
 	if err != nil {
 		t.Fatalf("error initializing core interceptors: %v", err)
 	}
