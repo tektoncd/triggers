@@ -22,7 +22,6 @@ import (
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 )
 
@@ -32,7 +31,7 @@ type Interceptor struct {
 	SecretGetter interceptors.SecretGetter
 }
 
-func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
 	}
