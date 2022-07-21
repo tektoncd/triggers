@@ -48,12 +48,12 @@ func (is *Server) RegisterInterceptor(path string, interceptor triggersv1.Interc
 	is.interceptors[path] = interceptor
 }
 
-func NewWithCoreInterceptors(sg interceptors.SecretGetter, l *zap.SugaredLogger) (*Server, error) {
+func NewWithCoreInterceptors(sg interceptors.SecretGetter, logger *zap.SugaredLogger) (*Server, error) {
 	i := map[string]triggersv1.InterceptorInterface{
-		"bitbucket": bitbucket.NewInterceptor(sg, l),
-		"cel":       cel.NewInterceptor(sg, l),
-		"github":    github.NewInterceptor(sg, l),
-		"gitlab":    gitlab.NewInterceptor(sg, l),
+		"bitbucket": bitbucket.NewInterceptor(sg),
+		"cel":       cel.NewInterceptor(sg),
+		"github":    github.NewInterceptor(sg),
+		"gitlab":    gitlab.NewInterceptor(sg),
 	}
 
 	for k, v := range i {
@@ -62,7 +62,7 @@ func NewWithCoreInterceptors(sg interceptors.SecretGetter, l *zap.SugaredLogger)
 		}
 	}
 	s := Server{
-		Logger:       l,
+		Logger:       logger,
 		interceptors: i,
 	}
 	return &s, nil

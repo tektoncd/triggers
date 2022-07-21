@@ -71,7 +71,7 @@ func main() {
 		return
 	}
 
-	service, err := server.NewWithCoreInterceptors(interceptors.NewKubeClientSecretGetter(kubeclient.Get(ctx).CoreV1(), 1024, 5*time.Second), logger)
+	service, err := server.NewWithCoreInterceptors(interceptors.DefaultSecretGetter(kubeclient.Get(ctx).CoreV1()), logger)
 	if err != nil {
 		logger.Errorf("failed to initialize core interceptors: %s", err)
 		return

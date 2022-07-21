@@ -34,7 +34,6 @@ import (
 	celext "github.com/google/cel-go/ext"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tidwall/sjson"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -58,7 +57,7 @@ var (
 )
 
 // NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(sg interceptors.SecretGetter, l *zap.SugaredLogger) *Interceptor {
+func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
 	}
