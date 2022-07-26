@@ -62,28 +62,14 @@ spec:
     - name: gitrevision
     - name: gitrepositoryurl
   resourcetemplates:
-    - apiVersion: tekton.dev/v1alpha1
+    - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:
         generateName: github-run-
       spec:
         taskSpec:
-          inputs:
-            resources:
-              - name: source
-                type: git
           steps:
             - image: ubuntu
               script: |
                 #! /bin/bash
-                ls -al $(inputs.resources.source.path)
-        inputs:
-          resources:
-            - name: source
-              resourceSpec:
-                type: git
-                params:
-                  - name: revision
-                    value: $(tt.params.gitrevision)
-                  - name: url
-                    value: $(tt.params.gitrepositoryurl)
+                echo "Revision is : $(tt.params.gitrevision). RepoURL is $(tt.params.gitrepositoryurl)"
