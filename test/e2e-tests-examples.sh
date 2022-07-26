@@ -82,7 +82,7 @@ check_eventlistener() {
   kubectl get eventlisteners
 }
 
-ignoreExamples=( cron trigger-ref v1alpha1-task triggergroups )
+ignoreExamples=( cron trigger-ref triggergroups )
 
 port_forward_and_curl() {
 
@@ -174,7 +174,7 @@ main() {
 
   versions="v1alpha1 v1beta1"
   # List of examples test will run on
-  examples_v1alpha1="bitbucket cron embedded-trigger github gitlab label-selector namespace-selector v1alpha1-task trigger-ref"
+  examples_v1alpha1="bitbucket cron embedded-trigger github gitlab label-selector namespace-selector trigger-ref"
   examples_v1beta1="${examples_v1alpha1} triggergroups"
   create_example_pipeline
   for v in ${versions}; do
