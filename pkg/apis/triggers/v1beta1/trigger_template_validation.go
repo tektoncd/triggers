@@ -35,10 +35,11 @@ var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-
 
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+
+	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
