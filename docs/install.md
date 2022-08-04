@@ -30,7 +30,7 @@ You must satisfy the following prerequisites to set up Tekton Triggers:
 
 * You must grant the `cluster-admin` privilege to the user with which you installed Tekton Pipelines.
 
-  For instructions, see [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control).
+  For instructions, see [Role-based access control](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
 
 ## Installing Tekton Triggers on Your Cluster
 
