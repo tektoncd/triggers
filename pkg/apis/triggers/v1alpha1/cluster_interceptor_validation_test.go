@@ -2,6 +2,7 @@ package v1alpha1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,7 +15,7 @@ import (
 func TestClusterInterceptorValidate_OnDelete(t *testing.T) {
 	ci := triggersv1.ClusterInterceptor{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "github",
+			Name: strings.Repeat("foo", 64), // Length should be lower than 63,
 		},
 		Spec: triggersv1.ClusterInterceptorSpec{
 			ClientConfig: triggersv1.ClientConfig{

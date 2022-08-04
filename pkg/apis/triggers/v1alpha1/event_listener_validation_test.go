@@ -18,6 +18,7 @@ package v1alpha1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -37,7 +38,7 @@ import (
 func Test_EventListenerValidate_OnDelete(t *testing.T) {
 	el := &v1alpha1.EventListener{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      strings.Repeat("foo", 64), // Length should be lower than 63
 			Namespace: "namespace",
 		},
 		Spec: v1alpha1.EventListenerSpec{

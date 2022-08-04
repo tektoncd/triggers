@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -28,7 +29,7 @@ import (
 func Test_ClusterTriggerBindingValidate_OnDelete(t *testing.T) {
 	tb := &v1beta1.ClusterTriggerBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "name",
+			Name: strings.Repeat("foo", 64), // Length should be lower than 63
 		},
 		Spec: v1beta1.TriggerBindingSpec{
 			Params: []v1beta1.Param{{

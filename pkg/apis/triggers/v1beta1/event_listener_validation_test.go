@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -43,7 +44,7 @@ var myObjectMeta = metav1.ObjectMeta{
 func Test_EventListenerValidate_OnDelete(t *testing.T) {
 	el := &triggersv1beta1.EventListener{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      strings.Repeat("foo", 64), // Length should be lower than 63
 			Namespace: "namespace",
 		},
 		Spec: triggersv1beta1.EventListenerSpec{

@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -31,7 +32,7 @@ import (
 func Test_TriggerValidate_OnDelete(t *testing.T) {
 	tr := &v1beta1.Trigger{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      strings.Repeat("foo", 64), // Length should be lower than 63
 			Namespace: "namespace",
 		},
 		Spec: v1beta1.TriggerSpec{
