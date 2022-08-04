@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/config"
+	"knative.dev/pkg/apis"
 )
 
 func TestValidateEnabledAPIFields(t *testing.T) {
@@ -53,5 +54,22 @@ func TestValidateEnabledAPIFieldsError(t *testing.T) {
 	ctx := config.ToContext(context.Background(), cfg)
 	if err := ValidateEnabledAPIFields(ctx, "test feature", "alpha"); err == nil {
 		t.Errorf("error expected for incompatible feature gates")
+	}
+}
+
+func TestValidateEnabledAPIFields_OnDelete(t *testing.T) {
+	flags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": "stable",
+	})
+	if err != nil {
+		t.Fatalf("error creating feature flags from map: %v", err)
+	}
+	cfg := &config.Config{
+		FeatureFlags: flags,
+	}
+	ctx := config.ToContext(context.Background(), cfg)
+	ctx = apis.WithinDelete(ctx)
+	if err := ValidateEnabledAPIFields(ctx, "test feature", "alpha"); err != nil {
+		t.Errorf("error not expected during delete apis")
 	}
 }
