@@ -39,10 +39,13 @@ err() {
 
 install_knative_serving() {
   # Install Knative by referring https://knative.dev/docs/admin/install/serving/install-serving-with-yaml/#install-the-knative-serving-component
-  kubectl apply -f https://github.com/knative/serving/releases/download/v0.26.0/serving-crds.yaml
-  kubectl apply -f https://github.com/knative/serving/releases/download/v0.26.0/serving-core.yaml
+  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
+  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
 
-  kubectl apply -f https://github.com/knative/net-kourier/releases/download/v0.26.0/kourier.yaml
+  # Wait for pods to be running in the namespaces we are deploying to
+  wait_until_pods_running knative-serving || fail_test "Knative Serving did not come up"
+
+  kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
 
   kubectl patch configmap/config-network \
     --namespace knative-serving \
@@ -50,7 +53,7 @@ install_knative_serving() {
     --patch '{"data":{"ingress.class":"kourier.ingress.networking.knative.dev"}}'
 
   # Wait for pods to be running in the namespaces we are deploying to
-  wait_until_pods_running knative-serving || fail_test "Knative Serving did not come up"
+  wait_until_pods_running knative-serving || fail_test "Knative Serving & Kourier did not come up"
   # Changing port of kourier service to use 8888 instead of 80 so that port-forward can be done easily
   # Because with 80 its giving permission deneid and in Knative all traffic goes via gateway which is kourier here.
   kubectl -n kourier-system patch service/kourier --type=json -p="[{"op": "add", "path": "/spec/ports/0/port", "value": $forwardingPort}]"
