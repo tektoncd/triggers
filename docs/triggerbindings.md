@@ -298,7 +298,7 @@ to determine the parameters that Tekton generates from that request when your co
 To install the `binding-eval` tool use the following command:
 
 ```sh
-$ go get -u github.com/tektoncd/triggers/cmd/binding-eval
+$ go install github.com/tektoncd/triggers/cmd/binding-eval@{version}
 ```
 
 Below is an example of using the tool to evaluate a `TriggerBinding`:
