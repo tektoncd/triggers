@@ -116,10 +116,11 @@ func main() {
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
 		},
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-		Handler:      mux,
+		ReadHeaderTimeout: readTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		Handler:           mux,
 	}
 	logger.Infof("Listen and serve on port %d", HTTPSPort)
 	if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
