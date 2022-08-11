@@ -200,10 +200,11 @@ func (s *sinker) Start(ctx context.Context) error {
 	})
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", s.Args.Port),
-		ReadTimeout:  s.Args.ELReadTimeOut * time.Second,
-		WriteTimeout: s.Args.ELWriteTimeOut * time.Second,
-		IdleTimeout:  s.Args.ELIdleTimeOut * time.Second,
+		Addr:              fmt.Sprintf(":%s", s.Args.Port),
+		ReadHeaderTimeout: s.Args.ELReadTimeOut * time.Second,
+		ReadTimeout:       s.Args.ELReadTimeOut * time.Second,
+		WriteTimeout:      s.Args.ELWriteTimeOut * time.Second,
+		IdleTimeout:       s.Args.ELIdleTimeOut * time.Second,
 		Handler: http.TimeoutHandler(mux,
 			s.Args.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"),
 	}

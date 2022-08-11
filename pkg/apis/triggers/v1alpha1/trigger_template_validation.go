@@ -67,12 +67,12 @@ func validateResourceTemplates(templates []TriggerResourceTemplate) (errs *apis.
 			}
 			if runtime.IsNotRegisteredError(err) {
 				errStr := err.Error()
-				if strings.Contains(errStr, "in scheme") {
+				if inSchemeIdx := strings.Index(errStr, " in scheme"); inSchemeIdx > -1 {
 					// not registered error messages currently include the scheme variable location in your file,
 					// which can of course change if you move the location of the variable in your file.
 					// So will filter it out here to facilitate our unit testing, as the scheme location is not
 					// useful for our purposes.
-					errStr = errStr[:strings.Index(errStr, " in scheme")]
+					errStr = errStr[:inSchemeIdx]
 				}
 				errs = errs.Also(apis.ErrInvalidValue(
 					errStr,
