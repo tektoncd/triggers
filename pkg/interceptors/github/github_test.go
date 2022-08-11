@@ -34,20 +34,21 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+	emptyBodySha1Header := map[string][]string{"X-Hub-Signature": {test.HMACHeader(t, secretToken, emptyJSONBody, "sha1")}}
+	emptyBodySha256Header := map[string][]string{"X-Hub-Signature-256": {test.HMACHeader(t, secretToken, emptyJSONBody, "sha256")}}
 
 	tests := []struct {
 		name              string
 		interceptorParams *triggersv1.GitHubInterceptor
 		payload           []byte
 		secret            *corev1.Secret
-		signature         string
+		headers           map[string][]string
 		eventType         string
 	}{{
 		name:              "no secret",
 		interceptorParams: &triggersv1.GitHubInterceptor{},
 		payload:           emptyJSONBody,
-		signature:         "foo",
+		headers:           map[string][]string{"X-Hub-Signature": {"foo"}},
 	}, {
 		name: "valid header for secret",
 		interceptorParams: &triggersv1.GitHubInterceptor{
@@ -56,8 +57,25 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				SecretKey:  "token",
 			},
 		},
-		// signature is based on the secret token below and the payload
-		signature: emptyBodyHMACSignature,
+		headers: emptyBodySha1Header,
+		secret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: map[string][]byte{
+				"token": []byte(secretToken),
+			},
+		},
+		payload: emptyJSONBody,
+	}, {
+		name: "valid sha-256 header for secret",
+		interceptorParams: &triggersv1.GitHubInterceptor{
+			SecretRef: &triggersv1.SecretRef{
+				SecretName: "mysecret",
+				SecretKey:  "token",
+			},
+		},
+		headers: emptyBodySha256Header,
 		secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "mysecret",
@@ -85,8 +103,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 			EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 		},
 
-		// signature is based on the secret token below and the payload
-		signature: emptyBodyHMACSignature,
+		headers: emptyBodySha1Header,
 		secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "mysecret",
@@ -101,17 +118,22 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		name:              "nil body does not panic",
 		interceptorParams: &triggersv1.GitHubInterceptor{},
 		payload:           nil,
-		signature:         "foo",
+		headers:           map[string][]string{"X-Hub-Signature": {"foo"}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
+			headers := http.Header{"Content-Type": []string{"application/json"}}
+			if tt.eventType != "" {
+				headers["X-GITHUB-EVENT"] = []string{tt.eventType}
+			}
+			for k, v := range tt.headers {
+				headers[k] = v
+			}
 
 			req := &triggersv1.InterceptorRequest{
-				Body: string(tt.payload),
-				Header: http.Header{
-					"Content-Type": []string{"application/json"},
-				},
+				Body:   string(tt.payload),
+				Header: headers,
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": tt.interceptorParams.EventTypes,
 					"secretRef":  tt.interceptorParams.SecretRef,
@@ -121,12 +143,6 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 					EventID:   "abcde",
 					TriggerID: "namespaces/default/triggers/example-trigger",
 				},
-			}
-			if tt.eventType != "" {
-				req.Header["X-GITHUB-EVENT"] = []string{tt.eventType}
-			}
-			if tt.signature != "" {
-				req.Header["X-Hub-Signature"] = []string{tt.signature}
 			}
 
 			clientset := fakekubeclient.Get(ctx)
@@ -152,7 +168,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody, "sha1")
 
 	tests := []struct {
 		name              string
