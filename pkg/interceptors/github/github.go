@@ -73,9 +73,12 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		if p.SecretRef.SecretKey == "" {
 			return interceptors.Fail(codes.FailedPrecondition, "github interceptor secretRef.secretKey is empty")
 		}
-		header := headers.Get("X-Hub-Signature")
+		header := headers.Get("X-Hub-Signature-256")
 		if header == "" {
-			return interceptors.Fail(codes.FailedPrecondition, "no X-Hub-Signature header set")
+			header = headers.Get("X-Hub-Signature")
+		}
+		if header == "" {
+			return interceptors.Fail(codes.FailedPrecondition, "Must set X-Hub-Signature-256 or X-Hub-Signature header")
 		}
 
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)

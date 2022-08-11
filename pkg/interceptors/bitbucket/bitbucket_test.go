@@ -34,7 +34,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody, "sha1")
 
 	tests := []struct {
 		name              string
@@ -146,7 +146,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 		emptyJSONBody = json.RawMessage(`{}`)
 		secretToken   = "secret"
 	)
-	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody)
+	emptyBodyHMACSignature := test.HMACHeader(t, secretToken, emptyJSONBody, "sha1")
 
 	tests := []struct {
 		name              string
