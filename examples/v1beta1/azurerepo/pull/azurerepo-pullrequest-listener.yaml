@@ -1,0 +1,84 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: azurerepo-pr-listener
+spec:
+  triggers:
+    - name: azurerepo-pr-listener
+      bindings:
+        - ref: azurerepo-pr-binding
+      template:
+        ref: azurerepo-pr-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: azurerepo-pr-binding
+spec:
+  params:
+    - name: azurerepo-event-type
+      value: $(body.eventType)
+    - name: azurerepo-url
+      value: $(body.resource.repository.webUrl)
+    - name: azurerepo-pullreq-sha
+      value: $(body.resource.lastMergeSourceCommit.commitId)
+    - name: azurerepo-pullreq-state
+      value: $(body.resource.status)
+    - name: azurerepo-pullreq-number
+      value: $(body.resource.pullRequestId)
+    - name: azurerepo-pullreq-repo-name
+      value: $(body.resource.repository.name)
+    - name: azurerepo-pullreq-html-url
+      value: $(body.resource._links.web.href)
+    - name: azurerepo-pullreq-title
+      value: $(body.resource.title)
+    - name: azurerepo-pullreq-user
+      value: $(body.resource.lastMergeCommit.committer.name)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: azurerepo-pr-template
+spec:
+  params:
+    - name: azurerepo-event-type
+    - name: azurerepo-url
+    - name: azurerepo-pullreq-sha
+    - name: azurerepo-pullreq-state
+    - name: azurerepo-pullreq-number
+    - name: azurerepo-pullreq-repo-name
+    - name: azurerepo-pullreq-html-url
+    - name: azurerepo-pullreq-title
+    - name: azurerepo-pullreq-user
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: azurerepo-pr-listener-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "URL is $(tt.params.azurerepo-url). pull-req sha is : $(tt.params.azurerepo-pullreq-sha). pull-req state is $(tt.params.azurerepo-pullreq-state).
+                pull-req number is : $(tt.params.azurerepo-pullreq-number). pull-req repo name is $(tt.params.azurerepo-pullreq-repo-name).
+                pull-req html url is : $(tt.params.azurerepo-pullreq-html-url). pull-req title is $(tt.params.azurerepo-pullreq-title).
+                user type is : $(tt.params.azurerepo-user-type)."

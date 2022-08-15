@@ -1,0 +1,74 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: azurerepo-push-listener
+spec:
+  triggers:
+    - name: azurerepo-push-listener
+      bindings:
+        - ref: azurerepo-push-binding
+      template:
+        ref: azurerepo-push-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: azurerepo-push-binding
+spec:
+  params:
+    - name: azurerepo-event-type
+      value: $(body.eventType)
+    - name: azurerepo-revision
+      value: $(body.resource.refUpdates[0].name)
+    - name: azurerepo-commit-id
+      value: $(body.resource.commits[0].commitId)
+    - name: azurerepo-url
+      value: $(body.resource.repository.remoteUrl)
+    - name: azurerepo-name
+      value: $(body.resource.repository.name)
+    - name: pusher-name
+      value: $(body.resource.pushedBy.displayName)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: azurerepo-push-template
+spec:
+  params:
+    - name: azurerepo-event-type
+    - name: azurerepo-revision
+    - name: azurerepo-commit-id
+    - name: azurerepo-url
+    - name: azurerepo-name
+    - name: pusher-name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: azurerepo-push-listener-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "evet type is : $(tt.params.azurerepo-event-type). revision is $(tt.params.azurerepo-revision).
+                commit id is : $(tt.params.azurerepo-commit-id). URL is $(tt.params.azurerepo-url).
+                repository name is : $(tt.params.azurerepo-name). pusher name is $(tt.params.pusher-name)."
