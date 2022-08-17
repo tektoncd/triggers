@@ -414,6 +414,7 @@ If you want your `EventListener` to recognize `Triggers` across your entire clus
     matchNames:
     - "*"
 ```
+At present, if an EventListeners has `Triggers` inside its own spec as well as `namespace-selector`, `Triggers` in spec as well as in selected namespaces will be processed for a request. `Triggers` inside EventListener spec when using `namespace-selector` mode is deprecated and ability to specify both will be removed.
 
 ## Constraining `EventListeners` to specific labels
 
