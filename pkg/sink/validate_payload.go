@@ -37,7 +37,7 @@ func (r Sink) IsValidPayload(eventHandler http.Handler) http.Handler {
 		if r.PayloadValidation {
 			var event map[string]interface{}
 			if err := json.Unmarshal(payload, &event); err != nil {
-				errMsg := fmt.Sprintf("Invalid event body format format: %s", err)
+				errMsg := fmt.Sprintf("Invalid event body format : %s", err)
 				r.recordCountMetrics(failTag)
 				r.Logger.Error(errMsg)
 				response.WriteHeader(http.StatusBadRequest)
