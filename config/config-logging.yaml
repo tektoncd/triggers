@@ -26,6 +26,7 @@ data:
     {
       "level": "info",
       "development": false,
+      "disableStacktrace": true,
       "sampling": {
         "initial": 100,
         "thereafter": 100
