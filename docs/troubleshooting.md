@@ -14,7 +14,7 @@ You can gather `EventListener` logs using the Tekton `tkn` CLI tool or the Kuber
 Use the following `tkn` command to gather `EventListener` logs:
 
 ```shell
-$ tkn eventlistener logs
+$ tkn eventlistener logs <eventlistener-name>
 ```
 See the `tkn` CLI tool [documentation page](https://github.com/tektoncd/cli/blob/main/docs/cmd/tkn_eventlistener_logs.md) for this config for more information.
 
