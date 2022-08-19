@@ -12,8 +12,18 @@ To run the examples, you need the following pre-requisites:
 
 1. Ensure you have Tekton Pipelines [installed](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
 
-2. Create the service account and all associated roles and bindings by running `kubectl apply -f rbac.yaml`
+2. Create the service account and all associated roles and bindings by running `kubectl apply -f rbac.yaml`.
 
+**Note**: `rbac.yaml` assumes that examples are running in the default namespace. If you would like to run examples
+in a different namespace, edit the `triggers-example-eventlistener-clusterbinding` ClusterRoleBinding to refer to
+the namespace where you've deployed the service account, for example:
+
+```yaml
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-example-sa
+  namespace: my-favorite-namespace
+```
 
 ## Creating Triggers Resources
 
