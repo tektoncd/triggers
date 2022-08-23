@@ -1,0 +1,24 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: bitbucket-cloud-template
+spec:
+  params:
+    - name: gitrevision
+    - name: gitrepourl
+    - name: gitreponame
+    - name: pushername
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: bitbucket-cloud-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "Revision is : $(tt.params.gitrevision). RepoURL is : $(tt.params.gitrepourl)
+                RepoName is : $(tt.params.gitreponame). PusherName is : $(tt.params.pushername)"
