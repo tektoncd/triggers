@@ -2,23 +2,19 @@
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
-  name: bitbucket-listener
+  name: bitbucket-cloud-listener
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
-    - name: bitbucket-triggers
+    - name: bitbucket-cloud-triggers
       interceptors:
         - ref:
             name: "bitbucket"
           params:
-            - name: secretRef
-              value:
-                secretName: bitbucket-secret
-                secretKey: secretToken
             - name: eventTypes
               value:
-                - repo:refs_changed
+                - repo:push
       bindings:
-        - ref: bitbucket-binding
+        - ref: bitbucket-cloud-binding
       template:
-        ref: bitbucket-template
+        ref: bitbucket-cloud-template

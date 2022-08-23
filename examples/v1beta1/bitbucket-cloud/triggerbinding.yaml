@@ -1,0 +1,15 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: bitbucket-cloud-binding
+spec:
+  params:
+    - name: gitrevision
+      value: $(body.push.changes[0].new.name)
+    - name: gitrepourl
+      value: $(body.repository.links.html.href)
+    - name: gitreponame
+      value: $(body.repository.name)
+    - name: pushername
+      value: $(body.actor.display_name)

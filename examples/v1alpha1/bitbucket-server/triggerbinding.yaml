@@ -2,7 +2,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
-  name: bitbucket-binding
+  name: bitbucket-server-binding
 spec:
   params:
     - name: gitrevision

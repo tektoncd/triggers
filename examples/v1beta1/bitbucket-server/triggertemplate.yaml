@@ -1,8 +1,8 @@
 ---
-apiVersion: triggers.tekton.dev/v1alpha1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
-  name: bitbucket-template
+  name: bitbucket-server-template
 spec:
   params:
     - name: gitrevision

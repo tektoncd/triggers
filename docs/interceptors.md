@@ -12,6 +12,8 @@ weight: 5
 - [GitHub `Interceptors`](#github-interceptors)
 - [GitLab `Interceptors`](#gitlab-interceptors)
 - [Bitbucket `Interceptors`](#bitbucket-interceptors)
+  - [Bitbucket Server](#bitbucket-server)
+  - [Bitbucket Cloud](#bitbucket-cloud)
 - [CEL `Interceptors`](#cel-interceptors)
 - [Implementing custom `Interceptors`](#implementing-custom-interceptors)
 
@@ -32,6 +34,8 @@ Tekton Triggers ships with the following `Interceptors` to help you get started:
 - [GitHub `Interceptors`](#github-interceptors)
 - [GitLab `Interceptors`](#gitlab-interceptors)
 - [Bitbucket `Interceptors`](#bitbucket-interceptors)
+  - [Bitbucket Server](#bitbucket-server)
+  - [Bitbucket Cloud](#bitbucket-cloud)
 - [CEL `Interceptors`](#cel-interceptors)
 
 ## Specifying an `Interceptor`
@@ -242,10 +246,12 @@ spec:
 
 ### Bitbucket `Interceptors`
 
-A Bitbucket `Interceptor` contains logic that validates and filters [Bitbucket server](https://confluence.atlassian.com/bitbucketserver) webhooks.
-It can validate the webhook's origin as described in [Webhooks](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html). It does
-not support [Bitbucket cloud](https://support.atlassian.com/bitbucket-cloud/) due to lack of support for validating secrets; if you need this
-functionality with Bitbucket, use a [CEL `Interceptor`](#cel-interceptors) instead. The Bitbucket `Interceptor` always preserves  the payload
+Bitbucket `Interceptors` has support for both Bitbucket server (which does secret validation and event filtering) and Bitbucket cloud (which does event filtering).
+
+### Bitbucket Server
+
+A Bitbucket server contains logic that validates and filters [Bitbucket server](https://confluence.atlassian.com/bitbucketserver) webhooks.
+It can validate the webhook's origin as described in [Webhooks](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html). The Bitbucket `Interceptor` always preserves the payload
 data (both header and body) in its responses.
 
 To use a Bitbucket `Interceptor` as a Bitbucket server webhook validator, do the following:
@@ -259,7 +265,7 @@ To use a Bitbucket `Interceptor` as a filter for event data, specify the event t
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
 accepts data event types listed in [Event payload](https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html).
 
-Below is an example Bitbucket `Interceptor` reference:
+Below is an example Bitbucket `Interceptor` reference for server:
 
 ```yaml
 interceptors:
@@ -268,7 +274,7 @@ interceptors:
   params:
     - name: secretRef
       value:
-        secretName: bitbucket-secret
+        secretName: bitbucket-server-secret
         secretKey: secretToken
     - name: eventTypes
       value:
@@ -282,26 +288,72 @@ For reference, below is an example legacy Bitbucket `Interceptor` definition:
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: bitbucket-listener
+  name: bitbucket-server-listener
 spec:
   serviceAccountName: tekton-triggers-example-sa
   triggers:
-    - name: bitbucket-triggers
+    - name: bitbucket-server-triggers
       interceptors:
         - ref:
             name: "bitbucket"
           params:
             - name: secretRef
               value:
-                secretName: bitbucket-secret
+                secretName: bitbucket-server-secret
                 secretKey: secretToken
             - name: eventTypes
               value:
                 - repo:refs_changed
       bindings:
-        - ref: bitbucket-binding
+        - ref: bitbucket-server-binding
       template:
-        ref: bitbucket-template
+        ref: bitbucket-server-template
+```
+
+### Bitbucket Cloud
+
+At the moment, Bitbucket cloud does not support validating webhook payloads using shared secrets. 
+See the [Secure Webhooks section](https://support.atlassian.com/bitbucket-cloud/docs/manage-webhooks/) of Bitbucket cloud docs for more information on securing your Bitbucket webhooks.
+
+To use a Bitbucket `Interceptor` as a filter for event data, specify the event types
+you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
+accepts data event types listed in [Event payload](https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/).
+
+Below is an example Bitbucket `Interceptor` reference for cloud:
+
+```yaml
+interceptors:
+- ref:
+    name: "bitbucket"
+  params:
+    - name: eventTypes
+      value:
+        - repo:push
+```
+
+For reference, below is an example legacy Bitbucket `Interceptor` definition:
+
+```yaml
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: bitbucket-cloud-listener
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: bitbucket-cloud-triggers
+      interceptors:
+        - ref:
+            name: "bitbucket"
+          params:
+            - name: eventTypes
+              value:
+                - repo:push
+      bindings:
+        - ref: bitbucket-cloud-binding
+      template:
+        ref: bitbucket-cloud-template
 ```
 
 ### CEL Interceptors
