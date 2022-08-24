@@ -75,6 +75,9 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		}, {
 			Name:  "EL_EVENT",
 			Value: *c.SetEventListenerEvent,
+		}, {
+			Name:  "K_SINK_TIMEOUT",
+			Value: strconv.FormatInt(*c.TimeOutHandler, 10),
 		}}...),
 	}
 
