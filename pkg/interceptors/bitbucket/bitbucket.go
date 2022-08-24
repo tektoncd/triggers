@@ -71,6 +71,11 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		if header == "" {
 			return interceptors.Fail(codes.InvalidArgument, "no X-Hub-Signature header set")
 		}
+
+		if r.Context == nil {
+			return interceptors.Failf(codes.InvalidArgument, "no request context passed")
+		}
+
 		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 		secretToken, err := w.SecretGetter.Get(ctx, ns, p.SecretRef)
 		if err != nil {

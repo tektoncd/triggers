@@ -120,6 +120,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
+	if r.Context == nil {
+		return interceptors.Failf(codes.InvalidArgument, "no request context passed")
+	}
+
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 	env, err := makeCelEnv(ctx, ns, w.SecretGetter)
 	if err != nil {
