@@ -1,95 +1,103 @@
-
-
 <!--
 ---
-linkTitle: "Setting Up Tekton Triggers"
+title: "Install and set up Tekton Triggers"
+linkTitle: "Install and set up Tekton Triggers"
 weight: 2
 ---
 -->
-# Setting Up Tekton Triggers
 
-Follow the steps below to set up an official release of Tekton Triggers on your Kubernetes cluster.
-If you want to test Triggers from `HEAD`, see the
-[Tekton Developer Guide](https://github.com/tektoncd/triggers/blob/main/DEVELOPMENT.md#install-triggers).
+This document shows you how to install and set up Tekton Triggers.
 
 ## Prerequisites
 
-You must satisfy the following prerequisites to set up Tekton Triggers:
+-   [Kubernetes] cluster version 1.18 or later.
+-   [Kubectl].
+-   [Tekton Pipelines][pipelines-install].
+-   Grant `cluster-admin` privileges to the user that installed Tekton Pipelines. See
+    the [kubernetes role-based access control (RBAC) docs][rbac].
 
-* You must have a Kubernetes Cluster running Kubernetes 1.18 or above.
+## Installation
 
-  You can use [`kind`](https://kind.sigs.k8s.io/) to quickly create a local cluster with RBAC enabled for testing purposes:
+1.  Log on to your Kubernetes cluster with the same user account that installed
+    Tekton Pipelines.
 
-  * Install `kind` as described in [Installation](https://kind.sigs.k8s.io/docs/user/quick-start/#installation).
+1.  Depending on which version of Tekton Triggers you want to install, run one
+    of the following commands:
 
-  * Create a cluster as described in [Creating a Cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster).
+    -   **Latest official release**
 
-* You must have Tekton Pipelines installed on your Kubernetes cluster.
+        ```bash
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+        ```
 
-  For instructions, see [Installing Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/master/docs/install.md).
+    -   **Nightly release**
 
-* You must grant the `cluster-admin` privilege to the user with which you installed Tekton Pipelines.
+        ```bash
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases-nightly/triggers/latest/release.yaml
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases-nightly/triggers/latest/interceptors.yaml
+        ```
 
-  For instructions, see [Role-based access control](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
+    -   **Specific Release**
 
-## Installing Tekton Triggers on Your Cluster
+        ```bash
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/previous/VERSION_NUMBER/release.yaml
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/previous/VERSION_NUMBER/interceptors.yaml
+        ```
 
-1. Log on to your Kubernetes cluster as the user with which you installed Tekton Pipelines.
+        Replace `VERSION_NUMBER` with the numbered version you want to install.
+        For example, `v0.19.1`.
 
-1.  Use the [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply) command to install the latest release of Tekton Triggers and its dependencies:
+    -   **Untagged Release**
 
-    ```bash
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
-    ```
+        If your container runtime does not support `image-reference:tag@digest` (for
+        example, `cri-o` used in OpenShift 4.x):
 
-    To install a specific release of Tekton Triggers, replace `latest` with the desired version number as shown in the following example:
+        ```bash
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/latest/release.notags.yaml
+        kubectl apply --filename \
+        https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.notags.yaml
+        ```
 
-    ```bash
-    kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.1.0/release.yaml
-    ```
-
-    To install a nightly release, use the following command:
-
-    ```bash
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases-nightly/triggers/latest/release.yaml
-    ```
-
-1.  Monitor the installation using the [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
-    command:
+1.  To monitor the installation, run:
 
     ```bash
     kubectl get pods --namespace tekton-pipelines --watch
     ```
 
-1. When all Tekton Triggers components report a status of `Running` press CTRL+C to stop monitoring.
+    When all components show `1/1` under the `READY` column, the installation is
+    complete. Hit *Ctrl + C* to stop monitoring.
 
-You are now ready to configure Tekton Triggers for your workflow. For instructions, see the following:
+## Customization options
 
-- [Tekton Triggers Getting Started Guide](./getting-started/)
-- [Tekton Triggers code examples](https://github.com/tektoncd/triggers/tree/main/examples)
+You can customize the behavior of the Triggers Controller changing some values
+in the `config/feature-flags-triggers.yaml` file.
 
-## Customizing the Triggers Controller behavior
++ Enable alpha features. Set the value of `enable-api-fields:` to `"alpha"`, the
+  default value is `"stable"`. This flag only applies to the v1beta1 API
+  version.
 
-To customize the behavior of the Triggers Controller, modify the ConfigMap `feature-flags-triggers` as follows:
++ Exclude labels. Set the `labels-exclusion-pattern:` field to a regex  pattern.
+  Labels that match this pattern are excluded from getting added to the
+  resources created by the EventListener. By default this field is empty, so all
+  labels added to the EventListener are propagated down.
 
-- `enable-api-fields`: set this flag to "stable" to allow only the
-most stable features to be used. Set it to "alpha" to allow alpha
-features (in addition to stable features) to be used. Note that this flag only applies to the v1beta1 apiVersion.
+## Further reading
 
-- `labels-exclusion-pattern`: set this field with regex pattern which will 
-exclude labels matching the pattern from getting added to resources created 
-by the EventListener such as the deployment. By default, there is no value is set
-for this field so all labels added to the EventListener are propagated down.
++ [Get started with Tekton Triggers][get-started]
++ [Explore Tekton Triggers code examples][code-examples]
 
-For example:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: feature-flags-triggers
-data:
-  enable-api-fields: "alpha" # Allow "alpha" fields to be used in v1beta1 Triggers' resources. Defaults to "stable" features only.
-  labels-exclusion-pattern: "^tekton-dev-"
-```
+[kubernetes]: https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
+[kubectl]: https://kubernetes.io/docs/tasks/tools/#kubectl
+[triggers]: https://tekton.dev/docs/triggers/
+[get-started]: https://github.com/tektoncd/triggers/blob/main/docs/getting-started
+[code-examples]: https://github.com/tektoncd/triggers/tree/main/examples
+[pipelines-install]: https://github.com/tektoncd/pipeline/blob/main/docs/install.md
+[rbac]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
