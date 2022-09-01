@@ -17,6 +17,10 @@
 set -o errexit
 set -o nounset
 
+source $(git rev-parse --show-toplevel)/hack/setup-temporary-gopath.sh
+shim_gopath
+trap shim_gopath_clean EXIT
+
 source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
 cd "${REPO_ROOT_DIR}"
