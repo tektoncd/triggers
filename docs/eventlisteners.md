@@ -728,6 +728,8 @@ increased administration overhead.
 
 The [cloud event](https://github.com/cloudevents/spec) that is sent to a target `URI` during Trigger processing. The types of events send for now are:
 
+Cloud Events is currently an `alpha` feature. To use it, you use the v1beta1 API version with the `enable-api-fields`  [feature flag set to `alpha`](./install.md#Customizing-the-Triggers-Controller-behavior).
+
 | Type | Description |
 | ---------- | ----------- |
 | dev.tekton.event.triggers.started.v1 | triggers processing started in eventlistener |
