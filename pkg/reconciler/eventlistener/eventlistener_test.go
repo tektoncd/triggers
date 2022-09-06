@@ -260,6 +260,9 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							Name:  "EL_EVENT",
 							Value: "disable",
 						}, {
+							Name:  "K_SINK_TIMEOUT",
+							Value: strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+						}, {
 							Name: "SYSTEM_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
@@ -409,6 +412,9 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						}, {
 							Name:  "EL_EVENT",
 							Value: "disable",
+						}, {
+							Name:  "K_SINK_TIMEOUT",
+							Value: strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 						}, {
 							Name:  "SYSTEM_NAMESPACE",
 							Value: namespace,
@@ -881,6 +887,9 @@ func TestReconcile(t *testing.T) {
 			Name:  "EL_EVENT",
 			Value: "enable",
 		}, {
+			Name:  "K_SINK_TIMEOUT",
+			Value: strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
+		}, {
 			Name: "SYSTEM_NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
@@ -952,6 +961,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "EL_EVENT",
 			Value: "disable",
+		}, {
+			Name:  "K_SINK_TIMEOUT",
+			Value: strconv.FormatInt(resources.DefaultTimeOutHandler, 10),
 		}, {
 			Name: "key",
 			ValueFrom: &corev1.EnvVarSource{
