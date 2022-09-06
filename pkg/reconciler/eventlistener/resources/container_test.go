@@ -78,6 +78,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "EL_EVENT",
 				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
 		},
 	}, {
@@ -136,6 +139,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "EL_EVENT",
 				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
 		},
 	}, {
@@ -222,6 +228,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "EL_EVENT",
 				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
 		},
 	}, {
@@ -270,6 +279,9 @@ func TestContainer(t *testing.T) {
 			}, {
 				Name:  "EL_EVENT",
 				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
 		},
 	}}

@@ -99,6 +99,10 @@ func TestCustomObject(t *testing.T) {
 			"name":  "EL_EVENT",
 			"value": "disable",
 		},
+		map[string]interface{}{
+			"name":  "K_SINK_TIMEOUT",
+			"value": strconv.FormatInt(DefaultTimeOutHandler, 10),
+		},
 	}
 
 	customEnv := []interface{}{
