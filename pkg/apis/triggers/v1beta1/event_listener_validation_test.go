@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -218,16 +217,16 @@ func Test_EventListenerValidate(t *testing.T) {
 				Triggers: []triggersv1beta1.EventListenerTrigger{{
 					Interceptors: []*triggersv1beta1.EventInterceptor{{
 						Webhook: &triggersv1beta1.WebhookInterceptor{
-							Header: []pipelinev1alpha1.Param{{
+							Header: []pipelinev1beta1.Param{{
 								Name: "Valid-Header-Key",
-								Value: pipelinev1alpha1.ArrayOrString{
-									Type:      pipelinev1alpha1.ParamTypeString,
+								Value: pipelinev1beta1.ParamValue{
+									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "valid-value",
 								},
 							}, {
 								Name: "Valid-Header-Key2",
-								Value: pipelinev1alpha1.ArrayOrString{
-									Type:      pipelinev1alpha1.ParamTypeString,
+								Value: pipelinev1beta1.ParamValue{
+									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "valid value 2",
 								},
 							}},
@@ -482,7 +481,7 @@ func Test_EventListenerValidate(t *testing.T) {
 								Default:     ptr.String("val"),
 							}},
 							ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
-								RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+								RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
 									TypeMeta: metav1.TypeMeta{
 										APIVersion: "tekton.dev/v1beta1",
 										Kind:       "TaskRun",
@@ -862,7 +861,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &triggersv1beta1.WebhookInterceptor{
 							Header: []pipelinev1beta1.Param{{
 								Name: "non-canonical-header-key",
-								Value: pipelinev1beta1.ArrayOrString{
+								Value: pipelinev1beta1.ParamValue{
 									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "valid value",
 								},
@@ -894,7 +893,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &triggersv1beta1.WebhookInterceptor{
 							Header: []pipelinev1beta1.Param{{
 								Name: "",
-								Value: pipelinev1beta1.ArrayOrString{
+								Value: pipelinev1beta1.ParamValue{
 									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "valid value",
 								},
@@ -926,7 +925,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &triggersv1beta1.WebhookInterceptor{
 							Header: []pipelinev1beta1.Param{{
 								Name: "Valid-Header-Key",
-								Value: pipelinev1beta1.ArrayOrString{
+								Value: pipelinev1beta1.ParamValue{
 									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "",
 								},

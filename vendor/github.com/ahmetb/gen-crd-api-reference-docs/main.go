@@ -600,7 +600,7 @@ func isOptionalMember(m types.Member) bool {
 func apiVersionForPackage(pkg *types.Package) (string, string, error) {
 	group := groupName(pkg)
 	version := pkg.Name // assumes basename (i.e. "v1" in "core/v1") is apiVersion
-	r := `^v\d+((alpha|beta)\d+)?$`
+	r := `^v\d+((alpha|beta)[a-z0-9]+)?$`
 	if !regexp.MustCompile(r).MatchString(version) {
 		return "", "", errors.Errorf("cannot infer kubernetes apiVersion of go package %s (basename %q doesn't match expected pattern %s that's used to determine apiVersion)", pkg.Path, version, r)
 	}

@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -32,11 +32,11 @@ var _ apis.Validatable = (*PipelineRun)(nil)
 
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
-
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+
+	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
 
 	if pr.IsPending() && pr.HasStarted() {
 		errs = errs.Also(apis.ErrInvalidValue("PipelineRun cannot be Pending after it is started", "spec.status"))
@@ -62,8 +62,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
+		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
+	// Validate propagated parameters
+	errs = errs.Also(ps.validateInlineParameters(ctx))
 
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
@@ -72,15 +75,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	// This is an alpha feature and will fail validation if it's used in a pipelinerun spec
-	// when the enable-api-fields feature gate is anything but "alpha".
 	if ps.Timeouts != nil {
 		if ps.Timeout != nil {
 			// can't have both at the same time
 			errs = errs.Also(apis.ErrDisallowedFields("timeout", "timeouts"))
 		}
-
-		errs = errs.Also(ValidateEnabledAPIFields(ctx, "timeouts", config.AlphaAPIFields))
 
 		// tasks timeout should be a valid duration of at least 0.
 		errs = errs.Also(validateTimeoutDuration("tasks", ps.Timeouts.Tasks))
@@ -99,7 +98,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	errs = errs.Also(validateSpecStatus(ctx, ps.Status))
+	errs = errs.Also(validateSpecStatus(ps.Status))
 
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
@@ -111,7 +110,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			wsNames[ws.Name] = idx
 		}
 	}
-
 	for idx, trs := range ps.TaskRunSpecs {
 		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
@@ -119,12 +117,82 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
-func validateSpecStatus(ctx context.Context, status PipelineRunSpecStatus) *apis.FieldError {
+// validateInlineParameters validates parameters that are defined inline.
+// This is crucial for propagated parameters since the parameters could
+// be defined under pipelineRun and then called directly in the task steps.
+// In this case, parameters cannot be validated by the underlying pipelineSpec
+// or taskSpec since they may not have the parameters declared because of propagation.
+func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *apis.FieldError) {
+	if ps.PipelineSpec == nil {
+		return errs
+	}
+	var paramSpec []ParamSpec
+	for _, p := range ps.Params {
+		pSpec := ParamSpec{
+			Name:    p.Name,
+			Default: &p.Value,
+		}
+		paramSpec = append(paramSpec, pSpec)
+	}
+	paramSpec = appendParamSpec(paramSpec, ps.PipelineSpec.Params)
+	for _, pt := range ps.PipelineSpec.Tasks {
+		paramSpec = appendParam(paramSpec, pt.Params)
+		if pt.TaskSpec != nil && pt.TaskSpec.Params != nil {
+			paramSpec = appendParamSpec(paramSpec, pt.TaskSpec.Params)
+		}
+	}
+	if ps.PipelineSpec != nil && ps.PipelineSpec.Tasks != nil {
+		for _, pt := range ps.PipelineSpec.Tasks {
+			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
+				errs = errs.Also(ValidateParameterVariables(
+					config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), pt.TaskSpec.Steps, paramSpec))
+			}
+		}
+	}
+	return errs
+}
+
+func appendParamSpec(paramSpec []ParamSpec, params []ParamSpec) []ParamSpec {
+	for _, p := range params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			paramSpec = append(paramSpec, p)
+		}
+	}
+	return paramSpec
+}
+
+func appendParam(paramSpec []ParamSpec, params []Param) []ParamSpec {
+	for _, p := range params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			pSpec := ParamSpec{
+				Name:    p.Name,
+				Default: &p.Value,
+			}
+			paramSpec = append(paramSpec, pSpec)
+		}
+	}
+	return paramSpec
+}
+
+func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 	switch status {
 	case "":
 		return nil
-	case PipelineRunSpecStatusPending,
-		PipelineRunSpecStatusCancelledDeprecated:
+	case PipelineRunSpecStatusPending:
 		return nil
 	case PipelineRunSpecStatusCancelled,
 		PipelineRunSpecStatusCancelledRunFinally,
@@ -155,7 +223,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 		if ps.Timeouts.Tasks.Duration > timeout {
 			tasksTimeoutErr = true
 		}
-		if ps.Timeouts.Tasks.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+		if ps.Timeouts.Tasks.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {
 			tasksTimeoutErr = true
 			tasksTimeoutStr += " (no timeout)"
 		}
@@ -170,7 +238,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 		if ps.Timeouts.Finally.Duration > timeout {
 			finallyTimeoutErr = true
 		}
-		if ps.Timeouts.Finally.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+		if ps.Timeouts.Finally.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {
 			finallyTimeoutErr = true
 			finallyTimeoutStr += " (no timeout)"
 		}
@@ -189,21 +257,17 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 }
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
-		if trs.StepOverrides != nil {
-			errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
-		}
-		if trs.SidecarOverrides != nil {
-			errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
-		}
-	} else {
-		if trs.StepOverrides != nil {
-			errs = errs.Also(apis.ErrDisallowedFields("stepOverrides"))
-		}
-		if trs.SidecarOverrides != nil {
-			errs = errs.Also(apis.ErrDisallowedFields("sidecarOverrides"))
-		}
+	if trs.StepOverrides != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
+	}
+	if trs.SidecarOverrides != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
+	}
+	if trs.ComputeResources != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
 	}
 	return errs
 }

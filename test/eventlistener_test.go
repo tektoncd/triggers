@@ -39,7 +39,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
