@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
@@ -519,7 +519,7 @@ func Test_EventListenerValidate(t *testing.T) {
 							ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
 								RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
 									TypeMeta: metav1.TypeMeta{
-										APIVersion: "tekton.dev/v1alpha1",
+										APIVersion: "tekton.dev/v1beta1",
 										Kind:       "TaskRun",
 									},
 									ObjectMeta: metav1.ObjectMeta{

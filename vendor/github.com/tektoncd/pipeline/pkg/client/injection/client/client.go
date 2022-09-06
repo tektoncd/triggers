@@ -24,9 +24,11 @@ import (
 	errors "errors"
 	fmt "fmt"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	typedtektonv1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1"
 	typedtektonv1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	typedtektonv1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -111,526 +113,6 @@ type wrapTektonV1alpha1 struct {
 
 func (w *wrapTektonV1alpha1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
-}
-
-func (w *wrapTektonV1alpha1) ClusterTasks() typedtektonv1alpha1.ClusterTaskInterface {
-	return &wrapTektonV1alpha1ClusterTaskImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "clustertasks",
-		}),
-	}
-}
-
-type wrapTektonV1alpha1ClusterTaskImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-}
-
-var _ typedtektonv1alpha1.ClusterTaskInterface = (*wrapTektonV1alpha1ClusterTaskImpl)(nil)
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Create(ctx context.Context, in *v1alpha1.ClusterTask, opts v1.CreateOptions) (*v1alpha1.ClusterTask, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "ClusterTask",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTask{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterTask, error) {
-	uo, err := w.dyn.Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTask{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterTaskList, error) {
-	uo, err := w.dyn.List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTaskList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTask, err error) {
-	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTask{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Update(ctx context.Context, in *v1alpha1.ClusterTask, opts v1.UpdateOptions) (*v1alpha1.ClusterTask, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "ClusterTask",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTask{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) UpdateStatus(ctx context.Context, in *v1alpha1.ClusterTask, opts v1.UpdateOptions) (*v1alpha1.ClusterTask, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "ClusterTask",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ClusterTask{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ClusterTaskImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapTektonV1alpha1) Conditions(namespace string) typedtektonv1alpha1.ConditionInterface {
-	return &wrapTektonV1alpha1ConditionImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "conditions",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapTektonV1alpha1ConditionImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedtektonv1alpha1.ConditionInterface = (*wrapTektonV1alpha1ConditionImpl)(nil)
-
-func (w *wrapTektonV1alpha1ConditionImpl) Create(ctx context.Context, in *v1alpha1.Condition, opts v1.CreateOptions) (*v1alpha1.Condition, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Condition",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Condition{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Condition, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Condition{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ConditionList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.ConditionList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Condition, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Condition{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) Update(ctx context.Context, in *v1alpha1.Condition, opts v1.UpdateOptions) (*v1alpha1.Condition, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Condition",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Condition{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) UpdateStatus(ctx context.Context, in *v1alpha1.Condition, opts v1.UpdateOptions) (*v1alpha1.Condition, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Condition",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Condition{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1ConditionImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapTektonV1alpha1) Pipelines(namespace string) typedtektonv1alpha1.PipelineInterface {
-	return &wrapTektonV1alpha1PipelineImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "pipelines",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapTektonV1alpha1PipelineImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedtektonv1alpha1.PipelineInterface = (*wrapTektonV1alpha1PipelineImpl)(nil)
-
-func (w *wrapTektonV1alpha1PipelineImpl) Create(ctx context.Context, in *v1alpha1.Pipeline, opts v1.CreateOptions) (*v1alpha1.Pipeline, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Pipeline",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Pipeline{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Pipeline, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Pipeline{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.PipelineList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Pipeline, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Pipeline{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) Update(ctx context.Context, in *v1alpha1.Pipeline, opts v1.UpdateOptions) (*v1alpha1.Pipeline, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Pipeline",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Pipeline{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) UpdateStatus(ctx context.Context, in *v1alpha1.Pipeline, opts v1.UpdateOptions) (*v1alpha1.Pipeline, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Pipeline",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Pipeline{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapTektonV1alpha1) PipelineRuns(namespace string) typedtektonv1alpha1.PipelineRunInterface {
-	return &wrapTektonV1alpha1PipelineRunImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "pipelineruns",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapTektonV1alpha1PipelineRunImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedtektonv1alpha1.PipelineRunInterface = (*wrapTektonV1alpha1PipelineRunImpl)(nil)
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Create(ctx context.Context, in *v1alpha1.PipelineRun, opts v1.CreateOptions) (*v1alpha1.PipelineRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "PipelineRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.PipelineRun, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.PipelineRunList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRunList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineRun, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Update(ctx context.Context, in *v1alpha1.PipelineRun, opts v1.UpdateOptions) (*v1alpha1.PipelineRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "PipelineRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) UpdateStatus(ctx context.Context, in *v1alpha1.PipelineRun, opts v1.UpdateOptions) (*v1alpha1.PipelineRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "PipelineRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.PipelineRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1PipelineRunImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
 }
 
 func (w *wrapTektonV1alpha1) Runs(namespace string) typedtektonv1alpha1.RunInterface {
@@ -761,268 +243,6 @@ func (w *wrapTektonV1alpha1RunImpl) UpdateStatus(ctx context.Context, in *v1alph
 }
 
 func (w *wrapTektonV1alpha1RunImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapTektonV1alpha1) Tasks(namespace string) typedtektonv1alpha1.TaskInterface {
-	return &wrapTektonV1alpha1TaskImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "tasks",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapTektonV1alpha1TaskImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedtektonv1alpha1.TaskInterface = (*wrapTektonV1alpha1TaskImpl)(nil)
-
-func (w *wrapTektonV1alpha1TaskImpl) Create(ctx context.Context, in *v1alpha1.Task, opts v1.CreateOptions) (*v1alpha1.Task, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Task",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Task{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Task, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Task{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TaskList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Task, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Task{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) Update(ctx context.Context, in *v1alpha1.Task, opts v1.UpdateOptions) (*v1alpha1.Task, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Task",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Task{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) UpdateStatus(ctx context.Context, in *v1alpha1.Task, opts v1.UpdateOptions) (*v1alpha1.Task, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "Task",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.Task{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-func (w *wrapTektonV1alpha1) TaskRuns(namespace string) typedtektonv1alpha1.TaskRunInterface {
-	return &wrapTektonV1alpha1TaskRunImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "tekton.dev",
-			Version:  "v1alpha1",
-			Resource: "taskruns",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapTektonV1alpha1TaskRunImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedtektonv1alpha1.TaskRunInterface = (*wrapTektonV1alpha1TaskRunImpl)(nil)
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Create(ctx context.Context, in *v1alpha1.TaskRun, opts v1.CreateOptions) (*v1alpha1.TaskRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "TaskRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TaskRun, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TaskRunList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRunList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TaskRun, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Update(ctx context.Context, in *v1alpha1.TaskRun, opts v1.UpdateOptions) (*v1alpha1.TaskRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "TaskRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) UpdateStatus(ctx context.Context, in *v1alpha1.TaskRun, opts v1.UpdateOptions) (*v1alpha1.TaskRun, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "tekton.dev",
-		Version: "v1alpha1",
-		Kind:    "TaskRun",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v1alpha1.TaskRun{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapTektonV1alpha1TaskRunImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -1689,5 +909,282 @@ func (w *wrapTektonV1beta1TaskRunImpl) UpdateStatus(ctx context.Context, in *v1b
 }
 
 func (w *wrapTektonV1beta1TaskRunImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+// TektonV1 retrieves the TektonV1Client
+func (w *wrapClient) TektonV1() typedtektonv1.TektonV1Interface {
+	return &wrapTektonV1{
+		dyn: w.dyn,
+	}
+}
+
+type wrapTektonV1 struct {
+	dyn dynamic.Interface
+}
+
+func (w *wrapTektonV1) RESTClient() rest.Interface {
+	panic("RESTClient called on dynamic client!")
+}
+
+func (w *wrapTektonV1) Pipelines(namespace string) typedtektonv1.PipelineInterface {
+	return &wrapTektonV1PipelineImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "tekton.dev",
+			Version:  "v1",
+			Resource: "pipelines",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapTektonV1PipelineImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedtektonv1.PipelineInterface = (*wrapTektonV1PipelineImpl)(nil)
+
+func (w *wrapTektonV1PipelineImpl) Create(ctx context.Context, in *pipelinev1.Pipeline, opts v1.CreateOptions) (*pipelinev1.Pipeline, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Pipeline",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Pipeline{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapTektonV1PipelineImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapTektonV1PipelineImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1.Pipeline, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Pipeline{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) List(ctx context.Context, opts v1.ListOptions) (*pipelinev1.PipelineList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.PipelineList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1.Pipeline, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Pipeline{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) Update(ctx context.Context, in *pipelinev1.Pipeline, opts v1.UpdateOptions) (*pipelinev1.Pipeline, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Pipeline",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Pipeline{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) UpdateStatus(ctx context.Context, in *pipelinev1.Pipeline, opts v1.UpdateOptions) (*pipelinev1.Pipeline, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Pipeline",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Pipeline{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1PipelineImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+func (w *wrapTektonV1) Tasks(namespace string) typedtektonv1.TaskInterface {
+	return &wrapTektonV1TaskImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "tekton.dev",
+			Version:  "v1",
+			Resource: "tasks",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapTektonV1TaskImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedtektonv1.TaskInterface = (*wrapTektonV1TaskImpl)(nil)
+
+func (w *wrapTektonV1TaskImpl) Create(ctx context.Context, in *pipelinev1.Task, opts v1.CreateOptions) (*pipelinev1.Task, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Task",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Task{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapTektonV1TaskImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapTektonV1TaskImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1.Task, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Task{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) List(ctx context.Context, opts v1.ListOptions) (*pipelinev1.TaskList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.TaskList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1.Task, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Task{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) Update(ctx context.Context, in *pipelinev1.Task, opts v1.UpdateOptions) (*pipelinev1.Task, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Task",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Task{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) UpdateStatus(ctx context.Context, in *pipelinev1.Task, opts v1.UpdateOptions) (*pipelinev1.Task, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Task",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &pipelinev1.Task{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1TaskImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }

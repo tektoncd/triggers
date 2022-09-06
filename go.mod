@@ -4,11 +4,11 @@ go 1.17
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20210609063737-0067dc6dcea2
-	github.com/cloudevents/sdk-go/v2 v2.8.0
+	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470
+	github.com/cloudevents/sdk-go/v2 v2.11.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/cel-go v0.11.3
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -17,24 +17,25 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
-	github.com/tektoncd/pipeline v0.35.0
-	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
+	github.com/tektoncd/pipeline v0.39.0
+	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	github.com/tidwall/sjson v1.2.4
 	go.opencensus.io v0.23.0
-	go.uber.org/zap v1.19.1
+	go.uber.org/zap v1.22.0
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21
 	google.golang.org/grpc v1.46.0
 	google.golang.org/protobuf v1.28.0
-	k8s.io/api v0.23.5
-	k8s.io/apiextensions-apiserver v0.23.4
-	k8s.io/apimachinery v0.23.5
-	k8s.io/client-go v0.23.5
-	k8s.io/code-generator v0.23.5
-	k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89
+	k8s.io/api v0.23.9
+	k8s.io/apiextensions-apiserver v0.23.9
+	k8s.io/apimachinery v0.23.9
+	k8s.io/client-go v0.23.9
+	k8s.io/code-generator v0.23.9
+	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
 	knative.dev/eventing v0.30.1-0.20220407170245-58865afba92c
-	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
+	knative.dev/pkg v0.0.0-20220805012121-7b8b06028e4f
 	knative.dev/serving v0.30.1-0.20220402124840-21c05dc9d9a4
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -56,6 +57,7 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220418222510-f25a4f6275ed // indirect
+	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
@@ -107,7 +109,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/tidwall/gjson v1.12.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -118,8 +120,7 @@ require (
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
@@ -129,8 +130,8 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/gengo v0.0.0-20220307231824-4627b89bbf1b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	knative.dev/networking v0.0.0-20220404212543-dde40b019aff // indirect

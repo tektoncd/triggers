@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,13 +53,16 @@ type TaskRunSpec struct {
 	// Used for cancelling a taskrun (and maybe more later on)
 	// +optional
 	Status TaskRunSpecStatus `json:"status,omitempty"`
+	// Status message for cancellation.
+	// +optional
+	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
 	// Time after which the build times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
-	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	// +listType=atomic
@@ -77,6 +81,8 @@ type TaskRunSpec struct {
 	// +optional
 	// +listType=atomic
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	// Compute resources to use for this TaskRun
+	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -86,6 +92,15 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+)
+
+// TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
+type TaskRunSpecStatusMessage string
+
+const (
+	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+	// TaskRun was a part of has been cancelled.
+	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
 )
 
 // TaskRunDebug defines the breakpoint config for a particular TaskRun
@@ -140,6 +155,11 @@ const (
 	TaskRunReasonCancelled TaskRunReason = "TaskRunCancelled"
 	// TaskRunReasonTimedOut is the reason set when the Taskrun has timed out
 	TaskRunReasonTimedOut TaskRunReason = "TaskRunTimeout"
+	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
+	// its taskRef to be asynchronously resolved.
+	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
+	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
+	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
 )
 
 func (t TaskRunReason) String() string {
@@ -233,15 +253,6 @@ type TaskRunStatusFields struct {
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
-}
-
-// TaskRunResult used to describe the results of a task
-type TaskRunResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Value the given value of the result
-	Value string `json:"value"`
 }
 
 // TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
@@ -418,7 +429,7 @@ func (tr *TaskRun) HasStarted() bool {
 
 // IsSuccessful returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsSuccessful() bool {
-	return tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

@@ -157,7 +157,14 @@ func (p *Protocol) Send(ctx context.Context, m binding.Message, transformers ...
 				buf := new(bytes.Buffer)
 				buf.ReadFrom(message.BodyReader)
 				errorStr := buf.String()
-				err = NewResult(res.StatusCode, "%s", errorStr)
+				// If the error is not wrapped, then append the original error string.
+				if og, ok := err.(*Result); ok {
+					og.Format = og.Format + "%s"
+					og.Args = append(og.Args, errorStr)
+					err = og
+				} else {
+					err = NewResult(res.StatusCode, "%w: %s", err, errorStr)
+				}
 			}
 		}
 	}
@@ -352,6 +359,7 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		status := http.StatusOK
+		var errMsg string
 		if res != nil {
 			var result *Result
 			switch {
@@ -359,7 +367,7 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				if result.StatusCode > 100 && result.StatusCode < 600 {
 					status = result.StatusCode
 				}
-
+				errMsg = fmt.Errorf(result.Format, result.Args...).Error()
 			case !protocol.IsACK(res):
 				// Map client errors to http status code
 				validationError := event.ValidationError{}
@@ -383,6 +391,9 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		rw.WriteHeader(status)
+		if _, err := rw.Write([]byte(errMsg)); err != nil {
+			return err
+		}
 		return nil
 	}
 

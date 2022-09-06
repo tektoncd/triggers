@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,35 +33,35 @@ import (
 )
 
 func simpleResourceTemplate(t *testing.T) runtime.RawExtension {
-	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+	return test.RawExtension(t, pipelinev1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 	})
 }
 
-func v1alpha1ResourceTemplate(t *testing.T) runtime.RawExtension {
-	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+func v1beta1ResourceTemplate(t *testing.T) runtime.RawExtension {
+	return test.RawExtension(t, pipelinev1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 	})
 }
 
 func paramResourceTemplate(t *testing.T) runtime.RawExtension {
-	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+	return test.RawExtension(t, pipelinev1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
-		Spec: pipelinev1alpha1.PipelineRunSpec{
-			Params: []pipelinev1alpha1.Param{
+		Spec: pipelinev1beta1.PipelineRunSpec{
+			Params: []pipelinev1beta1.Param{
 				{
 					Name: "message",
-					Value: pipelinev1alpha1.ArrayOrString{
-						Type:      pipelinev1alpha1.ParamTypeString,
+					Value: pipelinev1beta1.ParamValue{
+						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "$(tt.params.foo)",
 					},
 				},
@@ -71,17 +71,17 @@ func paramResourceTemplate(t *testing.T) runtime.RawExtension {
 }
 
 func invalidParamResourceTemplate(t *testing.T) runtime.RawExtension {
-	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+	return test.RawExtension(t, pipelinev1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
-		Spec: pipelinev1alpha1.PipelineRunSpec{
-			Params: []pipelinev1alpha1.Param{
+		Spec: pipelinev1beta1.PipelineRunSpec{
+			Params: []pipelinev1beta1.Param{
 				{
 					Name: "message",
-					Value: pipelinev1alpha1.ArrayOrString{
-						Type:      pipelinev1alpha1.ParamTypeString,
+					Value: pipelinev1beta1.ParamValue{
+						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "$(.foo)",
 					},
 				},
@@ -170,7 +170,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: v1alpha1ResourceTemplate(t),
+					RawExtension: v1beta1ResourceTemplate(t),
 				}},
 			},
 		},
@@ -208,7 +208,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+					RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: "tekton.dev/v1alpha1",
 						},
@@ -234,7 +234,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+					RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
 						TypeMeta: metav1.TypeMeta{
 							Kind: "PipelineRun",
 						},
@@ -260,7 +260,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+					RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: "foobar",
 							Kind:       "pipelinerun",
@@ -287,7 +287,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: test.RawExtension(t, pipelinev1alpha1.PipelineRun{
+					RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: "foo",
 							Kind:       "tekton.dev/v1alpha1",

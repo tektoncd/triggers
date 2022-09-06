@@ -18,7 +18,9 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
@@ -66,9 +68,14 @@ func (rs *RunSpec) Validate(ctx context.Context) *apis.FieldError {
 			return apis.ErrMissingField("spec.spec.kind")
 		}
 	}
-	if err := validateParameters("spec.params", rs.Params); err != nil {
+	if rs.Status == "" {
+		if rs.StatusMessage != "" {
+			return apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", rs.StatusMessage), "statusMessage")
+		}
+	}
+	if err := v1beta1.ValidateParameters(ctx, rs.Params).ViaField("spec.params"); err != nil {
 		return err
 	}
 
-	return validateWorkspaceBindings(ctx, rs.Workspaces)
+	return v1beta1.ValidateWorkspaceBindings(ctx, rs.Workspaces).ViaField("spec.workspaces")
 }

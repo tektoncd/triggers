@@ -35,16 +35,16 @@ import (
 func simpleResourceTemplate(t *testing.T) runtime.RawExtension {
 	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 	})
 }
 
-func v1alpha1ResourceTemplate(t *testing.T) runtime.RawExtension {
+func v1beta1ResourceTemplate(t *testing.T) runtime.RawExtension {
 	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 	})
@@ -53,7 +53,7 @@ func v1alpha1ResourceTemplate(t *testing.T) runtime.RawExtension {
 func paramResourceTemplate(t *testing.T) runtime.RawExtension {
 	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 		Spec: pipelinev1alpha1.PipelineRunSpec{
@@ -73,7 +73,7 @@ func paramResourceTemplate(t *testing.T) runtime.RawExtension {
 func invalidParamResourceTemplate(t *testing.T) runtime.RawExtension {
 	return test.RawExtension(t, pipelinev1alpha1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "PipelineRun",
 		},
 		Spec: pipelinev1alpha1.PipelineRunSpec{
@@ -170,7 +170,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 					Default:     ptr.String("val"),
 				}},
 				ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
-					RawExtension: v1alpha1ResourceTemplate(t),
+					RawExtension: v1beta1ResourceTemplate(t),
 				}},
 			},
 		},
