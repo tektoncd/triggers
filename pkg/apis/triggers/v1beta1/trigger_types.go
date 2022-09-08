@@ -40,6 +40,8 @@ type TriggerSpec struct {
 	// as the Trigger itself
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// +optional
+	Concurrency *Concurrency `json:"concurrency,omitempty"`
 }
 
 type TriggerSpecTemplate struct {

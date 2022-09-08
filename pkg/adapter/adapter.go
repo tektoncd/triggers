@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
 	clusterinterceptorsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
 	clustertriggerbindingsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
@@ -193,6 +194,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		DiscoveryClient:        s.Clients.DiscoveryClient,
 		DynamicClient:          dynamicclient.Get(ctx),
 		TriggersClient:         s.Clients.TriggersClient,
+		PipelineClient:         s.Clients.PipelineClient,
 		HTTPClient:             clientObj,
 		CEClient:               s.Clients.CEClient,
 		EventListenerName:      s.Args.ElName,
@@ -212,6 +214,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		ClusterTriggerBindingLister: clustertriggerbindingsinformer.Get(s.injCtx).Lister(),
 		TriggerTemplateLister:       triggertemplatesinformer.Get(s.injCtx).Lister(),
 		ClusterInterceptorLister:    clusterinterceptorsinformer.Get(s.injCtx).Lister(),
+		PipelineRunLister:           pipelineruninformer.Get(s.injCtx).Lister(),
 	}
 
 	mux := http.NewServeMux()

@@ -1,0 +1,85 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-listener
+  namespace: dogfood
+spec:
+  namespaceSelector: {}
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+      spec:
+        template:
+          metadata:
+            creationTimestamp: null
+          spec:
+            containers: null
+            serviceAccountName: dogfood-sa
+  serviceAccountName: default
+  triggers:
+  - bindings:
+    - kind: TriggerBinding
+      ref: github-check-binding
+    concurrency:
+      params:
+      - name: revision
+      key: $(params.revision)
+      strategy: "Cancel"
+    interceptors:
+    - params:
+      - name: secretRef
+        value:
+          secretKey: secretToken
+          secretName: github-secret
+      - name: eventTypes
+        value:
+        - check_suite
+      ref:
+        kind: ClusterInterceptor
+        name: github
+    - name: only when a new check suite is requested
+      params:
+      - name: filter
+        value: body.action in ['requested']
+      ref:
+        kind: ClusterInterceptor
+        name: cel
+    name: github-listener
+    template:
+      ref: github-template
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-template
+  namespace: dogfood
+spec:
+  params:
+  - name: repo-full-name
+  - name: revision
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: github-run-
+    spec:
+      params:
+      - name: repo-full-name
+        value: $(tt.params.repo-full-name)
+      - name: revision
+        value: $(tt.params.revision)
+      pipelineRef:
+        name: ci-pipeline
+      serviceAccountName: container-registry-sa
+      workspaces:
+      - name: github-app-private-key
+        secret:
+          secretName: github-app-key
+      - name: source
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi

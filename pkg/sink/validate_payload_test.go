@@ -77,7 +77,7 @@ func TestSink_IsValidPayload(t *testing.T) {
 			if len(tc.testResources.EventListeners) > 0 {
 				elName = tc.testResources.EventListeners[0].Name
 			}
-			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
+			sink, _, _ := getSinkAssets(t, tc.testResources, elName, nil)
 
 			for _, el := range tc.testResources.EventListeners {
 				el.Status.SetCondition(&apis.Condition{
@@ -148,7 +148,7 @@ func TestSink_IsValidPayload_PayloadValidation(t *testing.T) {
 			if len(tc.testResources.EventListeners) > 0 {
 				elName = tc.testResources.EventListeners[0].Name
 			}
-			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
+			sink, _, _ := getSinkAssets(t, tc.testResources, elName, nil)
 
 			for _, el := range tc.testResources.EventListeners {
 				el.Status.SetCondition(&apis.Condition{

@@ -106,6 +106,18 @@ type EventListenerTrigger struct {
 	// multi-tenant model based scenarios
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// +optional
+	Concurrency *Concurrency `json:"concurrency,omitempty"`
+}
+
+type Concurrency struct {
+	// +optional
+	// +listType=atomic
+	Params []ParamSpec `json:"params,omitempty"`
+	// +optional
+	Key string `json:"key,omitempty"`
+	// + optional
+	Strategy string `json:"strategy,omitempty"`
 }
 
 // EventListenerTriggerGroup defines a group of Triggers that share a common set of interceptors

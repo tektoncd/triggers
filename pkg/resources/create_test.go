@@ -194,7 +194,7 @@ func TestCreateResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dynamicClient.ClearActions()
-			if err := Create(logger.Sugar(), tt.json, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicSet); err != nil {
+			if err := Create(logger.Sugar(), tt.json, triggerName, eventID, elName, elNamespace, map[string]string{}, kubeClient.Discovery(), dynamicSet); err != nil {
 				t.Errorf("createResource() returned error: %s", err)
 			}
 

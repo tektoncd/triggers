@@ -74,6 +74,12 @@ func AddTektonResources(clientset *fakekubeclientset.Clientset) {
 			Namespaced: true,
 			Name:       "taskruns",
 			Kind:       "TaskRun",
+		}, {
+			Group:      "tekton.dev",
+			Version:    "v1beta1",
+			Namespaced: true,
+			Name:       "pipelineruns",
+			Kind:       "PipelineRun",
 		}},
 	})
 }

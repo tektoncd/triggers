@@ -129,7 +129,7 @@ func trigger(triggerFile, httpPath, action, kubeconfig string, writer io.Writer)
 			}
 		case "create":
 			{
-				err := r.CreateResources(tri.Namespace, "", resources, tri.Name, eventID, eventLog)
+				err := r.CreateResources(tri.Namespace, "", resources, tri.Name, eventID, map[string]string{}, eventLog)
 				if err != nil {
 					return fmt.Errorf("fail to create resources: %w", err)
 				}

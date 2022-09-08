@@ -99,7 +99,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "pipelineresources", "taskruns"]
-    verbs: ["create"]
+    verbs: ["create", "get", "list", "watch", "patch"]
   - apiGroups: [""]
     resources: ["serviceaccounts"]
     verbs: ["impersonate"]

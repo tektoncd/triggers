@@ -18,6 +18,7 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,6 +34,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -60,6 +62,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/ptr"
@@ -123,7 +126,7 @@ var (
 
 // getSinkAssets seeds test resources and returns a testable Sink and a dynamic client. The returned client is used to
 // create the fake resources and can be used to check if the correct resources were created.
-func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInterceptor http.Handler) (Sink, *fakedynamic.FakeDynamicClient) {
+func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInterceptor http.Handler) (Sink, *fakedynamic.FakeDynamicClient, context.Context) {
 	t.Helper()
 	ctx, _ := test.SetupFakeContext(t)
 	clients := test.SeedResources(t, ctx, res)
@@ -146,6 +149,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 		DiscoveryClient:             clients.Kube.Discovery(),
 		KubeClientSet:               clients.Kube,
 		TriggersClient:              clients.Triggers,
+		PipelineClient:              clients.Pipeline,
 		HTTPClient:                  httpClient,
 		CEClient:                    ceClient,
 		Logger:                      logger.Sugar(),
@@ -159,9 +163,10 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 		ClusterTriggerBindingLister: clustertriggerbindinginformer.Get(ctx).Lister(),
 		TriggerTemplateLister:       triggertemplateinformer.Get(ctx).Lister(),
 		ClusterInterceptorLister:    interceptorinformer.Get(ctx).Lister(),
+		PipelineRunLister:           pipelineruninformer.Get(ctx).Lister(),
 		PayloadValidation:           true,
 	}
-	return r, dynamicClient
+	return r, dynamicClient, ctx
 }
 
 // setupInterceptors creates a httptest server with all coreInterceptors and any passed in webhook interceptor
@@ -197,8 +202,8 @@ func setupInterceptors(t *testing.T, k kubernetes.Interface, l *zap.SugaredLogge
 	return httpClient
 }
 
-// toTaskRun returns the task run that were created from the given actions
-func toTaskRun(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
+// toRuns returns the task run that were created from the given actions
+func toTaskRuns(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
 	t.Helper()
 	trs := []pipelinev1.TaskRun{}
 	for i := range actions {
@@ -212,6 +217,23 @@ func toTaskRun(t *testing.T, actions []ktesting.Action) []pipelinev1.TaskRun {
 		trs = append(trs, tr)
 	}
 	return trs
+}
+
+// toRuns returns the task run that were created from the given actions
+func toPipelineRuns(t *testing.T, actions []ktesting.Action) []pipelinev1.PipelineRun {
+	t.Helper()
+	prs := []pipelinev1.PipelineRun{}
+	for i := range actions {
+		obj := actions[i].(ktesting.CreateAction).GetObject()
+		// Since we use dynamic client, we cannot directly get the concrete type
+		uns := obj.(*unstructured.Unstructured).Object
+		pr := pipelinev1.PipelineRun{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns, &pr); err != nil {
+			t.Errorf("failed to get created pipeline resource: %v", err)
+		}
+		prs = append(prs, pr)
+	}
+	return prs
 }
 
 // checkSinkResponse checks that the sink response status code is 202 and that
@@ -272,6 +294,42 @@ func trResourceTemplate(t testing.TB) runtime.RawExtension {
 	})
 }
 
+// prResourceTemplate returns a resourceTemplate for a CI pipelineRun
+func prResourceTemplate(t testing.TB) runtime.RawExtension {
+	return test.RawExtension(t, pipelinev1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "PipelineRun",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "$(tt.params.name)",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":  "$(tt.params.app)",
+				"type": "$(tt.params.type)",
+			},
+		},
+		Spec: pipelinev1.PipelineRunSpec{
+			Params: []pipelinev1.Param{{
+				Name: "url",
+				Value: pipelinev1.ArrayOrString{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: "$(tt.params.url)",
+				},
+			}, {
+				Name: "git-revision",
+				Value: pipelinev1.ArrayOrString{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: "$(tt.params.revision)",
+				},
+			}},
+			PipelineRef: &pipelinev1.PipelineRef{
+				Name: "ci",
+			},
+		},
+	})
+}
+
 func TestHandleEvent(t *testing.T) {
 	makeGitCloneTTSpec := func(name string) *triggersv1beta1.TriggerTemplateSpec {
 		return &triggersv1beta1.TriggerTemplateSpec{
@@ -287,6 +345,20 @@ func TestHandleEvent(t *testing.T) {
 			}},
 		}
 	}
+	makeCITTSpec := func(name string) *triggersv1beta1.TriggerTemplateSpec {
+		return &triggersv1beta1.TriggerTemplateSpec{
+			Params: []triggersv1beta1.ParamSpec{
+				{Name: "url"},
+				{Name: "revision"},
+				{Name: "name", Default: ptr.String(name)},
+				{Name: "app", Default: ptr.String("triggers")},
+				{Name: "type", Default: ptr.String("bar")},
+			},
+			ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
+				RawExtension: prResourceTemplate(t),
+			}},
+		}
+	}
 	var (
 		eventListenerName = "my-el"
 		eventBody         = json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
@@ -297,6 +369,14 @@ func TestHandleEvent(t *testing.T) {
 			},
 			Spec: *makeGitCloneTTSpec("git-clone-test-run"),
 		}
+		ciTT = &triggersv1beta1.TriggerTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ci",
+				Namespace: namespace,
+			},
+			Spec: *makeCITTSpec("ci-test-run"),
+		}
+
 		gitCloneTBSpec = []*triggersv1beta1.TriggerSpecBinding{
 			{Name: "url", Value: ptr.String("$(body.repository.url)")},
 			{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
@@ -320,6 +400,7 @@ func TestHandleEvent(t *testing.T) {
 				},
 			},
 		}
+		ciTB = gitCloneTB
 
 		// gitCloneTaskRun with values from gitCloneTBSpec
 		gitCloneTaskRun = pipelinev1.TaskRun{
@@ -347,6 +428,34 @@ func TestHandleEvent(t *testing.T) {
 					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
 				}},
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+			},
+		}
+		ciPipelineRun = pipelinev1.PipelineRun{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "PipelineRun",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "git-clone-run",
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app":                                  "bar\t\r\nbaz昨",
+					"type":                                 "application/json",
+					"triggers.tekton.dev/concurrency":      "testrevision-bar",
+					"triggers.tekton.dev/eventlistener":    eventListenerName,
+					"triggers.tekton.dev/trigger":          "ci-trigger",
+					"triggers.tekton.dev/triggers-eventid": "12345",
+				},
+			},
+			Spec: pipelinev1.PipelineRunSpec{
+				Params: []pipelinev1.Param{{
+					Name:  "url",
+					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
+				}, {
+					Name:  "git-revision",
+					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
+				}},
+				PipelineRef: &pipelinev1.PipelineRef{Name: "ci"},
 			},
 		}
 	)
@@ -388,9 +497,374 @@ func TestHandleEvent(t *testing.T) {
 		webhookInterceptor http.HandlerFunc
 		eventBody          []byte
 		headers            map[string][]string
-		// want is the resulting TaskRun(s) created by the EventListener
-		want []pipelinev1.TaskRun
+		// wantTaskRuns is the resulting TaskRun(s) created by the EventListener
+		wantTaskRuns            []pipelinev1.TaskRun
+		wantCreatedPipelineRuns []pipelinev1.PipelineRun
+		wantPipelineRuns        []pipelinev1.PipelineRun
 	}{{
+		name: "EventListener with trigger and concurrency; no running PipelineRuns",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+	}, {
+		name: "EventListener with trigger and concurrency; running PipelineRun with same label",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+			PipelineRuns: []*pipelinev1.PipelineRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "abc",
+					Namespace: namespace,
+					Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+				},
+				Status: pipelinev1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+				},
+			}},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+		wantPipelineRuns: []pipelinev1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "abc",
+				Namespace: namespace,
+				Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+			},
+			Spec: pipelinev1.PipelineRunSpec{
+				Status: "Cancelled",
+			},
+			Status: pipelinev1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "EventListener with trigger and concurrency; running PipelineRun with same label but different namespace",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+			PipelineRuns: []*pipelinev1.PipelineRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "abc",
+					Namespace: "different-namespace",
+					Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+				},
+				Status: pipelinev1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+				},
+			}},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+		wantPipelineRuns: []pipelinev1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "abc",
+				Namespace: "different-namespace",
+				Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+			},
+			Status: pipelinev1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "EventListener with trigger and concurrency; running PipelineRun with different label",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+			PipelineRuns: []*pipelinev1.PipelineRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "abc",
+					Namespace: namespace,
+					Labels:    map[string]string{"triggers.tekton.dev/concurrency": "different-key", "triggers.tekton.dev/trigger": "ci-trigger"},
+				},
+				Status: pipelinev1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+				},
+			}},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+		wantPipelineRuns: []pipelinev1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "abc",
+				Namespace: namespace,
+				Labels:    map[string]string{"triggers.tekton.dev/concurrency": "different-key", "triggers.tekton.dev/trigger": "ci-trigger"},
+			},
+			Status: pipelinev1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "EventListener with trigger and concurrency; pending PipelineRun with same label",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+			PipelineRuns: []*pipelinev1.PipelineRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "abc",
+					Namespace: namespace,
+					Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+				},
+				Spec: pipelinev1.PipelineRunSpec{
+					Status: "PipelineRunPending",
+				},
+				Status: pipelinev1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+				},
+			}},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+		wantPipelineRuns: []pipelinev1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "abc",
+				Namespace: namespace,
+				Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+			},
+			Spec: pipelinev1.PipelineRunSpec{
+				Status: "Cancelled",
+			},
+			Status: pipelinev1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "EventListener with trigger and concurrency; completed PipelineRun with same label",
+		resources: test.Resources{
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Name: "ci-trigger",
+						Bindings: []*triggersv1beta1.EventListenerBinding{{
+							Ref:  "git-clone",
+							Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+						}},
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("ci"),
+						},
+						Concurrency: &triggersv1beta1.Concurrency{
+							Params: []triggersv1beta1.ParamSpec{{
+								Name: "foo",
+							}},
+							Key:      "$(params.revision)-bar",
+							Strategy: "Cancel",
+						},
+					}},
+				},
+			}},
+			TriggerBindings:  []*triggersv1beta1.TriggerBinding{ciTB},
+			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{ciTT},
+			PipelineRuns: []*pipelinev1.PipelineRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "abc",
+					Namespace: namespace,
+					Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+				},
+				Status: pipelinev1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+				},
+			}},
+		},
+		eventBody:               eventBody,
+		wantCreatedPipelineRuns: []pipelinev1.PipelineRun{ciPipelineRun},
+		wantPipelineRuns: []pipelinev1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "abc",
+				Namespace: namespace,
+				Labels:    map[string]string{"triggers.tekton.dev/concurrency": "testrevision-bar", "triggers.tekton.dev/trigger": "ci-trigger"},
+			},
+			Status: pipelinev1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+			},
+		}},
+	}, {
 		name: "single trigger embedded within EventListener",
 		resources: test.Resources{
 			EventListeners: []*triggersv1beta1.EventListener{{
@@ -415,8 +889,8 @@ func TestHandleEvent(t *testing.T) {
 			TriggerBindings:  []*triggersv1beta1.TriggerBinding{gitCloneTB},
 			TriggerTemplates: []*triggersv1beta1.TriggerTemplate{gitCloneTT},
 		},
-		eventBody: eventBody,
-		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+		eventBody:    eventBody,
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "namespace selector match names",
 		resources: test.Resources{
@@ -470,8 +944,8 @@ func TestHandleEvent(t *testing.T) {
 				},
 			}},
 		},
-		eventBody: eventBody,
-		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+		eventBody:    eventBody,
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "label selector match expressions",
 		resources: test.Resources{
@@ -545,7 +1019,7 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		// only one of the tasks is invoked
-		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "label selector match expressions without namespace selector",
 		resources: test.Resources{
@@ -616,7 +1090,7 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		// only one of the tasks is invoked
-		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "eventlistener with a trigger ref",
 		resources: test.Resources{
@@ -645,8 +1119,8 @@ func TestHandleEvent(t *testing.T) {
 				},
 			}},
 		},
-		eventBody: eventBody,
-		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+		eventBody:    eventBody,
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "eventlistener with ref to trigger with embedded spec",
 		resources: test.Resources{
@@ -673,8 +1147,8 @@ func TestHandleEvent(t *testing.T) {
 				},
 			}},
 		},
-		eventBody: eventBody,
-		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+		eventBody:    eventBody,
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "with GitHub and CEL interceptors",
 		resources: test.Resources{
@@ -729,7 +1203,7 @@ func TestHandleEvent(t *testing.T) {
 			"X-GitHub-Event":  {"pull_request"},
 			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody, "sha1")},
 		},
-		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "with BitBucket interceptor",
 		resources: test.Resources{
@@ -784,7 +1258,7 @@ func TestHandleEvent(t *testing.T) {
 			"X-Event-Key":     {"repo:refs_changed"},
 			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody, "sha1")},
 		},
-		want: []pipelinev1.TaskRun{gitCloneTaskRun},
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
 		name: "eventListener with multiple triggers",
 		resources: test.Resources{
@@ -802,8 +1276,8 @@ func TestHandleEvent(t *testing.T) {
 			}},
 			Triggers: tenGitCloneTriggers,
 		},
-		eventBody: eventBody,
-		want:      tenGitCloneTaskRuns,
+		eventBody:    eventBody,
+		wantTaskRuns: tenGitCloneTaskRuns,
 	}, {
 		name: "with webhook interceptors",
 		resources: test.Resources{
@@ -867,7 +1341,7 @@ func TestHandleEvent(t *testing.T) {
 			_, _ = w.Write([]byte(body))
 		}),
 		eventBody: eventBody,
-		want: []pipelinev1.TaskRun{{
+		wantTaskRuns: []pipelinev1.TaskRun{{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1beta1",
 				Kind:       "TaskRun",
@@ -1001,7 +1475,7 @@ func TestHandleEvent(t *testing.T) {
 			_, _ = w.Write([]byte(body))
 		}),
 		eventBody: eventBody,
-		want: []pipelinev1.TaskRun{
+		wantTaskRuns: []pipelinev1.TaskRun{
 			{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "tekton.dev/v1beta1",
@@ -1108,14 +1582,14 @@ func TestHandleEvent(t *testing.T) {
 			TriggerTemplates:    []*triggersv1beta1.TriggerTemplate{gitCloneTT},
 			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
 		},
-		eventBody: eventBody,
-		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+		eventBody:    eventBody,
+		wantTaskRuns: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// TODO: Do we ever support multiple eventListeners? Maybe change test.Resources to only accept one?
 			elName := tc.resources.EventListeners[0].Name
-			sink, dynamicClient := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
+			sink, dynamicClient, ctx := getSinkAssets(t, tc.resources, elName, tc.webhookInterceptor)
 
 			for _, j := range tc.resources.EventListeners {
 				j.Status.SetCondition(&apis.Condition{
@@ -1143,14 +1617,37 @@ func TestHandleEvent(t *testing.T) {
 			checkSinkResponse(t, resp, elName)
 			sink.WGProcessTriggers.Wait()
 			// Check right resources were created.
-			got := toTaskRun(t, dynamicClient.Actions())
 
-			// Sort TaskRuns when comparing (we do not know what order they were created in)
-			compareTaskRuns := func(x, y pipelinev1.TaskRun) bool {
-				return x.Name < y.Name
+			if tc.wantTaskRuns != nil {
+				gotTRs := toTaskRuns(t, dynamicClient.Actions())
+				// Sort TaskRuns when comparing (we do not know what order they were created in)
+				compareTaskRuns := func(x, y pipelinev1.TaskRun) bool {
+					return x.Name < y.Name
+				}
+				if diff := cmp.Diff(tc.wantTaskRuns, gotTRs, cmpopts.SortSlices(compareTaskRuns), cmpopts.EquateEmpty()); diff != "" {
+					t.Errorf("Created taskruns mismatch (-want + got): %s", diff)
+				}
+			} else if tc.wantCreatedPipelineRuns != nil {
+				gotPRs := toPipelineRuns(t, dynamicClient.Actions())
+				comparePipelineRuns := func(x, y pipelinev1.PipelineRun) bool {
+					return x.Name < y.Name
+				}
+				if diff := cmp.Diff(tc.wantCreatedPipelineRuns, gotPRs, cmpopts.SortSlices(comparePipelineRuns), cmpopts.EquateEmpty()); diff != "" {
+					t.Errorf("Created pipelineruns mismatch (-want + got): %s", diff)
+				}
 			}
-			if diff := cmp.Diff(tc.want, got, cmpopts.SortSlices(compareTaskRuns)); diff != "" {
-				t.Errorf("Created resources mismatch (-want + got): %s", diff)
+			if tc.wantPipelineRuns != nil {
+				for _, pr := range tc.wantPipelineRuns {
+					ns := pr.ObjectMeta.Namespace
+					name := pr.ObjectMeta.Name
+					got, err := sink.PipelineClient.TektonV1beta1().PipelineRuns(ns).Get(ctx, name, metav1.GetOptions{})
+					if err != nil {
+						t.Errorf("error getting PR %s in ns %s: %s", name, ns, err)
+					}
+					if d := cmp.Diff(&pr, got); d != "" {
+						t.Errorf("unexpected diff %s", d)
+					}
+				}
 			}
 		})
 	}
@@ -1203,7 +1700,7 @@ func TestHandleEvent_Error(t *testing.T) {
 			if len(tc.testResources.EventListeners) > 0 {
 				elName = tc.testResources.EventListeners[0].Name
 			}
-			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
+			sink, _, _ := getSinkAssets(t, tc.testResources, elName, nil)
 
 			// Setup a logger to capture logs to compare later
 			core, logs := observer.New(zapcore.DebugLevel)
@@ -1398,7 +1895,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	resources := test.Resources{
 		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
 	}
-	s, _ := getSinkAssets(t, resources, "el-name", nil)
+	s, _, _ := getSinkAssets(t, resources, "el-name", nil)
 	trigger := triggersv1beta1.Trigger{
 		Spec: triggersv1beta1.TriggerSpec{
 			Interceptors: []*triggersv1beta1.EventInterceptor{{
@@ -1449,7 +1946,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 	resources := test.Resources{
 		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
 	}
-	s, _ := getSinkAssets(t, resources, "", echoServer)
+	s, _, _ := getSinkAssets(t, resources, "", echoServer)
 
 	sha := "abcdefghi" // Fake "sha" to send via body
 	// trigger has a chain of 3 interceptors CEL(overlay) -> webhook -> CEL(filter)

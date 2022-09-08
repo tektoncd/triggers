@@ -21,6 +21,7 @@ import (
 	"flag"
 	"time"
 
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/sink/cloudevent"
 	"golang.org/x/xerrors"
@@ -117,6 +118,7 @@ type Clients struct {
 	DiscoveryClient discoveryclient.DiscoveryInterface
 	RESTClient      restclient.Interface
 	TriggersClient  triggersclientset.Interface
+	PipelineClient  pipelineclientset.Interface
 	K8sClient       *kubeclientset.Clientset
 	CEClient        cloudevent.CEClient
 }
@@ -165,11 +167,16 @@ func ConfigureClients(ctx context.Context, clusterConfig *rest.Config) (Clients,
 	if err != nil {
 		return Clients{}, xerrors.Errorf("Failed to create TriggersClient: %s", err)
 	}
+	pipelineClient, err := pipelineclientset.NewForConfig(clusterConfig)
+	if err != nil {
+		return Clients{}, xerrors.Errorf("Failed to create PipelineClient: %s", err)
+	}
 	ceClient := cloudevent.Get(ctx)
 	return Clients{
 		DiscoveryClient: kubeClient.Discovery(),
 		RESTClient:      kubeClient.RESTClient(),
 		TriggersClient:  triggersClient,
+		PipelineClient:  pipelineClient,
 		K8sClient:       kubeClient,
 		CEClient:        ceClient,
 	}, nil

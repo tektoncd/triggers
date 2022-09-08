@@ -27,6 +27,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelinelisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -40,9 +43,11 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
+	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +60,7 @@ import (
 type Sink struct {
 	KubeClientSet          kubernetes.Interface
 	TriggersClient         triggersclientset.Interface
+	PipelineClient         pipelineclientset.Interface
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
 	HTTPClient             *http.Client
@@ -78,6 +84,7 @@ type Sink struct {
 	ClusterTriggerBindingLister listers.ClusterTriggerBindingLister
 	TriggerTemplateLister       listers.TriggerTemplateLister
 	ClusterInterceptorLister    listersv1alpha1.ClusterInterceptorLister
+	PipelineRunLister           pipelinelisters.PipelineRunLister
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
@@ -271,6 +278,7 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 					Bindings:           t.Bindings,
 					Template:           *t.Template,
 					Interceptors:       t.Interceptors,
+					Concurrency:        t.Concurrency,
 				},
 			})
 		default:
@@ -409,7 +417,44 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 	log.Infof("ResolvedParams : %+v", params)
 	resources := template.ResolveResources(rt.TriggerTemplate, params)
 
-	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, log); err != nil {
+	extraLabels := make(map[string]string, 0)
+	if t.Spec.Concurrency != nil {
+		// Get concurrency labels; query for all pipelineruns with the same concurrency labels; cancel them all in goroutines;
+		// then create the resource
+		concurrencyKey := GetConcurrencyKey(t.Spec.Concurrency, params)
+		if t.Spec.Concurrency.Strategy != "Cancel" {
+			log.Error("unsupported strategy %s", t.Spec.Concurrency.Strategy)
+			return
+		}
+		extraLabels = map[string]string{concurrencyLabelKey: concurrencyKey}
+		labelSelector := map[string]string{fmt.Sprintf("triggers.tekton.dev/%s", concurrencyLabelKey): concurrencyKey, fmt.Sprintf("triggers.tekton.dev%s", triggers.TriggerLabelKey): t.Name}
+		selector := labels.SelectorFromSet(labelSelector)
+		prsToCancel, err := r.PipelineRunLister.PipelineRuns(el.Namespace).List(selector)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		cancelPipelineRunPatchBytes, _ := json.Marshal([]jsonpatch.JsonPatchOperation{
+			{
+				Operation: "add",
+				Path:      "/spec/status",
+				Value:     v1beta1.PipelineRunSpecStatusCancelled, // TODO: support different values based on concurrency strategy
+			}})
+		wg := sync.WaitGroup{}
+		for _, pr := range prsToCancel {
+			if !pr.IsDone() {
+				wg.Add(1)
+				go func(p *v1beta1.PipelineRun) {
+					defer wg.Done()
+					_, _ = r.PipelineClient.TektonV1beta1().PipelineRuns(el.Namespace).Patch(context.Background(), p.Name, types.JSONPatchType, cancelPipelineRunPatchBytes, metav1.PatchOptions{}, "")
+				}(pr)
+			}
+		}
+		// TODO: For actual implementation this shouldn't block
+		wg.Wait()
+	}
+
+	if err := r.CreateResources(t.Namespace, t.Spec.ServiceAccountName, resources, t.Name, eventID, extraLabels, log); err != nil {
 		log.Error(err)
 		return
 	}
@@ -502,7 +547,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 	}, nil
 }
 
-func (r Sink) CreateResources(triggerNS, sa string, res []json.RawMessage, triggerName, eventID string, log *zap.SugaredLogger) error {
+func (r Sink) CreateResources(triggerNS, sa string, res []json.RawMessage, triggerName, eventID string, labels map[string]string, log *zap.SugaredLogger) error {
 	discoveryClient := r.DiscoveryClient
 	dynamicClient := r.DynamicClient
 	var err error
@@ -520,7 +565,7 @@ func (r Sink) CreateResources(triggerNS, sa string, res []json.RawMessage, trigg
 	}
 
 	for _, rr := range res {
-		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, triggerNS, discoveryClient, dynamicClient); err != nil {
+		if err := resources.Create(r.Logger, rr, triggerName, eventID, r.EventListenerName, triggerNS, labels, discoveryClient, dynamicClient); err != nil {
 			log.Errorf("problem creating obj: %#v", err)
 			return err
 		}

@@ -63,7 +63,7 @@ func findAPIResource(apiVersion, kind string, c discoveryclient.ServerResourcesI
 
 // Create uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
-func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID, elName, elNamespace string, c discoveryclient.ServerResourcesInterface, dc dynamic.Interface) error {
+func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID, elName, elNamespace string, labels map[string]string, c discoveryclient.ServerResourcesInterface, dc dynamic.Interface) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(rt); err != nil {
@@ -75,6 +75,10 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 		triggers.EventIDLabelKey:       eventID,
 		triggers.TriggerLabelKey:       triggerName,
 	})
+	if err != nil {
+		return err
+	}
+	data, err = addLabels(data, labels)
 	if err != nil {
 		return err
 	}

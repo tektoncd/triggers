@@ -23,8 +23,10 @@ import (
 
 	// Link in the fakes so they get injected into injection.Fake
 	logger "github.com/sirupsen/logrus"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
+	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -84,6 +86,7 @@ type Resources struct {
 	ServiceAccounts        []*corev1.ServiceAccount
 	Pods                   []*corev1.Pod
 	WithPod                []*duckv1.WithPod
+	PipelineRuns           []*pipelinev1beta1.PipelineRun
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -147,6 +150,7 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 	secretInformer := fakesecretinformer.Get(ctx)
 	saInformer := fakeserviceaccountinformer.Get(ctx)
 	podInformer := fakepodinformer.Get(ctx)
+	pipelineRunInformer := fakepipelineruninformer.Get(ctx)
 	duckInformerFactory := duckinformerfake.Get(ctx)
 
 	// Create Namespaces
@@ -266,6 +270,14 @@ func SeedResources(t *testing.T, ctx context.Context, r Resources) Clients {
 		}
 		dynamicInterface := c.DynamicClient.Resource(gvr)
 		if _, err := dynamicInterface.Namespace(data.GetNamespace()).Create(context.Background(), data, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, pr := range r.PipelineRuns {
+		if err := pipelineRunInformer.Informer().GetIndexer().Add(pr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Pipeline.TektonV1beta1().PipelineRuns(pr.Namespace).Create(context.Background(), pr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
