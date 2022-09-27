@@ -47,6 +47,9 @@ func toString(rawMessages []json.RawMessage) []string {
 }
 
 func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
+	context := TriggerContext{
+		EventID: "1234567",
+	}
 	var (
 		oneDefault   = "onedefault"
 		twoDefault   = "twodefault"
@@ -127,7 +130,7 @@ func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs)
+			got, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs, context)
 			if err != nil {
 				t.Errorf("applyEventValuesToParams(): unexpected error: %s", err.Error())
 			}
@@ -141,6 +144,9 @@ func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
 func TestApplyEventValuesToParams(t *testing.T) {
 	var objects = `{"a":"v","c":{"d":"e"},"empty": "","null": null, "number": 42}`
 	var arrays = `[{"a": "b"}, {"c": "d"}, {"e": "f"}]`
+	context := TriggerContext{
+		EventID: "1234567",
+	}
 	tests := []struct {
 		name   string
 		params []triggersv1.Param
@@ -300,7 +306,7 @@ func TestApplyEventValuesToParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -312,6 +318,9 @@ func TestApplyEventValuesToParams(t *testing.T) {
 }
 
 func TestApplyEventValuesToParams_Error(t *testing.T) {
+	context := TriggerContext{
+		EventID: "1234567",
+	}
 	tests := []struct {
 		name       string
 		params     []triggersv1.Param
@@ -341,7 +350,7 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil)
+			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", got)
 			}
@@ -350,6 +359,8 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 }
 
 func TestResolveParams(t *testing.T) {
+	eventID := "1234567"
+
 	tests := []struct {
 		name          string
 		bindingParams []triggersv1.Param
@@ -450,10 +461,12 @@ func TestResolveParams(t *testing.T) {
 		bindingParams: []triggersv1.Param{
 			{Name: "param1", Value: "qux"},
 			{Name: "param2", Value: "$(body.foo)"},
+			{Name: "event1", Value: "$(context.eventID)"},
 		},
 		want: []triggersv1.Param{
 			{Name: "param1", Value: "qux"},
 			{Name: "param2", Value: "bar\\r\\nbaz"},
+			{Name: "event1", Value: "1234567"},
 		},
 	}}
 
@@ -463,7 +476,8 @@ func TestResolveParams(t *testing.T) {
 				BindingParams:   tt.bindingParams,
 				TriggerTemplate: tt.template,
 			}
-			params, err := ResolveParams(rt, tt.body, map[string][]string{}, tt.extensions)
+
+			params, err := ResolveParams(rt, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
 			if err != nil {
 				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
 			}
@@ -475,6 +489,8 @@ func TestResolveParams(t *testing.T) {
 }
 
 func TestResolveParams_Error(t *testing.T) {
+	eventID := "1234567"
+
 	tests := []struct {
 		name          string
 		body          []byte
@@ -495,7 +511,7 @@ func TestResolveParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{}, tt.extensions)
+			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", params)
 			}

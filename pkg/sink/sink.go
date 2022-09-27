@@ -400,7 +400,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
-	params, err := template.ResolveParams(rt, finalPayload, header, extensions)
+	params, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
 	if err != nil {
 		log.Error(err)
 		return
