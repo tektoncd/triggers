@@ -36,15 +36,23 @@ const (
 	OldEscapeAnnotation = "triggers.tekton.dev/old-escape-quotes"
 )
 
+type TriggerContext struct {
+	EventID string `json:"eventID"`
+}
+
+func NewTriggerContext(eventID string) TriggerContext {
+	return TriggerContext{EventID: eventID}
+}
+
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
-func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}) ([]triggersv1.Param, error) {
+func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}, triggerContext TriggerContext) ([]triggersv1.Param, error) {
 	var ttParams []triggersv1.ParamSpec
 	if rt.TriggerTemplate != nil {
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	out, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams)
+	out, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams, triggerContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
@@ -71,10 +79,11 @@ type event struct {
 	Header     map[string]string      `json:"header"`
 	Body       interface{}            `json:"body"`
 	Extensions map[string]interface{} `json:"extensions"`
+	Context    TriggerContext         `json:"context"`
 }
 
 // newEvent returns a new Event from HTTP headers and body
-func newEvent(body []byte, headers http.Header, extensions map[string]interface{}) (*event, error) {
+func newEvent(body []byte, headers http.Header, extensions map[string]interface{}, triggerContext TriggerContext) (*event, error) {
 	var data interface{}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &data); err != nil {
@@ -90,14 +99,16 @@ func newEvent(body []byte, headers http.Header, extensions map[string]interface{
 		Header:     joinedHeaders,
 		Body:       data,
 		Extensions: extensions,
+		Context:    triggerContext,
 	}, nil
 }
 
 // applyEventValuesToParams returns a slice of Params with the JSONPath variables replaced
 // with values from the event body, headers, and extensions.
 func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header, extensions map[string]interface{},
-	defaults []triggersv1.ParamSpec) ([]triggersv1.Param, error) {
-	event, err := newEvent(body, header, extensions)
+	defaults []triggersv1.ParamSpec,
+	triggerContext TriggerContext) ([]triggersv1.Param, error) {
+	event, err := newEvent(body, header, extensions, triggerContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal event: %w", err)
 	}
