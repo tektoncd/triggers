@@ -25,6 +25,20 @@ subjects:
   namespace: my-favorite-namespace
 ```
 
+3. Apply the `git-clone` task from the Tekton catalog to the cluster
+
+This can be done either via kubectl:
+
+```
+kubectl apply -n my-favorite-namespace -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.8/git-clone.yaml
+```
+
+or via the `tkn` CLI:
+
+```
+tkn hub install task git-clone -n my-favorite-namespace
+```
+
 ## Creating Triggers Resources
 
 Create the trigger resources for each example by applying the YAMLs from the sub-folders.  Some examples have 
