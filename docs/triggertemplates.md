@@ -56,15 +56,13 @@ spec:
         value: $(tt.params.message)
       - name: contenttype
         value: $(tt.params.contenttype)
-      resources:
+      - name: git-revision
+        value: $(tt.params.gitrevision)
+      - name: git-url
+        value: $(tt.params.gitrepositoryurl)
+      workspaces:
       - name: git-source
-        resourceSpec:
-          type: git
-          params:
-          - name: revision
-            value: $(tt.params.gitrevision)
-          - name: url
-            value: $(tt.params.gitrepositoryurl)
+        emptyDir: {}
 ```
 
 Keep the following in mind:
