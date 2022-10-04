@@ -2,6 +2,7 @@
 
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/tektoncd/triggers)
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/triggers)](https://goreportcard.com/report/github.com/tektoncd/triggers)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6527/badge)](https://bestpractices.coreinfrastructure.org/projects/6527)
 
 
 <p align="center">
