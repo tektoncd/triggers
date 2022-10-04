@@ -1202,7 +1202,7 @@ SecretRef
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;ClusterInterceptor&#34;</p></td>
-<td><p>ClusterTaskKind indicates that task type has a cluster scope.</p>
+<td><p>ClusterInterceptorKind indicates that Interceptor type has a cluster scope.</p>
 </td>
 </tr></tbody>
 </table>
@@ -3610,7 +3610,7 @@ SecretRef
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;ClusterInterceptor&#34;</p></td>
-<td><p>ClusterTaskKind indicates that task type has a cluster scope.</p>
+<td><p>ClusterInterceptorKind indicates that Interceptor type has a cluster scope.</p>
 </td>
 </tr></tbody>
 </table>
