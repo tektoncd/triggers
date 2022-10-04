@@ -122,7 +122,7 @@ type InterceptorRef struct {
 type InterceptorKind string
 
 const (
-	// ClusterTaskKind indicates that task type has a cluster scope.
+	// ClusterInterceptorKind indicates that Interceptor type has a cluster scope.
 	ClusterInterceptorKind InterceptorKind = "ClusterInterceptor"
 )
 
