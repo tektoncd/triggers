@@ -18,8 +18,10 @@ package sink
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -28,7 +30,9 @@ import (
 	"sync"
 	"testing"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	cloudeventstest "github.com/cloudevents/sdk-go/v2/client/test"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
@@ -273,20 +277,6 @@ func trResourceTemplate(t testing.TB) runtime.RawExtension {
 }
 
 func TestHandleEvent(t *testing.T) {
-	makeGitCloneTTSpec := func(name string) *triggersv1beta1.TriggerTemplateSpec {
-		return &triggersv1beta1.TriggerTemplateSpec{
-			Params: []triggersv1beta1.ParamSpec{
-				{Name: "url"},
-				{Name: "revision"},
-				{Name: "name", Default: ptr.String(name)},
-				{Name: "app", Default: ptr.String("triggers")},
-				{Name: "type", Default: ptr.String("bar")},
-			},
-			ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
-				RawExtension: trResourceTemplate(t),
-			}},
-		}
-	}
 	var (
 		eventListenerName = "my-el"
 		eventBody         = json.RawMessage(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar\t\r\nbaz昨"}`)
@@ -295,7 +285,7 @@ func TestHandleEvent(t *testing.T) {
 				Name:      "git-clone",
 				Namespace: namespace,
 			},
-			Spec: *makeGitCloneTTSpec("git-clone-test-run"),
+			Spec: *makeGitCloneTTSpec(t, "git-clone-test-run"),
 		}
 		gitCloneTBSpec = []*triggersv1beta1.TriggerSpecBinding{
 			{Name: "url", Value: ptr.String("$(body.repository.url)")},
@@ -367,7 +357,7 @@ func TestHandleEvent(t *testing.T) {
 					{Name: "app", Value: ptr.String("$(body.foo)")},
 					{Name: "type", Value: ptr.String("$(header.Content-Type)")},
 				},
-				Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(fmt.Sprintf("git-clone-run-%d", i))},
+				Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, fmt.Sprintf("git-clone-run-%d", i))},
 			},
 		})
 	}
@@ -445,7 +435,7 @@ func TestHandleEvent(t *testing.T) {
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
-				Spec: *makeGitCloneTTSpec("git-clone-test-run"),
+				Spec: *makeGitCloneTTSpec(t, "git-clone-test-run"),
 			}},
 			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
@@ -500,7 +490,7 @@ func TestHandleEvent(t *testing.T) {
 					Name:      "git-clone",
 					Namespace: "bar",
 				},
-				Spec: *makeGitCloneTTSpec("git-clone-test-run"),
+				Spec: *makeGitCloneTTSpec(t, "git-clone-test-run"),
 			}},
 			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
@@ -574,7 +564,7 @@ func TestHandleEvent(t *testing.T) {
 					Name:      "git-clone",
 					Namespace: namespace,
 				},
-				Spec: *makeGitCloneTTSpec("git-clone-test-run"),
+				Spec: *makeGitCloneTTSpec(t, "git-clone-test-run"),
 			}},
 			Triggers: []*triggersv1beta1.Trigger{{
 				ObjectMeta: metav1.ObjectMeta{
@@ -657,7 +647,7 @@ func TestHandleEvent(t *testing.T) {
 				},
 				Spec: triggersv1beta1.TriggerSpec{
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-test-run")},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-test-run")},
 				},
 			}},
 			EventListeners: []*triggersv1beta1.EventListener{{
@@ -708,7 +698,7 @@ func TestHandleEvent(t *testing.T) {
 						}},
 					}},
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-test-run")},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-test-run")},
 				},
 			}},
 			EventListeners: []*triggersv1beta1.EventListener{{
@@ -763,7 +753,7 @@ func TestHandleEvent(t *testing.T) {
 						}},
 					}},
 					Bindings: gitCloneTBSpec,
-					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-test-run")},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-test-run")},
 				},
 			}},
 			EventListeners: []*triggersv1beta1.EventListener{{
@@ -834,7 +824,7 @@ func TestHandleEvent(t *testing.T) {
 						{Name: "revision", Value: ptr.String("master")},
 						{Name: "name", Value: ptr.String("$(body.name)")}, // Header added by Webhook Interceptor
 					},
-					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-test-run")},
+					Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-test-run")},
 				},
 			}},
 			EventListeners: []*triggersv1beta1.EventListener{{
@@ -922,7 +912,7 @@ func TestHandleEvent(t *testing.T) {
 							{Name: "revision", Value: ptr.String("master")},
 							{Name: "name", Value: ptr.String("$(body.name)")}, // Header added by Webhook Interceptor
 						},
-						Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-trigger")},
+						Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-trigger")},
 					},
 				},
 				{
@@ -948,7 +938,7 @@ func TestHandleEvent(t *testing.T) {
 							{Name: "revision", Value: ptr.String("master")},
 							{Name: "name", Value: ptr.String("$(body.name)")}, // Header added by Webhook Interceptor
 						},
-						Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec("git-clone-trigger-2")},
+						Template: triggersv1beta1.TriggerSpecTemplate{Spec: makeGitCloneTTSpec(t, "git-clone-trigger-2")},
 					},
 				},
 			},
@@ -1587,5 +1577,158 @@ func TestExtendBodyWithExtensions(t *testing.T) {
 				t.Fatalf("extendBodyWithExtensions() diff -want/+got: %s", diff)
 			}
 		})
+	}
+}
+
+func TestCloudEventHandling(t *testing.T) {
+	elName := "test-el"
+	gitCloneTT := &triggersv1beta1.TriggerTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-clone",
+			Namespace: namespace,
+		},
+		Spec: *makeGitCloneTTSpec(t, "git-clone-test-run"),
+	}
+	gitCloneTB := &triggersv1beta1.TriggerBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-clone",
+			Namespace: namespace,
+		},
+		Spec: triggersv1beta1.TriggerBindingSpec{
+			Params: []triggersv1beta1.Param{
+				{Name: "url", Value: "$(body.repository.url)"},
+				{Name: "revision", Value: "$(body.head_commit.id)"},
+				{Name: "name", Value: "git-clone-run"},
+				{Name: "app", Value: "$(body.foo)"},
+				{Name: "type", Value: "$(header.Content-Type)"},
+			},
+		},
+	}
+
+	resources := test.Resources{
+		EventListeners: []*triggersv1beta1.EventListener{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      elName,
+				Namespace: namespace,
+				UID:       types.UID(elUID),
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					Name: "git-clone-trigger",
+					Bindings: []*triggersv1beta1.EventListenerBinding{{
+						Ref:  "git-clone",
+						Kind: triggersv1beta1.NamespacedTriggerBindingKind,
+					}},
+					Template: &triggersv1beta1.EventListenerTemplate{
+						Ref: ptr.String("git-clone"),
+					},
+				}},
+			},
+		}},
+		TriggerBindings:  []*triggersv1beta1.TriggerBinding{gitCloneTB},
+		TriggerTemplates: []*triggersv1beta1.TriggerTemplate{gitCloneTT},
+	}
+
+	sink, dynamicClient := getSinkAssets(t, resources, elName, nil)
+
+	for _, j := range resources.EventListeners {
+		j.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionReady,
+			Status:  corev1.ConditionTrue,
+			Message: "EventListener is Ready",
+		})
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+	t.Cleanup(func() {
+		ts.Close()
+	})
+
+	c, err := cloudevents.NewClientHTTP()
+	if err != nil {
+		log.Fatalf("failed to create client, %v", err)
+	}
+
+	event := cloudevents.NewEvent()
+	event.SetType("testing.cloudevent")
+	event.SetSource("testing")
+	event.SetData(cloudevents.ApplicationJSON, map[string]interface{}{
+		"head_commit": map[string]interface{}{
+			"id": "testrevision",
+		},
+		"repository": map[string]interface{}{
+			"url": "testurl",
+		},
+		"foo": "bar\t\r\nbaz昨",
+	})
+
+	ctx := cloudevents.ContextWithTarget(context.Background(), ts.URL)
+
+	evt, res := c.Request(ctx, event)
+	if !protocol.IsACK(res) {
+		t.Fatalf("failed to make request: %+v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := evt.DataAs(&decoded); err != nil {
+		t.Fatalf("failed to decode data in cloud event response: %s", err)
+	}
+	wantEvent := map[string]interface{}{
+		"eventID":          "12345",
+		"eventListener":    "test-el",
+		"eventListenerUID": "el-uid",
+		"namespace":        "foo",
+	}
+	if diff := cmp.Diff(wantEvent, decoded); diff != "" {
+		t.Errorf("CloudEvent: -want +got: %s", diff)
+	}
+
+	gitCloneTaskRun := pipelinev1.TaskRun{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "TaskRun",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-clone-run",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":                                  "bar\t\r\nbaz昨",
+				"type":                                 "application/json",
+				"triggers.tekton.dev/eventlistener":    elName,
+				"triggers.tekton.dev/trigger":          "git-clone-trigger",
+				"triggers.tekton.dev/triggers-eventid": "12345",
+			},
+		},
+		Spec: pipelinev1.TaskRunSpec{
+			Params: []pipelinev1.Param{{
+				Name:  "url",
+				Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
+			}, {
+				Name:  "git-revision",
+				Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
+			}},
+			TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+		},
+	}
+	sink.WGProcessTriggers.Wait()
+	wantTaskRuns := []pipelinev1.TaskRun{gitCloneTaskRun}
+	got := toTaskRun(t, dynamicClient.Actions())
+	if diff := cmp.Diff(wantTaskRuns, got); diff != "" {
+		t.Errorf("Created resources mismatch (-want +got): %s", diff)
+	}
+}
+
+func makeGitCloneTTSpec(t *testing.T, name string) *triggersv1beta1.TriggerTemplateSpec {
+	return &triggersv1beta1.TriggerTemplateSpec{
+		Params: []triggersv1beta1.ParamSpec{
+			{Name: "url"},
+			{Name: "revision"},
+			{Name: "name", Default: ptr.String(name)},
+			{Name: "app", Default: ptr.String("triggers")},
+			{Name: "type", Default: ptr.String("bar")},
+		},
+		ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
+			RawExtension: trResourceTemplate(t),
+		}},
 	}
 }

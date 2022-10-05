@@ -27,6 +27,10 @@ import (
 	"os"
 	"sync"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/cloudevents/sdk-go/v2/binding"
+	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
+	"github.com/google/uuid"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -208,18 +212,43 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	}
 
 	r.recordCountMetrics(successTag)
-	response.WriteHeader(http.StatusAccepted)
-	response.Header().Set("Content-Type", "application/json")
+
 	body := Response{
 		EventListener:    r.EventListenerName,
 		EventListenerUID: elUID,
 		Namespace:        r.EventListenerNamespace,
 		EventID:          eventID,
 	}
-	if err := json.NewEncoder(response).Encode(body); err != nil {
-		log.Errorf("failed to write back sink response: %v", err)
-		r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
-		r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingFailedV1)
+
+	msg := cehttp.NewMessageFromHttpRequest(request)
+	if encoding := msg.ReadEncoding(); encoding == binding.EncodingUnknown {
+		response.WriteHeader(http.StatusAccepted)
+		response.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(response).Encode(body); err != nil {
+			log.Errorf("failed to write back sink response: %v", err)
+			r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
+			r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingFailedV1)
+		}
+
+	} else {
+		responseEvent := cloudevents.NewEvent()
+		responseEvent.SetID(uuid.New().String())
+		responseEvent.SetSource(r.EventListenerName)
+
+		_ = responseEvent.SetData(cloudevents.ApplicationJSON, body)
+
+		eventResponse := binding.ToMessage(&responseEvent)
+		defer func() {
+			if err := eventResponse.Finish(nil); err != nil {
+				log.Errorf("failed to close cloud event sink response: %v", err)
+			}
+		}()
+
+		if err := cehttp.WriteResponseWriter(request.Context(), eventResponse, http.StatusAccepted, response); err != nil {
+			log.Errorf("failed to write back cloud event sink response: %v", err)
+			r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
+			r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingFailedV1)
+		}
 	}
 	r.emitEvents(r.EventRecorder, el, events.TriggerProcessingDoneV1, nil)
 	r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingDoneV1)
