@@ -116,17 +116,11 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 	// running go routine here to add/update certPool if there is new or change in caCert bundle.
 	// caCert changes if certs expired, if someone adds new ClusterInterceptor with caBundle
 	ticker := time.NewTicker(time.Minute)
-	quit := make(chan struct{})
 	go func() {
 		for {
-			select {
-			case <-ticker.C:
-				if err := s.getCertFromClusterInterceptor(certPool); err != nil {
-					s.Logger.Fatalf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
-				}
-			case <-quit:
-				ticker.Stop()
-				return
+			<-ticker.C
+			if err := s.getCertFromClusterInterceptor(certPool); err != nil {
+				s.Logger.Fatalf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
 			}
 		}
 	}()
