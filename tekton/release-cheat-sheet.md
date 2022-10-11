@@ -8,8 +8,8 @@ the triggers repo, a terminal window and a text editor.
 
 1. `cd` to root of Triggers git checkout.
 
-1. 1. Make sure the release `Task` and `Pipeline` are up-to-date on the
-      cluster.
+1. Make sure the release `Task` and `Pipeline` are up-to-date on the
+   cluster.
 
    - [publish-triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
 
@@ -99,6 +99,7 @@ the triggers repo, a terminal window and a text editor.
     ```
 
     1. Find the Rekor UUID for the release
+
     ```bash
     RELEASE_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
     CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | sed -n 's/"//g;s/.*gcr\.io.*controller.*@//p;')
@@ -134,9 +135,16 @@ the triggers repo, a terminal window and a text editor.
 
     1. Publish the GitHub release once all notes are correct and in order.
 
-1. Edit `README.md` on `master` branch, add entry to docs table with latest release links.
+1. Edit `releases.md` on the `main` branch, add an entry for the release.
+   - In case of a patch release, replace the latest release with the new one,
+     including links to docs and examples. Append the new release to the list
+     of patch releases as well.
+   - In case of a minor or major release, add a new entry for the
+     release, including links to docs and example
+   - Check if any release is EOL, if so move it to the "End of Life Releases"
+     section
 
-1. Push & make PR for updated `README.md`
+1. Push & make PR for updated `releases.md`
 
 1. Test release that you just made against your own cluster (note `--context my-dev-cluster`):
 
@@ -178,6 +186,6 @@ Congratulations, you're done!
 
 ## Important: Switch `kubectl` back to your own cluster by default.
 
-    ```bash
-    kubectl config use-context my-dev-cluster
-    ```
+```bash
+kubectl config use-context my-dev-cluster
+```
