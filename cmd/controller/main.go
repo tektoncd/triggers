@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/triggers/pkg/reconciler/clusterinterceptor"
 	elresources "github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
+	"github.com/tektoncd/triggers/pkg/reconciler/interceptor"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -95,5 +96,6 @@ func main() {
 		cfg,
 		eventlistener.NewController(c),
 		clusterinterceptor.NewController(),
+		interceptor.NewController(),
 	)
 }

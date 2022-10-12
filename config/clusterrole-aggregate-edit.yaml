@@ -28,6 +28,7 @@ rules:
   - clustertriggerbindings
   - clusterinterceptors
   - eventlisteners
+  - interceptors
   - triggers
   - triggerbindings
   - triggertemplates
