@@ -52,6 +52,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ClusterTriggerBindingList{},
 		&EventListener{},
 		&EventListenerList{},
+		&Interceptor{},
+		&InterceptorList{},
 		&TriggerBinding{},
 		&TriggerBindingList{},
 		&TriggerTemplate{},

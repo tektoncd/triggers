@@ -28,6 +28,7 @@ import (
 	"time"
 
 	clusterinterceptorsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
+	interceptorsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/interceptor"
 	clustertriggerbindingsinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding"
 	eventlistenerinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/eventlistener"
 	triggersinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/trigger"
@@ -108,7 +109,7 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 
 	certPool := x509.NewCertPool()
 
-	err := s.getCertFromClusterInterceptor(certPool)
+	err := s.getCertFromInterceptor(certPool)
 	if err != nil {
 		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
 	}
@@ -119,7 +120,7 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 	go func() {
 		for {
 			<-ticker.C
-			if err := s.getCertFromClusterInterceptor(certPool); err != nil {
+			if err := s.getCertFromInterceptor(certPool); err != nil {
 				s.Logger.Fatalf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
 			}
 		}
@@ -141,7 +142,7 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil
 }
 
-func (s *sinker) getCertFromClusterInterceptor(certPool *x509.CertPool) error {
+func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 	var (
 		caCert     []byte
 		count      int
@@ -166,12 +167,38 @@ func (s *sinker) getCertFromClusterInterceptor(certPool *x509.CertPool) error {
 				}
 			}
 		}
-		if httpsCILen != 0 && httpsCILen == count {
-			return true, nil
+
+		if httpsCILen == 0 || httpsCILen != count {
+			return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")
 		}
-		return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")
+
+		httpsCILen = 0
+		count = 0
+
+		interceptorList, err := interceptorsinformer.Get(s.injCtx).Lister().Interceptors(s.Namespace).List(labels.Everything())
+		if err != nil {
+			return false, err
+		}
+
+		for i := range interceptorList {
+			if v, k := interceptorList[i].Labels["server/type"]; k && v == "https" {
+				httpsCILen++
+				if !bytes.Equal(interceptorList[i].Spec.ClientConfig.CaBundle, []byte{}) {
+					caCert = interceptorList[i].Spec.ClientConfig.CaBundle
+					if ok := certPool.AppendCertsFromPEM(caCert); !ok {
+						return false, fmt.Errorf("unable to parse cert from %s", caCert)
+					}
+					count++
+				}
+			}
+		}
+		if httpsCILen != count {
+			return false, fmt.Errorf("empty caBundle in interceptor spec")
+		}
+
+		return true, nil
 	}); err != nil {
-		return fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+		return fmt.Errorf("Timed out waiting on CaBundle to available for Interceptor: %v", err)
 	}
 	return nil
 }
@@ -206,6 +233,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		ClusterTriggerBindingLister: clustertriggerbindingsinformer.Get(s.injCtx).Lister(),
 		TriggerTemplateLister:       triggertemplatesinformer.Get(s.injCtx).Lister(),
 		ClusterInterceptorLister:    clusterinterceptorsinformer.Get(s.injCtx).Lister(),
+		InterceptorLister:           interceptorsinformer.Get(s.injCtx).Lister(),
 	}
 
 	mux := http.NewServeMux()

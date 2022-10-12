@@ -51,6 +51,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/apis"
 	v1 "knative.dev/pkg/apis/duck/v1"
 )
 
@@ -82,6 +83,7 @@ type Sink struct {
 	ClusterTriggerBindingLister listers.ClusterTriggerBindingLister
 	TriggerTemplateLister       listers.TriggerTemplateLister
 	ClusterInterceptorLister    listersv1alpha1.ClusterInterceptorLister
+	InterceptorLister           listersv1alpha1.InterceptorLister
 }
 
 // Response defines the HTTP body that the Sink responds to events with.
@@ -503,9 +505,37 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			continue
 		}
 		request.InterceptorParams = interceptors.GetInterceptorParams(i)
-		url, err := interceptors.ResolveToURL(r.ClusterInterceptorLister.Get, i.GetName())
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("could not resolve interceptor URL: %w", err)
+
+		var url *apis.URL
+		if i.Ref.Kind == triggersv1.ClusterInterceptorKind {
+			ic, err := r.ClusterInterceptorLister.Get(i.GetName())
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
+			}
+			if ic.Status.Address != nil && ic.Status.Address.URL != nil {
+				url = ic.Status.Address.URL
+			} else if url, err = ic.ResolveAddress(); err != nil {
+				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
+			}
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("could not resolve clusterinterceptor URL: %w", err)
+			}
+		} else if i.Ref.Kind == triggersv1.NamespacedInterceptorKind {
+			if r.InterceptorLister == nil {
+				r.Logger.Debugf("nil lister")
+			}
+			ic, err := r.InterceptorLister.Interceptors(r.EventListenerNamespace).Get(i.GetName())
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
+			}
+			if addr := ic.Status.Address; addr != nil && addr.URL != nil {
+				url = addr.URL
+			} else if url, err = ic.ResolveAddress(); err != nil {
+				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
+			}
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("could not resolve clusterinterceptor URL: %w", err)
+			}
 		}
 
 		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())

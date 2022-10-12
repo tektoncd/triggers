@@ -120,7 +120,7 @@ func createServiceAccount(t *testing.T, c *clients, namespace, name string) {
 			ObjectMeta: metav1.ObjectMeta{Name: "sa-role"},
 			Rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{triggers.GroupName},
-				Resources: []string{"eventlisteners", "triggerbindings", "triggertemplates", "triggers"},
+				Resources: []string{"eventlisteners", "interceptors", "triggerbindings", "triggertemplates", "triggers"},
 				Verbs:     []string{"get", "list", "watch"},
 			}, {
 				APIGroups: []string{""},

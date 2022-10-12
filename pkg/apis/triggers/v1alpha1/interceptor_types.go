@@ -1,12 +1,93 @@
 package v1alpha1
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
 
 	"google.golang.org/grpc/codes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
+
+// Check that Interceptor may be validated and defaulted.
+var _ apis.Validatable = (*Interceptor)(nil)
+var _ apis.Defaultable = (*Interceptor)(nil)
+
+// +genclient
+// +genreconciler:krshapedlogic=false
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+// Interceptor describes a pluggable interceptor including configuration
+// such as the fields it accepts and its deployment address. The type is based on
+// the Validating/MutatingWebhookConfiguration types for configuring AdmissionWebhooks
+type Interceptor struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec InterceptorSpec `json:"spec"`
+	// +optional
+	Status InterceptorStatus `json:"status"`
+}
+
+// InterceptorSpec describes the Spec for an Interceptor
+type InterceptorSpec struct {
+	ClientConfig ClientConfig `json:"clientConfig"`
+}
+
+// InterceptorStatus holds the status of the Interceptor
+// +k8s:deepcopy-gen=true
+type InterceptorStatus struct {
+	duckv1.Status `json:",inline"`
+
+	// Interceptor is Addressable and exposes the URL where the Interceptor is running
+	duckv1.AddressStatus `json:",inline"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// InterceptorList contains a list of Interceptor
+// We don't use this but it's required for certain codegen features.
+type InterceptorList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Interceptor `json:"items"`
+}
+
+// ResolveAddress returns the URL where the interceptor is running using its clientConfig
+func (it *Interceptor) ResolveAddress() (*apis.URL, error) {
+	if url := it.Spec.ClientConfig.URL; url != nil {
+		return url, nil
+	}
+	svc := it.Spec.ClientConfig.Service
+	if svc == nil {
+		return nil, ErrNilURL
+	}
+	var (
+		port *int32
+		url  *apis.URL
+	)
+
+	if svc.Port != nil {
+		port = svc.Port
+	}
+
+	if bytes.Equal(it.Spec.ClientConfig.CaBundle, []byte{}) {
+		if port == nil {
+			port = &defaultHTTPPort
+		}
+		url = formURL("http", svc, port)
+	} else {
+		if port == nil {
+			port = &defaultHTTPSPort
+		}
+		url = formURL("https", svc, port)
+	}
+	return url, nil
+}
 
 type InterceptorInterface interface {
 	// Process executes the given InterceptorRequest. Simply getting a non-nil InterceptorResponse back is not sufficient
