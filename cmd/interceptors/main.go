@@ -23,7 +23,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -32,12 +31,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	secretInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
-	"knative.dev/pkg/system"
-	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
 const (
@@ -84,72 +80,12 @@ func main() {
 		return
 	}
 
-	serverCert, caCert, err := server.CreateCerts(ctx, kubeclient.Get(ctx).CoreV1(), time.Now().Add(server.Decade), logger)
-	if err != nil {
-		return
-	}
+	server.CreateAndValidateCerts(ctx, kubeclient.Get(ctx).CoreV1(), logger, service, tc.TriggersV1alpha1())
 
-	if err := service.ListAndUpdateClusterInterceptorCRD(ctx, tc.TriggersV1alpha1(), caCert); err != nil {
-		return
-	}
+	// watch for caCert existence in clusterInterceptor, update with new caCert if its missing in clusterInterceptor
+	server.UpdateCACertToClusterInterceptorCRD(ctx, service, tc.TriggersV1alpha1(), logger, time.Minute)
 
-	// After creating certificates using CreateCerts lets validate validity of created certificates
-	service.CheckCertValidity(ctx, serverCert, caCert, kubeclient.Get(ctx).CoreV1(), logger, tc.TriggersV1alpha1(), time.Minute)
-
-	interceptorSecretName := os.Getenv(server.InterceptorTLSSecretKey)
-	ticker := time.NewTicker(time.Minute)
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
-				if err != nil {
-					logger.Errorf("failed to fetch secret %v", err)
-					return
-				}
-				caCert, ok := secret.Data[certresources.CACert]
-				if !ok {
-					logger.Warn("CACert key missing")
-					return
-				}
-				if err := service.ListAndUpdateClusterInterceptorCRD(ctx, tc.TriggersV1alpha1(), caCert); err != nil {
-					return
-				}
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	tlsData := &tls.Config{
-		MinVersion: tls.VersionTLS13,
-		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-			secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
-			if err != nil {
-				logger.Errorf("failed to fetch secret %v", err)
-				return nil, nil
-			}
-
-			serverKey, ok := secret.Data[certresources.ServerKey]
-			if !ok {
-				logger.Warn("server key missing")
-				return nil, nil
-			}
-			serverCert, ok := secret.Data[certresources.ServerCert]
-			if !ok {
-				logger.Warn("server cert missing")
-				return nil, nil
-			}
-			cert, err := tls.X509KeyPair(serverCert, serverKey)
-			if err != nil {
-				return nil, err
-			}
-			return &cert, nil
-		},
-	}
-	if err := startServer(ctx, ctx.Done(), mux, tlsData, logger); err != nil {
+	if err := startServer(ctx, ctx.Done(), mux, logger); err != nil {
 		logger.Fatal(err)
 	}
 }
@@ -158,7 +94,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, tlsData *tls.Config, logger *zap.SugaredLogger) error {
+func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, logger *zap.SugaredLogger) error {
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
@@ -170,7 +106,12 @@ func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, 
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 		Handler:           mux,
-		TLSConfig:         tlsData,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS13,
+			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return server.GetTLSData(ctx, logger)
+			},
+		},
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
