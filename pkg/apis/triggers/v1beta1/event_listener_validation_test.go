@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -38,26 +37,6 @@ import (
 var myObjectMeta = metav1.ObjectMeta{
 	Name:      "name",
 	Namespace: "namespace",
-}
-
-func Test_EventListenerValidate_OnDelete(t *testing.T) {
-	el := &triggersv1beta1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.Repeat("foo", 64), // Length should be lower than 63
-			Namespace: "namespace",
-		},
-		Spec: triggersv1beta1.EventListenerSpec{
-			Triggers: []triggersv1beta1.EventListenerTrigger{{
-				Template: &triggersv1beta1.EventListenerTemplate{
-					Ref: ptr.String(""),
-				},
-			}},
-		},
-	}
-	err := el.Validate(apis.WithinDelete(context.Background()))
-	if err != nil {
-		t.Errorf("EventListener.Validate() on Delete expected no error, but got one, EventListener: %v, error: %v", el, err)
-	}
 }
 
 func Test_EventListenerValidate(t *testing.T) {
