@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -98,26 +97,6 @@ func invalidParamResourceTemplate(t *testing.T) runtime.RawExtension {
 			},
 		},
 	})
-}
-
-func TestTriggerTemplate_Validate_OnDelete(t *testing.T) {
-	tt := &v1beta1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.Repeat("foo", 64), // Length should be lower than 63
-			Namespace: "foo",
-		},
-		Spec: v1beta1.TriggerTemplateSpec{
-			Params: []v1beta1.ParamSpec{{
-				Name:        "foo",
-				Description: "desc",
-				Default:     ptr.String("val"),
-			}},
-		},
-	}
-	err := tt.Validate(apis.WithinDelete(context.Background()))
-	if err != nil {
-		t.Errorf("TriggerTemplate.Validate() on Delete expected no error, but got one, TriggerTemplate: %v, error: %v", tt, err)
-	}
 }
 
 func TestTriggerTemplate_Validate(t *testing.T) {
