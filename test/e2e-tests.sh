@@ -20,8 +20,14 @@
 source $(dirname $0)/e2e-common.sh
 # Script entry point.
 
-initialize $@
+# Setting defaults
 failed=0
+SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
+
+
+if [ "${SKIP_INITIALIZE}" != "true" ]; then
+  initialize $@
+fi
 
 header "Setting up environment"
 install_pipeline_crd
