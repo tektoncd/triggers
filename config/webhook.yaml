@@ -48,31 +48,38 @@ spec:
     spec:
       serviceAccountName: tekton-triggers-webhook
       containers:
-      - name: webhook
-        # This is the Go import path for the binary that is containerized
-        # and substituted here.
-        image: "ko://github.com/tektoncd/triggers/cmd/webhook"
-        env:
-        - name: SYSTEM_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: CONFIG_LOGGING_NAME
-          value: config-logging-triggers
-        - name: WEBHOOK_SERVICE_NAME
-          value: tekton-triggers-webhook
-        - name: WEBHOOK_SECRET_NAME
-          value: triggers-webhook-certs
-        - name: METRICS_DOMAIN
-          value: tekton.dev/triggers
-        ports:
-        - name: metrics
-          containerPort: 9000
-        - name: profiling
-          containerPort: 8008
-        - name: https-webhook
-          containerPort: 8443
-        securityContext:
-          allowPrivilegeEscalation: false
-          # User 65532 is the distroless nonroot user ID
-          runAsUser: 65532
+        - name: webhook
+          # This is the Go import path for the binary that is containerized
+          # and substituted here.
+          image: "ko://github.com/tektoncd/triggers/cmd/webhook"
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging-triggers
+            - name: WEBHOOK_SERVICE_NAME
+              value: tekton-triggers-webhook
+            - name: WEBHOOK_SECRET_NAME
+              value: triggers-webhook-certs
+            - name: METRICS_DOMAIN
+              value: tekton.dev/triggers
+          ports:
+            - name: metrics
+              containerPort: 9000
+            - name: profiling
+              containerPort: 8008
+            - name: https-webhook
+              containerPort: 8443
+          securityContext:
+            allowPrivilegeEscalation: false
+            # User 65532 is the distroless nonroot user ID
+            runAsUser: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - "ALL"
+            seccompProfile:
+              type: RuntimeDefault
