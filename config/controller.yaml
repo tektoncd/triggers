@@ -48,43 +48,66 @@ spec:
     spec:
       serviceAccountName: tekton-triggers-controller
       containers:
-      - name: tekton-triggers-controller
-        image: "ko://github.com/tektoncd/triggers/cmd/controller"
-        args: [
-          "-logtostderr",
-          "-stderrthreshold", "INFO",
-          "-el-image", "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
-          "-el-port", "8080",
-          "-el-security-context=true",
-          "-el-events", "disable",
-          "-el-readtimeout", "5",
-          "-el-writetimeout", "40",
-          "-el-idletimeout", "120",
-          "-el-timeouthandler", "30",
-          "-el-httpclient-readtimeout", "30",
-          "-el-httpclient-keep-alive", "30",
-          "-el-httpclient-tlshandshaketimeout", "10",
-          "-el-httpclient-responseheadertimeout", "10",
-          "-el-httpclient-expectcontinuetimeout", "1",
-          "-period-seconds", "10",
-          "-failure-threshold", "1"
-        ]
-        env:
-        - name: SYSTEM_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: CONFIG_LOGGING_NAME
-          value: config-logging-triggers
-        - name: CONFIG_OBSERVABILITY_NAME
-          value: config-observability-triggers
-        - name: CONFIG_DEFAULTS_NAME
-          value: config-defaults-triggers
-        - name: METRICS_DOMAIN
-          value: tekton.dev/triggers
-        - name: METRICS_PROMETHEUS_PORT
-          value: "9000"
-        securityContext:
-          allowPrivilegeEscalation: false
-          # User 65532 is the distroless nonroot user ID
-          runAsUser: 65532
+        - name: tekton-triggers-controller
+          image: "ko://github.com/tektoncd/triggers/cmd/controller"
+          args:
+            [
+              "-logtostderr",
+              "-stderrthreshold",
+              "INFO",
+              "-el-image",
+              "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
+              "-el-port",
+              "8080",
+              "-el-security-context=true",
+              "-el-events",
+              "disable",
+              "-el-readtimeout",
+              "5",
+              "-el-writetimeout",
+              "40",
+              "-el-idletimeout",
+              "120",
+              "-el-timeouthandler",
+              "30",
+              "-el-httpclient-readtimeout",
+              "30",
+              "-el-httpclient-keep-alive",
+              "30",
+              "-el-httpclient-tlshandshaketimeout",
+              "10",
+              "-el-httpclient-responseheadertimeout",
+              "10",
+              "-el-httpclient-expectcontinuetimeout",
+              "1",
+              "-period-seconds",
+              "10",
+              "-failure-threshold",
+              "1",
+            ]
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging-triggers
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: config-observability-triggers
+            - name: CONFIG_DEFAULTS_NAME
+              value: config-defaults-triggers
+            - name: METRICS_DOMAIN
+              value: tekton.dev/triggers
+            - name: METRICS_PROMETHEUS_PORT
+              value: "9000"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            # User 65532 is the distroless nonroot user ID
+            runAsUser: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
