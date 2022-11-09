@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -101,6 +101,8 @@ const (
 	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
 	// TaskRun was a part of has been cancelled.
 	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
+	// TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.
+	TaskRunCancelledByPipelineTimeoutMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has timed out."
 )
 
 // TaskRunDebug defines the breakpoint config for a particular TaskRun
@@ -137,6 +139,19 @@ type TaskRunStatus struct {
 	TaskRunStatusFields `json:",inline"`
 }
 
+// TaskRunConditionType is an enum used to store TaskRun custom conditions
+// conditions such as one used in spire results verification
+type TaskRunConditionType string
+
+const (
+	// TaskRunConditionResultsVerified is a Condition Type that indicates that the results were verified by spire
+	TaskRunConditionResultsVerified TaskRunConditionType = "SignedResultsVerified"
+)
+
+func (t TaskRunConditionType) String() string {
+	return string(t)
+}
+
 // TaskRunReason is an enum used to store all TaskRun reason for
 // the Succeeded condition that are controlled by the TaskRun itself. Failure
 // reasons that emerge from underlying resources are not included here
@@ -160,6 +175,12 @@ const (
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
+	// TaskRunReasonResultsVerified is the reason set when the TaskRun results are verified by spire
+	TaskRunReasonResultsVerified TaskRunReason = "TaskRunResultsVerified"
+	// TaskRunReasonsResultsVerificationFailed is the reason set when the TaskRun results are failed to verify by spire
+	TaskRunReasonsResultsVerificationFailed TaskRunReason = "TaskRunResultsVerificationFailed"
+	// AwaitingTaskRunResults is the reason set when waiting upon `TaskRun` results and signatures to verify
+	AwaitingTaskRunResults TaskRunReason = "AwaitingTaskRunResults"
 )
 
 func (t TaskRunReason) String() string {
@@ -253,6 +274,9 @@ type TaskRunStatusFields struct {
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
+
+	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
 // TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
@@ -437,6 +461,16 @@ func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
 }
 
+// IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.
+func (tr *TaskRun) IsTaskRunResultVerified() bool {
+	return tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsTrue()
+}
+
+// IsTaskRunResultDone returns true if the TaskRun's results are available for verification
+func (tr *TaskRun) IsTaskRunResultDone() bool {
+	return !tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsUnknown()
+}
+
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
 func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	if tr.Status.StartTime.IsZero() {
@@ -464,20 +498,6 @@ func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 // GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
 func (tr *TaskRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}
-}
-
-// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
-// It also return the name of Pipeline and PipelineRun
-func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
-	if tr == nil || len(tr.Labels) == 0 {
-		return false, "", ""
-	}
-
-	if pl, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		return true, pl, tr.Labels[pipeline.PipelineRunLabelKey]
-	}
-
-	return false, "", ""
 }
 
 // HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is
