@@ -63,3 +63,11 @@ func (i errorResourceInterface) Watch(ctx context.Context, opts metav1.ListOptio
 func (i errorResourceInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, options metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error) {
 	return nil, i.err()
 }
+
+func (i errorResourceInterface) Apply(ctx context.Context, name string, obj *unstructured.Unstructured, options metav1.ApplyOptions, subresources ...string) (*unstructured.Unstructured, error) {
+	return nil, i.err()
+}
+
+func (i errorResourceInterface) ApplyStatus(ctx context.Context, name string, obj *unstructured.Unstructured, options metav1.ApplyOptions) (*unstructured.Unstructured, error) {
+	return nil, i.err()
+}
