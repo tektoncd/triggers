@@ -7,7 +7,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470
 	github.com/cloudevents/sdk-go/v2 v2.11.0
 	github.com/golang/protobuf v1.5.2
-	github.com/google/cel-go v0.11.3
+	github.com/google/cel-go v0.12.5
 	github.com/google/go-cmp v0.5.8
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.3.0

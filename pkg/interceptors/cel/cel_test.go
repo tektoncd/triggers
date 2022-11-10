@@ -117,35 +117,6 @@ func TestInterceptor_Process(t *testing.T) {
 			"replaced": "testing",
 		},
 	}, {
-		name: "decodeB64 with parseJSON",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
-				{Key: "value", Expression: "body.value.decodeb64().parseJSON().test"},
-			},
-		},
-		body: json.RawMessage(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`),
-		wantExtensions: map[string]interface{}{
-			"value": "decode",
-		},
-	}, {
-		name: "decodeB64 to a field",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
-				{Key: "value", Expression: "body.value.decodeb64()"},
-			},
-		},
-		body:           json.RawMessage(`{"value":"eyJ0ZXN0IjoiZGVjb2RlIn0="}`),
-		wantExtensions: map[string]interface{}{"value": "{\"test\":\"decode\"}"},
-	}, {
-		name: "decode base64 string",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
-				{Key: "value", Expression: "body.value.decodeb64()"},
-			},
-		},
-		body:           json.RawMessage(`{"value":"dGVzdGluZw=="}`),
-		wantExtensions: map[string]interface{}{"value": "testing"},
-	}, {
 		name: "multiple overlays",
 		CEL: &triggersv1.CELInterceptor{
 			Filter: "body.value == 'test'",
@@ -526,11 +497,6 @@ func TestExpressionEvaluation(t *testing.T) {
 			want: types.String("value"),
 		},
 		{
-			name: "decode a base64 value",
-			expr: "body.b64value.decodeb64()",
-			want: types.String("example"),
-		},
-		{
 			name: "increment an integer",
 			expr: "body.pull_request.commits + 1",
 			want: types.Int(3),
@@ -721,11 +687,6 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			want: "failed to convert to http.Header",
 		},
 		{
-			name: "invalid base64 decoding",
-			expr: "\"AA=A\".decodeb64()",
-			want: "failed to decode 'AA=A' in decodeB64.*illegal base64 data",
-		},
-		{
 			name: "missing secret",
 			expr: "'testing'.compareSecret('testing', 'testSecret', 'mytoken')",
 			want: "failed to find secret.*testing.*",
@@ -736,19 +697,14 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 			want: "invalid character 'e' in literal",
 		},
 		{
-			name: "base64 decoding non-string",
-			expr: "body.pull_request.decodeb64()",
-			want: "unexpected type 'map' passed to decodeB64",
-		},
-		{
 			name: "parseJSON decoding non-string",
 			expr: "body.pull_request.parseJSON().test == 'test'",
-			want: "unexpected type 'map' passed to parseJSON",
+			want: "no such overload: parseJSON(map)",
 		},
 		{
 			name: "parseYAML decoding non-string",
 			expr: "body.pull_request.parseYAML().key1 == 'value1'",
-			want: "unexpected type 'map' passed to parseYAML",
+			want: "no such overload: parseYAML(map)",
 		},
 		{
 			name: "unknown key",
@@ -763,12 +719,17 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 		{
 			name: "marshalJSON marshalling string",
 			expr: "body.value.marshalJSON()",
-			want: "unexpected type 'string' passed to marshalJSON",
+			want: "no such overload: marshalJSON(string)",
 		},
 		{
 			name: "has function missing nested key",
 			expr: "has(body.pull_request.repository.owner) ? body.pull_request.repository.owner : 'me'",
 			want: `failed to evaluate: no such key: repository`,
+		},
+		{
+			name: "truncate json",
+			expr: "body.pull_request.truncate(7)",
+			want: "no such overload: truncate(map, int)",
 		},
 	}
 	for _, tt := range tests {
@@ -789,7 +750,7 @@ func TestExpressionEvaluation_Error(t *testing.T) {
 				t.Fatal("evaluate() expected err but got nil.")
 			}
 
-			if !checkMessageContains(t, tt.want, err.Error()) {
+			if !checkMessageContains(t, tt.want, err.Error()) && !strings.Contains(err.Error(), tt.want) {
 				rt.Errorf("evaluate() got %s, wanted %s", err, tt.want)
 			}
 		})
