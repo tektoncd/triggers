@@ -1,0 +1,37 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: example-interceptor-cel
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: cel-trig
+      interceptors:
+        - ref:
+            name: "example-interceptor-cel"
+            kind: NamespacedInterceptor
+          params:
+            - name: "filter"
+              value: "header.match('X-GitHub-Event', 'pull_request')"
+      bindings:
+        - name: gitrevision
+          value: $(body.head_commit.id)
+        - name: gitrepositoryurl
+          value: $(body.repository.url)
+      template:
+        spec:
+          params:
+            - name: gitrevision
+            - name: gitrepositoryurl
+          resourcetemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: TaskRun
+              metadata:
+                generateName: example-interceptor-run-
+              spec:
+                taskSpec:
+                  steps:
+                    - image: ubuntu
+                      script: |
+                        #! /bin/bash
+                        echo "Revision is : $(tt.params.gitrevision). RepoURL is $(tt.params.gitrepositoryurl)"
