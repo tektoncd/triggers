@@ -1,0 +1,160 @@
+# Copyright 2022 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: example-interceptor-cel
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: example-interceptor-cel
+subjects:
+  - kind: ServiceAccount
+    name: example-interceptor-cel
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: example-interceptor-cel
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: example-interceptor-cel-secrets
+subjects:
+  - kind: ServiceAccount
+    name: example-interceptor-cel
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: example-interceptor-cel-secrets
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-interceptor-cel
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: example-interceptor-cel
+    namespace: default
+roleRef:
+  kind: Role
+  name: example-interceptor-cel
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-interceptor-cel
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-interceptor-cel
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-interceptor-cel-secrets
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["clusterinterceptors"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "update"]
+    resourceNames: ["example-interceptor-cel-certs"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: example-interceptor-cel
+  name: example-interceptor-cel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: example-interceptor-cel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: example-interceptor-cel
+    spec:
+      containers:
+      - args:
+        - -logtostderr
+        - -stderrthreshold
+        - INFO
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/interceptors:v0.19.0@sha256:69fb65c702c74d086851b4c9852bd63b057b08fa5f8d54ddd1c0585e5f66dec1"
+        imagePullPolicy: IfNotPresent
+        name: example-interceptor-cel
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsGroup: 65532
+          runAsNonRoot: true
+          runAsUser: 65532
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccount: example-interceptor-cel
+      serviceAccountName: example-interceptor-cel
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-interceptor-cel
+spec:
+  ports:
+    - name: "http"
+      port: 8082
+      targetPort: 8082
+  selector:
+    app.kubernetes.io/component: example-interceptor-cel
