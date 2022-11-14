@@ -24,7 +24,7 @@ transformation, define and test trigger conditions, and implement other useful p
 the payload data to the `TriggerBinding`. You can also use an `Interceptor` to modify the behavior of the associated `Trigger`.
 
 Tekton Triggers currently supports two distinct `Interceptor` implementations:
-- Standalone `Interceptors`, which are instances of the [`ClusterInterceptor`](./clusterinterceptors.md) Custom Resource Definition (CRD). You specify these `Interceptors` by referencing them,
+- Standalone `Interceptors`, which are instances of the [`Interceptor`](./namespacedinterceptor) or the [`ClusterInterceptor`](./clusterinterceptors.md) Custom Resource Definition (CRD). You specify these `Interceptors` by referencing them,
   along with the desired parameters, within your  `EventListener`. You can use the `ClusterInterceptor` CRD to implement your own custom `Interceptors`.
 - Legacy `Interceptors`, which you define entirely as part of the `EventListener` definition. This implementation will eventually be deprecated, so please consider
   transitioning to standalone `Interceptors` as soon as possible. See [TEP-0026](https://github.com/tektoncd/community/blob/main/teps/0026-interceptor-plugins.md) for more context on this change.
@@ -42,9 +42,9 @@ Tekton Triggers ships with the following `Interceptors` to help you get started:
 
 To specify an `Interceptor` within your `EventListener`, create an `interceptors:` field with the following sub-fields:
 - `name` - (optional) a name that uniquely identifies this `Interceptor` definition
-- `ref` - a reference to a [`ClusterInterceptor`](./clusterinterceptors.md) object with the following fields:
+- `ref` - a reference to a [`ClusterInterceptor`](./clusterinterceptors.md) or [`Interceptor`](./namespacedinterceptors.md) object with the following fields:
   - `name` - the name of the referenced `ClusterInterceptor`
-  - `kind` - (optional) specifies that the referenced Kubernetes object is a `ClusterInterceptor` object
+  - `kind` - (optional) specifies that whether the referenced Kubernetes object is a `ClusterInterceptor` object or `NamespacedInterceptor`. Default value is `ClusterInterceptor`
   - `apiVersion` - (optional) specifies the target API version, for example `triggers.tekton.dev/v1alpha1`
   - `params` - `name`/`value` pairs that specify the parameters you want to pass to the `ClusterInterceptor`
 - `params` - (optional) `name`/`value` pairs that specify the desired parameters for the `Interceptor`;
@@ -565,4 +565,4 @@ field both in the body of the payload as well as via the extra fields added to t
 
 ## Implementing custom `Interceptors`
 
-Tekton Triggers ships with the `ClusterInterceptor` Custom Resource Definition (CRD), which you can use to implement custom `Interceptors`. See [`ClusterInterceptors`](./clusterinterceptors.md) for more information.
+Tekton Triggers ships with the `ClusterInterceptor`and `Interceptor` Custom Resource Definition (CRD), which you can use to implement custom `Interceptors`. See [`ClusterInterceptors`](./clusterinterceptors.md) and [`NamespacedInterceptors`](./namespacedinterceptors.md)  for more information.

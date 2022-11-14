@@ -22,6 +22,9 @@ When creating a `Trigger` definition you must specify the required fields and ca
                      definition using a `name`/`value` pair.
     - [`template`] - Specifies the corresponding `TriggerTemplate` either as a reference as an embedded `TriggerTemplate` definition.
     - [`interceptors`] - (Optional) specifies one or more `Interceptors` that will process the payload data before passing it to the `TriggerTemplate`.
+    - `ref` - a reference to a [`ClusterInterceptor`](./clusterinterceptors.md) or [`Interceptor`](./namespacedinterceptors.md) object with the following fields:
+      - `name` - the name of the referenced `ClusterInterceptor`
+      - `kind` - (Optional) specifies that whether the referenced Kubernetes object is a `ClusterInterceptor` object or `NamespacedInterceptor`. Default value is `ClusterInterceptor`
     - [`serviceAccountName`] - (Optional) Specifies the `ServiceAccount` to supply to the `EventListener` to instantiate/execute the target resources.
 
 Below is an example `Trigger` definition:
