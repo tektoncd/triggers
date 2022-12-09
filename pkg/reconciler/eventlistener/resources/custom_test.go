@@ -18,7 +18,6 @@ package resources
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"testing"
 
@@ -30,14 +29,8 @@ import (
 )
 
 func TestCustomObject(t *testing.T) {
-	err := os.Setenv("METRICS_PROMETHEUS_PORT", "9000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	config := *MakeConfig()
 	metadata := map[string]interface{}{
@@ -323,14 +316,8 @@ func TestCustomObject(t *testing.T) {
 }
 
 func TestCustomObjectError(t *testing.T) {
-	err := os.Setenv("METRICS_PROMETHEUS_PORT", "9000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	config := *MakeConfig()
 

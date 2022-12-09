@@ -19,7 +19,6 @@ package eventlistener
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -557,14 +556,8 @@ func withDeletionTimestamp(el *v1beta1.EventListener) {
 }
 
 func TestReconcile(t *testing.T) {
-	err := os.Setenv("METRICS_PROMETHEUS_PORT", "9000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	customPort := 80
 
@@ -1490,10 +1483,7 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_InvalidForCustomResource(t *testing.T) {
-	err := os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	elWithCustomResource := makeEL(withStatus, withKnativeStatus, func(el *v1beta1.EventListener) {
 		el.Spec.Resources.CustomResource = &v1beta1.CustomResource{

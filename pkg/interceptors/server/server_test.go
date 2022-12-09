@@ -215,15 +215,9 @@ func Test_SecretNotExist(t *testing.T) {
 }
 
 func createSecret(t *testing.T, noAfter time.Time) (v1.CoreV1Interface, []byte, []byte, error) {
-	if err := os.Setenv(interceptorTLSSvcKey, testsvc); err != nil {
-		return nil, []byte{}, []byte{}, err
-	}
-	if err := os.Setenv(interceptorTLSSecretKey, testsecrets); err != nil {
-		return nil, []byte{}, []byte{}, err
-	}
-	if err := os.Setenv("SYSTEM_NAMESPACE", testns); err != nil {
-		return nil, []byte{}, []byte{}, err
-	}
+	t.Setenv(interceptorTLSSvcKey, testsvc)
+	t.Setenv(interceptorTLSSecretKey, testsecrets)
+	t.Setenv("SYSTEM_NAMESPACE", testns)
 	namespace := system.Namespace()
 
 	logger := zaptest.NewLogger(t)
@@ -299,9 +293,7 @@ func Test_CreateAndValidateCerts(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
 	tc := faketriggersclient.Get(ctx)
-	if err := os.Setenv(interceptorTLSSecretKey, testsecrets); err != nil {
-		t.Error(err)
-	}
+	t.Setenv(interceptorTLSSecretKey, testsecrets)
 
 	createSecretWithData(ctx, t, clientSet)
 
@@ -376,9 +368,7 @@ func Test_GetTLSData(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := os.Setenv(interceptorTLSSecretKey, tc.secretName); err != nil {
-				t.Error(err)
-			}
+			t.Setenv(interceptorTLSSecretKey, tc.secretName)
 			if err := clientSet.Secrets(namespace).Delete(ctx, tc.secretName, metav1.DeleteOptions{}); err != nil && !apiErrors.IsNotFound(err) {
 				t.Error(err)
 			}
@@ -411,9 +401,7 @@ func Test_UpdateCACertToClusterInterceptorCRD(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	secretInformer := fakesecretinformer.Get(ctx)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
-	if err := os.Setenv(interceptorTLSSecretKey, testsecrets); err != nil {
-		t.Error(err)
-	}
+	t.Setenv(interceptorTLSSecretKey, testsecrets)
 
 	s := createSecretWithData(ctx, t, clientSet)
 	if err := secretInformer.Informer().GetIndexer().Add(s); err != nil {
@@ -439,12 +427,8 @@ func Test_UpdateCACertToClusterInterceptorCRD(t *testing.T) {
 }
 
 func getCerts(ctx context.Context, t *testing.T) ([]byte, []byte, []byte, string) {
-	if err := os.Setenv(interceptorTLSSvcKey, testsvc); err != nil {
-		t.Error(err)
-	}
-	if err := os.Setenv("SYSTEM_NAMESPACE", testns); err != nil {
-		t.Error(err)
-	}
+	t.Setenv(interceptorTLSSvcKey, testsvc)
+	t.Setenv("SYSTEM_NAMESPACE", testns)
 	namespace := system.Namespace()
 
 	serverKey, serverCert, caCert, err := certresources.CreateCerts(ctx, os.Getenv(interceptorTLSSvcKey), namespace, time.Now().Add(second))

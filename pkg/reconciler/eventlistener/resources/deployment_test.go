@@ -18,7 +18,6 @@ package resources
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -33,14 +32,8 @@ import (
 )
 
 func TestDeployment(t *testing.T) {
-	err := os.Setenv("METRICS_PROMETHEUS_PORT", "9000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
 	config := *MakeConfig()
 	labels := map[string]string{
@@ -304,10 +297,7 @@ func TestDeployment(t *testing.T) {
 }
 
 func TestDeploymentError(t *testing.T) {
-	err := os.Setenv("METRICS_PROMETHEUS_PORT", "bad")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("METRICS_PROMETHEUS_PORT", "bad")
 	got, err := MakeDeployment(context.Background(), makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig())
 	if err == nil {
 		t.Fatalf("MakeDeployment() = %v, wanted error", got)
