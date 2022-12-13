@@ -136,7 +136,12 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 			}
 		}
 		if ownerCheckAllowed {
-			client := makeClient(ctx, headers.Get("X-Github-Enterprise-Host"), string(secretToken))
+			ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+			ghToken, err := w.SecretGetter.Get(ctx, ns, p.GithubToken)
+			if err != nil {
+				return interceptors.Failf(codes.FailedPrecondition, "error getting github token: %v", err)
+			}
+			client := makeClient(ctx, headers.Get("X-Github-Enterprise-Host"), string(ghToken))
 			payload, err := parseBody(r.Body, actualEvent)
 			if err != nil {
 				return interceptors.Failf(codes.FailedPrecondition, "error parsing body: %v", err)
