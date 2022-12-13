@@ -16,6 +16,10 @@ spec:
                 secretKey: secretToken
             - name: "eventTypes"
               value: ["pull_request"]
+            - name: "enableOrgMemberCheck"
+              value: false
+            - name: "enableRepoMemberCheck"
+              value: false
         - name: "only when PRs are opened"
           ref:
             name: "cel"
