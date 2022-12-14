@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
+	"knative.dev/pkg/ptr"
 )
 
 func TestContainer(t *testing.T) {
@@ -82,6 +83,19 @@ func TestContainer(t *testing.T) {
 				Name:  "K_SINK_TIMEOUT",
 				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: ptr.Bool(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				// 65532 is the distroless nonroot user ID
+				RunAsUser:    ptr.Int64(65532),
+				RunAsGroup:   ptr.Int64(65532),
+				RunAsNonRoot: ptr.Bool(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 	}, {
 		name: "with resources option",
@@ -143,6 +157,19 @@ func TestContainer(t *testing.T) {
 				Name:  "K_SINK_TIMEOUT",
 				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: ptr.Bool(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				// 65532 is the distroless nonroot user ID
+				RunAsUser:    ptr.Int64(65532),
+				RunAsGroup:   ptr.Int64(65532),
+				RunAsNonRoot: ptr.Bool(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 	}, {
 		name: "with env option",
@@ -183,6 +210,19 @@ func TestContainer(t *testing.T) {
 				Name:  "BAR",
 				Value: "food",
 			}},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: ptr.Bool(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				// 65532 is the distroless nonroot user ID
+				RunAsUser:    ptr.Int64(65532),
+				RunAsGroup:   ptr.Int64(65532),
+				RunAsNonRoot: ptr.Bool(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 	}, {
 		name: "with namespace selector",
@@ -232,6 +272,19 @@ func TestContainer(t *testing.T) {
 				Name:  "K_SINK_TIMEOUT",
 				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: ptr.Bool(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				// 65532 is the distroless nonroot user ID
+				RunAsUser:    ptr.Int64(65532),
+				RunAsGroup:   ptr.Int64(65532),
+				RunAsNonRoot: ptr.Bool(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 	}, {
 		name: "without payload validation",
@@ -283,6 +336,19 @@ func TestContainer(t *testing.T) {
 				Name:  "K_SINK_TIMEOUT",
 				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
 			}},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: ptr.Bool(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				// 65532 is the distroless nonroot user ID
+				RunAsUser:    ptr.Int64(65532),
+				RunAsGroup:   ptr.Int64(65532),
+				RunAsNonRoot: ptr.Bool(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 	}}
 

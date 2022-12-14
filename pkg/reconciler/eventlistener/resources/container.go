@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
+	"knative.dev/pkg/ptr"
 )
 
 type ContainerOption func(*corev1.Container)
@@ -79,6 +80,19 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			Name:  "K_SINK_TIMEOUT",
 			Value: strconv.FormatInt(*c.TimeOutHandler, 10),
 		}}...),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: ptr.Bool(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			// 65532 is the distroless nonroot user ID
+			RunAsUser:    ptr.Int64(65532),
+			RunAsGroup:   ptr.Int64(65532),
+			RunAsNonRoot: ptr.Bool(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 	}
 
 	for _, opt := range opts {
