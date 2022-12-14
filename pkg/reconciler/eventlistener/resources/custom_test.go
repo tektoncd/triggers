@@ -150,6 +150,15 @@ func TestCustomObject(t *testing.T) {
 											"protocol":      "TCP",
 										},
 									},
+									"securityContext": map[string]interface{}{
+										"allowPrivilegeEscalation": false,
+										"capabilities": map[string]interface{}{
+											"drop": []interface{}{string("ALL")}},
+										"runAsGroup":     int64(65532),
+										"runAsNonRoot":   bool(true),
+										"runAsUser":      int64(65532),
+										"seccompProfile": map[string]interface{}{"type": string("RuntimeDefault")},
+									},
 									"resources": map[string]interface{}{},
 									"readinessProbe": map[string]interface{}{
 										"httpGet": map[string]interface{}{
@@ -216,6 +225,15 @@ func TestCustomObject(t *testing.T) {
 											"containerPort": int64(8080),
 											"protocol":      "TCP",
 										},
+									},
+									"securityContext": map[string]interface{}{
+										"allowPrivilegeEscalation": false,
+										"capabilities": map[string]interface{}{
+											"drop": []interface{}{string("ALL")}},
+										"runAsGroup":     int64(65532),
+										"runAsNonRoot":   bool(true),
+										"runAsUser":      int64(65532),
+										"seccompProfile": map[string]interface{}{"type": string("RuntimeDefault")},
 									},
 									"resources": map[string]interface{}{},
 									"readinessProbe": map[string]interface{}{
@@ -284,6 +302,15 @@ func TestCustomObject(t *testing.T) {
 										"limits": map[string]interface{}{
 											"cpu": "101m",
 										},
+									},
+									"securityContext": map[string]interface{}{
+										"allowPrivilegeEscalation": false,
+										"capabilities": map[string]interface{}{
+											"drop": []interface{}{string("ALL")}},
+										"runAsGroup":     int64(65532),
+										"runAsNonRoot":   bool(true),
+										"runAsUser":      int64(65532),
+										"seccompProfile": map[string]interface{}{"type": string("RuntimeDefault")},
 									},
 									"readinessProbe": map[string]interface{}{
 										"httpGet": map[string]interface{}{

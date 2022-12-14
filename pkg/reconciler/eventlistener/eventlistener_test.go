@@ -273,6 +273,19 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 							Name:  "METRICS_PROMETHEUS_PORT",
 							Value: "9000",
 						}},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr.Bool(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{"ALL"},
+							},
+							// 65532 is the distroless nonroot user ID
+							RunAsUser:    ptr.Int64(65532),
+							RunAsGroup:   ptr.Int64(65532),
+							RunAsNonRoot: ptr.Bool(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: corev1.SeccompProfileTypeRuntimeDefault,
+							},
+						},
 					}},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr.Bool(true),
@@ -421,6 +434,19 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 							Name:  "METRICS_PROMETHEUS_PORT",
 							Value: "9000",
 						}},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr.Bool(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{"ALL"},
+							},
+							// 65532 is the distroless nonroot user ID
+							RunAsUser:    ptr.Int64(65532),
+							RunAsGroup:   ptr.Int64(65532),
+							RunAsNonRoot: ptr.Bool(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: corev1.SeccompProfileTypeRuntimeDefault,
+							},
+						},
 						ReadinessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
