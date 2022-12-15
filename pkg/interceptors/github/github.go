@@ -135,7 +135,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 				break
 			}
 		}
-		if ownerCheckAllowed {
+		if ownerCheckAllowed && p.OwnersCheckEnabled {
 			ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 			ghToken, err := w.SecretGetter.Get(ctx, ns, p.GithubToken)
 			if err != nil {
@@ -315,8 +315,6 @@ func MatchRegexp(reg, comment string) bool {
 	return string(re.Find([]byte(comment))) != ""
 }
 
-// type cfgKey struct{}
-
 func makeClient(ctx context.Context, apiURL string, token string) *gh.Client {
 	var client *gh.Client
 	tokenSource := oauth2.StaticTokenSource(
@@ -331,12 +329,6 @@ func makeClient(ctx context.Context, apiURL string, token string) *gh.Client {
 		client, _ = gh.NewEnterpriseClient(apiURL, apiURL, tokenClient)
 	} else {
 		client = gh.NewClient(tokenClient)
-		// testUrl := ctx.Value(cfgKey{}).(string)
-		// s := strings.Split(testUrl, ":")
-		// client.BaseURL = &url.URL{
-		// 	Scheme: s[0],
-		// 	Host:   s[1],
-		// }
 	}
 	return client
 }

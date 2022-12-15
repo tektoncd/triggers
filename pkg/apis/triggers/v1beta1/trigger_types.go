@@ -166,7 +166,9 @@ type BitbucketInterceptor struct {
 type GitHubInterceptor struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`
 	// +listType=atomic
-	EventTypes            []string   `json:"eventTypes,omitempty"`
+	EventTypes         []string `json:"eventTypes,omitempty"`
+	OwnersCheckEnabled bool     `json:"ownersCheckEnabled,omitempty"`
+	// Set the below values when ownerscheckenabled is turned true
 	GithubToken           *SecretRef `json:"githubToken,omitempty"`
 	EnableOrgMemberCheck  bool       `json:"enableOrgMemberCheck,omitempty"`
 	EnableRepoMemberCheck bool       `json:"enableRepoMemberCheck,omitempty"`
