@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -138,7 +137,7 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 		return nil, nil, fmt.Errorf("error reading request: %w", err)
 	}
 	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading HTTP body: %w", err)
 	}
