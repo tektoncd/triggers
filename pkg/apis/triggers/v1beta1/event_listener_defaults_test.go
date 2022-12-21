@@ -188,6 +188,33 @@ func TestEventListenerSetDefaults(t *testing.T) {
 			})
 			return contexts.WithUpgradeViaDefaulting(s.ToContext(ctx))
 		},
+	}, {
+		name: "adds TriggerGroup interceptorkind when not specified",
+		in: &v1beta1.EventListener{
+			Spec: v1beta1.EventListenerSpec{
+				TriggerGroups: []v1beta1.EventListenerTriggerGroup{{
+					Interceptors: []*v1beta1.EventInterceptor{{
+						Ref: v1beta1.InterceptorRef{
+							Name: "cel",
+						},
+					}},
+				}},
+			},
+		},
+		wc: contexts.WithUpgradeViaDefaulting,
+		want: &v1beta1.EventListener{
+			Spec: v1beta1.EventListenerSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				TriggerGroups: []v1beta1.EventListenerTriggerGroup{{
+					Interceptors: []*v1beta1.EventInterceptor{{
+						Ref: v1beta1.InterceptorRef{
+							Name: "cel",
+							Kind: v1beta1.ClusterInterceptorKind,
+						},
+					}},
+				}},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
