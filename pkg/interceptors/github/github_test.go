@@ -17,8 +17,10 @@ limitations under the License.
 package github
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -374,5 +376,173 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	res := w.Process(ctx, req)
 	if res.Continue {
 		t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_owners_IssueComment(t *testing.T) {
+	tests := []struct {
+		name               string
+		commentsReply      string
+		secret             *corev1.Secret
+		interceptorRequest *triggersv1.InterceptorRequest
+		allowed            bool
+		wantErr            bool
+	}{
+		{
+			name:          "owner issue comment with ok-to-test event",
+			commentsReply: `[{"body": "/ok-to-test", "sender": {"login": "owner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:          "owner issue comment with other than ok-to-test event",
+			commentsReply: `[{"body": "/something", "sender": {"login": "owner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: false,
+		},
+		{
+			name:          "nonowner issue comment event",
+			commentsReply: `[{"body": "/ok-to-test", "sender": {"login": "nonowner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: false,
+		},
+		{
+			name:          "nonowner issue comment event",
+			commentsReply: `[{"body": "/ok-to-test", "sender": {"login": "nonowner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: false,
+		},
+		{
+			name: "owner raising pull request",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name: "nonowner raising pull request with no owner making a comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: false,
+			wantErr: false,
+		},
+		{
+			name:          "nonowner raising pull request with a owner making a comment /ok-to-test",
+			commentsReply: `[{"body": "/ok-to-test", "sender": {"login": "owner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.Write([]byte(tt.commentsReply))
+			}))
+			ctx, _ := test.SetupFakeContext(t)
+			type cfgKey struct{}
+			ctx = context.WithValue(ctx, cfgKey{}, ts.URL)
+			clientset := fakekubeclient.Get(ctx)
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+			}
+
+			w := &Interceptor{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, tt.interceptorRequest)
+
+			if !res.Continue {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_owners_PullRequest(t *testing.T) {
+	tests := []struct {
+		name               string
+		commentsReply      string
+		secret             *corev1.Secret
+		interceptorRequest *triggersv1.InterceptorRequest
+		allowed            bool
+		wantErr            bool
+	}{
+		{
+			name: "owner raising pull request",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name: "nonowner raising pull request with no owner making a comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: false,
+			wantErr: false,
+		},
+		{
+			name:          "nonowner raising pull request with a owner making a comment /ok-to-test",
+			commentsReply: `[{"body": "/ok-to-test", "sender": {"login": "owner"}}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","number": 2,"repository":{"full_name": "owner/repo"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.Write([]byte(""))
+			}))
+			ctx, _ := test.SetupFakeContext(t)
+			type cfgKey struct{}
+			ctx = context.WithValue(ctx, cfgKey{}, ts.URL)
+			clientset := fakekubeclient.Get(ctx)
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+			}
+
+			w := &Interceptor{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, tt.interceptorRequest)
+
+			if !res.Continue {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
 	}
 }
