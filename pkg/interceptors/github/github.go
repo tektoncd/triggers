@@ -43,6 +43,8 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 var secretToken []byte
 var err error
 
+var ownersEventTypes = []string{"pull_request", "issue_comment"}
+
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
 
@@ -79,9 +81,10 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
+	actualEvent := headers.Get("X-GitHub-Event")
+
 	// Check if the event type is in the allow-list
 	if p.EventTypes != nil {
-		actualEvent := headers.Get("X-GitHub-Event")
 		isAllowed := false
 		for _, allowedEvent := range p.EventTypes {
 			if actualEvent == allowedEvent {
@@ -123,11 +126,8 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		}
 	}
 
-	var ownersEventTypes = []string{"pull_request", "issue_comment"}
-
 	// For event types pull_request, issue_comment check github owners approval
-	if p.EventTypes != nil {
-		actualEvent := headers.Get("X-GitHub-Event")
+	if p.OwnersCheckEnabled {
 		ownerCheckAllowed := false
 		for _, allowedEvent := range ownersEventTypes {
 			if actualEvent == allowedEvent {
@@ -135,7 +135,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 				break
 			}
 		}
-		if ownerCheckAllowed && p.OwnersCheckEnabled {
+		if ownerCheckAllowed {
 			ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 			ghToken, err := w.SecretGetter.Get(ctx, ns, p.GithubToken)
 			if err != nil {

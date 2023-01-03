@@ -184,6 +184,50 @@ For reference, below is an example legacy GitHub `Interceptor` definition:
             eventTypes:
  
 ```
+Github `Interceptor` supports owners validation which includes a check for github organization and repository members and owners specified within an [`owners` file](https://www.kubernetes.dev/docs/guide/owners/) located at the root of the repository
+
+
+To use a GitHub `Interceptor` as a GitHub owners validator, do the following:
+
+1. Create a secret string value.
+2. Configure the `GitHub` webhook with that value.
+3. Create a Kubernetes secret containing your secret value.
+4. Pass the Kubernetes secret as a reference to your GitHub `Interceptor`.
+5. Create a secret for github personal access token.
+6. Create a Kubernetes secret containing your secret value.
+7. Pass the Kubernetes secret as a reference to your GitHub `Interceptor`.
+8. Create an owners file and add the list of approvers into the approvers section.
+
+To use a Github `interceptor` with owners the `eventTypes` field should minimally contain `pull_request` and `issue_comment`
+
+Below is an example GitHub `Interceptor` using owners:
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "issue_comment"]
+          - name: "ownersCheckEnabled"
+            value: true
+          - name: "githubToken"
+            value:
+              secretName: github-token
+              secretKey: secretToken
+          - name: "enableOrgMemberCheck"
+            value: false
+          - name: "enableRepoMemberCheck"
+            value: true
+```
 
 For more information, see our [example](../examples/v1beta1/github) of using this `Interceptor`.
 

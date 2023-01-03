@@ -15,23 +15,17 @@ spec:
                 secretName: github-secret
                 secretKey: secretToken
             - name: "eventTypes"
-              value: ["pull_request"]
+              value: ["pull_request", "issue_comment"]
             - name: "ownersCheckEnabled"
+              value: true
+            - name: "githubToken"
+              value:
+                secretName: github-token
+                secretKey: secretToken
+            - name: "enableOrgMemberCheck"
               value: false
-            # - name: "githubToken"
-            #   value:
-            #     secretName: github-token
-            #     secretKey: secretToken
-            # - name: "enableOrgMemberCheck"
-            #   value: false
-            # - name: "enableRepoMemberCheck"
-            #   value: false
-        - name: "only when PRs are opened"
-          ref:
-            name: "cel"
-          params:
-            - name: "filter"
-              value: "body.action in ['opened', 'synchronize', 'reopened']"
+            - name: "enableRepoMemberCheck"
+              value: false
       bindings:
         - ref: github-pr-binding
       template:
@@ -57,8 +51,6 @@ metadata:
   name: github-pr-binding
 spec:
   params:
-    - name: gitrevision
-      value: $(body.pull_request.head.sha)
     - name: gitrepositoryurl
       value: $(body.repository.clone_url)
 
@@ -69,7 +61,6 @@ metadata:
   name: github-template
 spec:
   params:
-    - name: gitrevision
     - name: gitrepositoryurl
   resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
@@ -82,4 +73,4 @@ spec:
             - image: ubuntu
               script: |
                 #! /bin/bash
-                echo "Revision is : $(tt.params.gitrevision). RepoURL is $(tt.params.gitrepositoryurl)"
+                echo "RepoURL is $(tt.params.gitrepositoryurl)"
