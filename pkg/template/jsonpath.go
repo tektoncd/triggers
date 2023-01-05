@@ -131,12 +131,15 @@ func tektonJSONPathExpression(expr string) (string, error) {
 }
 
 // RelaxedJSONPathExpression attempts to be flexible with JSONPath expressions, it accepts:
-//   * metadata.name (no leading '.' or curly braces '{...}'
-//   * {metadata.name} (no leading '.')
-//   * .metadata.name (no curly braces '{...}')
-//   * {.metadata.name} (complete expression)
+//   - metadata.name (no leading '.' or curly braces '{...}'
+//   - {metadata.name} (no leading '.')
+//   - .metadata.name (no curly braces '{...}')
+//   - {.metadata.name} (complete expression)
+//
 // And transforms them all into a valid jsonpath expression:
-//   {.metadata.name}
+//
+//	{.metadata.name}
+//
 // This function has been copied as-is from
 // https://github.com/kubernetes/kubectl/blob/c273777957bd657233cf867892fb061a6498dab8/pkg/cmd/get/customcolumn.go#L47
 func relaxedJSONPathExpression(pathExpression string) (string, error) {
