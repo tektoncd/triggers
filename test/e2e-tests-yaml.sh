@@ -30,7 +30,7 @@ delete_files() {
 
 main() {
   versions="v1alpha1 v1beta1"
-  examples="triggertemplates triggerbindings eventlisteners clustertriggerbindings"
+  examples="triggertemplates triggerbindings eventlisteners clustertriggerbindings github-add-changed-files-pr github-add-changed-files-push-cel"
   for v in ${versions}; do
     current_example_version=${v}
     echo "Applying examples for version: ${v}"

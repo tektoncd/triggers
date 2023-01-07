@@ -187,6 +187,43 @@ For reference, below is an example legacy GitHub `Interceptor` definition:
 
 For more information, see our [example](../examples/v1beta1/github) of using this `Interceptor`.
 
+#### Adding Changed Files
+
+The GitHub `Interceptor` also has the ability to add a comma delimited list of all files that have changed (added, modified or deleted) for the `push` and `pull_request` events. The list of changed files are added to the `changed_files` property of the event payload in the top-level `extensions` field
+
+Below is an example GitHub `Interceptor` that enables the `addChangedFiles` feature and uses the CEL `Interceptor` to filter incoming events by the files changed
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "push"]
+          - name: "addChangedFiles"
+            value:
+              enabled: true
+        - ref:
+            name: cel
+          params:
+          - name: filter
+            # execute only when a file within the controllers directory has changed
+            value: extensions.changed_files.matches('controllers/')
+```
+
+For more information around adding changed files, see the following examples
+
+- [github-add-changed-files-pr](../examples/v1beta1/github-add-changed-files-pr)
+- [github-add-changed-files-push-cel](../examples/v1beta1/github-add-changed-files-push-cel)
+
 ### GitLab Interceptors
 
 A GitLab `Interceptor` contains logic that validates and filters GitLab webhooks.
