@@ -166,7 +166,13 @@ type BitbucketInterceptor struct {
 type GitHubInterceptor struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`
 	// +listType=atomic
-	EventTypes []string `json:"eventTypes,omitempty"`
+	EventTypes      []string              `json:"eventTypes,omitempty"`
+	AddChangedFiles GithubAddChangedFiles `json:"addChangedFiles,omitempty"`
+}
+
+type GithubAddChangedFiles struct {
+	Enabled             bool       `json:"enabled,omitempty"`
+	PersonalAccessToken *SecretRef `json:"personalAccessToken,omitempty"`
 }
 
 // GitLabInterceptor provides a webhook to intercept and pre-process events
