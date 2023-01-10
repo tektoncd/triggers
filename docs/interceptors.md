@@ -187,6 +187,76 @@ For reference, below is an example legacy GitHub `Interceptor` definition:
 
 For more information, see our [example](../examples/v1beta1/github) of using this `Interceptor`.
 
+#### Adding Changed Files
+
+The GitHub `Interceptor` also has the ability to add a comma delimited list of all files that have changed (added, modified or deleted) for the `push` and `pull_request` events. The list of changed files are added to the `changed_files` property of the event payload in the top-level `extensions` field
+
+Below is an example GitHub `Interceptor` that enables the `addChangedFiles` feature and uses the CEL `Interceptor` to filter incoming events by the files changed
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "push"]
+          - name: "addChangedFiles"
+            value:
+              enabled: true
+        - ref:
+            name: cel
+          params:
+          - name: filter
+            # execute only when a file within the controllers directory has changed
+            value: extensions.changed_files.matches('controllers/')
+```
+
+##### Adding Changed Files - Private Repository
+
+The ability to add changed files can also work with private repositories by supplying a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) in the `personalAccessToken` field. In the example below, the `personalAccessToken` uses the `github-pat` secret to get the GitHub personal access token used to make the API calls to get the list of changed files.
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "push"]
+          - name: "addChangedFiles"
+            value:
+              enabled: true
+              personalAccessToken:
+                secretName: github-pat
+                secretKey: token
+        - ref:
+            name: cel
+          params:
+          - name: filter
+            # execute only when a file within the controllers directory has changed
+            value: extensions.changed_files.matches('controllers/')
+```
+
+For more information around adding changed files, see the following examples
+
+- [github-add-changed-files-pr](../examples/v1beta1/github-add-changed-files-pr)
+- [github-add-changed-files-push-cel](../examples/v1beta1/github-add-changed-files-push-cel)
+
 ### GitLab Interceptors
 
 A GitLab `Interceptor` contains logic that validates and filters GitLab webhooks.

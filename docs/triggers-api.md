@@ -3704,6 +3704,18 @@ SecretRef
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>addChangedFiles</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.GithubAddChangedFiles">
+GithubAddChangedFiles
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor
@@ -3736,6 +3748,45 @@ SecretRef
 <code>eventTypes</code><br/>
 <em>
 []string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1beta1.GithubAddChangedFiles">GithubAddChangedFiles
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>personalAccessToken</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.SecretRef">
+SecretRef
+</a>
 </em>
 </td>
 <td>
@@ -4233,7 +4284,7 @@ CustomResource
 <h3 id="triggers.tekton.dev/v1beta1.SecretRef">SecretRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GithubAddChangedFiles">GithubAddChangedFiles</a>)
 </p>
 <div>
 <p>SecretRef contains the information required to reference a single secret string

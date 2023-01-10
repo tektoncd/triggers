@@ -1,0 +1,65 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-add-changed-files-pr-listener
+spec:
+  triggers:
+    - name: github-add-changed-files-pr-listener
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "eventTypes"
+              value: ["pull_request", "push"]
+            - name: "addChangedFiles"
+              value:
+                enabled: true
+      bindings:
+        - ref: github-add-changed-files-pr-pr-binding
+      template:
+        ref: github-add-changed-files-pr-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-add-changed-files-pr-pr-binding
+spec:
+  params:
+    - name: changedfiles
+      value: $(extensions.changed_files)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-add-changed-files-pr-template
+spec:
+  params:
+    - name: changedfiles
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: github-add-changed-files-pr-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "Changed Files: $(tt.params.changedfiles)"
