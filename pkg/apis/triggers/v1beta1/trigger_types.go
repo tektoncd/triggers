@@ -168,6 +168,14 @@ type GitHubInterceptor struct {
 	// +listType=atomic
 	EventTypes      []string              `json:"eventTypes,omitempty"`
 	AddChangedFiles GithubAddChangedFiles `json:"addChangedFiles,omitempty"`
+	GithubOwners    GithubOwners          `json:"githubOwners,omitempty"`
+}
+
+type GithubOwners struct {
+	Enabled               bool       `json:"enabled,omitempty"`
+	PersonalAccessToken   *SecretRef `json:"personalAccessToken,omitempty"`
+	EnableOrgMemberCheck  bool       `json:"enableOrgMemberCheck,omitempty"`
+	EnableRepoMemberCheck bool       `json:"enableRepoMemberCheck,omitempty"`
 }
 
 type GithubAddChangedFiles struct {

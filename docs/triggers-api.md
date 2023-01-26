@@ -1,11 +1,3 @@
-<!--
----
-title: Triggers API
-linkTitle: Triggers API
-weight: 1000
----
--->
-
 <p>Packages:</p>
 <ul>
 <li>
@@ -3716,6 +3708,18 @@ GithubAddChangedFiles
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>githubOwners</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.GithubOwners">
+GithubOwners
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor
@@ -3787,6 +3791,65 @@ bool
 <a href="#triggers.tekton.dev/v1beta1.SecretRef">
 SecretRef
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1beta1.GithubOwners">GithubOwners
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>personalAccessToken</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.SecretRef">
+SecretRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableOrgMemberCheck</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableRepoMemberCheck</code><br/>
+<em>
+bool
 </em>
 </td>
 <td>
@@ -4284,7 +4347,7 @@ CustomResource
 <h3 id="triggers.tekton.dev/v1beta1.SecretRef">SecretRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GithubAddChangedFiles">GithubAddChangedFiles</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitHubInterceptor">GitHubInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GithubAddChangedFiles">GithubAddChangedFiles</a>, <a href="#triggers.tekton.dev/v1beta1.GithubOwners">GithubOwners</a>)
 </p>
 <div>
 <p>SecretRef contains the information required to reference a single secret string

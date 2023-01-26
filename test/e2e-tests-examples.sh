@@ -178,7 +178,7 @@ main() {
   versions="v1alpha1 v1beta1"
   # List of examples test will run on
   examples_v1alpha1="bitbucket-server cron embedded-trigger github gitlab label-selector namespace-selector trigger-ref"
-  examples_v1beta1="${examples_v1alpha1} bitbucket-cloud triggergroups github-add-changed-files-pr github-add-changed-files-push-cel"
+  examples_v1beta1="${examples_v1alpha1} bitbucket-cloud triggergroups github-add-changed-files-pr github-add-changed-files-push-cel github-owners"
   create_example_pipeline
   for v in ${versions}; do
     current_example_version=${v}
