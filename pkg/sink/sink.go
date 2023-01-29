@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -150,7 +150,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	r.emitEvents(r.EventRecorder, &elTemp, events.TriggerProcessingStartedV1, nil)
 	r.sendCloudEvents(request.Header, elTemp, eventID, events.TriggerProcessingStartedV1)
 
-	event, err := ioutil.ReadAll(request.Body)
+	event, err := io.ReadAll(request.Body)
 	if err != nil {
 		log.Errorf("Error reading event body: %s", err)
 		r.recordCountMetrics(failTag)
@@ -341,7 +341,7 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 	// This request will be passed on to the triggers in this group
 	triggerReq := request.Clone(request.Context())
 	triggerReq.Header = header
-	triggerReq.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
+	triggerReq.Body = io.NopCloser(bytes.NewBuffer(payload))
 
 	wg.Add(len(trItems))
 	for _, t := range trItems {
@@ -485,7 +485,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 				Method: http.MethodPost,
 				Header: request.Header,
 				URL:    in.URL,
-				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
+				Body:   io.NopCloser(bytes.NewBuffer(body)),
 			}
 			interceptor := webhook.NewInterceptor(i.Webhook, r.HTTPClient, namespace, log)
 			res, err := interceptor.ExecuteTrigger(req)
@@ -493,7 +493,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 				return nil, nil, nil, err
 			}
 
-			payload, err := ioutil.ReadAll(res.Body)
+			payload, err := io.ReadAll(res.Body)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("error reading webhook interceptor response body: %w", err)
 			}

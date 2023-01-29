@@ -19,7 +19,7 @@ package webhook
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -91,7 +91,7 @@ func TestWebHookInterceptor(t *testing.T) {
 		t.Fatalf("ExecuteTrigger: %v", err)
 	}
 
-	resPayload, _ := ioutil.ReadAll(resp.Body)
+	resPayload, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if diff := cmp.Diff(wantPayload, resPayload); diff != "" {
 		t.Errorf("response payload (-want, +got) = %s", diff)
