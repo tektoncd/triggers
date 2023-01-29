@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -116,7 +116,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 				t.Fatalf("ServeHTTP() expected Content-Type header to be application/json but got: %s", resp.Header.Get("Content-Type"))
 			}
 
-			respBody, _ := ioutil.ReadAll(resp.Body)
+			respBody, _ := io.ReadAll(resp.Body)
 			defer resp.Body.Close()
 			got := v1alpha1.InterceptorResponse{}
 			if err := json.Unmarshal(respBody, &got); err != nil {
@@ -172,7 +172,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 				t.Fatalf("ServeHTTP() expected statusCode %d but got: %d", tc.wantResponseCode, resp.StatusCode)
 			}
 
-			respBody, _ := ioutil.ReadAll(resp.Body)
+			respBody, _ := io.ReadAll(resp.Body)
 			defer resp.Body.Close()
 			if !strings.Contains(string(respBody), tc.wantResponseBody) {
 				t.Fatalf("ServeHTTP() expected response to contain : %s \n but got %s: ", tc.wantResponseBody, string(respBody))
