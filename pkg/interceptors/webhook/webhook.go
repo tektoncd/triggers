@@ -19,7 +19,7 @@ package webhook
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -74,7 +74,7 @@ func (w *Interceptor) ExecuteTrigger(request *http.Request) (*http.Response, err
 		return resp, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return resp, errors.New("failed to parse response body")
 		}
