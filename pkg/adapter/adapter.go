@@ -128,7 +128,7 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 
 	tlsConfig = &tls.Config{
 		RootCAs:    certPool,
-		MinVersion: tls.VersionTLS13, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
+		MinVersion: tls.VersionTLS12, // Added MinVersion to avoid  G402: TLS MinVersion too low. (gosec)
 	}
 	return &http.Client{
 		Transport: &http.Transport{
