@@ -26,10 +26,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
@@ -42,17 +39,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
-	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"github.com/tektoncd/triggers/pkg/sink"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/client-go/transport/spdy"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -285,6 +277,7 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating ServiceAccount: %s", err)
 	}
+	// TODO: Remove in favor of use bundled roles
 	_, err = c.KubeClient.RbacV1().ClusterRoles().Create(context.Background(),
 		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-role"},
@@ -307,6 +300,7 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
 	}
+	// TODO: Update to use bundled roles
 	_, err = c.KubeClient.RbacV1().ClusterRoleBindings().Create(context.Background(),
 		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-rolebinding"},
@@ -354,7 +348,7 @@ func TestEventListenerCreate(t *testing.T) {
 			}},
 			Resources: triggersv1.Resources{
 				KubernetesResource: &triggersv1.KubernetesResource{
-					Replicas: ptr.Int32(3),
+					Replicas: ptr.Int32(1), // Why was this 3?
 					WithPodSpec: duckv1.WithPodSpec{
 						Template: duckv1.PodSpecable{
 							Spec: corev1.PodSpec{
@@ -428,63 +422,14 @@ func TestEventListenerCreate(t *testing.T) {
 		},
 	}
 
-	labelSelector := fields.SelectorFromSet(resources.GenerateLabels(el.Name, resources.DefaultStaticResourceLabels)).String()
-	// Grab EventListener sink pods
-	sinkPods, err := c.KubeClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+	// Fetch the EL to get it's status
+	el, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(context.Background(), el.Name, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Error listing EventListener sink pods: %s", err)
+		t.Fatalf("failed to fetch eventlistener: %s", err)
 	}
 
-	// ElPort forward sink pod for http request
-	portString := strconv.Itoa(8080)
-	podName := sinkPods.Items[0].Name
-	stopChan, errChan := make(chan struct{}, 1), make(chan error, 1)
-
-	defer func() {
-		close(stopChan)
-	}()
-	go func(stopChan chan struct{}, errChan chan error) {
-		config, err := clientcmd.BuildConfigFromFlags("", knativetest.Flags.Kubeconfig)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		roundTripper, upgrader, err := spdy.RoundTripperFor(config)
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
-		hostIP := strings.TrimPrefix(config.Host, "https://")
-		serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
-		dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
-		out, errOut := new(Buffer), new(Buffer)
-		readyChan := make(chan struct{}, 1)
-		forwarder, err := portforward.New(dialer, []string{portString}, stopChan, readyChan, out, errOut)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		go func() {
-			for range readyChan {
-			}
-			if len(errOut.String()) != 0 {
-				errChan <- fmt.Errorf("%s", errOut)
-			}
-			close(errChan)
-		}()
-		if err = forwarder.ForwardPorts(); err != nil { // This locks until stopChan is closed.
-			errChan <- err
-			return
-		}
-	}(stopChan, errChan)
-
-	if err := <-errChan; err != nil {
-		t.Fatalf("Forwarding stream of data failed:: %v", err)
-	}
 	// Send POST request to EventListener sink
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	req, err := http.NewRequest("POST", el.Status.Address.URL.URL().String(), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request: %s", err)
 	}
@@ -558,7 +503,7 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("EventListener not ready after trigger auth update: %s", err)
 	}
 	// Send POST request to EventListener sink
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	req, err = http.NewRequest("POST", el.Status.Address.URL.URL().String(), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request for trigger auth: %s", err)
 	}
