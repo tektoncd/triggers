@@ -107,7 +107,7 @@ func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, 
 		IdleTimeout:       idleTimeout,
 		Handler:           mux,
 		TLSConfig: &tls.Config{
-			MinVersion: tls.VersionTLS13,
+			MinVersion: tls.VersionTLS12,
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 				return server.GetTLSData(ctx, logger)
 			},
