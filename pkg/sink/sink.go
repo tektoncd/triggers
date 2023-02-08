@@ -534,7 +534,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
 			}
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("could not resolve clusterinterceptor URL: %w", err)
+				return nil, nil, nil, fmt.Errorf("could not resolve nameSpacedinterceptor URL: %w", err)
 			}
 		}
 
