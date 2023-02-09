@@ -15,8 +15,6 @@ spec:
       type: git
     - name: image-source
       type: image
-    - name: event-to-sink
-      type: cloudEvent
   tasks:
     - name: build-docker-image
       taskRef:
@@ -40,9 +38,20 @@ spec:
             resource: image-source
             from:
               - build-docker-image
-        outputs:
-          - name: event-to-sink
-            resource: event-to-sink
+    - name: send-cloud-event
+      taskRef:
+        resolver: hub
+        params:
+        - name: name
+          value: cloudevent
+        - name: version
+          value: 0.1
+      params:
+      - name: sink
+      # URL of the Service we create below
+        value: http://event-display.getting-started.svc.cluster.local
+      - name: eventID
+        value: $(context.taskRun.name)
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -54,9 +63,6 @@ spec:
     inputs:
       - name: image-source
         type: image
-    outputs:
-    - name: event-to-sink
-      type: cloudEvent
   steps:
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl
