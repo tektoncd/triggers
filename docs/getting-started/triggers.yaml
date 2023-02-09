@@ -37,12 +37,6 @@ spec:
               params:
                 - name: url
                   value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
-          - name: event-to-sink
-            resourceSpec:
-              type: cloudEvent
-              params:
-                - name: targetURI
-                  value: http://event-display.getting-started.svc.cluster.local
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
