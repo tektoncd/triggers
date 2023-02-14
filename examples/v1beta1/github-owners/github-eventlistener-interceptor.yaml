@@ -1,0 +1,75 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-owners-listener
+spec:
+  triggers:
+    - name: github-owners-listener
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secretToken
+            - name: "eventTypes"
+              # Owners validation requires (at a minimum) the `pull_request` and `issue_comment` GitHub event types
+              value: ["pull_request", "issue_comment"]
+            - name: "githubOwners"
+              value:
+                enabled: true
+                # This value is needed for private repos or when checkType is set to orgMembers or repoMembers or all
+                # personalAccessToken:
+                #   secretName: github-token
+                #   secretKey: secretToken
+                CheckType: none
+      bindings:
+        - ref: github-owners-pr-binding
+      template:
+        ref: github-owners-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-owners-pr-binding
+spec:
+  params:
+    - name: gitrepositoryurl
+      value: $(body.repository.clone_url)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-owners-template
+spec:
+  params:
+    - name: gitrepositoryurl
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: github-owners-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "RepoURL is $(tt.params.gitrepositoryurl)"
