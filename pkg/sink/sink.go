@@ -461,11 +461,20 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		return event, in.Header, nil, nil
 	}
 
+	// decode form
+	form := make(map[string][]string)
+	if in.Form != nil {
+		for k, v := range in.Form {
+			form[k] = v
+		}
+	}
+
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
 	// or add to the Extensions
 	request := triggersv1.InterceptorRequest{
 		Body:       string(event),
 		Header:     in.Header.Clone(),
+		Form:       form,
 		Extensions: extensions,
 		Context: &triggersv1.TriggerContext{
 			EventURL: in.URL.String(),
@@ -484,6 +493,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			req := &http.Request{
 				Method: http.MethodPost,
 				Header: request.Header,
+				Form:   request.Form,
 				URL:    in.URL,
 				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
 			}
