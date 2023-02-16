@@ -420,7 +420,13 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 }
 
 func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
+	workspaceBindingNames := sets.NewString()
 	for i, ws := range pt.Workspaces {
+		if workspaceBindingNames.Has(ws.Name) {
+			errs = errs.Also(apis.ErrGeneric(
+				fmt.Sprintf("workspace name %q must be unique", ws.Name), "").ViaFieldIndex("workspaces", i))
+		}
+
 		if ws.Workspace == "" {
 			if !workspaceNames.Has(ws.Name) {
 				errs = errs.Also(apis.ErrInvalidValue(
@@ -434,6 +440,8 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 				"",
 			).ViaFieldIndex("workspaces", i))
 		}
+
+		workspaceBindingNames.Insert(ws.Name)
 	}
 	return errs
 }
@@ -468,13 +476,11 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	errs = errs.Also(pt.validateEmbeddedOrType())
 
-	cfg := config.FromContextOrDefaults(ctx)
-	// If EnableCustomTasks feature flag is on, validate custom task specifications
-	// pipeline task having taskRef with APIVersion is classified as custom task
+	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
-	case cfg.FeatureFlags.EnableCustomTasks && pt.TaskRef != nil && pt.TaskRef.APIVersion != "":
+	case pt.TaskRef != nil && pt.TaskRef.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
-	case cfg.FeatureFlags.EnableCustomTasks && pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
+	case pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
 	default:
 		errs = errs.Also(pt.validateTask(ctx))

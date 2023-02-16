@@ -51,7 +51,7 @@ const (
 	exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
 	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
 	arrayIndexing = `\[([0-9])*\*?\]`
-	// ResultNameFormat Constant used to define the the regex Result.Name should follow
+	// ResultNameFormat Constant used to define the regex Result.Name should follow
 	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
 
@@ -171,7 +171,6 @@ func stripVarSubExpression(expression string) string {
 // - Output: "", "", 0, "", error
 // TODO: may use regex for each type to handle possible reference formats
 func parseExpression(substitutionExpression string) (string, string, int, string, error) {
-
 	if looksLikeResultRef(substitutionExpression) {
 		subExpressions := strings.Split(substitutionExpression, ".")
 		// For string result: tasks.<taskName>.results.<stringResultName>
