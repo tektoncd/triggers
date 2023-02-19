@@ -115,7 +115,9 @@ func ResolveToURL(getter InterceptorGetter, name string) (*apis.URL, error) {
 }
 
 func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.InterceptorRequest, url string) (*triggersv1beta1.InterceptorResponse, error) {
+
 	b, err := json.Marshal(req)
+
 	if err != nil {
 		return nil, err
 	}

@@ -110,13 +110,14 @@ func (r Sink) emitEvents(recorder record.EventRecorder, el *triggersv1.EventList
 
 // HandleEvent processes an incoming HTTP event for the event listener.
 func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
+
 	log := r.Logger.With(
 		zap.String("eventlistener", r.EventListenerName),
 		zap.String("namespace", r.EventListenerNamespace),
 	)
 	eventID := template.UUID()
 	log = log.With(zap.String(triggers.EventIDLabelKey, eventID))
-
+	request.ParseForm()
 	elTemp := triggersv1.EventListener{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "EventListener",
@@ -461,6 +462,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		return event, in.Header, nil, nil
 	}
 
+	in.ParseForm()
 	// decode form
 	form := make(map[string][]string)
 	if in.Form != nil {
@@ -468,13 +470,17 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			form[k] = v
 		}
 	}
-
+	formBytes, err := json.Marshal(form)
+	if err != nil {
+		fmt.Println(err)
+	}
+	FormString := string(formBytes)
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
 	// or add to the Extensions
 	request := triggersv1.InterceptorRequest{
 		Body:       string(event),
 		Header:     in.Header.Clone(),
-		Form:       form,
+		Form:       FormString,
 		Extensions: extensions,
 		Context: &triggersv1.TriggerContext{
 			EventURL: in.URL.String(),
@@ -493,11 +499,12 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			req := &http.Request{
 				Method: http.MethodPost,
 				Header: request.Header,
-				Form:   request.Form,
+				Form:   form,
 				URL:    in.URL,
 				Body:   ioutil.NopCloser(bytes.NewBuffer(body)),
 			}
 			interceptor := webhook.NewInterceptor(i.Webhook, r.HTTPClient, namespace, log)
+
 			res, err := interceptor.ExecuteTrigger(req)
 			if err != nil {
 				return nil, nil, nil, err
