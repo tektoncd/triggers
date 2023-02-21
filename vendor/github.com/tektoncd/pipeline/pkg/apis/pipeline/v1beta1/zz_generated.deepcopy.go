@@ -24,7 +24,7 @@ package v1beta1
 import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -703,7 +703,7 @@ func (in *PipelineRunRunStatus) DeepCopyInto(out *PipelineRunRunStatus) {
 	*out = *in
 	if in.Status != nil {
 		in, out := &in.Status, &out.Status
-		*out = new(runv1alpha1.RunStatus)
+		*out = new(runv1beta1.CustomRunStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.WhenExpressions != nil {
@@ -888,6 +888,13 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 		in, out := &in.Provenance, &out.Provenance
 		*out = new(Provenance)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.SpanContext != nil {
+		in, out := &in.SpanContext, &out.SpanContext
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }
@@ -2203,6 +2210,13 @@ func (in *TaskRunStatusFields) DeepCopyInto(out *TaskRunStatusFields) {
 		in, out := &in.Provenance, &out.Provenance
 		*out = new(Provenance)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.SpanContext != nil {
+		in, out := &in.SpanContext, &out.SpanContext
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }
