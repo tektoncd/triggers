@@ -117,7 +117,12 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	)
 	eventID := template.UUID()
 	log = log.With(zap.String(triggers.EventIDLabelKey, eventID))
-	request.ParseForm()
+
+	err := request.ParseForm()
+	if err != nil {
+		log.Error("unable to parse request form")
+	}
+
 	elTemp := triggersv1.EventListener{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "EventListener",
@@ -462,7 +467,11 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		return event, in.Header, nil, nil
 	}
 
-	in.ParseForm()
+	err := in.ParseForm()
+
+	if err != nil {
+		log.Error("unable to parse request form")
+	}
 	// decode form
 	form := make(map[string][]string)
 	if in.Form != nil {
