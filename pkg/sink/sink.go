@@ -472,7 +472,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 	}
 	formBytes, err := json.Marshal(form)
 	if err != nil {
-		fmt.Println(err)
+		return nil, nil, nil, fmt.Errorf("unable to marshal http form: %w", err)
 	}
 	FormString := string(formBytes)
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
