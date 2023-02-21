@@ -1,11 +1,3 @@
-<!--
----
-title: Triggers API
-linkTitle: Triggers API
-weight: 1000
----
--->
-
 <p>Packages:</p>
 <ul>
 <li>
@@ -1412,6 +1404,17 @@ map[string][]string
 </td>
 <td>
 <p>Header are the headers for the incoming HTTP event</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>form</code><br/>
+<em>
+map[string][]string
+</em>
+</td>
+<td>
+<p>Form is the form data for the incoming HTTP event</p>
 </td>
 </tr>
 <tr>
@@ -3951,6 +3954,17 @@ map[string][]string
 </td>
 <td>
 <p>Header are the headers for the incoming HTTP event</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>form</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Form is the form data for the incoming HTTP event</p>
 </td>
 </tr>
 <tr>

@@ -914,6 +914,13 @@ func schema_pkg_apis_triggers_v1beta1_InterceptorRequest(ref common.ReferenceCal
 							},
 						},
 					},
+					"form": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Form is the form data for the incoming HTTP event",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"extensions": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Extensions are extra values that are added by previous interceptors in a chain",
