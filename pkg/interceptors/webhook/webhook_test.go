@@ -84,7 +84,7 @@ func TestWebHookInterceptor(t *testing.T) {
 	}
 	i := NewInterceptor(webhook, client, "default", nil)
 
-	incoming, _ := http.NewRequest("POST", "http://doesnotmatter.example.com", payload)
+	incoming, _ := http.NewRequest(http.MethodPost, "http://doesnotmatter.example.com", payload)
 	incoming.Header.Add("Content-type", "application/json")
 	resp, err := i.ExecuteTrigger(incoming)
 	if err != nil {
@@ -136,7 +136,7 @@ func TestWebHookInterceptor_NotOK(t *testing.T) {
 	}
 	i := NewInterceptor(webhook, client, "default", nil)
 
-	incoming, _ := http.NewRequest("POST", "http://doesnotmatter.example.com", payload)
+	incoming, _ := http.NewRequest(http.MethodPost, "http://doesnotmatter.example.com", payload)
 	resp, err := i.ExecuteTrigger(incoming)
 	if err == nil || resp.StatusCode != http.StatusAccepted {
 		got, _ := httputil.DumpResponse(resp, true)
