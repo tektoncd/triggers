@@ -484,7 +484,7 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Forwarding stream of data failed:: %v", err)
 	}
 	// Send POST request to EventListener sink
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request: %s", err)
 	}
@@ -558,7 +558,7 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("EventListener not ready after trigger auth update: %s", err)
 	}
 	// Send POST request to EventListener sink
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request for trigger auth: %s", err)
 	}
