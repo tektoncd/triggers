@@ -115,7 +115,7 @@ port_forward_and_curl() {
   fi
 
   # Wait a few seconds for resources to show up
-  sleep 3
+  sleep 10
 
   tr=$(kubectl get taskruns -A -l triggers.tekton.dev/triggers-eventid=${eventID} -o name)
   pr=$(kubectl get pipelineruns -A -l triggers.tekton.dev/triggers-eventid=${eventID} -o name)
