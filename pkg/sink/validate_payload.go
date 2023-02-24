@@ -20,14 +20,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
 func (r Sink) IsValidPayload(eventHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		payload, err := ioutil.ReadAll(request.Body)
-		request.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
+		payload, err := io.ReadAll(request.Body)
+		request.Body = io.NopCloser(bytes.NewBuffer(payload))
 		if err != nil {
 			r.recordCountMetrics(failTag)
 			r.Logger.Errorf("Error reading event body: %s", err)
