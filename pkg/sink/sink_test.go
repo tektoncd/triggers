@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -1472,10 +1473,6 @@ func TestExecuteInterceptor_Form(t *testing.T) {
 		Spec: triggersv1beta1.TriggerSpec{
 			Interceptors: []*triggersv1beta1.EventInterceptor{{
 				Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
-				Params: []triggersv1beta1.InterceptorParams{{
-					Name:  "filter",
-					Value: test.ToV1JSON(t, `body.head == "abcde"`),
-				}},
 			}}},
 	}
 
@@ -1483,12 +1480,12 @@ func TestExecuteInterceptor_Form(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	// form data
 	data := url.Values{}
 	data.Set("name", "Alice")
 	data.Add("hobby", "reading")
-	req.Form = data
+	req.Body = io.NopCloser(bytes.NewBuffer(json.RawMessage(`{"head": "blah"}`)))
 
 	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err != nil {
 		t.Errorf("got the following error: %+v, %v", string(resp), err)
@@ -1496,7 +1493,7 @@ func TestExecuteInterceptor_Form(t *testing.T) {
 
 }
 
-func TestExecuteInterceptor_Form_error(t *testing.T) {
+func TestExecuteInterceptor_Form_no_headers(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	resources := test.Resources{
@@ -1509,10 +1506,6 @@ func TestExecuteInterceptor_Form_error(t *testing.T) {
 		Spec: triggersv1beta1.TriggerSpec{
 			Interceptors: []*triggersv1beta1.EventInterceptor{{
 				Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
-				Params: []triggersv1beta1.InterceptorParams{{
-					Name:  "filter",
-					Value: test.ToV1JSON(t, `body.head == "abcde"`),
-				}},
 			}}},
 	}
 
@@ -1520,15 +1513,15 @@ func TestExecuteInterceptor_Form_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-
 	// form data
 	data := url.Values{}
 	data.Set("name", "Alice")
-	data.Add(" ", " ")
+	data.Add("hobby", "reading")
 	req.Form = data
+	req.Body = io.NopCloser(bytes.NewBuffer(json.RawMessage(`{"head": "blah"}`)))
 
-	if _, _, resp, _ := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); resp.Continue == true {
-		t.Fatalf("ExecuteInterceptor(). Expected response.conitnue to be false but got true. Response: %v", resp)
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err != nil {
+		t.Errorf("got the following error: %+v, %v", string(resp), err)
 	}
 
 }

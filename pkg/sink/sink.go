@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -467,29 +468,10 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		return event, in.Header, nil, nil
 	}
 
-	err := in.ParseForm()
-
-	if err != nil {
-		log.Error("unable to parse request form")
-	}
-	// decode form
-	form := make(map[string][]string)
-	if in.Form != nil {
-		for k, v := range in.Form {
-			form[k] = v
-		}
-	}
-	formBytes, err := json.Marshal(form)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("unable to marshal http form: %w", err)
-	}
-	FormString := string(formBytes)
-	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
-	// or add to the Extensions
 	request := triggersv1.InterceptorRequest{
-		Body:       string(event),
-		Header:     in.Header.Clone(),
-		Form:       FormString,
+		Body:   string(event),
+		Header: in.Header.Clone(),
+
 		Extensions: extensions,
 		Context: &triggersv1.TriggerContext{
 			EventURL: in.URL.String(),
@@ -498,6 +480,30 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			TriggerID: triggerID,
 		},
 	}
+
+	header := in.Header.Get("Content-Type")
+	if strings.Contains(header, "form-data") || strings.Contains(header, "application/x-www-form-urlencoded") {
+
+		err := in.ParseForm()
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to parse request form: %w", err)
+		}
+		// decode form
+		form := make(map[string][]string)
+		if in.Form != nil {
+			for k, v := range in.Form {
+				form[k] = v
+			}
+		}
+		formBytes, err := json.Marshal(form)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to marshal http form: %w", err)
+		}
+		FormString := string(formBytes)
+		request.Form = FormString
+	}
+	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
+	// or add to the Extensions
 
 	for _, i := range trInt {
 		if i.Webhook != nil { // Old style interceptor
@@ -508,7 +514,6 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			req := &http.Request{
 				Method: http.MethodPost,
 				Header: request.Header,
-				Form:   form,
 				URL:    in.URL,
 				Body:   io.NopCloser(bytes.NewBuffer(body)),
 			}
