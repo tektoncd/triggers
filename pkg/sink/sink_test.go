@@ -1192,7 +1192,7 @@ func TestHandleEvent(t *testing.T) {
 			metricsRecorder := &MetricsHandler{Handler: http.HandlerFunc(sink.HandleEvent)}
 			ts := httptest.NewServer(metricsRecorder.Intercept(sink.NewMetricsRecorderInterceptor()))
 			defer ts.Close()
-			req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(tc.eventBody))
+			req, err := http.NewRequest(http.MethodPost, ts.URL, bytes.NewReader(tc.eventBody))
 			if err != nil {
 				t.Fatalf("error creating request: %s", err)
 			}
@@ -1621,7 +1621,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		},
 	}
 
-	req, err := http.NewRequest("POST", "/", nil)
+	req, err := http.NewRequest(http.MethodPost, "/", nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}

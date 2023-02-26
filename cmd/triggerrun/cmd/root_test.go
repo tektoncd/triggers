@@ -123,7 +123,7 @@ func Test_processTriggerSpec(t *testing.T) {
 		resources test.Resources
 	}
 	eventBody := json.RawMessage(`{"repository": {"links": {"clone": [{"href": "testurl", "name": "ssh"}, {"href": "testurl", "name": "http"}]}}, "changes": [{"ref": {"displayId": "test-branch"}}]}`)
-	r, err := http.NewRequest("POST", "URL", bytes.NewReader(eventBody))
+	r, err := http.NewRequest(http.MethodPost, "URL", bytes.NewReader(eventBody))
 	if err != nil {
 		t.Errorf("Cannot create a new request:%s", err)
 	}
