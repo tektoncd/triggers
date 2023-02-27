@@ -119,11 +119,6 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 	eventID := template.UUID()
 	log = log.With(zap.String(triggers.EventIDLabelKey, eventID))
 
-	err := request.ParseForm()
-	if err != nil {
-		log.Error("unable to parse request form")
-	}
-
 	elTemp := triggersv1.EventListener{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "EventListener",
