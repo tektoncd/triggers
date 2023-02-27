@@ -89,10 +89,12 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 		Annotations: customObjectData.Spec.Template.Annotations,
 	}
 	original.Spec.Template.Spec = corev1.PodSpec{
-		Tolerations:        customObjectData.Spec.Template.Spec.Tolerations,
-		NodeSelector:       customObjectData.Spec.Template.Spec.NodeSelector,
-		ServiceAccountName: customObjectData.Spec.Template.Spec.ServiceAccountName,
-		Containers:         []corev1.Container{container},
+		Tolerations:               customObjectData.Spec.Template.Spec.Tolerations,
+		NodeSelector:              customObjectData.Spec.Template.Spec.NodeSelector,
+		ServiceAccountName:        customObjectData.Spec.Template.Spec.ServiceAccountName,
+		Containers:                []corev1.Container{container},
+		Affinity:                  customObjectData.Spec.Template.Spec.Affinity,
+		TopologySpreadConstraints: customObjectData.Spec.Template.Spec.TopologySpreadConstraints,
 	}
 	marshaledData, err := json.Marshal(original)
 	if err != nil {
@@ -155,6 +157,14 @@ func UpdateCustomObject(originalData, updatedCustomObject *unstructured.Unstruct
 	}
 	if !reflect.DeepEqual(existingObject.Spec.Template.Spec.NodeSelector, originalObject.Spec.Template.Spec.NodeSelector) {
 		existingObject.Spec.Template.Spec.NodeSelector = originalObject.Spec.Template.Spec.NodeSelector
+		updated = true
+	}
+	if !reflect.DeepEqual(existingObject.Spec.Template.Spec.Affinity, originalObject.Spec.Template.Spec.Affinity) {
+		existingObject.Spec.Template.Spec.Affinity = originalObject.Spec.Template.Spec.Affinity
+		updated = true
+	}
+	if !reflect.DeepEqual(existingObject.Spec.Template.Spec.TopologySpreadConstraints, originalObject.Spec.Template.Spec.TopologySpreadConstraints) {
+		existingObject.Spec.Template.Spec.TopologySpreadConstraints = originalObject.Spec.Template.Spec.TopologySpreadConstraints
 		updated = true
 	}
 	if len(existingObject.Spec.Template.Spec.Containers) == 0 ||

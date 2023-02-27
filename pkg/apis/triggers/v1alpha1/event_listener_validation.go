@@ -266,7 +266,6 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.SecurityContext = nil
 	out.Hostname = ""
 	out.Subdomain = ""
-	out.Affinity = nil
 	out.SchedulerName = ""
 	out.HostAliases = nil
 	out.PriorityClassName = ""
@@ -274,6 +273,8 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.DNSConfig = nil
 	out.ReadinessGates = nil
 	out.RuntimeClassName = nil
+	out.Affinity = nil
+	out.TopologySpreadConstraints = nil
 
 	return out
 }

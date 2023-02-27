@@ -281,6 +281,52 @@ func TestDeployment(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "with Affinity and TopologySpreadConstraints",
+		el:   makeEL(withAffinityAndTopologySpreadConstraints()),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+										MatchExpressions: []corev1.NodeSelectorRequirement{{
+											Key:      "topology.kubernetes.io/zone",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"antarctica-east1"},
+										}},
+									}},
+								},
+							},
+						},
+						TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+							MaxSkew: 1,
+						}},
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
+					},
+				},
+			},
+		},
 	}}
 
 	for _, tt := range tests {
@@ -332,6 +378,35 @@ func withTLSEnvFrom(name string) func(*v1beta1.EventListener) {
 									},
 								},
 							}},
+						}},
+					},
+				},
+			},
+		}
+	}
+}
+
+func withAffinityAndTopologySpreadConstraints() func(*v1beta1.EventListener) {
+	return func(el *v1beta1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+										MatchExpressions: []corev1.NodeSelectorRequirement{{
+											Key:      "topology.kubernetes.io/zone",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"antarctica-east1"},
+										}},
+									}},
+								},
+							},
+						},
+						TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+							MaxSkew: 1,
 						}},
 					},
 				},

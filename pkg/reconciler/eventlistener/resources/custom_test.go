@@ -327,6 +327,123 @@ func TestCustomObject(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "with Affinity and TopologySpreadConstraints",
+		el: makeEL(func(el *v1beta1.EventListener) {
+			el.Spec.Resources.CustomResource = &v1beta1.CustomResource{
+				RawExtension: runtime.RawExtension{
+					Raw: []byte(`{
+							"apiVersion": "serving.knative.dev/v1",
+							"kind": "Service",
+							"spec": {
+								"template": {
+									"spec": {
+                                        "affinity": {
+	                                       "nodeAffinity": {
+                                             "requiredDuringSchedulingIgnoredDuringExecution": {
+                                                "nodeSelectorTerms": [{
+                                                   "matchExpressions": [{
+                                                      "key": "topology.kubernetes.io/zone",
+                                                      "operator": "In",
+                                                      "values": ["antarctica-east1"]
+                                                    }]
+								                 }]
+                                              }	
+                                           }
+                                        },
+                                        "topologySpreadConstraints": [{
+                                          "maxSkew": 1
+                                        }],
+										"containers": [{
+											"resources": {
+												"limits": {
+													"cpu": "101m"
+												}
+											}
+										}]
+									}
+								}
+							}
+						}`),
+				},
+			}
+		}),
+		want: &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "serving.knative.dev/v1",
+				"kind":       "Service",
+				"metadata":   metadata,
+				"spec": map[string]interface{}{
+					"template": map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"creationTimestamp": nil,
+						},
+						"spec": map[string]interface{}{
+							"affinity": map[string]interface{}{
+								"nodeAffinity": map[string]interface{}{
+									"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
+										"nodeSelectorTerms": []interface{}{
+											map[string]interface{}{
+												"matchExpressions": []interface{}{
+													map[string]interface{}{
+														"key":      "topology.kubernetes.io/zone",
+														"operator": "In",
+														"values":   []interface{}{"antarctica-east1"},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							"topologySpreadConstraints": []interface{}{
+								map[string]interface{}{
+									"maxSkew":           int64(1),
+									"topologyKey":       "",
+									"whenUnsatisfiable": "",
+								},
+							},
+							"containers": []interface{}{
+								map[string]interface{}{
+									"name":  "event-listener",
+									"image": DefaultImage,
+									"args":  args,
+									"env":   env,
+									"ports": []interface{}{
+										map[string]interface{}{
+											"containerPort": int64(8080),
+											"protocol":      "TCP",
+										},
+									},
+									"resources": map[string]interface{}{
+										"limits": map[string]interface{}{
+											"cpu": "101m",
+										},
+									},
+									"securityContext": map[string]interface{}{
+										"allowPrivilegeEscalation": false,
+										"capabilities": map[string]interface{}{
+											"drop": []interface{}{string("ALL")}},
+										"runAsGroup":     int64(65532),
+										"runAsNonRoot":   bool(true),
+										"runAsUser":      int64(65532),
+										"seccompProfile": map[string]interface{}{"type": string("RuntimeDefault")},
+									},
+									"readinessProbe": map[string]interface{}{
+										"httpGet": map[string]interface{}{
+											"path":   "/live",
+											"port":   int64(0),
+											"scheme": "HTTP",
+										},
+										"successThreshold": int64(1),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}}
 
 	for _, tt := range tests {
@@ -433,6 +550,30 @@ func TestUpdateCustomObject(t *testing.T) {
 									"name": "volume",
 								},
 							},
+							"affinity": map[string]interface{}{
+								"nodeAffinity": map[string]interface{}{
+									"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
+										"nodeSelectorTerms": []interface{}{
+											map[string]interface{}{
+												"matchExpressions": []interface{}{
+													map[string]interface{}{
+														"key":      "topology.kubernetes.io/zone",
+														"operator": "In",
+														"values":   []interface{}{"antarctica-east1"},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							"topologySpreadConstraints": []interface{}{
+								map[string]interface{}{
+									"maxSkew":           int64(1),
+									"topologyKey":       "",
+									"whenUnsatisfiable": "",
+								},
+							},
 							"containers": []interface{}{
 								map[string]interface{}{
 									"name":  "event-listener",
@@ -504,6 +645,30 @@ func TestUpdateCustomObject(t *testing.T) {
 							"volumes": []interface{}{
 								map[string]interface{}{
 									"name1": "volume1",
+								},
+							},
+							"affinity": map[string]interface{}{
+								"nodeAffinity": map[string]interface{}{
+									"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
+										"nodeSelectorTerms": []interface{}{
+											map[string]interface{}{
+												"matchExpressions": []interface{}{
+													map[string]interface{}{
+														"key":      "topology.kubernetes.io/updatedzone",
+														"operator": "In",
+														"values":   []interface{}{"antarctica-east2"},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							"topologySpreadConstraints": []interface{}{
+								map[string]interface{}{
+									"maxSkew":           int64(2),
+									"topologyKey":       "",
+									"whenUnsatisfiable": "",
 								},
 							},
 							"containers": []interface{}{
