@@ -270,14 +270,14 @@ Legal values for the `PodSpec` and `Containers` sub-fields for both `kubernetesR
 ServiceAccountName
 NodeSelector
 Tolerations
-Volumes
 Containers
+Affinity
+TopologySpreadConstraints
 ```
 
 Legal values for the `Containers` sub-field are:
 ```
 Resources
-VolumeMounts
 Env
 ```
 

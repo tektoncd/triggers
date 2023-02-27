@@ -254,6 +254,8 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.Containers = in.Containers
 	out.Tolerations = in.Tolerations
 	out.NodeSelector = in.NodeSelector
+	out.Affinity = in.Affinity
+	out.TopologySpreadConstraints = in.TopologySpreadConstraints
 
 	// Disallowed fields
 	// This list clarifies which all podspec fields are not allowed.
@@ -274,7 +276,6 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.SecurityContext = nil
 	out.Hostname = ""
 	out.Subdomain = ""
-	out.Affinity = nil
 	out.SchedulerName = ""
 	out.HostAliases = nil
 	out.PriorityClassName = ""

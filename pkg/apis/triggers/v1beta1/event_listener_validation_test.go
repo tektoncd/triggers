@@ -525,7 +525,44 @@ func Test_EventListenerValidate(t *testing.T) {
 					},
 				}},
 			},
-		}}}
+		}},
+		{
+			name: "Valid EventListener with node affinity",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: myObjectMeta,
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+					}},
+					Resources: triggersv1beta1.Resources{
+						KubernetesResource: &triggersv1beta1.KubernetesResource{
+							WithPodSpec: duckv1.WithPodSpec{
+								Template: duckv1.PodSpecable{
+									Spec: corev1.PodSpec{
+										ServiceAccountName: "k8sresource",
+										Affinity: &corev1.Affinity{
+											NodeAffinity: &corev1.NodeAffinity{
+												RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+													NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+														MatchExpressions: []corev1.NodeSelectorRequirement{{
+															Key:      "topology.kubernetes.io/zone",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"antarctica-east1"},
+														}},
+													}},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
