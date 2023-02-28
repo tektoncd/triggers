@@ -1129,3 +1129,912 @@ func Test_makeClient(t *testing.T) {
 		})
 	}
 }
+
+func Test_getPersonalAccessTokenSecret(t *testing.T) {
+
+	ctx, _ := test.SetupFakeContext(t)
+	var secretToken = "secret"
+
+	type args struct {
+		ctx context.Context
+		r   *triggersv1.InterceptorRequest
+		p   triggersv1.GitHubInterceptor
+	}
+	tests := []struct {
+		name    string
+		secret  *corev1.Secret
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "valid secret",
+			args: args{
+				ctx: ctx,
+				r: &triggersv1.InterceptorRequest{
+					Context: &triggersv1.TriggerContext{
+						EventURL:  "https://testing.example.com",
+						EventID:   "abcde",
+						TriggerID: "namespaces/default/triggers/example-trigger",
+					},
+				},
+				p: triggersv1.GitHubInterceptor{
+					GithubOwners: triggersv1.GithubOwners{
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+					EventTypes: []string{"pull_request", "issue_comment"},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			want:    "secret",
+			wantErr: false,
+		},
+		{
+			name: "nil secret reference",
+			// w:    interceptor,
+			args: args{
+				ctx: ctx,
+				r: &triggersv1.InterceptorRequest{
+					Context: &triggersv1.TriggerContext{
+						EventURL:  "https://testing.example.com",
+						EventID:   "abcde",
+						TriggerID: "namespaces/default/triggers/example-trigger",
+					},
+				},
+				p: triggersv1.GitHubInterceptor{
+					EventTypes: []string{"pull_request", "issue_comment"},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name: "missing secret key, failure",
+			// w:    interceptor,
+			args: args{
+				ctx: ctx,
+				r: &triggersv1.InterceptorRequest{
+					Context: &triggersv1.TriggerContext{
+						EventURL:  "https://testing.example.com",
+						EventID:   "abcde",
+						TriggerID: "namespaces/default/triggers/example-trigger",
+					},
+				},
+				p: triggersv1.GitHubInterceptor{
+					GithubOwners: triggersv1.GithubOwners{
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+						},
+					},
+					EventTypes: []string{"pull_request", "issue_comment"},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			clientset := fakekubeclient.Get(ctx)
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+			}
+
+			w := &Interceptor{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+
+			got, err := w.getPersonalAccessTokenSecret(tt.args.ctx, tt.args.r, tt.args.p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Interceptor.getSecret() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Interceptor.getSecret() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
+	secretToken := "secret"
+	tests := []struct {
+		name                  string
+		issueCommentReply     string
+		ownersFileReply       string
+		collaboratorsReply    string
+		orgPublicMembersReply string
+		secret                *corev1.Secret
+		interceptorRequest    *triggersv1.InterceptorRequest
+		allowed               bool
+		wantErr               bool
+		want                  string
+	}{
+		{
+			name:            "owners file have sender",
+			ownersFileReply: `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:               "sender is a collaborator but PersonalAccessToken not supplied",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "repoMembers",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "checkType is set to check org or repo members but no personalAccessToken was supplied",
+		},
+		{
+			name:               "sender is a repository member",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "repoMembers",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:               "sender is a organization member",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened", "number": 1, "repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "orgMembers",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:            "owners file does not have sender",
+			ownersFileReply: `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+		{
+			name:              "owners file have sender and sender commented /ok-to-test",
+			issueCommentReply: `[{"body": "/ok-to-test", "sender": {"login": "test_owner"}}]`,
+			ownersFileReply:   `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:              "owners file have sender and owner commented /random",
+			issueCommentReply: `[{"body": "/random", "sender": {"login": "test_owner"}}]`,
+			ownersFileReply:   `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/random"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+		{
+			name:              "owners file does not have sender and nonowner commented /ok-to-test",
+			issueCommentReply: `[{"body": "/ok-to-test", "sender": {"login": "nonowner"}}]`,
+			ownersFileReply:   `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+		{
+			name:               "pull request submitted by owner",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened", "number": 1, "repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+		{
+			name:               "sender is not a repository member",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened", "number": 1, "repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "repoMembers",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+		{
+			name:               "sender is not a organization member",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened", "number": 1, "repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "orgMembers",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				if request.URL.Path == "api/v3/repos/owner/repo/issues/comments" {
+					writer.Write([]byte(tt.issueCommentReply))
+				}
+				if request.URL.Path == "/api/v3/repos/owner/repo/contents/OWNERS" {
+					writer.Write([]byte(tt.ownersFileReply))
+				}
+				if request.URL.Path == "/api/v3/repos/owner/repo/collaborators" {
+					writer.Write([]byte(tt.collaboratorsReply))
+				}
+				if request.URL.Path == "/api/v3/orgs/owner/public_members" {
+					writer.Write([]byte(tt.collaboratorsReply))
+				}
+			}))
+			ctx, _ := test.SetupFakeContext(t)
+			ctx = context.WithValue(ctx, testURL, ts.URL)
+			clientset := fakekubeclient.Get(ctx)
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+			}
+
+			w := &Interceptor{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, tt.interceptorRequest)
+
+			if (!res.Continue) && (tt.wantErr == true) {
+				t.Logf("Interceptor.Process() = %v, want %v", res.Status.Message, tt.want)
+			} else if !res.Continue && (tt.wantErr != true) {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_owners_parseBodyForOwners(t *testing.T) {
+	tests := []struct {
+		name               string
+		eventType          string
+		interceptorRequest *triggersv1.InterceptorRequest
+		allowed            bool
+		wantErr            bool
+		want               string
+	}{
+		{
+			name:      "No payload supplied",
+			eventType: "pull_request",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   ``,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "payload body is empty",
+		},
+		{
+			name:      "PR number missing on the payload",
+			eventType: "pull_request",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "pull_request body missing 'number' field",
+		},
+		{
+			name:      "Issue comment missing issue on the payload",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "issue_comment body missing 'issue' section",
+		},
+		{
+			name:      "Issue comment missing issue on the payload",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "'number' field missing in the issue section of issue_comment body",
+		},
+		{
+			name:      "Payload body missing repository field",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "payload body missing 'repository' field",
+		},
+		{
+			name:      "Payload body missing full_name in repository field",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "payload body missing 'repository.full_name' field",
+		},
+		{
+			name:      "Payload body missing sender field",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "payload body missing 'sender' field",
+		},
+		{
+			name:      "Issue_comment missing 'comment' section",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "issue_comment body missing 'comment' section",
+		},
+		{
+			name:      "Issue_comment missing body field in comment section",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "'body' field missing in the comment section of issue_comment body",
+		},
+		{
+			name:      "Payload return with all details issue_comment",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseBodyForOwners(tt.interceptorRequest.Body, tt.eventType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Interceptor.parseBodyForOwners() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
+	secretToken := "secret"
+	tests := []struct {
+		name                    string
+		issueCommentReply       string
+		ownersFileReply         string
+		collaboratorsReply      string
+		ownersAPICallStatusCode int
+		secret                  *corev1.Secret
+		interceptorRequest      *triggersv1.InterceptorRequest
+		allowed                 bool
+		wantErr                 bool
+		want                    string
+	}{
+		{
+			name:            "personalAccessToken secretKey is empty",
+			ownersFileReply: `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "",
+						},
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "error getting github token: github interceptor personalAccessToken.secretKey is empty",
+		},
+		{
+			name: "error parsing payload body",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened","repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled:   true,
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "error parsing body: pull_request body missing 'number' field",
+		},
+		{
+			name:                    "no owners file",
+			ownersFileReply:         `{"statusCode": 404}`,
+			ownersAPICallStatusCode: 404,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "owners check requirements not met",
+		},
+		{
+			name:                    "error checking owner file validation",
+			ownersFileReply:         `{"statusCode": 500}`,
+			ownersAPICallStatusCode: 500,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "none",
+					},
+				},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+		},
+		{
+			name:               "no context",
+			ownersFileReply:    `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`,
+			collaboratorsReply: `[{"login": "test_owner"}]`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "opened", "number": 1, "repository":{"full_name": "owner/repo", "clone_url": "https://github.com/owner/repo.git"}, "sender":{"login": "nonowner"}}`,
+				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"githubOwners": &triggersv1.GithubOwners{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+						CheckType: "orgMembers",
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "error getting github token: no request context passed",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				if request.URL.Path == "api/v3/repos/owner/repo/issues/comments" {
+					writer.Write([]byte(tt.issueCommentReply))
+				}
+				if request.URL.Path == "/api/v3/repos/owner/repo/contents/OWNERS" {
+					if tt.ownersAPICallStatusCode != 0 {
+						writer.WriteHeader(tt.ownersAPICallStatusCode)
+					} else {
+						writer.Write([]byte(tt.ownersFileReply))
+					}
+				}
+				if request.URL.Path == "/api/v3/repos/owner/repo/collaborators" {
+					writer.Write([]byte(tt.collaboratorsReply))
+				}
+				if request.URL.Path == "/api/v3/orgs/owner/public_members" {
+					writer.Write([]byte(tt.collaboratorsReply))
+				}
+			}))
+			ctx, _ := test.SetupFakeContext(t)
+			ctx = context.WithValue(ctx, testURL, ts.URL)
+			clientset := fakekubeclient.Get(ctx)
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+			}
+
+			w := &Interceptor{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, tt.interceptorRequest)
+
+			if (!res.Continue) && (tt.wantErr == true) {
+				t.Logf("Interceptor.Process() = %v, want %v", res.Status.Message, tt.want)
+			} else if !res.Continue && (tt.wantErr != true) {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
+	}
+}
