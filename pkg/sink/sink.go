@@ -490,14 +490,14 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			return nil, nil, nil, fmt.Errorf("unable to parse request form: %w", err)
 		}
 
-		parsed_body, err := url.ParseQuery(request.Body)
+		parsedBody, err := url.ParseQuery(request.Body)
 		if err != nil {
 			log.Error("unable to ParseQuery form ")
 		}
 
 		// decode form
 		form := make(map[string]string)
-		for key, value := range parsed_body {
+		for key, value := range parsedBody {
 			if len(value) > 0 {
 				form[key] = value[0]
 			}
@@ -509,12 +509,13 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		FormString := string(formBytes)
 		request.Form = FormString
 
-		json_body, err := json.Marshal(request.Body)
+		jsonBody, err := json.Marshal(request.Body)
+
 		if err != nil {
 			body, _ := io.ReadAll(in.Body)
 			request.Body = string(body)
 		} else {
-			request.Body = string(json_body)
+			request.Body = string(jsonBody)
 		}
 	}
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
