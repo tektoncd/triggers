@@ -198,3 +198,14 @@ help:
 version:
 
 	@echo $(VERSION)
+
+.PHONY:  deploy_tekton
+deploy_tekton:  | ; $(info $(M) deploying tekton on local cluster …) @ ## Deploying tekton on local clustert
+	ko apply -f config;
+	ko apply -f config/interceptors;
+
+.PHONY:  clean_tekton
+clean_tekton: | ; $(info $(M) deleteing tekton from local cluster …) @ ## Deleteing tekton on local clustert
+	-ko delete -f config;
+	-ko delete -f config/interceptors;
+	
