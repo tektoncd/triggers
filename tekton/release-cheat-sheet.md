@@ -130,7 +130,24 @@ the triggers repo, a terminal window and a text editor.
       1. Double-check that the list of commits here matches your expectations
          for the release. You might need to remove incorrect commits or copy/paste commits
          from the release branch. Refer to previous releases to confirm the expected format.
+      1. In the section **Installation one-liner**, add the install instruction for interceptors also. 
+         ```bash
+            kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
+         ```
+      1. In the section **Attestation**, modify it for inteceptors.yaml also.
+         ```bash
+         RELEASE_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+         INTERCEPTORS_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
+         REKOR_UUID=$REKOR_UUID
 
+         # Obtains the list of images with sha from the attestation
+         REKOR_ATTESTATION_IMAGES=$(rekor-cli get --uuid "$REKOR_UUID" --format json | jq -r .Attestation | jq -r '.subject[]|.name + ":v0.23.0@sha256:" + .digest.sha256')
+
+
+         # Download the release file
+         curl "$RELEASE_FILE" > release.yaml
+         curl "$INTERCEPTORS_FILE" >> release.yaml
+          ```
     1. Un-check the "This is a pre-release" checkbox since you're making a legit for-reals release!
 
     1. Publish the GitHub release once all notes are correct and in order.
