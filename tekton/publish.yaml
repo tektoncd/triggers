@@ -83,7 +83,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko@sha256:5452d2cca5f5190848296c27c0ff656f80783dd81a0a75aa6052f57319eefb7b
+    image: gcr.io/tekton-releases/dogfooding/ko@sha256:e12270ad72c84638e2d113c27b4d71efe2973dc56e78269fcc2ccd859163e17d
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
