@@ -76,19 +76,20 @@ apply_files() {
 
 check_eventlistener() {
   info "Waiting for EventListener to be available"
-
+ 
   elName=${current_example}-listener
-  kubectl wait --for=condition=Ready --timeout=20s eventlisteners/${elName}  || {
+  kubectl wait --for=condition=Ready --timeout=60s eventlisteners/${elName}  || {
     err "eventlistener failed to get in running state"
     exit 1
   }
+  
   kubectl get eventlisteners
 }
 
 ignoreExamples=( cron trigger-ref triggergroups )
 
 port_forward_and_curl() {
-
+sleep 10
   if [[ " ${ignoreExamples[@]} " =~ " ${current_example} " ]]; then
     info 'ignoring for port forwarding'
     return
@@ -178,7 +179,9 @@ main() {
   versions="v1alpha1 v1beta1"
   # List of examples test will run on
   examples_v1alpha1="bitbucket-server cron embedded-trigger github gitlab label-selector namespace-selector trigger-ref"
-  examples_v1beta1="${examples_v1alpha1} bitbucket-cloud triggergroups github-add-changed-files-pr github-add-changed-files-push-cel github-owners"
+  examples_v1beta1="${examples_v1alpha1} slack bitbucket-cloud triggergroups github-add-changed-files-pr github-add-changed-files-push-cel github-owners"
+
+
   create_example_pipeline
   for v in ${versions}; do
     current_example_version=${v}

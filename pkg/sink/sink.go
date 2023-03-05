@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	net "net/url"
 	"os"
 	"sync"
 
@@ -475,6 +476,24 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		},
 	}
 
+	// check if string is urlencoded
+	// Parse the query string into a map
+	parsedQuery, _ := net.ParseQuery(request.Body)
+
+	// parse form-data payload
+	if v := in.Header.Get("Content-Type"); v == "application/x-www-form-urlencoded" && len(parsedQuery) > 1 {
+
+		// Convert the map into a JSON string
+		jsonString, err := json.Marshal(parsedQuery)
+		if err != nil {
+			log.Errorf("Error converting map to JSON:", err)
+			return nil, nil, nil, err
+		}
+		request.Body = string(jsonString)
+	}
+	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
+	// or add to the Extensions
+
 	for _, i := range trInt {
 		if i.Webhook != nil { // Old style interceptor
 			body, err := extendBodyWithExtensions([]byte(request.Body), request.Extensions)
@@ -552,9 +571,12 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 				request.Extensions[k] = v
 			}
 		}
+
 		// Clear interceptorParams for the next interceptor in chain
 		request.InterceptorParams = map[string]interface{}{}
+
 	}
+
 	return []byte(request.Body), request.Header, &triggersv1.InterceptorResponse{
 		Continue:   true,
 		Extensions: request.Extensions,

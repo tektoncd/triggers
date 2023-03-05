@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
+	"github.com/tektoncd/triggers/pkg/interceptors/slack"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -62,6 +63,7 @@ func NewWithCoreInterceptors(sg interceptors.SecretGetter, logger *zap.SugaredLo
 		"cel":       cel.NewInterceptor(sg),
 		"github":    github.NewInterceptor(sg),
 		"gitlab":    gitlab.NewInterceptor(sg),
+		"slack":     slack.NewInterceptor(sg),
 	}
 
 	for k, v := range i {
