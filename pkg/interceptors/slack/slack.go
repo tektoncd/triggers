@@ -18,8 +18,7 @@ package slack
 
 import (
 	"context"
-	"net/url"
-	"strings"
+	"encoding/json"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -34,57 +33,53 @@ type Interceptor struct {
 
 // Interceptor parses all the requests fields from the slack form-data request
 // and adds them to the extension
+// revive:disable:unused-parameter
 func (*Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+	headers := interceptors.Canonical(r.Header)
 
-	//get requests fields
+	// validate slack headers
+	if v := headers.Get("Content-Type"); v != "application/x-www-form-urlencoded" {
+		return interceptors.Fail(codes.InvalidArgument, "missing header in payload: ContentType application/x-www-form-urlencoded")
+	}
+
+	if s := headers.Get("X-Slack-Signature"); s == "" {
+		return interceptors.Fail(codes.InvalidArgument, "missing header in payload: ContentType application/x-www-form-urlencoded")
+	}
+
+	// get requests fields
+	var payload map[string][]string
+	if err := json.Unmarshal([]byte(r.Body), &payload); err != nil {
+		return interceptors.Failf(codes.InvalidArgument, "failed to unmarshl slack payload: %v", err)
+	}
+
+	// get requests fields
 	p := triggersv1.SlackInterceptor{}
-
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
-	// validate slack headers
-	contentType := r.Header["Content-Type"]
-	signature := r.Header["X-Slack-Signature"]
 
-	if strings.Contains(contentType[0], "application/x-www-form-urlencoded") && signature[0] != "" {
-
-		parsedBody, err := url.ParseQuery(r.Body)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "unable to parse request body")
-		}
-
-		// decode form
-		formData := decodeFormData(parsedBody)
-
-		// extract required fields values
-		extensions := make(map[string]interface{})
-
-		for _, field := range p.RequestedFields {
-			if value, ok := formData[field]; ok {
-				extensions[field] = value
-			}
-		}
-		return &triggersv1.InterceptorResponse{
-			Continue:   true,
-			Extensions: extensions,
-		}
-
-	} else {
-		return interceptors.Fail(codes.FailedPrecondition, "Could find slack headers")
-
+	// validate RequestedFields exists
+	if p.RequestedFields == nil {
+		return interceptors.Fail(codes.NotFound, "missing requested field definition")
 	}
 
-}
+	// extract required fields values
+	extensions := make(map[string]interface{})
 
-func decodeFormData(parsedBody url.Values) map[string]string {
-	form := make(map[string]string)
-	for key, value := range parsedBody {
-		if len(value) > 0 {
-			form[key] = value[0]
+	for _, field := range p.RequestedFields {
+		if value, ok := payload[field]; ok {
+			extensions[field] = value
+		} else {
+			return interceptors.Failf(codes.NotFound, "requested field does not exists in payload %v", payload)
 		}
 	}
-	return form
+	return &triggersv1.InterceptorResponse{
+		Continue:   true,
+		Extensions: extensions,
+	}
 }
+
+// revive:enable:unused-parameter
 
 func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 	return &Interceptor{

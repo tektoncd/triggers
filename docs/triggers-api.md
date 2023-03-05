@@ -4414,6 +4414,30 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="triggers.tekton.dev/v1beta1.SlackInterceptor">SlackInterceptor
+</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>requestedFields</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="triggers.tekton.dev/v1beta1.Status">Status
 </h3>
 <p>

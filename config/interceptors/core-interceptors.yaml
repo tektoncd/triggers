@@ -43,6 +43,20 @@ spec:
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: ClusterInterceptor
 metadata:
+  name: slack
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: "slack"
+      port: 8443
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
   name: github
   labels:
     server/type: https
