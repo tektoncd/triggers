@@ -29,9 +29,6 @@ type InterceptorRequest struct {
 	// Header are the headers for the incoming HTTP event
 	Header map[string][]string `json:"header,omitempty"`
 
-	// Form is the form data for the incoming HTTP event
-	Form string `json:"form,omitempty"`
-
 	// Extensions are extra values that are added by previous interceptors in a chain
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 

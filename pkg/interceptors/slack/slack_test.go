@@ -23,8 +23,6 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 )
 
@@ -33,29 +31,27 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 		name              string
 		interceptorParams *triggersv1.SlackInterceptor
 		payload           []byte
+		header            http.Header
 	}{{
-		name:              "no secret",
-		interceptorParams: &triggersv1.SlackInterceptor{},
-		payload:           []byte("somepayload"),
-	}, {
-		name: "valid params",
+		name: "valid case",
 		interceptorParams: &triggersv1.SlackInterceptor{
 			RequestedFields: []string{"text"},
 		},
-		payload: []byte("somepayload"),
+		payload: []byte("token=EidhofDor5uIpqQ9RrtOVdnC&team_id=T04PK47EDS4&team_domain=demoworkspace-tid8978&channel_id=C04NET94NBH&channel_name=sample-app&user_id=U04NVDEF7R8&user_name=pint12&command=%2Fbuild&text=main+2222&api_app_id=A04NXU23QGL&is_enterprise_install=false&response_url=https%3A%2F%2Fhooks.slack.com%2Fcommands%2FT04PK47EDS4%2F4863712501879%2FdOMNffCDfTjlSskBrmB1bOtR&trigger_id=4890883491553.4801143489888.910b8eaae200b381834de25310583f74"),
+		header: http.Header{
+			"Content-Type":      []string{"application/x-www-form-urlencoded"},
+			"X-Slack-Signature": []string{"1231231231"},
+		},
 	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			req := &triggersv1.InterceptorRequest{
-				Body: string(tt.payload),
-				Header: http.Header{
-					"Content-Type":      []string{"application/x-www-form-urlencoded"},
-					"X-Slack-Signature": []string{"1231231231"},
-				},
+				Body:   string(tt.payload),
+				Header: tt.header,
 				InterceptorParams: map[string]interface{}{
-					"requiredFields": tt.interceptorParams.RequestedFields,
+					"requestedFields": tt.interceptorParams.RequestedFields,
 				},
 				Context: &triggersv1.TriggerContext{
 					EventURL:  "https://testing.example.com",
@@ -65,7 +61,6 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			}
 
 			clientset := fakekubeclient.Get(ctx)
-
 			w := &Interceptor{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
@@ -81,124 +76,48 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.GitLabInterceptor
+		interceptorParams *triggersv1.SlackInterceptor
 		payload           []byte
-		secret            *corev1.Secret
-		token             string
-		eventType         string
+		header            http.Header
 	}{{
-		name: "invalid header for secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			SecretRef: &triggersv1.SecretRef{
-				SecretName: "mysecret",
-				SecretKey:  "token",
-			},
+		name: "bad payload",
+		interceptorParams: &triggersv1.SlackInterceptor{
+			RequestedFields: []string{"text"},
 		},
-
-		token: "foo",
-		secret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: map[string][]byte{
-				"token": []byte("secrettoken"),
-			},
+		payload: []byte("{token: tttt}"),
+		header: http.Header{
+			"Content-Type":      []string{"application/x-www-form-urlencoded"},
+			"X-Slack-Signature": []string{"1231231231"},
+		},
+	}, {
+		name: "skip params - no content type",
+		interceptorParams: &triggersv1.SlackInterceptor{
+			RequestedFields: []string{"text"},
 		},
 		payload: []byte("somepayload"),
-	}, {
-		name: "missing header for secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			SecretRef: &triggersv1.SecretRef{
-				SecretName: "mysecret",
-				SecretKey:  "token",
+		header: http.Header{
+			"X-Slack-Signature": []string{"1231231231"},
+		},
+	},
+		{
+			name: "skip params - no slack signature",
+			interceptorParams: &triggersv1.SlackInterceptor{
+				RequestedFields: []string{"text"},
+			},
+			payload: []byte("somepayload"),
+			header: http.Header{
+				"Content-Type": []string{"application/x-www-form-urlencoded"},
 			},
 		},
-		secret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: map[string][]byte{
-				"token": []byte("secrettoken"),
-			},
-		},
-		payload: []byte("somepayload"),
-	}, {
-		name: "invalid event",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			EventTypes: []string{"foo", "bar"},
-		},
-
-		eventType: "baz",
-		payload:   []byte("somepayload"),
-	}, {
-		name: "valid event, invalid secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			EventTypes: []string{"foo", "bar"},
-			SecretRef: &triggersv1.SecretRef{
-				SecretName: "mysecret",
-				SecretKey:  "token",
-			},
-		},
-
-		eventType: "bar",
-		payload:   []byte("somepayload"),
-		token:     "foo",
-		secret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: map[string][]byte{
-				"token": []byte("secrettoken"),
-			},
-		},
-	}, {
-		name: "invalid event, valid secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			EventTypes: []string{"foo", "bar"},
-			SecretRef: &triggersv1.SecretRef{
-				SecretName: "mysecret",
-				SecretKey:  "token",
-			},
-		},
-
-		eventType: "baz",
-		payload:   []byte("somepayload"),
-		token:     "secrettoken",
-		secret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: map[string][]byte{
-				"token": []byte("secrettoken"),
-			},
-		},
-	}, {
-		name: "empty secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
-			SecretRef: &triggersv1.SecretRef{
-				SecretName: "mysecret",
-			},
-		},
-		secret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: map[string][]byte{
-				"token": []byte("secrettoken"),
-			},
-		},
-	}}
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 			req := &triggersv1.InterceptorRequest{
-				Body: string(tt.payload),
-				Header: http.Header{
-					"Content-Type": []string{"application/json"},
-				},
+				Body:   string(tt.payload),
+				Header: tt.header,
 				InterceptorParams: map[string]interface{}{
-					"eventTypes": tt.interceptorParams.EventTypes,
-					"secretRef":  tt.interceptorParams.SecretRef,
+					"requestedFields": tt.interceptorParams.RequestedFields,
 				},
 				Context: &triggersv1.TriggerContext{
 					EventURL:  "https://testing.example.com",
@@ -206,17 +125,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 					TriggerID: "namespaces/default/triggers/example-trigger",
 				},
 			}
-			if tt.token != "" {
-				req.Header["X-GitLab-Token"] = []string{tt.token}
-			}
-			if tt.eventType != "" {
-				req.Header["X-interceptorParams-Event"] = []string{tt.eventType}
-			}
 			clientset := fakekubeclient.Get(ctx)
-			if tt.secret != nil {
-				tt.secret.Namespace = metav1.NamespaceDefault
-				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
-			}
 			w := &Interceptor{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
@@ -225,33 +134,5 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 			}
 		})
-	}
-}
-
-func TestInterceptor_Process_InvalidParams(t *testing.T) {
-	ctx, _ := test.SetupFakeContext(t)
-
-	w := &Interceptor{
-		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
-	}
-
-	req := &triggersv1.InterceptorRequest{
-		Body: `{}`,
-		Header: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		InterceptorParams: map[string]interface{}{
-			"blah": func() {},
-		},
-		Context: &triggersv1.TriggerContext{
-			EventURL:  "https://testing.example.com",
-			EventID:   "abcde",
-			TriggerID: "namespaces/default/triggers/example-trigger",
-		},
-	}
-
-	res := w.Process(ctx, req)
-	if res.Continue {
-		t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 	}
 }

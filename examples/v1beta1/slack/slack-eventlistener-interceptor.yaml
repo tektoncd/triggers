@@ -1,0 +1,38 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: slack-listener
+  annotations:
+    tekton.dev/payload-validation: "false"
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - name: slack-trigger
+      interceptors:
+        - ref:
+            name: "slack"
+            kind: ClusterInterceptor
+          params:
+            - name: requestedFields
+              value: 
+                - text              
+      bindings:
+        - name: response
+          value: $(extensions.text)
+      template:
+        spec:
+          params:
+            - name: response
+          resourcetemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: TaskRun
+              metadata:
+                generateName: slack-run-
+              spec:
+                taskSpec:
+                  steps:
+                    - image: ubuntu
+                      script: |
+                        #! /bin/bash
+                        echo "response of slack : $(tt.params.response)"

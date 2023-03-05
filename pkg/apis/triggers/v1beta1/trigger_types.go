@@ -157,6 +157,7 @@ type WebhookInterceptor struct {
 
 type SlackInterceptor struct {
 	// the Requested fields to be extracted from data form
+
 	// +listType=atomic
 	RequestedFields []string `json:"requestedFields,omitempty"`
 }

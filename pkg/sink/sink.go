@@ -25,10 +25,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
-
-	"net/url"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/binding"
@@ -411,6 +408,10 @@ func (r Sink) selectTriggers(namespaceSelector triggersv1.NamespaceSelector, lab
 func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger, extensions map[string]interface{}) {
 	log := eventLog.With(zap.String(triggers.TriggerLabelKey, t.Name))
 
+	log.Infof("*** request: %v", request)
+	log.Infof("*** event: %v", event)
+	log.Infof("*** extensions: %v", extensions)
+
 	finalPayload, header, iresp, err := r.ExecuteTriggerInterceptors(t, request, event, log, eventID, extensions)
 	if err != nil {
 		log.Error(err)
@@ -435,9 +436,6 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
-
-	log.Infof("*** show extensions %w:", extensions)
-	log.Infof("*** show finalPayload %w:", finalPayload)
 
 	params, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
 	if err != nil {
@@ -481,43 +479,6 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		},
 	}
 
-	header := in.Header.Get("Content-Type")
-	signature := in.Header.Get("X-Slack-Signature")
-	if strings.Contains(header, "application/x-www-form-urlencoded") && signature != "" {
-
-		err := in.ParseForm()
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("unable to parse request form: %w", err)
-		}
-
-		parsedBody, err := url.ParseQuery(request.Body)
-		if err != nil {
-			log.Error("unable to ParseQuery form ")
-		}
-
-		// decode form
-		form := make(map[string]string)
-		for key, value := range parsedBody {
-			if len(value) > 0 {
-				form[key] = value[0]
-			}
-		}
-		formBytes, err := json.Marshal(form)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("unable to marshal http form: %w", err)
-		}
-		FormString := string(formBytes)
-		request.Form = FormString
-
-		jsonBody, err := json.Marshal(request.Body)
-
-		if err != nil {
-			body, _ := io.ReadAll(in.Body)
-			request.Body = string(body)
-		} else {
-			request.Body = string(jsonBody)
-		}
-	}
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
 	// or add to the Extensions
 
@@ -601,6 +562,18 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		}
 		// Clear interceptorParams for the next interceptor in chain
 		request.InterceptorParams = map[string]interface{}{}
+
+		// handle form-data payload for slack only
+		if v := in.Header.Get("X-Slack-Signature"); v != "" {
+			jsonBody, err := json.Marshal(request.Body)
+			if err != nil {
+				body, _ := io.ReadAll(in.Body)
+				request.Body = string(body)
+			} else {
+				request.Body = string(jsonBody)
+			}
+		}
+
 	}
 	return []byte(request.Body), request.Header, &triggersv1.InterceptorResponse{
 		Continue:   true,
