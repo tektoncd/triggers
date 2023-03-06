@@ -1,3 +1,11 @@
+<!--
+---
+title: Triggers API
+linkTitle: Triggers API
+weight: 1000
+---
+-->
+
 <p>Packages:</p>
 <ul>
 <li>
