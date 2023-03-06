@@ -157,7 +157,7 @@ type triggersLib struct {
 
 func (t triggersLib) CompileOptions() []cel.EnvOption {
 	mapStrDyn := cel.MapType(cel.StringType, cel.DynType)
-	listStrDyn := cel.ListType(cel.StringType)
+	listStrDyn := cel.ListType(cel.DynType)
 	return []cel.EnvOption{
 		cel.Function("match",
 			cel.MemberOverload("match_map_string_string", []*cel.Type{mapStrDyn, cel.StringType, cel.StringType}, cel.BoolType,
