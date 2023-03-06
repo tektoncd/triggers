@@ -31,6 +31,13 @@ type Interceptor struct {
 	SecretGetter interceptors.SecretGetter
 }
 
+// GitLabInterceptor provides a webhook to intercept and pre-process events
+type GitLabInterceptor struct {
+	SecretRef *triggersv1.SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes []string `json:"eventTypes,omitempty"`
+}
+
 func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
@@ -38,7 +45,7 @@ func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
-	p := triggersv1.GitLabInterceptor{}
+	p := GitLabInterceptor{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}

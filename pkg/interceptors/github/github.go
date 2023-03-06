@@ -75,6 +75,41 @@ type OwnersConfig struct {
 	Reviewers []string `json:"reviewers,omitempty"`
 }
 
+type CheckType string
+
+const (
+	// Set the checkType to orgMembers to allow org members to submit or comment on PR to proceed
+	OrgMembers CheckType = "orgMembers"
+	// Set the checkType to repoMembers to allow repo members to submit or comment on PR to proceed
+	RepoMembers CheckType = "repoMembers"
+	// Set the checkType to all if both repo members or org members can submit or comment on PR to proceed
+	All CheckType = "all"
+	// Set the checkType to none if neither of repo members or org members can not submit or comment on PR to proceed
+	None CheckType = "none"
+)
+
+// GitHubInterceptor provides a webhook to intercept and pre-process events
+type GitHubInterceptor struct {
+	SecretRef *triggersv1.SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes      []string              `json:"eventTypes,omitempty"`
+	AddChangedFiles GithubAddChangedFiles `json:"addChangedFiles,omitempty"`
+	GithubOwners    GithubOwners          `json:"githubOwners,omitempty"`
+}
+
+type GithubOwners struct {
+	Enabled bool `json:"enabled,omitempty"`
+	// This param/variable is required for private repos or when checkType is set to orgMembers or repoMembers or all
+	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
+	// Set the value to one of the supported values (orgMembers, repoMembers, both, none)
+	CheckType CheckType `json:"checkType,omitempty"`
+}
+
+type GithubAddChangedFiles struct {
+	Enabled             bool                  `json:"enabled,omitempty"`
+	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
+}
+
 func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
 	return &Interceptor{
 		SecretGetter: sg,
@@ -87,7 +122,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 		return interceptors.Fail(codes.InvalidArgument, ErrInvalidContentType.Error())
 	}
 
-	p := triggersv1.GitHubInterceptor{}
+	p := GitHubInterceptor{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
@@ -242,7 +277,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 }
 
-func (w *Interceptor) getGithubTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p triggersv1.GitHubInterceptor) (string, error) {
+func (w *Interceptor) getGithubTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p GitHubInterceptor) (string, error) {
 	if p.AddChangedFiles.PersonalAccessToken == nil {
 		return "", nil
 	}
@@ -397,7 +432,7 @@ func makeClient(ctx context.Context, enterpriseBaseURL string, token string) (*g
 	return client, nil
 }
 
-func (w *Interceptor) getPersonalAccessTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p triggersv1.GitHubInterceptor) (string, error) {
+func (w *Interceptor) getPersonalAccessTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p GitHubInterceptor) (string, error) {
 	if p.GithubOwners.PersonalAccessToken == nil {
 		return "", nil
 	}
@@ -415,7 +450,7 @@ func (w *Interceptor) getPersonalAccessTokenSecret(ctx context.Context, r *trigg
 	return string(secretToken), nil
 }
 
-func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p triggersv1.GitHubInterceptor, client *gh.Client) (bool, error) {
+func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p GitHubInterceptor, client *gh.Client) (bool, error) {
 	if MatchRegexp(OKToTestCommentRegexp, payload.IssueCommentBody) {
 		allowed, err := checkOwnershipAndMembership(ctx, payload, p, client)
 		if err != nil {
@@ -428,7 +463,7 @@ func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p tr
 	return false, nil
 }
 
-func checkOwnershipAndMembership(ctx context.Context, payload OwnersPayloadDetails, p triggersv1.GitHubInterceptor, client *gh.Client) (bool, error) {
+func checkOwnershipAndMembership(ctx context.Context, payload OwnersPayloadDetails, p GitHubInterceptor, client *gh.Client) (bool, error) {
 	if p.GithubOwners.CheckType == "orgMembers" || p.GithubOwners.CheckType == "all" {
 		isUserMemberOrg, err := checkSenderOrgMembership(ctx, payload, client)
 		if err != nil {

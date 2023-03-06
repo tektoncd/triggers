@@ -49,6 +49,7 @@ import (
 	triggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding"
 	triggertemplateinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	celinterceptor "github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tektoncd/triggers/test"
@@ -974,7 +975,7 @@ func TestHandleEvent(t *testing.T) {
 							},
 							Params: []triggersv1beta1.InterceptorParams{
 								{Name: "filter", Value: test.ToV1JSON(t, "has(body.head_commit)")},
-								{Name: "overlays", Value: test.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
+								{Name: "overlays", Value: test.ToV1JSON(t, []celinterceptor.CELOverlay{{
 									Key:        "foo",
 									Expression: "has(body.head_commit)",
 								}})},
@@ -1001,7 +1002,7 @@ func TestHandleEvent(t *testing.T) {
 							},
 							Params: []triggersv1beta1.InterceptorParams{
 								{Name: "filter", Value: test.ToV1JSON(t, "has(body.head_commit)")},
-								{Name: "overlays", Value: test.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
+								{Name: "overlays", Value: test.ToV1JSON(t, []celinterceptor.CELOverlay{{
 									Key:        "foo",
 									Expression: "has(body.head_commit)",
 								}})},
@@ -1523,7 +1524,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 				Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
 				Params: []triggersv1beta1.InterceptorParams{{
 					Name: "overlays",
-					Value: test.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
+					Value: test.ToV1JSON(t, []celinterceptor.CELOverlay{{
 						Key:        "truncated_sha",
 						Expression: "body.sha.truncate(5)",
 					}}),

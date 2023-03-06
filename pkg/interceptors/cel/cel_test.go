@@ -46,45 +46,45 @@ const testNS = "testing-ns"
 func TestInterceptor_Process(t *testing.T) {
 	tests := []struct {
 		name           string
-		CEL            *triggersv1.CELInterceptor
+		CEL            *CELInterceptor
 		body           []byte
 		extensions     map[string]interface{}
 		wantExtensions map[string]interface{}
 	}{{
 		name: "simple body check with matching body",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'testing'",
 		},
 		body: json.RawMessage(`{"value":"testing"}`),
 	}, {
 		name: "simple header check with matching header",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header['X-Test'][0] == 'test-value'",
 		},
 		body: json.RawMessage(`{}`),
 	}, {
 		name: "overloaded header check with case insensitive matching",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.match('x-test', 'test-value')",
 		},
 		body: json.RawMessage(`{}`),
 	}, {
 		name: "body and header check",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.match('x-test', 'test-value') && body.value == 'test'",
 		},
 		body: json.RawMessage(`{"value":"test"}`),
 	}, {
 		name: "body and header canonical check",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.canonical('x-test') == 'test-value' && body.value == 'test'",
 		},
 		body: json.RawMessage(`{"value":"test"}`),
 	}, {
 		name: "single overlay",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'test'",
-			Overlays: []triggersv1.CELOverlay{
+			Overlays: []CELOverlay{
 				{Key: "new", Expression: "body.value"},
 			},
 		},
@@ -94,8 +94,8 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "single overlay with no filter",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "new", Expression: "body.ref.split('/')[2]"},
 			},
 		},
@@ -105,8 +105,8 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "overlay with string library functions",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "new", Expression: "body.ref.split('/')[2]"},
 				{Key: "replaced", Expression: "body.name.replace('ing','ed',0)"},
 			},
@@ -118,9 +118,9 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "multiple overlays",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'test'",
-			Overlays: []triggersv1.CELOverlay{
+			Overlays: []CELOverlay{
 				{Key: "test.one", Expression: "body.value"},
 				{Key: "test.two", Expression: "body.value"},
 			},
@@ -135,12 +135,12 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "nil body does not panic",
-		CEL:  &triggersv1.CELInterceptor{Filter: "header.match('x-test', 'test-value')"},
+		CEL:  &CELInterceptor{Filter: "header.match('x-test', 'test-value')"},
 		body: nil,
 	}, {
 		name: "incrementing an integer value",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "val1", Expression: "body.count + 1.0"},
 				{Key: "val2", Expression: "int(body.count) + 3"},
 				{Key: "val3", Expression: "body.count + 3.5"},
@@ -156,26 +156,26 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "validating a secret",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret', 'testing-ns')",
 		},
 		body: json.RawMessage(`{"count":1,"measure":1.7}`),
 	}, {
 		name: "validating a secret with a namespace and name",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret', 'testing-ns') && body.count == 1.0",
 		},
 		body: json.RawMessage(`{"count":1,"measure":1.7}`),
 	}, {
 		name: "validating a secret in the default namespace",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.canonical('X-Secret-Token').compareSecret('token', 'test-secret') && body.count == 1.0",
 		},
 		body: json.RawMessage(`{"count":1,"measure":1.7}`),
 	}, {
 		name: "handling a list response",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "event", Expression: "body.event.map(s, s['testing'])"},
 			},
 		},
@@ -185,8 +185,8 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "return different types of expression",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "one", Expression: "'yo'"},
 				{Key: "two", Expression: "false ? true : false"},
 				{Key: "three", Expression: "body.test"},
@@ -202,8 +202,8 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "demonstrate defaulting logic within cel interceptor",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "one", Expression: "has(body.value) ? body.value : 'default'"},
 				{Key: "two", Expression: "has(body.test.second) ? body.test.second : 'default'"},
 				{Key: "three", Expression: "has(body.test.third) && has(body.test.third.thing) ? body.value.third.thing : 'default'"},
@@ -217,9 +217,9 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "filters and overlays can access passed in extensions",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: `extensions.foo == "bar"`,
-			Overlays: []triggersv1.CELOverlay{
+			Overlays: []CELOverlay{
 				{Key: "one", Expression: "extensions.foo"},
 			},
 		},
@@ -231,8 +231,8 @@ func TestInterceptor_Process(t *testing.T) {
 		},
 	}, {
 		name: "decode with cel extension to a field",
-		CEL: &triggersv1.CELInterceptor{
-			Overlays: []triggersv1.CELOverlay{
+		CEL: &CELInterceptor{
+			Overlays: []CELOverlay{
 				{Key: "value", Expression: "base64.decode(body.b64value) == b'hello'"},
 				{Key: "compare_string", Expression: "base64.decode(body.b64value) == bytes('hello')"},
 				{Key: "decoded", Expression: "base64.decode(body.b64value)"},
@@ -288,13 +288,13 @@ func TestInterceptor_Process(t *testing.T) {
 func TestInterceptor_Process_Error(t *testing.T) {
 	tests := []struct {
 		name     string
-		CEL      *triggersv1.CELInterceptor
+		CEL      *CELInterceptor
 		body     []byte
 		wantCode codes.Code
 		wantMsg  string
 	}{{
 		name: "simple body check with non-matching body",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'test'",
 		},
 		body:     []byte(`{"value":"testing"}`),
@@ -302,7 +302,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		wantMsg:  "expression body.value == 'test' did not return true",
 	}, {
 		name: "simple header check with non matching header",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header['X-Test'][0] == 'unknown'",
 		},
 		body:     []byte(`{}`),
@@ -310,7 +310,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		wantMsg:  "expression header.*'unknown' did not return true",
 	}, {
 		name: "overloaded header check with case insensitive failed match",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header.match('x-test', 'no-match')",
 		},
 		body:     []byte(`{}`),
@@ -318,7 +318,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		wantMsg:  "expression header.match\\('x-test', 'no-match'\\) did not return true",
 	}, {
 		name: "unable to parse the expression",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "header['X-Test",
 		},
 		body:     []byte(`{"value":"test"}`),
@@ -326,7 +326,7 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		wantMsg:  "Syntax error: token recognition error at: ''X-Test'",
 	}, {
 		name: "unable to parse the JSON body",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'test'",
 		},
 		body:     []byte(`{]`),
@@ -334,9 +334,9 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		wantMsg:  "invalid character ']' looking for beginning of object key string",
 	}, {
 		name: "bad overlay",
-		CEL: &triggersv1.CELInterceptor{
+		CEL: &CELInterceptor{
 			Filter: "body.value == 'test'",
-			Overlays: []triggersv1.CELOverlay{
+			Overlays: []CELOverlay{
 				{Key: "new", Expression: "test.value"},
 			},
 		},

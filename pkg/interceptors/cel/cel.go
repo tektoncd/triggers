@@ -46,8 +46,21 @@ var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
 // a true value, then the interception is "successful".
 type Interceptor struct {
 	SecretGetter     interceptors.SecretGetter
-	CEL              *triggersv1.CELInterceptor
+	CEL              *CELInterceptor
 	TriggerNamespace string
+}
+
+// CELInterceptor provides a webhook to intercept and pre-process events
+type CELInterceptor struct {
+	Filter string `json:"filter,omitempty"`
+	// +listType=atomic
+	Overlays []CELOverlay `json:"overlays,omitempty"`
+}
+
+// CELOverlay provides a way to modify the request body using CEL expressions
+type CELOverlay struct {
+	Key        string `json:"key,omitempty"`
+	Expression string `json:"expression,omitempty"`
 }
 
 var (
@@ -115,7 +128,7 @@ func makeEvalContext(body []byte, h http.Header, url string, extensions map[stri
 }
 
 func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
-	p := triggersv1.CELInterceptor{}
+	p := CELInterceptor{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
