@@ -39,15 +39,35 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
-// Interceptor implements a CEL based interceptor that uses CEL expressions
+// InterceptorImpl implements a CEL based interceptor that uses CEL expressions
 // against the incoming body and headers to match, if the expression returns
 // a true value, then the interception is "successful".
-type Interceptor struct {
+type InterceptorImpl struct {
 	SecretGetter     interceptors.SecretGetter
-	CEL              *triggersv1.CELInterceptor
+	CEL              *InterceptorParams
 	TriggerNamespace string
+}
+
+// NewInterceptor creates a prepopulated Interceptor.
+func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
+	return &InterceptorImpl{
+		SecretGetter: sg,
+	}
+}
+
+// InterceptorParams provides a webhook to intercept and pre-process events
+type InterceptorParams struct {
+	Filter string `json:"filter,omitempty"`
+	// +listType=atomic
+	Overlays []Overlay `json:"overlays,omitempty"`
+}
+
+// Overlay provides a way to modify the request body using CEL expressions
+type Overlay struct {
+	Key        string `json:"key,omitempty"`
+	Expression string `json:"expression,omitempty"`
 }
 
 var (
@@ -55,13 +75,6 @@ var (
 	listType   = reflect.TypeOf(&structpb.ListValue{})
 	mapType    = reflect.TypeOf(&structpb.Struct{})
 )
-
-// NewInterceptor creates a prepopulated Interceptor.
-func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
-	return &Interceptor{
-		SecretGetter: sg,
-	}
-}
 
 func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, error) {
 	parsed, issues := env.Parse(expr)
@@ -114,8 +127,8 @@ func makeEvalContext(body []byte, h http.Header, url string, extensions map[stri
 	}, nil
 }
 
-func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
-	p := triggersv1.CELInterceptor{}
+func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+	p := InterceptorParams{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}

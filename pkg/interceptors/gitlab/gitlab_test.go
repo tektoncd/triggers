@@ -31,20 +31,20 @@ import (
 func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.GitLabInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		token             string
 		eventType         string
 	}{{
 		name:              "no secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{},
+		interceptorParams: &InterceptorParams{},
 
 		payload: []byte("somepayload"),
 		token:   "foo",
 	}, {
 		name: "valid header for secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -63,7 +63,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 		payload: []byte("somepayload"),
 	}, {
 		name: "valid event",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"foo", "bar"},
 		},
 
@@ -71,7 +71,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 		payload:   []byte("somepayload"),
 	}, {
 		name: "valid event, valid secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"foo", "bar"},
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
@@ -119,7 +119,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 				tt.secret.Namespace = metav1.NamespaceDefault
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)
@@ -134,14 +134,14 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.GitLabInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		token             string
 		eventType         string
 	}{{
 		name: "invalid header for secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -160,7 +160,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload: []byte("somepayload"),
 	}, {
 		name: "missing header for secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -177,7 +177,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload: []byte("somepayload"),
 	}, {
 		name: "invalid event",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"foo", "bar"},
 		},
 
@@ -185,7 +185,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload:   []byte("somepayload"),
 	}, {
 		name: "valid event, invalid secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"foo", "bar"},
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
@@ -206,7 +206,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		},
 	}, {
 		name: "invalid event, valid secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"foo", "bar"},
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
@@ -227,7 +227,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		},
 	}, {
 		name: "empty secret",
-		interceptorParams: &triggersv1.GitLabInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 			},
@@ -270,7 +270,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				tt.secret.Namespace = metav1.NamespaceDefault
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)
@@ -284,7 +284,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 
-	w := &Interceptor{
+	w := &InterceptorImpl{
 		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
 	}
 
