@@ -433,6 +433,13 @@ func TestExpressionEvaluation(t *testing.T) {
 		"jsonArray": []string{
 			"one", "two",
 		},
+		"jsonObjects": []map[string]interface{}{
+			{
+				"testing1": map[string]interface{}{
+					"testing": []string{"test1", "test2"},
+				},
+			},
+		},
 	}
 
 	refParts := strings.Split(testRef, "/")
@@ -588,6 +595,11 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "marshal JSON array to string",
 			expr: "body.jsonArray.marshalJSON()",
 			want: types.String(`["one","two"]`),
+		},
+		{
+			name: "marshal JSON objects to string",
+			expr: "body.jsonObjects.marshalJSON()",
+			want: types.String(`[{"testing1":{"testing":["test1","test2"]}}]`),
 		},
 		{
 			name: "extension base64 decoding",
