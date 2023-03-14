@@ -54,6 +54,12 @@ Further documentation available:
 - **End of Life**: 2023-03-15
 - **Patch Releases**: [v0.22.2][v0-22-2] [v0.22.1][v0-22-1] [v0.22.0][v0-22-0]
 
+### Required Kubernetes Version
+
+- Starting from the v0.23.x release of Triggers: **Kubernetes version 1.24 or later**
+- Starting from the v0.22.x release of Triggers: **Kubernetes version 1.23 or later**
+- Starting from the v0.21.x release of Triggers: **Kubernetes version 1.22 or later**
+
 ## End of Life Releases
 
 Older releases are EOL and available on [GitHub][tekton-triggers-releases].
