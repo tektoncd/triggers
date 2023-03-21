@@ -43,6 +43,23 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 
 	ev := configAcc.ToEnvVars()
 
+	containerSecurityContext := corev1.SecurityContext{}
+	if *c.SetSecurityContext {
+		containerSecurityContext = corev1.SecurityContext{
+			AllowPrivilegeEscalation: ptr.Bool(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			// 65532 is the distroless nonroot user ID
+			RunAsUser:    ptr.Int64(65532),
+			RunAsGroup:   ptr.Int64(65532),
+			RunAsNonRoot: ptr.Bool(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		}
+	}
+
 	container := corev1.Container{
 		Name:  "event-listener",
 		Image: *c.Image,
@@ -80,19 +97,7 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			Name:  "K_SINK_TIMEOUT",
 			Value: strconv.FormatInt(*c.TimeOutHandler, 10),
 		}}...),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: ptr.Bool(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-			// 65532 is the distroless nonroot user ID
-			RunAsUser:    ptr.Int64(65532),
-			RunAsGroup:   ptr.Int64(65532),
-			RunAsNonRoot: ptr.Bool(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
+		SecurityContext: &containerSecurityContext,
 	}
 
 	for _, opt := range opts {
