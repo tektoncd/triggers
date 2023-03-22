@@ -22,21 +22,22 @@ spec:
         serviceAccountName: tekton-triggers-example-sa
         pipelineRef:
           name: getting-started-pipeline
-        resources:
-          - name: source-repo
-            resourceSpec:
-              type: git
-              params:
-              - name: revision
-                value: $(tt.params.gitrevision)
-              - name: url
-                value: $(tt.params.gitrepositoryurl)
-          - name: image-source
-            resourceSpec:
-              type: image
-              params:
-                - name: url
-                  value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
+        params:
+        - name: git-revision
+          value: $(tt.params.gitrevision)
+        - name: git-url
+          value: $(tt.params.gitrepositoryurl)
+        - name: url
+          value: DOCKERREPO-REPLACEME # docker-repo-location.com/repo:getting-started
+        workspaces:
+        - name: git-source
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
 ---
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
