@@ -10,34 +10,49 @@ metadata:
   name: getting-started-pipeline
   namespace: getting-started
 spec:
-  resources:
-    - name: source-repo
-      type: git
-    - name: image-source
-      type: image
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: url
+  workspaces:
+    - name: git-source
   tasks:
+    - name: fetch-from-git
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/tektoncd/catalog.git
+          - name: pathInRepo
+            value: /task/git-clone/0.9/git-clone.yaml
+          - name: revision
+            value: main
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: git-source
     - name: build-docker-image
       taskRef:
         name: build-docker-image
       params:
-        - name: pathToContext
-          value: /workspace/source-repo
-      resources:
-        inputs:
-          - name: source-repo
-            resource: source-repo
-        outputs:
-          - name: builtImage
-            resource: image-source
+        - name: IMAGE
+          value: $(params.url)
+      runAfter: [fetch-from-git]
+      workspaces:
+        - name: source
+          workspace: git-source
     - name: deploy-locally
       taskRef:
         name: deploy-locally
-      resources:
-        inputs:
-          - name: image-source
-            resource: image-source
-            from:
-              - build-docker-image
+      params:
+        - name: IMAGE
+          value: $(params.url)
+      runAfter:
+        - build-docker-image
     - name: send-cloud-event
       taskRef:
         resolver: hub
@@ -59,10 +74,9 @@ metadata:
   name: deploy-locally
   namespace: getting-started
 spec:
-  resources:
-    inputs:
-      - name: image-source
-        type: image
+  params:
+    - name: IMAGE
+      description: Name (reference) of the image to build.
   steps:
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl
@@ -71,7 +85,7 @@ spec:
         - "run"
         - "tekton-triggers-built-me"
         - "--image"
-        - "$(resources.inputs.image-source.url)"
+        - "$(params.IMAGE)"
         - "--env=PORT=8080"
 ---
 apiVersion: tekton.dev/v1beta1
@@ -81,30 +95,28 @@ metadata:
   namespace: getting-started
 spec:
   params:
-  - name: pathToContext
-    description:
-      The build directory used by img
-    default: /workspace/source-repo
-  - name: pathToDockerFile
-    type: string
-    description: The path to the dockerfile to build
-    default: $(resources.inputs.source-repo.path)/Dockerfile
-  resources:
-    inputs:
-      - name: source-repo
-        type: git
-    outputs:
-      - name: builtImage
-        type: image
+    - name: IMAGE
+      description: Name (reference) of the image to build.
+    - name: pathToContext
+      description:
+        The build directory used by img
+      default: ./
+    - name: pathToDockerFile
+      type: string
+      description: The path to the dockerfile to build
+      default: ./Dockerfile
+  workspaces:
+    - name: source
   steps:
     - name: build-and-push
+      workingDir: $(workspaces.source.path)
       image: gcr.io/kaniko-project/executor:v0.16.0
       command:
         - /kaniko/executor
       args:
         - --dockerfile=$(params.pathToDockerFile)
-        - --destination=$(resources.outputs.builtImage.url)
-        - --context=$(params.pathToContext)
+        - --destination=$(params.IMAGE)
+        - --context=$(workspaces.source.path)/$(params.pathToContext)
 ---
 # Finally, we need something to receive our cloudevent announcing success!
 # That is this services only purpose
