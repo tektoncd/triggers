@@ -104,10 +104,10 @@ func serviceNotExist(t *testing.T, c *clients, namespace, name string) wait.Cond
 	}
 }
 
-// pipelineResourceExist returns a function that checks if the specified PipelineResource exists
-func pipelineResourceExist(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
+// taskrunexist returns a function that checks if the specified TaskRun exists
+func taskrunExist(t *testing.T, c *clients, namespace, name string) wait.ConditionFunc {
 	return func() (bool, error) {
-		_, err := c.ResourceClient.TektonV1alpha1().PipelineResources(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		_, err := c.PipelineClient.TektonV1beta1().TaskRuns(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
