@@ -885,6 +885,7 @@ func TestReconcile(t *testing.T) {
 
 	deploymentMissingSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{}
 	})
 
 	deploymentEventListenerEvent := makeDeployment(func(d *appsv1.Deployment) {
