@@ -23,11 +23,13 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 var (
@@ -36,6 +38,13 @@ var (
 		"TLS_KEY",
 	)
 )
+
+var _ resourcesemantics.VerbLimited = (*EventListener)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (e *EventListener) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
