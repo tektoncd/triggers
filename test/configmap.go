@@ -18,7 +18,7 @@ package test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +30,7 @@ import (
 func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 	t.Helper()
 
-	b, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s.yaml", name))
+	b, err := os.ReadFile(fmt.Sprintf("testdata/%s.yaml", name))
 	if err != nil {
 		t.Fatalf("ReadFile() = %v", err)
 	}

@@ -24,9 +24,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -68,7 +68,7 @@ const (
 func loadExamplePREventBytes(t *testing.T) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", examplePRJsonFilename)
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Couldn't load test data example PullREquest event data: %v", err)
 	}

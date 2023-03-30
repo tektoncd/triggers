@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -179,13 +178,13 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 		return nil, nil, fmt.Errorf("error reading HTTP file: %w", err)
 	}
 
-	body, err := ioutil.ReadAll(request.Body)
+	body, err := io.ReadAll(request.Body)
 	defer request.Body.Close()
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading HTTP body: %w", err)
 	}
 
-	request.Body = ioutil.NopCloser(bytes.NewReader(body))
+	request.Body = io.NopCloser(bytes.NewReader(body))
 
 	return request, body, err
 }
