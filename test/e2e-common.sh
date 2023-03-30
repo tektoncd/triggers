@@ -25,7 +25,7 @@
 
 # Check if we have a specific RELEASE_YAML global environment variable to use
 # instead of detecting the latest released one from tektoncd/pipeline releases
-RELEASE_YAML=${RELEASE_YAML:-}
+RELEASE_YAML=https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.41.1/release.yaml
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
