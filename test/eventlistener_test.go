@@ -66,6 +66,11 @@ const (
 	examplePRJsonFilename = "pr.json"
 )
 
+var (
+	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
+	ignoreSATaskRunSpec = cmpopts.IgnoreFields(pipelinev1.TaskRunSpec{}, "ServiceAccountName")
+)
+
 func loadExamplePREventBytes(t *testing.T) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", examplePRJsonFilename)
@@ -389,7 +394,6 @@ func TestEventListenerCreate(t *testing.T) {
 					Type:      pipelinev1.ParamTypeString,
 					StringVal: defaultValueStr,
 				}}},
-			ServiceAccountName: "default",
 			TaskRef: &pipelinev1.TaskRef{
 				Name: "git-clone",
 				Kind: "Task",
@@ -499,7 +503,7 @@ func TestEventListenerCreate(t *testing.T) {
 		if diff := cmp.Diff(wantTr.Labels, gotTr.Labels); diff != "" {
 			t.Errorf("Diff instantiated TaskRun labels %s: -want +got: %s", wantTr.Name, diff)
 		}
-		if diff := cmp.Diff(wantTr.Spec, gotTr.Spec); diff != "" {
+		if diff := cmp.Diff(wantTr.Spec, gotTr.Spec, ignoreSATaskRunSpec); diff != "" {
 			t.Errorf("Diff instantiated TaskRun spec %s: -want +got: %s", wantTr.Name, diff)
 		}
 	}
