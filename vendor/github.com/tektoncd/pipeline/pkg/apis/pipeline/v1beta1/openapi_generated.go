@@ -43,17 +43,14 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunSpec":                   schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedCustomRunSpec":           schema_pkg_apis_pipeline_v1beta1_EmbeddedCustomRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask":                    schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.InternalTaskModifier":            schema_pkg_apis_pipeline_v1beta1_InternalTaskModifier(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Matrix":                          schema_pkg_apis_pipeline_v1beta1_Matrix(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.MatrixInclude":                   schema_pkg_apis_pipeline_v1beta1_MatrixInclude(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param":                           schema_pkg_apis_pipeline_v1beta1_Param(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec":                       schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue":                      schema_pkg_apis_pipeline_v1beta1_ParamValue(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Pipeline":                        schema_pkg_apis_pipeline_v1beta1_Pipeline(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineDeclaredResource":        schema_pkg_apis_pipeline_v1beta1_PipelineDeclaredResource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineList":                    schema_pkg_apis_pipeline_v1beta1_PipelineList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef":                     schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding":         schema_pkg_apis_pipeline_v1beta1_PipelineResourceBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef":             schema_pkg_apis_pipeline_v1beta1_PipelineResourceRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult":          schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult":                  schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRun":                     schema_pkg_apis_pipeline_v1beta1_PipelineRun(ref),
@@ -66,11 +63,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus":        schema_pkg_apis_pipeline_v1beta1_PipelineRunTaskRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec":                    schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTask":                    schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskInputResource":       schema_pkg_apis_pipeline_v1beta1_PipelineTaskInputResource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata":            schema_pkg_apis_pipeline_v1beta1_PipelineTaskMetadata(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskOutputResource":      schema_pkg_apis_pipeline_v1beta1_PipelineTaskOutputResource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskParam":               schema_pkg_apis_pipeline_v1beta1_PipelineTaskParam(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskResources":           schema_pkg_apis_pipeline_v1beta1_PipelineTaskResources(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRun":                 schema_pkg_apis_pipeline_v1beta1_PipelineTaskRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec":             schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":    schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
@@ -88,16 +82,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Task":                            schema_pkg_apis_pipeline_v1beta1_Task(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskList":                        schema_pkg_apis_pipeline_v1beta1_TaskList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef":                         schema_pkg_apis_pipeline_v1beta1_TaskRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource":                    schema_pkg_apis_pipeline_v1beta1_TaskResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding":             schema_pkg_apis_pipeline_v1beta1_TaskResourceBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources":                   schema_pkg_apis_pipeline_v1beta1_TaskResources(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult":                      schema_pkg_apis_pipeline_v1beta1_TaskResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRun":                         schema_pkg_apis_pipeline_v1beta1_TaskRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug":                    schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunInputs":                   schema_pkg_apis_pipeline_v1beta1_TaskRunInputs(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunList":                     schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunOutputs":                  schema_pkg_apis_pipeline_v1beta1_TaskRunOutputs(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResources":                schema_pkg_apis_pipeline_v1beta1_TaskRunResources(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult":                   schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride":          schema_pkg_apis_pipeline_v1beta1_TaskRunSidecarOverride(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSpec":                     schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref),
@@ -116,13 +104,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestSpec":         schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatus":       schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatusFields": schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResource":               schema_pkg_apis_resource_v1alpha1_PipelineResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceList":           schema_pkg_apis_resource_v1alpha1_PipelineResourceList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec":           schema_pkg_apis_resource_v1alpha1_PipelineResourceSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceStatus":         schema_pkg_apis_resource_v1alpha1_PipelineResourceStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceDeclaration":            schema_pkg_apis_resource_v1alpha1_ResourceDeclaration(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceParam":                  schema_pkg_apis_resource_v1alpha1_ResourceParam(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.SecretParam":                    schema_pkg_apis_resource_v1alpha1_SecretParam(ref),
 	}
 }
 
@@ -548,7 +529,7 @@ func schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref common.ReferenceCallback) 
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster. Deprecated: Please use the cluster resolver instead.",
+				Description: "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.\n\nDeprecated: Please use the cluster resolver instead.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
@@ -943,12 +924,6 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata"),
 						},
 					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources"),
-						},
-					},
 					"params": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -1080,77 +1055,7 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration", "k8s.io/api/core/v1.Volume", "k8s.io/apimachinery/pkg/runtime.RawExtension"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_InternalTaskModifier(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"stepsToPrepend": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step"),
-									},
-								},
-							},
-						},
-					},
-					"stepsToAppend": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step"),
-									},
-								},
-							},
-						},
-					},
-					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Volume"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"stepsToPrepend", "stepsToAppend", "volumes"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step", "k8s.io/api/core/v1.Volume"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration", "k8s.io/api/core/v1.Volume", "k8s.io/apimachinery/pkg/runtime.RawExtension"},
 	}
 }
 
@@ -1169,6 +1074,66 @@ func schema_pkg_apis_pipeline_v1beta1_Matrix(ref common.ReferenceCallback) commo
 						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
+									},
+								},
+							},
+						},
+					},
+					"include": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix. Note that Include is in preview mode and not yet supported.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.MatrixInclude"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.MatrixInclude", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_MatrixInclude(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MatrixInclude allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name the specified combination",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"params": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -1381,43 +1346,6 @@ func schema_pkg_apis_pipeline_v1beta1_Pipeline(ref common.ReferenceCallback) com
 	}
 }
 
-func schema_pkg_apis_pipeline_v1beta1_PipelineDeclaredResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineDeclaredResource is used by a Pipeline to declare the types of the PipelineResources that it will required to run and names which can be used to refer to these PipelineResources in PipelineTaskResourceBindings.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name that will be used by the Pipeline to refer to this resource. It does not directly correspond to the name of any PipelineResources Task inputs or outputs, and it does not correspond to the actual names of the PipelineResources that will be bound in the PipelineRun.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the PipelineResource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"optional": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional declares the resource as optional. optional: true - the resource is considered optional optional: false - the resource is considered required (default/equivalent of not specifying it)",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name", "type"},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1beta1_PipelineList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1490,68 +1418,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref common.ReferenceCallback) 
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_PipelineResourceBinding(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceBinding connects a reference to an instance of a PipelineResource with a PipelineResource dependency that the Pipeline has declared",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the PipelineResource in the Pipeline's declaration",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"resourceRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef"),
-						},
-					},
-					"resourceSpec": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceSpec is specification of a resource that should be created and consumed by the task",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef", "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_PipelineResourceRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceRef can be used to refer to a specific instance of a Resource",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "API version of the referent",
+							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1566,7 +1433,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceResult used to export the image name and digest as json",
+				Description: "PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages. The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult. If they represent a TaskRunResult, the key is the name of the result and the value is the JSON-serialized value of the result.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"key": {
@@ -1585,8 +1452,9 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 					},
 					"resourceName": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "ResourceName may be used in tests, but it is not populated in termination messages. It is preserved here for backwards compatibility and will not be ported to v1.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"type": {
@@ -1838,25 +1706,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec"),
 						},
 					},
-					"resources": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding"),
-									},
-								},
-							},
-						},
-					},
 					"params": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -1897,7 +1746,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -1949,7 +1798,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2017,7 +1866,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 					},
 					"taskRuns": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
+							Description: "TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -2031,7 +1880,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 					},
 					"runs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
+							Description: "Runs is a map of PipelineRunRunStatus with the run name as the key\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -2163,7 +2012,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 					},
 					"taskRuns": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
+							Description: "TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -2177,7 +2026,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 					},
 					"runs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
+							Description: "Runs is a map of PipelineRunRunStatus with the run name as the key\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -2349,25 +2198,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
-					"resources": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources declares the names and types of the resources given to the Pipeline's tasks as inputs and outputs.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineDeclaredResource"),
-									},
-								},
-							},
-						},
-					},
 					"tasks": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -2467,7 +2297,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineDeclaredResource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration"},
 	}
 }
 
@@ -2538,12 +2368,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 							},
 						},
 					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources declares the resources given to this task as inputs and outputs.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskResources"),
-						},
-					},
 					"params": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -2598,57 +2422,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Matrix", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskResources", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_PipelineTaskInputResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineTaskInputResource maps the name of a declared PipelineResource input dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used. This input may come from a previous task.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the PipelineResource as declared by the Task.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"resource": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resource is the name of the DeclaredPipelineResource to use.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"from": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "From is the list of PipelineTask names that the resource has to come from. (Implies an ordering in the execution graph.)",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"name", "resource"},
-			},
-		},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Matrix", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2695,36 +2469,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTaskMetadata(ref common.ReferenceC
 	}
 }
 
-func schema_pkg_apis_pipeline_v1beta1_PipelineTaskOutputResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineTaskOutputResource maps the name of a declared PipelineResource output dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the PipelineResource as declared by the Task.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"resource": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resource is the name of the DeclaredPipelineResource to use.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name", "resource"},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1beta1_PipelineTaskParam(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2750,59 +2494,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTaskParam(ref common.ReferenceCall
 				Required: []string{"name", "value"},
 			},
 		},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_PipelineTaskResources(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"inputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskInputResource"),
-									},
-								},
-							},
-						},
-					},
-					"outputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskOutputResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskInputResource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskOutputResource"},
 	}
 }
 
@@ -2908,7 +2599,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref common.Re
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+				Description: "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding.\n\nDeprecated: use PipelineWorkspaceDeclaration type instead",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -2972,11 +2663,17 @@ func schema_pkg_apis_pipeline_v1beta1_Provenance(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
 						},
 					},
+					"featureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
 	}
 }
 
@@ -3537,7 +3234,7 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+							Description: "List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3640,38 +3337,38 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"livenessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Periodic probe of container liveness. Step will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Periodic probe of container liveness. Step will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Periodic probe of container service readiness. Step will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Periodic probe of container service readiness. Step will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"startupProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"lifecycle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+							Description: "Actions that the management system should take in response to container lifecycle events. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Lifecycle"),
 						},
 					},
 					"terminationMessagePath": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release and can't be meaningfully used.",
+							Description: "Deprecated: This field will be removed in a future release and can't be meaningfully used.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"terminationMessagePolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release and can't be meaningfully used.",
+							Description: "Deprecated: This field will be removed in a future release and can't be meaningfully used.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3691,21 +3388,21 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"stdin": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+							Description: "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"stdinOnce": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+							Description: "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"tty": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
+							Description: "Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3850,7 +3547,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Default name for each Step specified as a DNS_LABEL. Each Step in a Task must have a unique name. Cannot be updated.",
+							Description: "Default name for each Step specified as a DNS_LABEL. Each Step in a Task must have a unique name. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -3923,7 +3620,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+							Description: "List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4026,38 +3723,38 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 					},
 					"livenessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"startupProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
 					"lifecycle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+							Description: "Actions that the management system should take in response to container lifecycle events. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
 							Ref:         ref("k8s.io/api/core/v1.Lifecycle"),
 						},
 					},
 					"terminationMessagePath": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release and cannot be meaningfully used.",
+							Description: "Deprecated: This field will be removed in a future release and cannot be meaningfully used.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"terminationMessagePolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release and cannot be meaningfully used.",
+							Description: "Deprecated: This field will be removed in a future release and cannot be meaningfully used.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4077,21 +3774,21 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 					},
 					"stdin": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this Step should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the Step will always result in EOF. Default is false.",
+							Description: "Whether this Step should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the Step will always result in EOF. Default is false.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"stdinOnce": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+							Description: "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"tty": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this Step should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
+							Description: "Whether this Step should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.\n\nDeprecated: This field will be removed in a future release.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -4226,7 +3923,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
+							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4234,164 +3931,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 				},
 			},
 		},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_TaskResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskResource defines an input or output Resource declared as a requirement by a Task. The Name field will be used to refer to these Resources within the Task definition, and when provided as an Input, the Name will be the path to the volume mounted containing this Resource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of this resource;",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"description": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Description is a user-facing description of the declared resource that may be used to populate a UI.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"targetPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TargetPath is the path in workspace directory where the resource will be copied.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"optional": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name", "type"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_TaskResourceBinding(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskResourceBinding points to the PipelineResource that will be used for the Task input or output called Name.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the PipelineResource in the Pipeline's declaration",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"resourceRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef"),
-						},
-					},
-					"resourceSpec": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceSpec is specification of a resource that should be created and consumed by the task",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec"),
-						},
-					},
-					"paths": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead. The optional Path field corresponds to a path on disk at which the Resource can be found (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef", "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_TaskResources(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"inputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource"),
-									},
-								},
-							},
-						},
-					},
-					"outputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource"},
 	}
 }
 
@@ -4527,57 +4066,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref common.ReferenceCallback)
 	}
 }
 
-func schema_pkg_apis_pipeline_v1beta1_TaskRunInputs(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunInputs holds the input values that this task was invoked with.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"resources": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"),
-									},
-								},
-							},
-						},
-					},
-					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4624,92 +4112,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref common.ReferenceCallback) 
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRun", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_TaskRunOutputs(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunOutputs holds the output values that this task was invoked with.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"resources": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_TaskRunResources(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"inputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Inputs holds the inputs resources this task was invoked with",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"),
-									},
-								},
-							},
-						},
-					},
-					"outputs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Outputs holds the inputs resources this task was invoked with",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding"},
 	}
 }
 
@@ -4810,11 +4212,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 									},
 								},
 							},
-						},
-					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResources"),
 						},
 					},
 					"serviceAccountName": {
@@ -4935,7 +4332,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResources", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -5035,7 +4432,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5213,7 +4610,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5376,12 +4773,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 				Description: "TaskSpec defines the desired state of Task.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources"),
-						},
-					},
 					"params": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -5513,7 +4904,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration", "k8s.io/api/core/v1.Volume"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration", "k8s.io/api/core/v1.Volume"},
 	}
 }
 
@@ -6021,294 +5412,5 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_PipelineResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResource describes a resource that is an input to or output from a Task.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Spec holds the desired state of the PipelineResource from the client",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Status is deprecated. It usually is used to communicate the observed state of the PipelineResource from the controller, but was unused as there is no controller for PipelineResource.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceStatus"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec", "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_PipelineResourceList(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceList contains a list of PipelineResources",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
-						},
-					},
-					"items": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"items"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResource", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_PipelineResourceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceSpec defines  an individual resources used in the pipeline.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"description": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Description is a user-facing description of the resource that may be used to populate a UI.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceParam"),
-									},
-								},
-							},
-						},
-					},
-					"secrets": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "Secrets to fetch to populate some of resource fields",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.SecretParam"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"type", "params"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceParam", "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.SecretParam"},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_PipelineResourceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status Deprecated",
-				Type:        []string{"object"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_ResourceDeclaration(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ResourceDeclaration defines an input or output PipelineResource declared as a requirement by another type such as a Task or Condition. The Name field will be used to refer to these PipelineResources within the type's definition, and when provided as an Input, the Name will be the path to the volume mounted containing this PipelineResource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of this resource;",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"description": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Description is a user-facing description of the declared resource that may be used to populate a UI.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"targetPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TargetPath is the path in workspace directory where the resource will be copied.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"optional": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name", "type"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_ResourceParam(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ResourceParam declares a string value to use for the parameter called Name, and is used in the specific context of PipelineResources.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"value": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"name", "value"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_resource_v1alpha1_SecretParam(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "SecretParam indicates which secret can be used to populate a field of the resource",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"fieldName": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"secretKey": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"secretName": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"fieldName", "secretKey", "secretName"},
-			},
-		},
 	}
 }

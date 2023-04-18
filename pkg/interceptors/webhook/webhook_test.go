@@ -76,7 +76,7 @@ func TestWebHookInterceptor(t *testing.T) {
 		},
 		Header: []pipelinev1.Param{{
 			Name: "Param-Header",
-			Value: pipelinev1.ArrayOrString{
+			Value: pipelinev1.ParamValue{
 				Type:      pipelinev1.ParamTypeString,
 				StringVal: "val",
 			}},
@@ -234,7 +234,7 @@ func Test_addInterceptorHeaders(t *testing.T) {
 			},
 			headerParams: []pipelinev1.Param{{
 				Name: "header2",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:      pipelinev1.ParamTypeString,
 					StringVal: "val",
 				}},
@@ -252,7 +252,7 @@ func Test_addInterceptorHeaders(t *testing.T) {
 			},
 			headerParams: []pipelinev1.Param{{
 				Name: "header2",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:     pipelinev1.ParamTypeArray,
 					ArrayVal: []string{"val1", "val2"},
 				}},
@@ -270,7 +270,7 @@ func Test_addInterceptorHeaders(t *testing.T) {
 			},
 			headerParams: []pipelinev1.Param{{
 				Name: "header1",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:     pipelinev1.ParamTypeArray,
 					ArrayVal: []string{"new_val"},
 				}},
