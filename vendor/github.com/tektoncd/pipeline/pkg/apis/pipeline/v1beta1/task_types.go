@@ -27,8 +27,9 @@ import (
 const (
 	// TaskRunResultType default task run result value
 	TaskRunResultType ResultType = 1
-	// PipelineResourceResultType default pipeline result value
-	PipelineResourceResultType = 2
+	// reserved: 2
+	// was PipelineResourceResultType
+
 	// InternalTektonResultType default internal tekton result value
 	InternalTektonResultType = 3
 	// UnknownResultType default unknown result type value
@@ -80,18 +81,12 @@ func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
 
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
-	// Resources is a list input and output resource to run the task
-	// Resources are represented in TaskRuns as bindings to instances of
-	// PipelineResources.
-	// +optional
-	Resources *TaskResources `json:"resources,omitempty"`
-
 	// Params is a list of input parameters required to run the task. Params
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
 	// +listType=atomic
-	Params []ParamSpec `json:"params,omitempty"`
+	Params ParamSpecs `json:"params,omitempty"`
 
 	// Description is a user-facing description of the task that may be
 	// used to populate a UI.

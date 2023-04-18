@@ -275,13 +275,13 @@ func trResourceTemplate(t testing.TB) runtime.RawExtension {
 		Spec: pipelinev1.TaskRunSpec{
 			Params: []pipelinev1.Param{{
 				Name: "url",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:      pipelinev1.ParamTypeString,
 					StringVal: "$(tt.params.url)",
 				},
 			}, {
 				Name: "git-revision",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:      pipelinev1.ParamTypeString,
 					StringVal: "$(tt.params.revision)",
 				},
@@ -348,10 +348,10 @@ func TestHandleEvent(t *testing.T) {
 			Spec: pipelinev1.TaskRunSpec{
 				Params: []pipelinev1.Param{{
 					Name:  "url",
-					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
+					Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
 				}, {
 					Name:  "git-revision",
-					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
+					Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
 				}},
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
@@ -884,7 +884,7 @@ func TestHandleEvent(t *testing.T) {
 							},
 							Header: []pipelinev1.Param{{
 								Name: "Name",
-								Value: pipelinev1.ArrayOrString{
+								Value: pipelinev1.ParamValue{
 									Type:      pipelinev1.ParamTypeString,
 									StringVal: "name-from-webhook",
 								},
@@ -948,10 +948,10 @@ func TestHandleEvent(t *testing.T) {
 			Spec: pipelinev1.TaskRunSpec{
 				Params: []pipelinev1.Param{{
 					Name:  "url",
-					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
+					Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
 				}, {
 					Name:  "git-revision",
-					Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "master"},
+					Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "master"},
 				}},
 				TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 			},
@@ -1085,10 +1085,10 @@ func TestHandleEvent(t *testing.T) {
 				Spec: pipelinev1.TaskRunSpec{
 					Params: []pipelinev1.Param{{
 						Name:  "url",
-						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
+						Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
 					}, {
 						Name:  "git-revision",
-						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "master"},
+						Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "master"},
 					}},
 					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 				},
@@ -1112,10 +1112,10 @@ func TestHandleEvent(t *testing.T) {
 				Spec: pipelinev1.TaskRunSpec{
 					Params: []pipelinev1.Param{{
 						Name:  "url",
-						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
+						Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/triggers"},
 					}, {
 						Name:  "git-revision",
-						Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "master"},
+						Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "master"},
 					}},
 					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 				},
@@ -1780,10 +1780,10 @@ func TestCloudEventHandling(t *testing.T) {
 		Spec: pipelinev1.TaskRunSpec{
 			Params: []pipelinev1.Param{{
 				Name:  "url",
-				Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
+				Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"},
 			}, {
 				Name:  "git-revision",
-				Value: pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
+				Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"},
 			}},
 			TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
 		},
