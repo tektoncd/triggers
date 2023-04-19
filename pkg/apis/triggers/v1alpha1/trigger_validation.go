@@ -51,6 +51,8 @@ func (t *TriggerSpec) validate(ctx context.Context) *apis.FieldError {
 	return errs
 }
 
+// revive:disable:unused-parameter
+
 func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldError) {
 	// Optional explicit match
 	if t.APIVersion != "" {

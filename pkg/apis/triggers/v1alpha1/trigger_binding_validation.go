@@ -37,6 +37,8 @@ func (tb *TriggerBinding) Validate(ctx context.Context) (errs *apis.FieldError) 
 	return errs.Also(tb.Spec.Validate(ctx).ViaField("spec"))
 }
 
+// revive:disable:unused-parameter
+
 // Validate TriggerBindingSpec.
 func (s *TriggerBindingSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if equality.Semantic.DeepEqual(s, &TriggerBindingSpec{}) {

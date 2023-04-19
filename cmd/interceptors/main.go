@@ -90,6 +90,8 @@ func main() {
 	}
 }
 
+// revive:disable:unused-parameter
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

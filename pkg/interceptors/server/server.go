@@ -286,10 +286,7 @@ func (is *Server) listAndUpdateClusterInterceptorCRD(ctx context.Context, tc tri
 		return err
 	}
 
-	if err := is.updateCRDWithCaCert(ctx, tc, clusterInterceptorList.Items, caCert); err != nil {
-		return err
-	}
-	return nil
+	return is.updateCRDWithCaCert(ctx, tc, clusterInterceptorList.Items, caCert)
 }
 
 func GetTLSData(ctx context.Context, logger *zap.SugaredLogger) (*tls.Certificate, error) {

@@ -52,6 +52,8 @@ func init() {
 	}
 }
 
+// revive:disable:unused-parameter
+
 func rootRun(cmd *cobra.Command, args []string) {
 	if err := evalBinding(os.Stdout, bindingPath, httpPath); err != nil {
 		log.Fatal(err)

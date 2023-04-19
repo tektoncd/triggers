@@ -40,6 +40,8 @@ func init() {
 	}
 }
 
+// revive:disable:unused-parameter
+
 func rootRun(cmd *cobra.Command, args []string) {
 	if err := evalCEL(os.Stdout, expressionPath, httpPath); err != nil {
 		log.Fatal(err)

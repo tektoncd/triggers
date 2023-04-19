@@ -1400,9 +1400,13 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 // errorInterceptor is a HTTP server that will always return an error response.
 type errorInterceptor struct{}
 
+// revive:disable:unused-parameter
+
 func (e *errorInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
+
+// revive:enable:unused-parameter
 
 func TestExecuteInterceptor_error(t *testing.T) {
 	logger := zaptest.NewLogger(t)

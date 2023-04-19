@@ -55,6 +55,8 @@ func WaitFor(waitFunc wait.ConditionFunc) error {
 	return wait.PollImmediate(interval, timeout, waitFunc)
 }
 
+// revive:disable:unused-parameter
+
 // eventListenerReady returns a function that checks if all conditions on the
 // specified EventListener are true and that the deployment available condition
 // is within this set
