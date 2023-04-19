@@ -30,6 +30,8 @@ func (it *ClusterInterceptor) Validate(ctx context.Context) *apis.FieldError {
 	return it.Spec.validate(ctx)
 }
 
+// revive:disable:unused-parameter
+
 func (s *ClusterInterceptorSpec) validate(ctx context.Context) (errs *apis.FieldError) {
 	if s.ClientConfig.URL != nil && s.ClientConfig.Service != nil {
 		errs = errs.Also(apis.ErrMultipleOneOf("spec.clientConfig.url", "spec.clientConfig.service"))

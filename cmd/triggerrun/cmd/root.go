@@ -70,6 +70,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", "", "absolute path to the kubeconfig file")
 }
 
+// revive:disable:unused-parameter
+
 func rootRun(cmd *cobra.Command, args []string) error {
 	err := trigger(triggerFile, httpPath, action, kubeconfig, os.Stdout)
 	if err != nil {

@@ -12,6 +12,8 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+// revive:disable:unused-parameter
+
 func newErrorResource(r schema.GroupVersionResource) errorResourceInterface {
 	return errorResourceInterface{resource: r}
 }
@@ -71,3 +73,5 @@ func (i errorResourceInterface) Apply(ctx context.Context, name string, obj *uns
 func (i errorResourceInterface) ApplyStatus(ctx context.Context, name string, obj *unstructured.Unstructured, options metav1.ApplyOptions) (*unstructured.Unstructured, error) {
 	return nil, i.err()
 }
+
+// revive:enable:unused-parameter

@@ -46,6 +46,8 @@ func (e *EventListener) SupportedVerbs() []admissionregistrationv1.OperationType
 	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
 }
 
+// revive:disable:unused-parameter
+
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError

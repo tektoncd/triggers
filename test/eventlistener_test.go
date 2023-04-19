@@ -441,8 +441,10 @@ func TestEventListenerCreate(t *testing.T) {
 			return
 		}
 		go func() {
+			// revive:disable:empty-block
 			for range readyChan {
 			}
+			// revive:enable:empty-block
 			if len(errOut.String()) != 0 {
 				errChan <- fmt.Errorf("%s", errOut)
 			}
