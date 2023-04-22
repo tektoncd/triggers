@@ -20,15 +20,17 @@ import (
 	"context"
 	"log"
 
+	"k8s.io/client-go/dynamic"
+	evadapter "knative.dev/eventing/pkg/adapter/v2"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/injection/clients/dynamicclient"
+	"knative.dev/pkg/signals"
+
 	"github.com/tektoncd/triggers/pkg/adapter"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/sink"
-	"k8s.io/client-go/dynamic"
-	evadapter "knative.dev/eventing/pkg/adapter/v2"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/injection/clients/dynamicclient"
-	"knative.dev/pkg/signals"
 )
 
 const (
@@ -65,6 +67,12 @@ func main() {
 	if !sinkArgs.IsMultiNS {
 		ctx = injection.WithNamespaceScope(ctx, sinkArgs.ElNamespace)
 	}
+
+	ictx, informers := injection.Default.SetupInformers(ctx, cfg)
+	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
+		log.Fatal("failed to start informers:", err)
+	}
+	ctx = ictx
 
 	evadapter.MainWithContext(ctx, EventListenerLogKey, adapter.NewEnvConfig, adapter.New(sinkArgs, sinkClients, recorder))
 }
