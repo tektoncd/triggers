@@ -3144,118 +3144,6 @@ TriggerBindingStatus
 </tr>
 </tbody>
 </table>
-<h3 id="triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor
-</h3>
-<div>
-<p>BitbucketInterceptor provides a webhook to intercept and pre-process events</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>secretRef</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.SecretRef">
-SecretRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>eventTypes</code><br/>
-<em>
-[]string
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="triggers.tekton.dev/v1beta1.CELInterceptor">CELInterceptor
-</h3>
-<div>
-<p>CELInterceptor provides a webhook to intercept and pre-process events</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>filter</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>overlays</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.CELOverlay">
-[]CELOverlay
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="triggers.tekton.dev/v1beta1.CELOverlay">CELOverlay
-</h3>
-<p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.CELInterceptor">CELInterceptor</a>)
-</p>
-<div>
-<p>CELOverlay provides a way to modify the request body using CEL expressions</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>key</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>expression</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="triggers.tekton.dev/v1beta1.CustomResource">CustomResource
 </h3>
 <p>
@@ -3662,43 +3550,6 @@ NamespaceSelector
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#labelselector-v1-meta">
 Kubernetes meta/v1.LabelSelector
 </a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor
-</h3>
-<div>
-<p>GitLabInterceptor provides a webhook to intercept and pre-process events</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>secretRef</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.SecretRef">
-SecretRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>eventTypes</code><br/>
-<em>
-[]string
 </em>
 </td>
 <td>
@@ -4195,9 +4046,6 @@ CustomResource
 </table>
 <h3 id="triggers.tekton.dev/v1beta1.SecretRef">SecretRef
 </h3>
-<p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.BitbucketInterceptor">BitbucketInterceptor</a>, <a href="#triggers.tekton.dev/v1beta1.GitLabInterceptor">GitLabInterceptor</a>)
-</p>
 <div>
 <p>SecretRef contains the information required to reference a single secret string
 This is needed because the other secretRef types are not cross-namespace and do not
@@ -4226,30 +4074,6 @@ string
 <code>secretName</code><br/>
 <em>
 string
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="triggers.tekton.dev/v1beta1.SlackInterceptor">SlackInterceptor
-</h3>
-<div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>requestedFields</code><br/>
-<em>
-[]string
 </em>
 </td>
 <td>
