@@ -148,7 +148,7 @@ func TestGetInterceptorParams(t *testing.T) {
 				},
 				Header: []pipelinev1.Param{{
 					Name: "p1",
-					Value: pipelinev1.ArrayOrString{
+					Value: pipelinev1.ParamValue{
 						Type:     pipelinev1.ParamTypeArray,
 						ArrayVal: []string{"v1", "v2"},
 					},
@@ -164,7 +164,7 @@ func TestGetInterceptorParams(t *testing.T) {
 			},
 			"header": []pipelinev1.Param{{
 				Name: "p1",
-				Value: pipelinev1.ArrayOrString{
+				Value: pipelinev1.ParamValue{
 					Type:     pipelinev1.ParamTypeArray,
 					ArrayVal: []string{"v1", "v2"},
 				},

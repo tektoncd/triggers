@@ -289,8 +289,36 @@
       "description": "Matrix is used to fan out Tasks in a Pipeline",
       "type": "object",
       "properties": {
+        "include": {
+          "description": "Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix. Note that Include is in preview mode and not yet supported.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.MatrixInclude"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "params": {
           "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.MatrixInclude": {
+      "description": "MatrixInclude allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name the specified combination",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
           "type": "array",
           "items": {
             "default": {},
@@ -698,6 +726,14 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
@@ -750,6 +786,14 @@
             "$ref": "#/definitions/v1.SkippedTask"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
         },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
@@ -999,7 +1043,7 @@
       }
     },
     "v1.PipelineWorkspaceDeclaration": {
-      "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+      "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding.\n\nDeprecated: use PipelineWorkspaceDeclaration type instead",
       "type": "object",
       "required": [
         "name"
@@ -1036,6 +1080,10 @@
         "configSource": {
           "description": "ConfigSource identifies the source where a resource came from.",
           "$ref": "#/definitions/v1.ConfigSource"
+        },
+        "featureFlags": {
+          "description": "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.config.FeatureFlags"
         }
       }
     },
@@ -1925,6 +1973,14 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
           "$ref": "#/definitions/v1.Time"
@@ -1990,6 +2046,14 @@
             "$ref": "#/definitions/v1.SidecarState"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",

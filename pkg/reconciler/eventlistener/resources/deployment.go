@@ -122,6 +122,8 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 	}, nil
 }
 
+// revive:disable:unused-parameter
+
 func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, error) {
 	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 	// env METRICS_PROMETHEUS_PORT set by controller

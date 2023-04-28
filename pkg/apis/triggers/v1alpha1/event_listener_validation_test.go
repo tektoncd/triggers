@@ -229,13 +229,13 @@ func Test_EventListenerValidate(t *testing.T) {
 						Webhook: &v1alpha1.WebhookInterceptor{
 							Header: []pipelinev1.Param{{
 								Name: "Valid-Header-Key",
-								Value: pipelinev1.ArrayOrString{
+								Value: pipelinev1.ParamValue{
 									Type:      pipelinev1.ParamTypeString,
 									StringVal: "valid-value",
 								},
 							}, {
 								Name: "Valid-Header-Key2",
-								Value: pipelinev1.ArrayOrString{
+								Value: pipelinev1.ParamValue{
 									Type:      pipelinev1.ParamTypeString,
 									StringVal: "valid value 2",
 								},
@@ -798,7 +798,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &v1alpha1.WebhookInterceptor{
 							Header: []v1beta1.Param{{
 								Name: "non-canonical-header-key",
-								Value: v1beta1.ArrayOrString{
+								Value: v1beta1.ParamValue{
 									Type:      v1beta1.ParamTypeString,
 									StringVal: "valid value",
 								},
@@ -829,7 +829,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &v1alpha1.WebhookInterceptor{
 							Header: []v1beta1.Param{{
 								Name: "",
-								Value: v1beta1.ArrayOrString{
+								Value: v1beta1.ParamValue{
 									Type:      v1beta1.ParamTypeString,
 									StringVal: "valid value",
 								},
@@ -860,7 +860,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 						Webhook: &v1alpha1.WebhookInterceptor{
 							Header: []v1beta1.Param{{
 								Name: "Valid-Header-Key",
-								Value: v1beta1.ArrayOrString{
+								Value: v1beta1.ParamValue{
 									Type:      v1beta1.ParamTypeString,
 									StringVal: "",
 								},

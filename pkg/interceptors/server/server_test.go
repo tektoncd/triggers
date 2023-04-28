@@ -183,9 +183,13 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 
 type fakeInterceptor struct{}
 
+// revive:disable:unused-parameter
+
 func (i fakeInterceptor) Process(ctx context.Context, r *v1beta1.InterceptorRequest) *v1beta1.InterceptorResponse {
 	return nil
 }
+
+// revive:enable:unused-parameter
 
 func TestServer_RegisterInterceptor(t *testing.T) {
 	s := Server{}

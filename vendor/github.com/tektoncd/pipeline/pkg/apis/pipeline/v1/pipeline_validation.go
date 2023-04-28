@@ -162,7 +162,7 @@ func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, pa
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		if task.IsMatrixed() {
-			errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+			errs = errs.Also(task.Matrix.validatePipelineParametersVariablesInMatrixParameters(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		}
 		errs = errs.Also(task.When.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}
@@ -183,14 +183,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	var paramValues []string
 	for _, task := range tasks {
-		var matrixParams []Param
-		if task.IsMatrixed() {
-			matrixParams = task.Matrix.Params
-		}
-		for _, param := range append(task.Params, matrixParams...) {
-			paramValues = append(paramValues, param.Value.StringVal)
-			paramValues = append(paramValues, param.Value.ArrayVal...)
-		}
+		paramValues = task.extractAllParams().extractValues()
 	}
 	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames).
 		Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames)).
@@ -411,4 +404,52 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("finally", idx))
 	}
 	return errs
+}
+
+// ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
+// error is returned when the array indexing reference is out of bound of the array param
+// e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
+	if !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return nil
+	}
+
+	// Collect all array params lengths
+	arrayParamsLengths := ps.Params.extractParamArrayLengths()
+	for k, v := range params.extractParamArrayLengths() {
+		arrayParamsLengths[k] = v
+	}
+
+	paramsRefs := []string{}
+	for i := range ps.Tasks {
+		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
+		if ps.Tasks[i].IsMatrixed() {
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractValues()...)
+		}
+		for j := range ps.Tasks[i].Workspaces {
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Workspaces[j].SubPath)
+		}
+		for _, wes := range ps.Tasks[i].When {
+			paramsRefs = append(paramsRefs, wes.Input)
+			paramsRefs = append(paramsRefs, wes.Values...)
+		}
+	}
+
+	for i := range ps.Finally {
+		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractValues()...)
+		if ps.Finally[i].IsMatrixed() {
+			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractValues()...)
+		}
+		for _, wes := range ps.Finally[i].When {
+			paramsRefs = append(paramsRefs, wes.Values...)
+		}
+	}
+
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := []string{}
+	for _, p := range paramsRefs {
+		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
+	}
+
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
 }

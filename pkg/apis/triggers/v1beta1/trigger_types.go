@@ -155,6 +155,13 @@ type WebhookInterceptor struct {
 	Header []v1beta1.Param `json:"header,omitempty"`
 }
 
+type SlackInterceptor struct {
+	// the Requested fields to be extracted from data form
+
+	// +listType=atomic
+	RequestedFields []string `json:"requestedFields,omitempty"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TriggerList contains a list of Triggers.

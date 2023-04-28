@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"go.uber.org/zap/zaptest"
 
 	"github.com/google/go-cmp/cmp"
-	resourcev1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/test"
@@ -42,9 +42,8 @@ const (
 	resourceLabel = triggers.GroupName + triggers.EventListenerLabelKey
 	triggerLabel  = triggers.GroupName + triggers.TriggerLabelKey
 	eventIDLabel  = triggers.GroupName + triggers.EventIDLabelKey
-
-	triggerName = "trigger"
-	eventID     = "12345"
+	triggerName   = "trigger"
+	eventID       = "12345"
 )
 
 func Test_FindAPIResource_error(t *testing.T) {
@@ -130,7 +129,7 @@ func TestFindAPIResource(t *testing.T) {
 
 func TestCreateResource(t *testing.T) {
 	elName := "foo-el"
-	elNamespace := "bar"
+	elNamespace := "foo"
 
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 	test.AddTektonResources(kubeClient)
@@ -143,65 +142,71 @@ func TestCreateResource(t *testing.T) {
 	tests := []struct {
 		name string
 		json []byte
-		want resourcev1.PipelineResource
+		want pipelinev1beta1.TaskRun
 	}{{
-		name: "PipelineResource without namespace",
-		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":[{"name":"foo","value":"bar\r\nbaz"}]},"status":{}}`),
-		want: resourcev1.PipelineResource{
+		name: "TaskRun without namespace",
+		json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName": ""}}`),
+		want: pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "TaskRun",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "my-pipelineresource",
+				Name: "my-taskrun",
 				Labels: map[string]string{
-					"woriginal-label-1": "label-1",
-					resourceLabel:       elName,
-					triggerLabel:        triggerName,
-					eventIDLabel:        eventID,
+					"someLabel":   "bar", // replaced with the value of foo from bar
+					resourceLabel: "foo-el",
+					triggerLabel:  triggerName,
+					eventIDLabel:  eventID,
 				},
 			},
-			Spec: resourcev1.PipelineResourceSpec{
-				Params: []resourcev1.ResourceParam{{
-					Name:  "foo",
-					Value: "bar\r\nbaz",
-				}},
-			},
-			Status: &resourcev1.PipelineResourceStatus{},
-		},
-	}, {
-		name: "PipelineResource with namespace",
-		json: json.RawMessage(`{"kind":"PipelineResource","apiVersion":"tekton.dev/v1alpha1","metadata":{"name":"my-pipelineresource","namespace":"foo","creationTimestamp":null,"labels":{"woriginal-label-1":"label-1"}},"spec":{"type":"","params":null},"status":{}}`),
-		want: resourcev1.PipelineResource{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1alpha1",
-				Kind:       "PipelineResource",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "my-pipelineresource",
-				Labels: map[string]string{
-					"woriginal-label-1": "label-1",
-					resourceLabel:       elName,
-					triggerLabel:        triggerName,
-					eventIDLabel:        eventID,
+			Spec: pipelinev1beta1.TaskRunSpec{
+				TaskRef: &pipelinev1beta1.TaskRef{
+					Name: "my-task", // non-existent task; just for testing
 				},
 			},
-			Spec:   resourcev1.PipelineResourceSpec{},
-			Status: &resourcev1.PipelineResourceStatus{},
+			Status: pipelinev1beta1.TaskRunStatus{},
 		},
-	}}
+	},
+
+		{
+			name: "TaskRun with namespace",
+			json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","namespace":"bar","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName":""}}`),
+			want: pipelinev1beta1.TaskRun{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-taskrun",
+					Namespace: "bar",
+					Labels: map[string]string{
+						"someLabel":   "bar", // replaced with the value of foo from bar
+						resourceLabel: "foo-el",
+						triggerLabel:  triggerName,
+						eventIDLabel:  eventID,
+					},
+				},
+				Spec: pipelinev1beta1.TaskRunSpec{
+					TaskRef: &pipelinev1beta1.TaskRef{
+						Name: "my-task", // non-existent task; just for testing
+					},
+				},
+				Status: pipelinev1beta1.TaskRunStatus{},
+			},
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dynamicClient.ClearActions()
 			if err := Create(logger.Sugar(), tt.json, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicSet); err != nil {
-				t.Errorf("createResource() returned error: %s", err)
+				t.Errorf("createTaskRun() returned error: %s", err)
 			}
 
 			gvr := schema.GroupVersionResource{
 				Group:    "tekton.dev",
-				Version:  "v1alpha1",
-				Resource: "pipelineresources",
+				Version:  "v1beta1",
+				Resource: "taskruns",
 			}
 			namespace := tt.want.Namespace
 			if namespace == "" {
@@ -209,6 +214,7 @@ func TestCreateResource(t *testing.T) {
 			}
 			want := []ktesting.Action{ktesting.NewCreateAction(gvr, namespace, test.ToUnstructured(t, tt.want))}
 			if diff := cmp.Diff(want, dynamicClient.Actions()); diff != "" {
+				fmt.Println("diff", diff)
 				t.Error(diff)
 			}
 		})

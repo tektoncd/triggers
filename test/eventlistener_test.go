@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"knative.dev/pkg/ptr"
@@ -39,7 +40,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
@@ -63,6 +64,11 @@ const (
 	eventIDLabel  = triggers.GroupName + triggers.EventIDLabelKey
 
 	examplePRJsonFilename = "pr.json"
+)
+
+var (
+	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
+	ignoreSATaskRunSpec = cmpopts.IgnoreFields(pipelinev1.TaskRunSpec{}, "ServiceAccountName")
 )
 
 func loadExamplePREventBytes(t *testing.T) []byte {
@@ -132,53 +138,35 @@ func TestEventListenerCreate(t *testing.T) {
 	t.Log("Start EventListener e2e test")
 
 	// TemplatedPipelineResources
-	pr1 := v1alpha1.PipelineResource{
+	tr1 := pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1",
+			Kind:       "TaskRun",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pr1",
+			Name:      "tr1",
 			Namespace: namespace,
 			Labels: map[string]string{
 				"$(tt.params.oneparam)": "$(tt.params.oneparam)",
 			},
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-		},
-	}
-	pr1Bytes, err := json.Marshal(pr1)
-	if err != nil {
-		t.Fatalf("Error marshalling PipelineResource 1: %s", err)
-	}
-	// This is a templated resource, which does not have a namespace.
-	// This is defaulted to the EventListener namespace.
-	pr2 := v1alpha1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pr2",
-			Labels: map[string]string{
-				"$(tt.params.twoparamname)": "$(tt.params.twoparamvalue)",
+		Spec: pipelinev1.TaskRunSpec{
+			Params: []pipelinev1.Param{{
+				Name: "url",
+				Value: pipelinev1.ParamValue{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: "$(tt.params.url)",
+				}}},
+			TaskRef: &pipelinev1.TaskRef{
+				Name: "git-clone",
 			},
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-			Params: []v1alpha1.ResourceParam{
-				{Name: "license", Value: "$(tt.params.license)"},
-				{Name: "header", Value: "$(tt.params.header)"},
-				{Name: "prmessage", Value: "$(tt.params.prmessage)"},
-			},
-		},
-	}
-	pr2Bytes, err := json.Marshal(pr2)
-	if err != nil {
-		t.Fatalf("Error marshalling ResourceTemplate PipelineResource 2: %s", err)
 	}
 
+	tr1Bytes, err := json.Marshal(tr1)
+	if err != nil {
+		t.Fatalf("Error marshalling TaskRun 1: %s", err)
+	}
 	defaultValueStr := "defaultvalue"
 
 	// TriggerTemplate
@@ -199,7 +187,7 @@ func TestEventListenerCreate(t *testing.T) {
 						Name: "twoparamname",
 					},
 					{
-						Name:    "twoparamvalue",
+						Name:    "url",
 						Default: &defaultValueStr,
 					},
 					{
@@ -214,10 +202,7 @@ func TestEventListenerCreate(t *testing.T) {
 				},
 				ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 					{
-						RawExtension: runtime.RawExtension{Raw: pr1Bytes},
-					},
-					{
-						RawExtension: runtime.RawExtension{Raw: pr2Bytes},
+						RawExtension: runtime.RawExtension{Raw: tr1Bytes},
 					},
 				},
 			},
@@ -294,7 +279,7 @@ func TestEventListenerCreate(t *testing.T) {
 				Verbs:     []string{"get", "list", "watch"},
 			}, {
 				APIGroups: []string{"tekton.dev"},
-				Resources: []string{"pipelineresources"},
+				Resources: []string{"taskruns"},
 				Verbs:     []string{"create"},
 			}, {
 				APIGroups: []string{""},
@@ -385,46 +370,35 @@ func TestEventListenerCreate(t *testing.T) {
 	// Load the example pull request event data
 	eventBodyJSON := loadExamplePREventBytes(t)
 
+	timeout := metav1.Duration{Duration: time.Hour}
 	// Event body & Expected ResourceTemplates after instantiation
-	wantPr1 := v1alpha1.PipelineResource{
+	wantTr1 := pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1",
+			Kind:       "TaskRun",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pr1",
+			Name:      "tr1",
 			Namespace: namespace,
 			Labels: map[string]string{
-				resourceLabel: "my-eventlistener",
-				triggerLabel:  el.Spec.Triggers[0].Name,
-				"edited":      "edited",
+				"app.kubernetes.io/managed-by": "tekton-pipelines",
+				resourceLabel:                  "my-eventlistener",
+				triggerLabel:                   el.Spec.Triggers[0].Name,
+				"edited":                       "edited",
 			},
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-		},
-	}
-	wantPr2 := v1alpha1.PipelineResource{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PipelineResource",
-			APIVersion: "tekton.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pr2",
-			Namespace: namespace,
-			Labels: map[string]string{
-				resourceLabel: "my-eventlistener",
-				triggerLabel:  el.Spec.Triggers[0].Name,
-				"open":        "defaultvalue",
+		Spec: pipelinev1.TaskRunSpec{
+			Params: []pipelinev1.Param{{
+				Name: "url",
+				Value: pipelinev1.ParamValue{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: defaultValueStr,
+				}}},
+			TaskRef: &pipelinev1.TaskRef{
+				Name: "git-clone",
+				Kind: "Task",
 			},
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-			Params: []v1alpha1.ResourceParam{
-				{Name: "license", Value: `{"key":"apache-2.0","name":"Apache License 2.0","spdx_id":"Apache-2.0","url":"https://api.github.com/licenses/apache-2.0","node_id":"MDc6TGljZW5zZTI="}`},
-				{Name: "header", Value: `{"Accept-Encoding":"gzip","Content-Length":"2154","Content-Type":"application/json","User-Agent":"Go-http-client/1.1"}`},
-				{Name: "prmessage", Value: "Git admission control\r\n\r\nNow with new lines!\r\n\r\n# :sunglasses: \r\n\r\naw yis"},
-			},
+			Timeout: &timeout,
 		},
 	}
 
@@ -467,8 +441,10 @@ func TestEventListenerCreate(t *testing.T) {
 			return
 		}
 		go func() {
+			// revive:disable:empty-block
 			for range readyChan {
 			}
+			// revive:enable:empty-block
 			if len(errOut.String()) != 0 {
 				errChan <- fmt.Errorf("%s", errOut)
 			}
@@ -513,24 +489,24 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Errorf("sink response no eventID")
 	}
 
-	for _, wantPr := range []v1alpha1.PipelineResource{wantPr1, wantPr2} {
-		if err = WaitFor(pipelineResourceExist(t, c, namespace, wantPr.Name)); err != nil {
-			t.Fatalf("Failed to create ResourceTemplate %s: %s", wantPr.Name, err)
+	for _, wantTr := range []pipelinev1.TaskRun{wantTr1} {
+		if err = WaitFor(taskrunExist(t, c, namespace, wantTr.Name)); err != nil {
+			t.Fatalf("Failed to create TaskRun %s: %s", wantTr.Name, err)
 		}
-		gotPr, err := c.ResourceClient.TektonV1alpha1().PipelineResources(namespace).Get(context.Background(), wantPr.Name, metav1.GetOptions{})
+		gotTr, err := c.PipelineClient.TektonV1().TaskRuns(namespace).Get(context.Background(), wantTr.Name, metav1.GetOptions{})
 		if err != nil {
-			t.Errorf("Error getting ResourceTemplate: %s: %s", wantPr.Name, err)
+			t.Errorf("Error getting TaskRun: %s: %s", wantTr.Name, err)
 		}
-		if gotPr.Labels[eventIDLabel] == "" {
-			t.Errorf("Instantiated ResourceTemplate missing EventId")
+		if gotTr.Labels[eventIDLabel] == "" {
+			t.Errorf("Instantiated TaskRun missing EventId")
 		} else {
-			delete(gotPr.Labels, eventIDLabel)
+			delete(gotTr.Labels, eventIDLabel)
 		}
-		if diff := cmp.Diff(wantPr.Labels, gotPr.Labels); diff != "" {
-			t.Errorf("Diff instantiated ResourceTemplate labels %s: -want +got: %s", wantPr.Name, diff)
+		if diff := cmp.Diff(wantTr.Labels, gotTr.Labels); diff != "" {
+			t.Errorf("Diff instantiated TaskRun labels %s: -want +got: %s", wantTr.Name, diff)
 		}
-		if diff := cmp.Diff(wantPr.Spec, gotPr.Spec, cmp.Comparer(compareParamsWithLicenseJSON)); diff != "" {
-			t.Errorf("Diff instantiated ResourceTemplate spec %s: -want +got: %s", wantPr.Name, diff)
+		if diff := cmp.Diff(wantTr.Spec, gotTr.Spec, ignoreSATaskRunSpec); diff != "" {
+			t.Errorf("Diff instantiated TaskRun spec %s: -want +got: %s", wantTr.Name, diff)
 		}
 	}
 
@@ -571,43 +547,6 @@ func TestEventListenerCreate(t *testing.T) {
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		t.Errorf("sink returned 401/403 response: %d", resp.StatusCode)
 	}
-}
-
-// The structure of this field corresponds to values for the `license` key in
-// testdata/pr.json, and can be used to unmarshal the dat.
-type license struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	SpdxID string `json:"spdx_id"`
-	URL    string `json:"url"`
-	NodeID string `json:"node_id"`
-}
-
-// compareParamsWithLicenseJSON will compare the passed in ResourceParams by further checking
-// when the values aren't equal if they can be unmarshalled into the license object and if they are
-// then equal. This is because the order of values in a dictionary is not deterministic and dictionary
-// values passed through an event listener may change order.
-func compareParamsWithLicenseJSON(x, y v1alpha1.ResourceParam) bool {
-	xData := license{}
-	yData := license{}
-	if x.Name == y.Name {
-		if x.Value != y.Value {
-			// In order to compare these values, we are first unmarshalling them into the expected
-			// structures because differences in the dictionary order of keys can cause
-			// a string comparison to fail.
-			if err := json.Unmarshal([]byte(x.Value), &xData); err != nil {
-				return false
-			}
-			if err := json.Unmarshal([]byte(y.Value), &yData); err != nil {
-				return false
-			}
-			if diff := cmp.Diff(xData, yData); diff != "" {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 func cleanup(t *testing.T, c *clients, namespace, elName string) {

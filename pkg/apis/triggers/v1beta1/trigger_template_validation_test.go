@@ -69,7 +69,7 @@ func paramResourceTemplate(t *testing.T) runtime.RawExtension {
 			Params: []pipelinev1beta1.Param{
 				{
 					Name: "message",
-					Value: pipelinev1beta1.ArrayOrString{
+					Value: pipelinev1beta1.ParamValue{
 						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "$(tt.params.foo)",
 					},
@@ -89,7 +89,7 @@ func invalidParamResourceTemplate(t *testing.T) runtime.RawExtension {
 			Params: []pipelinev1beta1.Param{
 				{
 					Name: "message",
-					Value: pipelinev1beta1.ArrayOrString{
+					Value: pipelinev1beta1.ParamValue{
 						Type:      pipelinev1beta1.ParamTypeString,
 						StringVal: "$(.foo)",
 					},

@@ -72,7 +72,6 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate propagated parameters
 	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
-	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
@@ -242,9 +241,9 @@ func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldEr
 	var names []string
 	for _, p := range params {
 		if p.Value.Type == ParamTypeObject {
-			// Object type parameter is an alpha feature and will fail validation if it's used in a taskrun spec
-			// when the enable-api-fields feature gate is not "alpha".
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
+			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
+			// when the enable-api-fields feature gate is not "alpha" or "beta".
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
 		}
 		names = append(names, p.Name)
 	}

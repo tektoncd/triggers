@@ -198,3 +198,33 @@ help:
 version:
 
 	@echo $(VERSION)
+
+.PHONY: deploy_tekton
+deploy_tekton: clean_tekton | ; $(info $(M) deploying tekton on local cluster …) @ ## Deploying tekton on local clustert
+	-kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+	-ko apply -f config;
+	-ko apply -f config/interceptors;
+
+.PHONY:  clean_tekton 
+clean_tekton: | ; $(info $(M) deleteing tekton from local cluster …) @ ## Deleteing tekton on local clustert
+	-ko delete -f config/interceptors;
+	-ko delete -f config;
+	
+	
+.PHONY: 
+test_e2e_examples: deploy_tekton 	
+	-kubectl delete -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
+	sleep 60 
+	./test/e2e-tests-examples.sh
+
+
+.PHONY: 
+test_examples: # deploy_tekton 	
+	-kubectl delete -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
+	./test/e2e-tests-examples.sh
+
+
+.PHONY:
+create_kind: 
+	-kind delete cluster --name tekton6
+	kind create cluster --name tekton7 

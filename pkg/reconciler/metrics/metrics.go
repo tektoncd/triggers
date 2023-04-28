@@ -86,6 +86,8 @@ var (
 	recorderErr error
 )
 
+// revive:disable:unused-parameter
+
 // NewRecorder creates a new metrics recorder instance
 // to log the PipelineRun related metrics
 func NewRecorder(ctx context.Context) (*Recorder, error) {

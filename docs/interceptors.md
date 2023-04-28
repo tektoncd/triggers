@@ -14,6 +14,7 @@ weight: 5
 - [Bitbucket `Interceptors`](#bitbucket-interceptors)
   - [Bitbucket Server](#bitbucket-server)
   - [Bitbucket Cloud](#bitbucket-cloud)
+- [slack `Interceptors`](#slack-interceptors)
 - [CEL `Interceptors`](#cel-interceptors)
 - [Implementing custom `Interceptors`](#implementing-custom-interceptors)
 
@@ -473,6 +474,38 @@ spec:
       template:
         ref: bitbucket-cloud-template
 ```
+
+### Slack Interceptors
+A Slack `Interceptor` allows you to extract fields from a slack slash command [payload](https://api.slack.com/interactivity/slash-commands#app_command_handling) which are sent in the  http form-data section. 
+the `Interceptor` requests fields extracts the requested fields and appends them to the `extensions`. 
+
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: slack-listener
+  annotations:
+    tekton.dev/payload-validation: "false"
+spec:
+  triggers:
+    - name: slack-trigger
+      interceptors:
+        - ref:
+            name: "slack"
+            kind: ClusterInterceptor
+          params:
+            - name: requestedFields
+              value: 
+                - text   
+```
+Note: payload-validation must be disabled by add adding the following annotation 
+
+```yaml
+  annotations:
+    tekton.dev/payload-validation: "false"
+```
+
 
 ### CEL Interceptors
 

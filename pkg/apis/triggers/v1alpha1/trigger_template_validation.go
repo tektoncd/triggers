@@ -33,6 +33,8 @@ import (
 // paramsRegexp captures TriggerTemplate parameter names $(tt.params.NAME)
 var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-9.-]*)\)`)
 
+// revive:disable:unused-parameter
+
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
 	if apis.IsInDelete(ctx) {

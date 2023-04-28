@@ -9,4 +9,6 @@ approvers:
 - ncskier
 - savitaashture
 - vtereso
-- wlynch
+
+emeritus_approvers:
+- wlynch # 2023-04-24
