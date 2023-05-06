@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
 	"github.com/tektoncd/triggers/test"
 	"go.uber.org/zap/zaptest"
@@ -55,7 +56,7 @@ func TestGetInterceptorParams(t *testing.T) {
 				Value: test.ToV1JSON(t, `header.match("foo", "bar")`),
 			}, {
 				Name: "overlays",
-				Value: test.ToV1JSON(t, []triggersv1.CELOverlay{{
+				Value: test.ToV1JSON(t, []cel.Overlay{{
 					Key:        "short_sha",
 					Expression: "body.ref.truncate(7)",
 				}}),
@@ -63,7 +64,7 @@ func TestGetInterceptorParams(t *testing.T) {
 		},
 		want: map[string]interface{}{
 			"filter": test.ToV1JSON(t, `header.match("foo", "bar")`),
-			"overlays": test.ToV1JSON(t, []triggersv1.CELOverlay{{
+			"overlays": test.ToV1JSON(t, []cel.Overlay{{
 				Key:        "short_sha",
 				Expression: "body.ref.truncate(7)",
 			}}),

@@ -22,6 +22,7 @@ import (
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -150,7 +151,7 @@ func Test_TriggerValidate(t *testing.T) {
 						Value: test.ToV1JSON(t, "body.value == test"),
 					}, {
 						Name: "overlays",
-						Value: test.ToV1JSON(t, []v1beta1.CELOverlay{{
+						Value: test.ToV1JSON(t, []cel.Overlay{{
 							Key:        "value",
 							Expression: "testing",
 						}}),

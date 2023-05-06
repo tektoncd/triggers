@@ -29,12 +29,12 @@ import (
 func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.SlackInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		header            http.Header
 	}{{
 		name: "valid case",
-		interceptorParams: &triggersv1.SlackInterceptor{
+		interceptorParams: &InterceptorParams{
 			RequestedFields: []string{"text"},
 		},
 		payload: []byte("{\"api_app_id\":[\"A04NXU23L\"],\"channel_id\":[\"C04NETw4NBH\"],\"channel_name\":[\"sample-app\"],\"command\":[\"/build\"],\"is_enterprise_install\":[\"false\"],\"response_url\":[\"https://hooks.slack.com/commands/T04PK47EDS4/4863712501879/dOMNffCDfTjlSskBrmB1bOtR\"],\"team_domain\":[\"demoworkspace-tid8978\"],\"team_id\":[\"T04PK47eDS4\"],\"text\":[\"main 2222\"],\"token\":[\"EidhofDor5uIpqQ9RrtOVdnC\"],\"trigger_id\":[\"4890883491553.4801143489888.910b8eaae200b381834de25310583f74\"],\"user_id\":[\"U04NVDwF7R8\"]}"),
@@ -61,7 +61,7 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			}
 
 			clientset := fakekubeclient.Get(ctx)
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)
@@ -76,12 +76,12 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.SlackInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		header            http.Header
 	}{{
 		name: "bad payload",
-		interceptorParams: &triggersv1.SlackInterceptor{
+		interceptorParams: &InterceptorParams{
 			RequestedFields: []string{"text"},
 		},
 		payload: []byte("{token: tttt}"),
@@ -91,7 +91,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		},
 	}, {
 		name: "skip params - no content type",
-		interceptorParams: &triggersv1.SlackInterceptor{
+		interceptorParams: &InterceptorParams{
 			RequestedFields: []string{"text"},
 		},
 		payload: []byte("somepayload"),
@@ -101,7 +101,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 	},
 		{
 			name: "skip params - no slack signature",
-			interceptorParams: &triggersv1.SlackInterceptor{
+			interceptorParams: &InterceptorParams{
 				RequestedFields: []string{"text"},
 			},
 			payload: []byte("somepayload"),
@@ -126,7 +126,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				},
 			}
 			clientset := fakekubeclient.Get(ctx)
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)

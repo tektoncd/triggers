@@ -25,16 +25,16 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
-type Interceptor struct {
+type InterceptorImpl struct {
 	SecretGetter interceptors.SecretGetter
 }
 
 // Interceptor parses all the requests fields from the slack form-data request
 // and adds them to the extension
 // revive:disable:unused-parameter
-func (*Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+func (*InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
 	headers := interceptors.Canonical(r.Header)
 
 	// validate slack headers
@@ -53,7 +53,7 @@ func (*Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorReques
 	}
 
 	// get requests fields
-	p := triggersv1.SlackInterceptor{}
+	p := InterceptorParams{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
@@ -81,8 +81,15 @@ func (*Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorReques
 
 // revive:enable:unused-parameter
 
-func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
-	return &Interceptor{
+func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
+	return &InterceptorImpl{
 		SecretGetter: sg,
 	}
+}
+
+type InterceptorParams struct {
+	// the Requested fields to be extracted from data form
+
+	// +listType=atomic
+	RequestedFields []string `json:"requestedFields,omitempty"`
 }

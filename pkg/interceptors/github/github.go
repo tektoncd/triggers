@@ -33,7 +33,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
 var acceptedEventTypes = []string{"pull_request", "push"}
 
@@ -51,7 +51,7 @@ var ownersEventTypes = []string{"pull_request", "issue_comment"}
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
 
-type Interceptor struct {
+type InterceptorImpl struct {
 	SecretGetter interceptors.SecretGetter
 }
 
@@ -75,19 +75,54 @@ type OwnersConfig struct {
 	Reviewers []string `json:"reviewers,omitempty"`
 }
 
-func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
-	return &Interceptor{
+func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
+	return &InterceptorImpl{
 		SecretGetter: sg,
 	}
 }
 
-func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+// InterceptorParams provides a webhook to intercept and pre-process events
+type InterceptorParams struct {
+	SecretRef *triggersv1.SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes      []string        `json:"eventTypes,omitempty"`
+	AddChangedFiles AddChangedFiles `json:"addChangedFiles,omitempty"`
+	GithubOwners    Owners          `json:"githubOwners,omitempty"`
+}
+
+type CheckType string
+
+const (
+	// Set the checkType to orgMembers to allow org members to submit or comment on PR to proceed
+	OrgMembers CheckType = "orgMembers"
+	// Set the checkType to repoMembers to allow repo members to submit or comment on PR to proceed
+	RepoMembers CheckType = "repoMembers"
+	// Set the checkType to all if both repo members or org members can submit or comment on PR to proceed
+	All CheckType = "all"
+	// Set the checkType to none if neither of repo members or org members can not submit or comment on PR to proceed
+	None CheckType = "none"
+)
+
+type Owners struct {
+	Enabled bool `json:"enabled,omitempty"`
+	// This param/variable is required for private repos or when checkType is set to orgMembers or repoMembers or all
+	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
+	// Set the value to one of the supported values (orgMembers, repoMembers, both, none)
+	CheckType CheckType `json:"checkType,omitempty"`
+}
+
+type AddChangedFiles struct {
+	Enabled             bool                  `json:"enabled,omitempty"`
+	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
+}
+
+func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
 	headers := interceptors.Canonical(r.Header)
 	if v := headers.Get("Content-Type"); v == "application/x-www-form-urlencoded" {
 		return interceptors.Fail(codes.InvalidArgument, ErrInvalidContentType.Error())
 	}
 
-	p := triggersv1.GitHubInterceptor{}
+	p := InterceptorParams{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
@@ -242,7 +277,7 @@ func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequ
 	}
 }
 
-func (w *Interceptor) getGithubTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p triggersv1.GitHubInterceptor) (string, error) {
+func (w *InterceptorImpl) getGithubTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p InterceptorParams) (string, error) {
 	if p.AddChangedFiles.PersonalAccessToken == nil {
 		return "", nil
 	}
@@ -397,7 +432,7 @@ func makeClient(ctx context.Context, enterpriseBaseURL string, token string) (*g
 	return client, nil
 }
 
-func (w *Interceptor) getPersonalAccessTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p triggersv1.GitHubInterceptor) (string, error) {
+func (w *InterceptorImpl) getPersonalAccessTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p InterceptorParams) (string, error) {
 	if p.GithubOwners.PersonalAccessToken == nil {
 		return "", nil
 	}
@@ -415,7 +450,7 @@ func (w *Interceptor) getPersonalAccessTokenSecret(ctx context.Context, r *trigg
 	return string(secretToken), nil
 }
 
-func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p triggersv1.GitHubInterceptor, client *gh.Client) (bool, error) {
+func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p InterceptorParams, client *gh.Client) (bool, error) {
 	if MatchRegexp(OKToTestCommentRegexp, payload.IssueCommentBody) {
 		allowed, err := checkOwnershipAndMembership(ctx, payload, p, client)
 		if err != nil {
@@ -428,7 +463,7 @@ func okToTestFromAnOwner(ctx context.Context, payload OwnersPayloadDetails, p tr
 	return false, nil
 }
 
-func checkOwnershipAndMembership(ctx context.Context, payload OwnersPayloadDetails, p triggersv1.GitHubInterceptor, client *gh.Client) (bool, error) {
+func checkOwnershipAndMembership(ctx context.Context, payload OwnersPayloadDetails, p InterceptorParams, client *gh.Client) (bool, error) {
 	if p.GithubOwners.CheckType == "orgMembers" || p.GithubOwners.CheckType == "all" {
 		isUserMemberOrg, err := checkSenderOrgMembership(ctx, payload, client)
 		if err != nil {

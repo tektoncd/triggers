@@ -38,19 +38,19 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.BitbucketInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		signature         string
 		eventType         string
 	}{{
 		name:              "no secret",
-		interceptorParams: &triggersv1.BitbucketInterceptor{},
+		interceptorParams: &InterceptorParams{},
 		payload:           emptyJSONBody,
 		signature:         "foo",
 	}, {
 		name: "valid header for secret",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -68,14 +68,14 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "matching event",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"pr:opened", "repo:refs_changed"},
 		},
 		payload:   emptyJSONBody,
 		eventType: "repo:refs_changed",
 	}, {
 		name: "valid header for secret and matching event",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -95,7 +95,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name:              "nil body does not panic",
-		interceptorParams: &triggersv1.BitbucketInterceptor{},
+		interceptorParams: &InterceptorParams{},
 		payload:           nil,
 		signature:         "foo",
 	}}
@@ -107,7 +107,7 @@ func TestInterceptor_Process_ShouldContinue(t *testing.T) {
 				tt.secret.Namespace = metav1.NamespaceDefault
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 
@@ -150,14 +150,14 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.BitbucketInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		signature         string
 		eventType         string
 	}{{
 		name: "invalid header for secret",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -175,7 +175,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "no X-Hub-Signature header for secret",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -192,14 +192,14 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "no matching event",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"pr:opened", "repo:refs_changed"},
 		},
 		payload:   emptyJSONBody,
 		eventType: "event",
 	}, {
 		name: "invalid header for secret, but matching event",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -219,7 +219,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name: "valid header for secret, but no matching event",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -239,7 +239,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name: "empty secret",
-		interceptorParams: &triggersv1.BitbucketInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 			},
@@ -263,7 +263,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 				tt.secret.Namespace = metav1.NamespaceDefault
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 
@@ -300,7 +300,7 @@ func TestInterceptor_Process_ShouldNotContinue(t *testing.T) {
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 
-	w := &Interceptor{
+	w := &InterceptorImpl{
 		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
 	}
 

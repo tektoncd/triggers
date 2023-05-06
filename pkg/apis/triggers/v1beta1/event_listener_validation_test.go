@@ -24,6 +24,7 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -271,7 +272,7 @@ func Test_EventListenerValidate(t *testing.T) {
 							Value: test.ToV1JSON(t, "body.value == test"),
 						}, {
 							Name: "overlays",
-							Value: test.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
+							Value: test.ToV1JSON(t, []cel.Overlay{{
 								Key:        "value",
 								Expression: "testing",
 							}}),
