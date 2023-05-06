@@ -41,19 +41,19 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.GitHubInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		headers           map[string][]string
 		eventType         string
 	}{{
 		name:              "no secret",
-		interceptorParams: &triggersv1.GitHubInterceptor{},
+		interceptorParams: &InterceptorParams{},
 		payload:           emptyJSONBody,
 		headers:           map[string][]string{"X-Hub-Signature": {"foo"}},
 	}, {
 		name: "valid header for secret",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -71,7 +71,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "valid sha-256 header for secret",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -89,7 +89,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "no secret, matching event",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 		},
 
@@ -97,7 +97,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		eventType: "YOUR_EVENT",
 	}, {
 		name: "valid header for secret and matching event",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -118,7 +118,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name:              "nil body does not panic",
-		interceptorParams: &triggersv1.GitHubInterceptor{},
+		interceptorParams: &InterceptorParams{},
 		payload:           nil,
 		headers:           map[string][]string{"X-Hub-Signature": {"foo"}},
 	}}
@@ -153,7 +153,7 @@ func TestInterceptor_ExecuteTrigger_Signature(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)
@@ -174,14 +174,14 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		interceptorParams *triggersv1.GitHubInterceptor
+		interceptorParams *InterceptorParams
 		payload           []byte
 		secret            *corev1.Secret
 		signature         string
 		eventType         string
 	}{{
 		name: "invalid signature header",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -199,7 +199,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "missing signature header",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -216,7 +216,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload: emptyJSONBody,
 	}, {
 		name: "no secret, failing event",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			EventTypes: []string{"MY_EVENT", "YOUR_EVENT"},
 		},
 
@@ -224,7 +224,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		eventType: "OTHER_EVENT",
 	}, {
 		name: "valid header for secret, failing event",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -244,7 +244,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name: "invalid header for secret, matching event",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 				SecretKey:  "token",
@@ -264,7 +264,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 		payload:   emptyJSONBody,
 	}, {
 		name: "empty secret",
-		interceptorParams: &triggersv1.GitHubInterceptor{
+		interceptorParams: &InterceptorParams{
 			SecretRef: &triggersv1.SecretRef{
 				SecretName: "mysecret",
 			},
@@ -312,7 +312,7 @@ func TestInterceptor_ExecuteTrigger_ShouldNotContinue(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, req)
@@ -339,7 +339,7 @@ func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
 			TriggerID: "namespaces/default/triggers/example-trigger",
 		},
 	}
-	w := &Interceptor{
+	w := &InterceptorImpl{
 		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
 	}
 	res := w.Process(ctx, req)
@@ -354,7 +354,7 @@ func TestInterceptor_ExecuteTrigger_with_invalid_content_type(t *testing.T) {
 func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 
-	w := &Interceptor{
+	w := &InterceptorImpl{
 		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
 	}
 
@@ -403,7 +403,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -437,7 +437,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -471,7 +471,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -505,7 +505,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -539,7 +539,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -573,7 +573,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -607,7 +607,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push", "nothing"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -643,7 +643,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, tt.interceptorRequest)
@@ -691,7 +691,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -725,7 +725,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -759,7 +759,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -793,7 +793,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -826,7 +826,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 						SecretName: "mysecret",
 						SecretKey:  "token",
 					},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -855,7 +855,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"push"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -889,7 +889,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
-					"addChangedFiles": &triggersv1.GithubAddChangedFiles{
+					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "missingsecret",
@@ -925,7 +925,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, tt.interceptorRequest)
@@ -957,7 +957,7 @@ func Test_getGithubTokenSecret(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		r   *triggersv1.InterceptorRequest
-		p   triggersv1.GitHubInterceptor
+		p   InterceptorParams
 	}
 	tests := []struct {
 		name    string
@@ -977,8 +977,8 @@ func Test_getGithubTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
-					AddChangedFiles: triggersv1.GithubAddChangedFiles{
+				p: InterceptorParams{
+					AddChangedFiles: AddChangedFiles{
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
 							SecretKey:  "token",
@@ -1010,7 +1010,7 @@ func Test_getGithubTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
+				p: InterceptorParams{
 					EventTypes: []string{"pull_request", "push"},
 				},
 			},
@@ -1036,8 +1036,8 @@ func Test_getGithubTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
-					AddChangedFiles: triggersv1.GithubAddChangedFiles{
+				p: InterceptorParams{
+					AddChangedFiles: AddChangedFiles{
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
 						},
@@ -1066,7 +1066,7 @@ func Test_getGithubTokenSecret(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 
@@ -1138,7 +1138,7 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		r   *triggersv1.InterceptorRequest
-		p   triggersv1.GitHubInterceptor
+		p   InterceptorParams
 	}
 	tests := []struct {
 		name    string
@@ -1158,8 +1158,8 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
-					GithubOwners: triggersv1.GithubOwners{
+				p: InterceptorParams{
+					GithubOwners: Owners{
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
 							SecretKey:  "token",
@@ -1191,7 +1191,7 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
+				p: InterceptorParams{
 					EventTypes: []string{"pull_request", "issue_comment"},
 				},
 			},
@@ -1218,8 +1218,8 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 						TriggerID: "namespaces/default/triggers/example-trigger",
 					},
 				},
-				p: triggersv1.GitHubInterceptor{
-					GithubOwners: triggersv1.GithubOwners{
+				p: InterceptorParams{
+					GithubOwners: Owners{
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
 						},
@@ -1248,7 +1248,7 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 
@@ -1286,7 +1286,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1321,7 +1321,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "repoMembers",
 					},
@@ -1353,7 +1353,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1388,7 +1388,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1422,7 +1422,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
 					},
@@ -1454,7 +1454,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
 					},
@@ -1485,7 +1485,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
 					},
@@ -1517,7 +1517,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
 					},
@@ -1549,7 +1549,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1584,7 +1584,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1620,7 +1620,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1672,7 +1672,7 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, tt.interceptorRequest)
@@ -1837,7 +1837,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1871,7 +1871,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
 					},
@@ -1903,7 +1903,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1939,7 +1939,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -1974,7 +1974,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
-					"githubOwners": &triggersv1.GithubOwners{
+					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
 							SecretName: "mysecret",
@@ -2025,7 +2025,7 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
 			}
 
-			w := &Interceptor{
+			w := &InterceptorImpl{
 				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
 			}
 			res := w.Process(ctx, tt.interceptorRequest)

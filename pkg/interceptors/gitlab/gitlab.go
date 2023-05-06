@@ -25,20 +25,27 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var _ triggersv1.InterceptorInterface = (*Interceptor)(nil)
+var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
-type Interceptor struct {
+type InterceptorImpl struct {
 	SecretGetter interceptors.SecretGetter
 }
 
-func NewInterceptor(sg interceptors.SecretGetter) *Interceptor {
-	return &Interceptor{
+func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
+	return &InterceptorImpl{
 		SecretGetter: sg,
 	}
 }
 
-func (w *Interceptor) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
-	p := triggersv1.GitLabInterceptor{}
+// InterceptorParams provides a webhook to intercept and pre-process events
+type InterceptorParams struct {
+	SecretRef *triggersv1.SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes []string `json:"eventTypes,omitempty"`
+}
+
+func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+	p := InterceptorParams{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
