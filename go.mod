@@ -1,6 +1,6 @@
 module github.com/tektoncd/triggers
 
-go 1.17
+go 1.19
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
