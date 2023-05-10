@@ -37,7 +37,7 @@ type TaskRunSpec struct {
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
@@ -114,7 +114,7 @@ type TaskRunDebug struct {
 type TaskRunInputs struct {
 	// +optional
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()
@@ -415,7 +415,7 @@ func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if tr.Spec.Timeout == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-		return defaultTimeout * time.Minute
+		return defaultTimeout * time.Minute //nolint:durationcheck
 	}
 	return tr.Spec.Timeout.Duration
 }

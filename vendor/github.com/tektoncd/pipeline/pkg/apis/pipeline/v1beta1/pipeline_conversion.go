@@ -42,6 +42,7 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 
 // ConvertTo implements apis.Convertible
 func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) error {
+	sink.DisplayName = ps.DisplayName
 	sink.Description = ps.Description
 	sink.Tasks = nil
 	for _, t := range ps.Tasks {
@@ -95,6 +96,7 @@ func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error
 
 // ConvertFrom implements apis.Convertible
 func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec) error {
+	ps.DisplayName = source.DisplayName
 	ps.Description = source.Description
 	ps.Tasks = nil
 	for _, t := range source.Tasks {
@@ -137,6 +139,8 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 
 func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) error {
 	sink.Name = pt.Name
+	sink.DisplayName = pt.DisplayName
+	sink.Description = pt.Description
 	if pt.TaskRef != nil {
 		sink.TaskRef = &v1.TaskRef{}
 		pt.TaskRef.convertTo(ctx, sink.TaskRef)
@@ -181,6 +185,8 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 
 func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask) error {
 	pt.Name = source.Name
+	pt.DisplayName = source.DisplayName
+	pt.Description = source.Description
 	if source.TaskRef != nil {
 		newTaskRef := TaskRef{}
 		newTaskRef.convertFrom(ctx, *source.TaskRef)
@@ -260,7 +266,7 @@ func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
 		sink.Params = append(sink.Params, new)
 	}
 	for i, include := range m.Include {
-		sink.Include = append(sink.Include, v1.MatrixInclude{Name: include.Name})
+		sink.Include = append(sink.Include, v1.IncludeParams{Name: include.Name})
 		for _, param := range include.Params {
 			newIncludeParam := v1.Param{}
 			param.convertTo(ctx, &newIncludeParam)
@@ -277,7 +283,7 @@ func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
 	}
 
 	for i, include := range source.Include {
-		m.Include = append(m.Include, MatrixInclude{Name: include.Name})
+		m.Include = append(m.Include, IncludeParams{Name: include.Name})
 		for _, p := range include.Params {
 			new := Param{}
 			new.convertFrom(ctx, p)

@@ -112,10 +112,11 @@ type Param struct {
 // Params is a list of Param
 type Params []Param
 
-func (ps Params) extractNames() []string {
-	names := []string{}
+// ExtractNames returns a set of unique names
+func (ps Params) ExtractNames() sets.String {
+	names := sets.String{}
 	for _, p := range ps {
-		names = append(names, p.Name)
+		names.Insert(p.Name)
 	}
 	return names
 }
@@ -369,11 +370,11 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
 type ParamValue struct {
-	Type      ParamType `json:"type"` // Represents the stored type of ParamValues.
-	StringVal string    `json:"stringVal"`
+	Type      ParamType // Represents the stored type of ParamValues.
+	StringVal string
 	// +listType=atomic
-	ArrayVal  []string          `json:"arrayVal"`
-	ObjectVal map[string]string `json:"objectVal"`
+	ArrayVal  []string
+	ObjectVal map[string]string
 }
 
 // ArrayOrString is deprecated, this is to keep backward compatibility
@@ -451,6 +452,8 @@ func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]s
 			newObjectVal[k] = substitution.ApplyReplacements(v, stringReplacements)
 		}
 		paramValues.ObjectVal = newObjectVal
+	case ParamTypeString:
+		fallthrough
 	default:
 		paramValues.applyOrCorrect(stringReplacements, arrayReplacements, objectReplacements)
 	}
@@ -538,6 +541,8 @@ func validatePipelineParametersVariablesInTaskParameters(params Params, prefix s
 			for key, val := range param.Value.ObjectVal {
 				errs = errs.Also(validateStringVariable(val, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldKey("properties", key).ViaFieldKey("params", param.Name))
 			}
+		case ParamTypeString:
+			fallthrough
 		default:
 			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
 		}

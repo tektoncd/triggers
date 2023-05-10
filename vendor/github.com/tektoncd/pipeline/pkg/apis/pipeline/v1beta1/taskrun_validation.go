@@ -109,6 +109,9 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))
 	}
+	if ts.Resources != nil {
+		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
 	return errs
 }
 
@@ -237,7 +240,7 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 }
 
 // ValidateParameters makes sure the params for the Task are valid.
-func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldError) {
+func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
 		if p.Value.Type == ParamTypeObject {

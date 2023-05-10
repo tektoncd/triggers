@@ -34,16 +34,17 @@ type Matrix struct {
 	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 
-	// Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
-	// Note that Include is in preview mode and not yet supported.
+	// Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
 	// +optional
 	// +listType=atomic
-	Include []MatrixInclude `json:"include,omitempty"`
+	Include IncludeParamsList `json:"include,omitempty"`
 }
 
-// MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
-// Note this struct is in preview mode and not yet supported
-type MatrixInclude struct {
+// IncludeParamsList is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
+type IncludeParamsList []IncludeParams
+
+// IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
+type IncludeParams struct {
 	// Name the specified combination
 	Name string `json:"name,omitempty"`
 
@@ -56,21 +57,97 @@ type MatrixInclude struct {
 // Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value
 type Combination map[string]string
 
-// Combinations is a list of combination
+// Combinations is a Combination list
 type Combinations []Combination
 
-// ToParams transforms Combinations from a slice of map[string]string to a slice of Params
-// such that, the combinations can be directly consumed in creating taskRun/run object
-func (cs Combinations) ToParams() []Params {
+// FanOut returns an list of params that represent combinations
+func (m *Matrix) FanOut() []Params {
+	var combinations, includeCombinations Combinations
+	includeCombinations = m.getIncludeCombinations()
+	if m.HasInclude() && !m.HasParams() {
+		// If there are only Matrix Include Parameters return explicit combinations
+		return includeCombinations.toParams()
+	}
+	// Generate combinations from Matrix Parameters
+	for _, parameter := range m.Params {
+		combinations = combinations.fanOutMatrixParams(parameter)
+	}
+	combinations.overwriteCombinations(includeCombinations)
+	combinations = combinations.addNewCombinations(includeCombinations)
+	return combinations.toParams()
+}
+
+// overwriteCombinations replaces any missing include params in the initial
+// matrix params combinations by overwriting the initial combinations with the
+// include combinations
+func (cs Combinations) overwriteCombinations(ics Combinations) {
+	for _, paramCombination := range cs {
+		for _, includeCombination := range ics {
+			if paramCombination.contains(includeCombination) {
+				// overwrite the parameter name and value in existing combination
+				// with the include combination
+				for name, val := range includeCombination {
+					paramCombination[name] = val
+				}
+			}
+		}
+	}
+}
+
+// addNewCombinations creates a new combination for any include parameter
+// values that are missing entirely from the initial combinations and
+// returns all combinations
+func (cs Combinations) addNewCombinations(ics Combinations) Combinations {
+	for _, includeCombination := range ics {
+		if cs.shouldAddNewCombination(includeCombination) {
+			cs = append(cs, includeCombination)
+		}
+	}
+	return cs
+}
+
+// contains returns true if the include parameter name and value exists in combinations
+func (c Combination) contains(includeCombination Combination) bool {
+	for name, val := range includeCombination {
+		if _, exist := c[name]; exist {
+			if c[name] != val {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// shouldAddNewCombination returns true if the include parameter name exists but the value is
+// missing from combinations
+func (cs Combinations) shouldAddNewCombination(includeCombination map[string]string) bool {
+	if len(includeCombination) == 0 {
+		return false
+	}
+	for _, paramCombination := range cs {
+		for name, val := range includeCombination {
+			if _, exist := paramCombination[name]; exist {
+				if paramCombination[name] == val {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// toParams transforms Combinations from a slice of map[string]string to a slice of Params
+// such that, these combinations can be directly consumed in creating taskRun/run object
+func (cs Combinations) toParams() []Params {
 	listOfParams := make([]Params, len(cs))
 	for i := range cs {
 		var params Params
 		combination := cs[i]
-		order, sortedCombination := combination.sortCombination()
+		order, _ := combination.sortCombination()
 		for _, key := range order {
 			params = append(params, Param{
 				Name:  key,
-				Value: ParamValue{Type: ParamTypeString, StringVal: sortedCombination[key]},
+				Value: ParamValue{Type: ParamTypeString, StringVal: combination[key]},
 			})
 		}
 		listOfParams[i] = params
@@ -78,15 +155,29 @@ func (cs Combinations) ToParams() []Params {
 	return listOfParams
 }
 
-// fanOut generates a new combination based on a given Parameter in the Matrix.
-func (cs Combinations) fanOut(param Param) Combinations {
+// fanOutMatrixParams generates new combinations based on Matrix Parameters.
+func (cs Combinations) fanOutMatrixParams(param Param) Combinations {
 	if len(cs) == 0 {
 		return initializeCombinations(param)
 	}
 	return cs.distribute(param)
 }
 
-// distribute generates a new combination of Parameters by adding a new Parameter to an existing list of Combinations.
+// getIncludeCombinations generates combinations based on Matrix Include Parameters
+func (m *Matrix) getIncludeCombinations() Combinations {
+	var combinations Combinations
+	for i := range m.Include {
+		includeParams := m.Include[i].Params
+		newCombination := make(Combination)
+		for _, param := range includeParams {
+			newCombination[param.Name] = param.Value.StringVal
+		}
+		combinations = append(combinations, newCombination)
+	}
+	return combinations
+}
+
+// distribute generates a new Combination of Parameters by adding a new Parameter to an existing list of Combinations.
 func (cs Combinations) distribute(param Param) Combinations {
 	var expandedCombinations Combinations
 	for _, value := range param.Value.ArrayVal {
@@ -101,7 +192,7 @@ func (cs Combinations) distribute(param Param) Combinations {
 	return expandedCombinations
 }
 
-// initializeCombinations generates a new combination based on the first Parameter in the Matrix.
+// initializeCombinations generates a new Combination based on the first Parameter in the Matrix.
 func initializeCombinations(param Param) Combinations {
 	var combinations Combinations
 	for _, value := range param.Value.ArrayVal {
@@ -110,7 +201,7 @@ func initializeCombinations(param Param) Combinations {
 	return combinations
 }
 
-// sortCombination sorts the given Combination based on the param names to produce a deterministic ordering
+// sortCombination sorts the given Combination based on the Parameter names to produce a deterministic ordering
 func (c Combination) sortCombination() ([]string, Combination) {
 	sortedCombination := make(Combination, len(c))
 	order := make([]string, 0, len(c))
@@ -126,30 +217,21 @@ func (c Combination) sortCombination() ([]string, Combination) {
 	return order, sortedCombination
 }
 
-// FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
-func (m *Matrix) FanOut() Combinations {
-	var combinations Combinations
-	for _, parameter := range m.Params {
-		combinations = combinations.fanOut(parameter)
-	}
-	return combinations
-}
-
-// CountCombinations returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
+// CountCombinations returns the count of Combinations of Parameters generated from the Matrix in PipelineTask.
 func (m *Matrix) CountCombinations() int {
-	// Iterate over matrix.params and compute count of all generated combinations
+	// Iterate over Matrix Parameters and compute count of all generated Combinations
 	count := m.countGeneratedCombinationsFromParams()
 
-	// Add any additional combinations generated from matrix include params
+	// Add any additional Combinations generated from Matrix Include Parameters
 	count += m.countNewCombinationsFromInclude()
 
 	return count
 }
 
-// countGeneratedCombinationsFromParams returns the count of combinations of Parameters generated from the matrix
-// parameters
+// countGeneratedCombinationsFromParams returns the count of Combinations of Parameters generated from the Matrix
+// Parameters
 func (m *Matrix) countGeneratedCombinationsFromParams() int {
-	if !m.hasParams() {
+	if !m.HasParams() {
 		return 0
 	}
 	count := 1
@@ -159,13 +241,13 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 	return count
 }
 
-// countNewCombinationsFromInclude returns the count of combinations of Parameters generated from the matrix
-// include parameters
+// countNewCombinationsFromInclude returns the count of Combinations of Parameters generated from the Matrix
+// Include Parameters
 func (m *Matrix) countNewCombinationsFromInclude() int {
-	if !m.hasInclude() {
+	if !m.HasInclude() {
 		return 0
 	}
-	if !m.hasParams() {
+	if !m.HasParams() {
 		return len(m.Include)
 	}
 	count := 0
@@ -173,7 +255,7 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 	for _, include := range m.Include {
 		for _, param := range include.Params {
 			if val, exist := matrixParamMap[param.Name]; exist {
-				// If the matrix include param values does not exist, a new combination will be generated
+				// If the Matrix Include param values does not exist, a new Combination will be generated
 				if !slices.Contains(val, param.Value.StringVal) {
 					count++
 				} else {
@@ -185,25 +267,28 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 	return count
 }
 
-func (m *Matrix) hasInclude() bool {
+// HasInclude returns true if the Matrix has Include Parameters
+func (m *Matrix) HasInclude() bool {
 	return m != nil && m.Include != nil && len(m.Include) > 0
 }
 
-func (m *Matrix) hasParams() bool {
+// HasParams returns true if the Matrix has Parameters
+func (m *Matrix) HasParams() bool {
 	return m != nil && m.Params != nil && len(m.Params) > 0
 }
 
-func (m *Matrix) getParamNames() []string {
-	var names []string
-	if m.hasParams() {
-		names = m.Params.extractNames()
+// GetAllParams returns a list of all Matrix Parameters
+func (m *Matrix) GetAllParams() Params {
+	var params Params
+	if m.HasParams() {
+		params = append(params, m.Params...)
 	}
-	if m.hasInclude() {
+	if m.HasInclude() {
 		for _, include := range m.Include {
-			names = append(names, include.Params.extractNames()...)
+			params = append(params, include.Params...)
 		}
 	}
-	return names
+	return params
 }
 
 func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
@@ -215,14 +300,13 @@ func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.Fiel
 	return errs
 }
 
-// validateParams validates the type of parameter
-// for Matrix.Params and Matrix.Include.Params
+// validateParams validates the type of Parameter for Matrix.Params and Matrix.Include.Params
 // Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
 // validateParams also validates Matrix.Params for a unique list of params
 // and a unique list of params in each Matrix.Include.Params specification
 func (m *Matrix) validateParams() (errs *apis.FieldError) {
 	if m != nil {
-		if m.hasInclude() {
+		if m.HasInclude() {
 			for i, include := range m.Include {
 				errs = errs.Also(include.Params.validateDuplicateParameters().ViaField(fmt.Sprintf("matrix.include[%d].params", i)))
 				for _, param := range include.Params {
@@ -232,7 +316,7 @@ func (m *Matrix) validateParams() (errs *apis.FieldError) {
 				}
 			}
 		}
-		if m.hasParams() {
+		if m.HasParams() {
 			errs = errs.Also(m.Params.validateDuplicateParameters().ViaField("matrix.params"))
 			for _, param := range m.Params {
 				if param.Value.Type != ParamTypeArray {
@@ -244,10 +328,10 @@ func (m *Matrix) validateParams() (errs *apis.FieldError) {
 	return errs
 }
 
-// validatePipelineParametersVariablesInMatrixParameters validates all pipeline paramater variables including Matrix.Params and Matrix.Include.Params
+// validatePipelineParametersVariablesInMatrixParameters validates all pipeline parameter variables including Matrix.Params and Matrix.Include.Params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
 func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	if m.hasInclude() {
+	if m.HasInclude() {
 		for _, include := range m.Include {
 			for idx, param := range include.Params {
 				stringElement := param.Value.StringVal
@@ -256,7 +340,7 @@ func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix st
 			}
 		}
 	}
-	if m.hasParams() {
+	if m.HasParams() {
 		for _, param := range m.Params {
 			for idx, arrayElement := range param.Value.ArrayVal {
 				// Matrix Params must be of type array
@@ -267,8 +351,8 @@ func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix st
 	return errs
 }
 
-func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *apis.FieldError) {
-	matrixParamNames := sets.NewString(m.getParamNames()...)
+func (m *Matrix) validateParameterInOneOfMatrixOrParams(params Params) (errs *apis.FieldError) {
+	matrixParamNames := m.GetAllParams().ExtractNames()
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
