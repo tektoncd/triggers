@@ -21,7 +21,10 @@ import (
 	"log"
 
 	"k8s.io/client-go/dynamic"
+	kubeclientset "k8s.io/client-go/kubernetes"
+
 	evadapter "knative.dev/eventing/pkg/adapter/v2"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/clients/dynamicclient"
@@ -30,7 +33,9 @@ import (
 	"github.com/tektoncd/triggers/pkg/adapter"
 	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
+	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	"github.com/tektoncd/triggers/pkg/sink"
+	"github.com/tektoncd/triggers/pkg/sink/cloudevent"
 )
 
 const (
@@ -39,9 +44,10 @@ const (
 )
 
 func main() {
-	ctx := signals.NewContext()
-
 	cfg := injection.ParseAndGetRESTConfigOrDie()
+
+	ctx := signals.NewContext()
+	ctx = injection.WithConfig(ctx, cfg)
 
 	dc := dynamic.NewForConfigOrDie(cfg)
 	dc = dynamicClientset.New(tekton.WithClient(dc))
@@ -60,16 +66,22 @@ func main() {
 		ctx = injection.WithNamespaceScope(ctx, sinkArgs.ElNamespace)
 	}
 
-	ictx, informers := injection.Default.SetupInformers(ctx, cfg)
+	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
 	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
 		log.Fatal("failed to start informers:", err)
 	}
 
-	sinkClients, err := sink.ConfigureClients(ctx, cfg)
-	if err != nil {
-		log.Fatal(err.Error())
+	kubeClient := kubeclient.Get(ctx).(*kubeclientset.Clientset)
+	triggersClient := triggersclient.Get(ctx)
+	ceClient := cloudevent.Get(ctx)
+
+	sinkClients := sink.Clients{
+		DiscoveryClient: kubeClient.Discovery(),
+		RESTClient:      kubeClient.RESTClient(),
+		TriggersClient:  triggersClient,
+		K8sClient:       kubeClient,
+		CEClient:        ceClient,
 	}
-	ctx = ictx
 
 	evadapter.MainWithContext(ctx, EventListenerLogKey, adapter.NewEnvConfig, adapter.New(sinkArgs, sinkClients, recorder))
 }
