@@ -30,7 +30,6 @@ func init() {
 	injection.Default.RegisterClient(func(ctx context.Context, _ *rest.Config) context.Context {
 		return withCloudEventClient(ctx)
 	})
-	injection.Dynamic.RegisterDynamicClient(withCloudEventClient)
 }
 
 // CECKey is used to associate the CloudEventClient inside the context.Context
