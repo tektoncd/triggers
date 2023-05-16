@@ -47,15 +47,7 @@ func main() {
 	dc = dynamicClientset.New(tekton.WithClient(dc))
 	ctx = context.WithValue(ctx, dynamicclient.Key{}, dc)
 
-	// Set up ctx with the set of things based on the
-	// dynamic client we've set up above.
-	ctx = injection.Dynamic.SetupDynamic(ctx)
-
 	sinkArgs, err := sink.GetArgs()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	sinkClients, err := sink.ConfigureClients(ctx, cfg)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -71,6 +63,11 @@ func main() {
 	ictx, informers := injection.Default.SetupInformers(ctx, cfg)
 	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
 		log.Fatal("failed to start informers:", err)
+	}
+
+	sinkClients, err := sink.ConfigureClients(ctx, cfg)
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 	ctx = ictx
 
