@@ -31,7 +31,6 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/binding"
 	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
-	"github.com/google/uuid"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
@@ -235,8 +234,10 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 
 	} else {
 		responseEvent := cloudevents.NewEvent()
-		responseEvent.SetID(uuid.New().String())
-		responseEvent.SetSource(r.EventListenerName)
+		responseEvent.SetID(eventID)
+		responseEvent.SetType(events.EventAccepted)
+		responseEvent.SetSubject(r.EventListenerNamespace + "." + r.EventListenerName + " accepted " + eventID)
+		responseEvent.SetSource(r.EventListenerName) // We need to change this like in SendCloudEvents
 
 		_ = responseEvent.SetData(cloudevents.ApplicationJSON, body)
 
