@@ -31,6 +31,8 @@ const (
 	// TriggerProcessingDoneV1 is sent for Sink Triggers when we are done
 	// with eventlistener handler
 	TriggerProcessingDoneV1 = "dev.tekton.event.triggers.done.v1"
+	// EventAccepted is sent as response for CloudEvent compliant providers
+	EventAccepted = "dev.tekton.event.triggers.accepted.v1"
 )
 
 // Emit emits events for object
