@@ -36,13 +36,13 @@ import (
 	triggertemplatesinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/eventing/pkg/adapter/v2"
@@ -92,6 +92,7 @@ func (s *sinker) createRecorder(ctx context.Context, agentName string) record.Ev
 			eventBroadcaster.StartRecordingToSink(
 				&v1.EventSinkImpl{Interface: s.Clients.K8sClient.CoreV1().Events("")}),
 		}
+
 		recorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: agentName})
 		go func() {
 			<-ctx.Done()
