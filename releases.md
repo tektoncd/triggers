@@ -42,10 +42,10 @@ Further documentation available:
 
 ### v0.24 (LTS)
 
-- **Latest Release**: [v0.24.0][v0-24-0] (2023-06-11) ([docs][v0-24-0-docs], [examples][v0-24-0-examples])
+- **Latest Release**: [v0.24.1][v0-24-1] (2023-06-11) ([docs][v0-24-1-docs], [examples][v0-24-1-examples])
 - **Initial Release**: [v0.24.0][v0-24-0] (2023-06-11)
 - **End of Life**: 2024-06-11
-- **Patch Releases**: [v0.24.0][v0-24-0]
+- **Patch Releases**: [v0.24.1][v0-24-1] [v0.24.0][v0-24-0]
 
 ### v0.23
 
@@ -83,21 +83,17 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
 [v0-21-0]: https://github.com/tektoncd/triggers/releases/tag/v0.21.0
-[v0-21-0-docs]: https://github.com/tektoncd/triggers/tree/v0.21.0/docs#tekton-triggers
-[v0-21-0-examples]: https://github.com/tektoncd/triggers/tree/v0.21.0/examples#examples
 [v0-22-0]: https://github.com/tektoncd/triggers/releases/tag/v0.21.0
 [v0-22-1]: https://github.com/tektoncd/triggers/releases/tag/v0.22.1
-[v0-22-1-docs]: https://github.com/tektoncd/triggers/tree/v0.22.1/docs#tekton-triggers
-[v0-22-1-examples]: https://github.com/tektoncd/triggers/tree/v0.22.1/examples#examples
 [v0-22-2]: https://github.com/tektoncd/triggers/releases/tag/v0.22.2
 [v0-22-2-docs]: https://github.com/tektoncd/triggers/tree/v0.22.2/docs#tekton-triggers
 [v0-22-2-examples]: https://github.com/tektoncd/triggers/tree/v0.22.2/examples#examples
 [v0-23-0]: https://github.com/tektoncd/triggers/releases/tag/v0.23.0
-[v0-23-0-docs]: https://github.com/tektoncd/triggers/tree/v0.23.0/docs#tekton-triggers
-[v0-23-0-examples]: https://github.com/tektoncd/triggers/tree/v0.23.0/examples#examples
 [v0-23-1]: https://github.com/tektoncd/triggers/releases/tag/v0.23.1
 [v0-23-1-docs]: https://github.com/tektoncd/triggers/tree/v0.23.1/docs#tekton-triggers
 [v0-23-1-examples]: https://github.com/tektoncd/triggers/tree/v0.23.1/examples#examples
 [v0-24-0]: https://github.com/tektoncd/triggers/releases/tag/v0.24.0
-[v0-24-0-docs]: https://github.com/tektoncd/triggers/tree/v0.24.0/docs#tekton-triggers
-[v0-24-0-examples]: https://github.com/tektoncd/triggers/tree/v0.24.0/examples#examples
+[v0-24-1]: https://github.com/tektoncd/triggers/releases/tag/v0.24.1
+[v0-24-1-docs]: https://github.com/tektoncd/triggers/tree/v0.24.1/docs#tekton-triggers
+[v0-24-1-examples]: https://github.com/tektoncd/triggers/tree/v0.24.1/examples#examples
+
