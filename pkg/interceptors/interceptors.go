@@ -124,6 +124,9 @@ func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.Inte
 	if err != nil {
 		return nil, err
 	}
+
+	r.Header.Set("Content-Type", "application/json")
+
 	res, err := client.Do(r)
 	if err != nil {
 		return nil, err
