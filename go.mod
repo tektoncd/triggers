@@ -7,7 +7,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470
 	github.com/cloudevents/sdk-go/v2 v2.14.0
 	github.com/golang/protobuf v1.5.3
-	github.com/google/cel-go v0.13.0
+	github.com/google/cel-go v0.16.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.3.0
@@ -57,6 +57,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
+	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
