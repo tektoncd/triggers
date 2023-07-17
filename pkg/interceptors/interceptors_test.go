@@ -354,6 +354,21 @@ func TestResolveToURL(t *testing.T) {
 	})
 }
 
+type localT struct {
+	T *testing.T
+}
+
+func (t localT) testHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType := r.Header.Get("Content-Type")
+		if contentType != interceptors.ContentType {
+			t.T.Fatalf("Header expected to be: %s but got :%s",
+				interceptors.ContentType, contentType)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // testServer creates a httptest server with the passed in handler and returns a http.Client that
 // can be used to talk to these interceptors
 func testServer(t testing.TB, handler http.Handler, d ...*http.Transport) *http.Client {
@@ -427,7 +442,13 @@ func TestExecute(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to initialize core interceptors: %v", err)
 			}
-			httpClient := testServer(t, coreInterceptors)
+
+			lT := localT{
+				T: t,
+			}
+
+			handler := lT.testHeader(coreInterceptors)
+			httpClient := testServer(t, handler)
 			got, err := interceptors.Execute(context.Background(), httpClient, tc.req, tc.url)
 			if err != nil {
 				t.Fatalf("Execute() unexpected error: %s", err)
@@ -446,7 +467,7 @@ func TestExecute_Error(t *testing.T) {
 			"Content-Type": {"application/json"},
 		}),
 		Context: &triggersv1.TriggerContext{
-			EventURL:  "http://someurl.com",
+			EventURL:  "http://somurel.com",
 			EventID:   "abcde",
 			TriggerID: "namespaces/default/triggers/test-trigger",
 		},
