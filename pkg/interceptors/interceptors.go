@@ -32,6 +32,7 @@ import (
 
 const (
 	CoreInterceptorsHost = "tekton-triggers-core-interceptors"
+	ContentType          = "application/json"
 )
 
 // Interceptor is the interface that all interceptors implement.
@@ -124,6 +125,9 @@ func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.Inte
 	if err != nil {
 		return nil, err
 	}
+
+	r.Header.Set("Content-Type", ContentType)
+
 	res, err := client.Do(r)
 	if err != nil {
 		return nil, err
