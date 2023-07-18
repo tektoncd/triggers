@@ -39,18 +39,19 @@ err() {
 
 install_knative_serving() {
   # Install Knative by referring https://knative.dev/docs/admin/install/serving/install-serving-with-yaml/#install-the-knative-serving-component
-  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
-  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
+  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.10.2/serving-crds.yaml
+  kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.10.2/serving-core.yaml
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running knative-serving || fail_test "Knative Serving did not come up"
 
-  kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
+  kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.10.0/kourier.yaml
 
   kubectl patch configmap/config-network \
     --namespace knative-serving \
     --type merge \
-    --patch '{"data":{"ingress.class":"kourier.ingress.networking.knative.dev"}}'
+    --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running knative-serving || fail_test "Knative Serving & Kourier did not come up"
