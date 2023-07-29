@@ -1,0 +1,65 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: aws-codecommit-push
+spec:
+  triggers:
+    - name: aws-codecommit-push
+      bindings:
+        - ref: aws-codecommit-push-binding
+      template:
+        ref: aws-codecommit-push-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: aws-codecommit-push-binding
+spec:
+  params:
+    - name: aws-codecommit-awsregion
+      value: $(body.Records[0].awsRegion)
+    - name: aws-codecommit-commit
+      value: $(body.Records[0].codecommit.references[0].commit)
+    - name: aws-codecommit-branch
+      value: $(body.Records[0].codecommit.references[0].ref)
+    - name: aws-codecommit-useridentity
+      value: $(body.Records[0].userIdentityARN)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: aws-codecommit-push-template
+spec:
+  params:
+    - name: aws-codecommit-awsregion
+    - name: aws-codecommit-commit
+    - name: aws-codecommit-branch
+    - name: aws-codecommit-useridentity
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: aws-codecommit-push-listener-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "aws region is : $(tt.params.aws-codecommit-awsregion). commit is $(tt.params.aws-codecommit-commit).
+                branch name is : $(tt.params.aws-codecommit-branch). pusher name is $(tt.params.aws-codecommit-useridentity)."
