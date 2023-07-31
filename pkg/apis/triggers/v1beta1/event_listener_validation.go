@@ -232,9 +232,6 @@ func containerFieldMask(in *corev1.Container) *corev1.Container {
 	out.Image = ""
 	out.Args = nil
 	out.Ports = nil
-	out.LivenessProbe = nil
-	out.ReadinessProbe = nil
-	out.StartupProbe = nil
 	out.Command = nil
 	out.VolumeMounts = nil
 	out.ImagePullPolicy = ""
