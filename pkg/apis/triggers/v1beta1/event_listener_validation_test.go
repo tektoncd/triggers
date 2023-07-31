@@ -542,6 +542,34 @@ func Test_EventListenerValidate(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "Valid EventListener with probes",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: myObjectMeta,
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+					}},
+					Resources: triggersv1beta1.Resources{
+						KubernetesResource: &triggersv1beta1.KubernetesResource{
+							WithPodSpec: duckv1.WithPodSpec{
+								Template: duckv1.PodSpecable{
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{{
+											ReadinessProbe: &corev1.Probe{
+												InitialDelaySeconds: int32(10),
+											},
+										}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}}
 
 	for _, tc := range tests {

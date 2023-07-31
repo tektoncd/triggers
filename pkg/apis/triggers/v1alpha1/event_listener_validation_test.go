@@ -478,6 +478,37 @@ func Test_EventListenerValidate(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Valid EventListener with probes",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Template: &v1alpha1.EventListenerTemplate{
+						Ref: ptr.String("tt"),
+					},
+				}},
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						WithPodSpec: duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								Spec: corev1.PodSpec{
+									ServiceAccountName: "k8sresource",
+									Containers: []corev1.Container{{
+										ReadinessProbe: &corev1.Probe{
+											InitialDelaySeconds: int32(10),
+										},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, {
 		name: "Valid EventListener with custom resources",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{

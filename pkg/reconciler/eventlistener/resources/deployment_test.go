@@ -327,6 +327,36 @@ func TestDeployment(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "with container probes",
+		el:   makeEL(setProbes()),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, config,
+								mustAddDeployBits(t, makeEL(setProbes()), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
+					},
+				},
+			},
+		},
 	}}
 
 	for _, tt := range tests {
@@ -421,4 +451,28 @@ func mustAddDeployBits(t *testing.T, el *v1beta1.EventListener, c Config) Contai
 		t.Fatalf("addDeploymentBits() = %v", err)
 	}
 	return opt
+}
+
+func setProbes() func(*v1beta1.EventListener) {
+	return func(el *v1beta1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							ReadinessProbe: &corev1.Probe{
+								InitialDelaySeconds: 10,
+							},
+							LivenessProbe: &corev1.Probe{
+								InitialDelaySeconds: 10,
+							},
+							StartupProbe: &corev1.Probe{
+								InitialDelaySeconds: 10,
+							},
+						}},
+					},
+				},
+			},
+		}
+	}
 }
