@@ -100,6 +100,8 @@ spec:
               value: tekton.dev/triggers
             - name: METRICS_PROMETHEUS_PORT
               value: "9000"
+            - name: CONFIG_LEADERELECTION_NAME
+              value: config-leader-election-triggers-controllers
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
