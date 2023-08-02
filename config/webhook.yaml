@@ -65,6 +65,8 @@ spec:
               value: triggers-webhook-certs
             - name: METRICS_DOMAIN
               value: tekton.dev/triggers
+            - name: CONFIG_LEADERELECTION_NAME
+              value: config-leader-election-triggers-webhook
           ports:
             - name: metrics
               containerPort: 9000
