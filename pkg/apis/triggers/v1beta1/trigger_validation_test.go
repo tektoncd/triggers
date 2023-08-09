@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors/cel"
 	"github.com/tektoncd/triggers/test"
@@ -371,7 +371,7 @@ func TestTriggerValidate_error(t *testing.T) {
 						ResourceTemplates: []v1beta1.TriggerResourceTemplate{{
 							RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
 								TypeMeta: metav1.TypeMeta{
-									APIVersion: "tekton.dev/v1beta1",
+									APIVersion: "tekton.dev/v1",
 									Kind:       "PipelineRun",
 								},
 							}),
