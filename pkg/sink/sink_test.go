@@ -36,7 +36,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/mux"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
@@ -262,7 +263,7 @@ func checkSinkResponse(t *testing.T, resp *http.Response, elName string) {
 func trResourceTemplate(t testing.TB) runtime.RawExtension {
 	return test.RawExtension(t, pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "TaskRun",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -332,7 +333,7 @@ func TestHandleEvent(t *testing.T) {
 		// gitCloneTaskRun with values from gitCloneTBSpec
 		gitCloneTaskRun = pipelinev1.TaskRun{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1beta1",
+				APIVersion: "tekton.dev/v1",
 				Kind:       "TaskRun",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -883,10 +884,10 @@ func TestHandleEvent(t *testing.T) {
 								Kind:       "Service",
 								Name:       "foo",
 							},
-							Header: []pipelinev1.Param{{
+							Header: []pipelinev1beta1.Param{{
 								Name: "Name",
-								Value: pipelinev1.ParamValue{
-									Type:      pipelinev1.ParamTypeString,
+								Value: pipelinev1beta1.ParamValue{
+									Type:      pipelinev1beta1.ParamTypeString,
 									StringVal: "name-from-webhook",
 								},
 							}},
@@ -932,7 +933,7 @@ func TestHandleEvent(t *testing.T) {
 		eventBody: eventBody,
 		want: []pipelinev1.TaskRun{{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "tekton.dev/v1beta1",
+				APIVersion: "tekton.dev/v1",
 				Kind:       "TaskRun",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -1069,7 +1070,7 @@ func TestHandleEvent(t *testing.T) {
 		want: []pipelinev1.TaskRun{
 			{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
+					APIVersion: "tekton.dev/v1",
 					Kind:       "TaskRun",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1096,7 +1097,7 @@ func TestHandleEvent(t *testing.T) {
 			},
 			{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
+					APIVersion: "tekton.dev/v1",
 					Kind:       "TaskRun",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1764,7 +1765,7 @@ func TestCloudEventHandling(t *testing.T) {
 
 	gitCloneTaskRun := pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "TaskRun",
 		},
 		ObjectMeta: metav1.ObjectMeta{

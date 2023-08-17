@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -796,10 +795,10 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
-							Header: []v1beta1.Param{{
+							Header: []pipelinev1.Param{{
 								Name: "non-canonical-header-key",
-								Value: v1beta1.ParamValue{
-									Type:      v1beta1.ParamTypeString,
+								Value: pipelinev1.ParamValue{
+									Type:      pipelinev1.ParamTypeString,
 									StringVal: "valid value",
 								},
 							}},
@@ -827,10 +826,10 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
-							Header: []v1beta1.Param{{
+							Header: []pipelinev1.Param{{
 								Name: "",
-								Value: v1beta1.ParamValue{
-									Type:      v1beta1.ParamTypeString,
+								Value: pipelinev1.ParamValue{
+									Type:      pipelinev1.ParamTypeString,
 									StringVal: "valid value",
 								},
 							}},
@@ -858,10 +857,10 @@ func TestEventListenerValidate_error(t *testing.T) {
 					Template: &v1alpha1.EventListenerTemplate{Ref: ptr.String("tt")},
 					Interceptors: []*v1alpha1.EventInterceptor{{
 						Webhook: &v1alpha1.WebhookInterceptor{
-							Header: []v1beta1.Param{{
+							Header: []pipelinev1.Param{{
 								Name: "Valid-Header-Key",
-								Value: v1beta1.ParamValue{
-									Type:      v1beta1.ParamTypeString,
+								Value: pipelinev1.ParamValue{
+									Type:      pipelinev1.ParamTypeString,
 									StringVal: "",
 								},
 							}},

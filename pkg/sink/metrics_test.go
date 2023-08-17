@@ -39,7 +39,7 @@ func TestRecordResourceCreation(t *testing.T) {
 	}{{
 		name: "single pipelinerun",
 		resources: []json.RawMessage{
-			[]byte(`{"apiVersion": "tekton.dev/v1beta1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
 		},
 		resourceCounts: map[string]int64{
 			"PipelineRun": 1,
@@ -47,9 +47,9 @@ func TestRecordResourceCreation(t *testing.T) {
 	}, {
 		name: "pipelinerun and taskrun",
 		resources: []json.RawMessage{
-			[]byte(`{"apiVersion": "tekton.dev/v1beta1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
-			[]byte(`{"apiVersion": "tekton.dev/v1beta1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-asdf1"}}`),
-			[]byte(`{"apiVersion": "tekton.dev/v1beta1","kind": "TaskRun","metadata": {"name": "simple-pipeline-run-lkjs9"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-asdf1"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "TaskRun","metadata": {"name": "simple-pipeline-run-lkjs9"}}`),
 		},
 		resourceCounts: map[string]int64{
 			"PipelineRun": 2,

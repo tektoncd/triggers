@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -461,7 +462,7 @@ func Test_EventListenerValidate(t *testing.T) {
 								Default:     ptr.String("val"),
 							}},
 							ResourceTemplates: []triggersv1beta1.TriggerResourceTemplate{{
-								RawExtension: test.RawExtension(t, pipelinev1beta1.PipelineRun{
+								RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
 									TypeMeta: metav1.TypeMeta{
 										APIVersion: "tekton.dev/v1beta1",
 										Kind:       "TaskRun",

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
