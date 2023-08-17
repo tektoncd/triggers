@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
 	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
@@ -142,11 +142,11 @@ func TestCreateResource(t *testing.T) {
 	tests := []struct {
 		name string
 		json []byte
-		want pipelinev1beta1.TaskRun
+		want pipelinev1.TaskRun
 	}{{
 		name: "TaskRun without namespace",
 		json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName": ""}}`),
-		want: pipelinev1beta1.TaskRun{
+		want: pipelinev1.TaskRun{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1beta1",
 				Kind:       "TaskRun",
@@ -160,19 +160,19 @@ func TestCreateResource(t *testing.T) {
 					eventIDLabel:  eventID,
 				},
 			},
-			Spec: pipelinev1beta1.TaskRunSpec{
-				TaskRef: &pipelinev1beta1.TaskRef{
+			Spec: pipelinev1.TaskRunSpec{
+				TaskRef: &pipelinev1.TaskRef{
 					Name: "my-task", // non-existent task; just for testing
 				},
 			},
-			Status: pipelinev1beta1.TaskRunStatus{},
+			Status: pipelinev1.TaskRunStatus{},
 		},
 	},
 
 		{
 			name: "TaskRun with namespace",
 			json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","namespace":"bar","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName":""}}`),
-			want: pipelinev1beta1.TaskRun{
+			want: pipelinev1.TaskRun{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "tekton.dev/v1beta1",
 					Kind:       "TaskRun",
@@ -187,12 +187,12 @@ func TestCreateResource(t *testing.T) {
 						eventIDLabel:  eventID,
 					},
 				},
-				Spec: pipelinev1beta1.TaskRunSpec{
-					TaskRef: &pipelinev1beta1.TaskRef{
+				Spec: pipelinev1.TaskRunSpec{
+					TaskRef: &pipelinev1.TaskRef{
 						Name: "my-task", // non-existent task; just for testing
 					},
 				},
-				Status: pipelinev1beta1.TaskRunStatus{},
+				Status: pipelinev1.TaskRunStatus{},
 			},
 		},
 	}

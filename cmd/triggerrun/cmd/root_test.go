@@ -27,8 +27,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/sink"
@@ -127,7 +126,7 @@ func Test_processTriggerSpec(t *testing.T) {
 	if err != nil {
 		t.Errorf("Cannot create a new request:%s", err)
 	}
-	taskRunTemplate := pipelinev1beta1.TaskRun{
+	taskRunTemplate := pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "TaskRun",
@@ -139,8 +138,8 @@ func Test_processTriggerSpec(t *testing.T) {
 				"someLabel": "$(tt.params.foo)",
 			},
 		},
-		Spec: pipelinev1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+		Spec: pipelinev1.TaskRunSpec{
+			TaskRef: &pipelinev1.TaskRef{
 				Name: "my-task", // non-existent task; just for testing
 			},
 		},
@@ -178,7 +177,7 @@ func Test_processTriggerSpec(t *testing.T) {
 		},
 	}
 
-	wantTaskRun := pipelinev1beta1.TaskRun{
+	wantTaskRun := pipelinev1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1alpha1",
 			Kind:       "TaskRun",
@@ -190,7 +189,7 @@ func Test_processTriggerSpec(t *testing.T) {
 				"someLabel": "bar", // replaced with the value of foo from bar
 			},
 		},
-		Spec: pipelinev1beta1.TaskRunSpec{
+		Spec: pipelinev1.TaskRunSpec{
 			TaskRef: taskRunTemplate.Spec.TaskRef, // non-existent task; just for testing
 		},
 	}
