@@ -432,7 +432,22 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerStatus(ref common.ReferenceCa
 					},
 					"address": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("knative.dev/pkg/apis/duck/v1beta1.Addressable"),
+							Description: "Address is a single Addressable address. If Addresses is present, Address will be ignored by clients.",
+							Ref:         ref("knative.dev/pkg/apis/duck/v1beta1.Addressable"),
+						},
+					},
+					"addresses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Addresses is a list of addresses for different protocols (HTTP and HTTPS) If Addresses is present, Address must be ignored by clients.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("knative.dev/pkg/apis/duck/v1beta1.Addressable"),
+									},
+								},
+							},
 						},
 					},
 					"configuration": {
