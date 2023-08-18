@@ -77,7 +77,7 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 	var elCert, elKey string
 
 	servicePortName := eventListenerServicePortName
-	servicePortPort := *c.Port
+	servicePort := *c.Port
 
 	certEnv := map[string]*corev1.EnvVarSource{}
 	if el.Spec.Resources.KubernetesResource != nil {
@@ -86,6 +86,9 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 				certEnv[el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].Name] =
 					el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env[i].ValueFrom
 			}
+		}
+		if el.Spec.Resources.KubernetesResource.ServicePort != nil {
+			servicePort = int(*el.Spec.Resources.KubernetesResource.ServicePort)
 		}
 	}
 
@@ -105,14 +108,14 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 		if *c.Port == DefaultPort {
 			// We return port 8443 if TLS is enabled and the default HTTP port is set.
 			// This effectively makes 8443 the default HTTPS port unless a user explicitly sets a different port.
-			servicePortPort = 8443
+			servicePort = 8443
 		}
 	}
 
 	return corev1.ServicePort{
 		Name:     servicePortName,
 		Protocol: corev1.ProtocolTCP,
-		Port:     int32(servicePortPort),
+		Port:     int32(servicePort),
 		TargetPort: intstr.IntOrString{
 			IntVal: int32(eventListenerContainerPort),
 		},

@@ -138,6 +138,9 @@ func TestService(t *testing.T) {
 }
 
 func TestServicePort(t *testing.T) {
+
+	k8sResSvcPort := int32(80)
+
 	tests := []struct {
 		name                string
 		el                  *v1beta1.EventListener
@@ -196,6 +199,22 @@ func TestServicePort(t *testing.T) {
 			Name:     eventListenerServiceTLSPortName,
 			Protocol: corev1.ProtocolTCP,
 			Port:     int32(8443),
+			TargetPort: intstr.IntOrString{
+				IntVal: int32(eventListenerContainerPort),
+			},
+		},
+	}, {
+		name: "EventListener with ServicePort 80 in KubernetesResource",
+		el: makeEL(withStatus, withTLSPort, func(el *v1beta1.EventListener) {
+			el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+				ServicePort: &k8sResSvcPort,
+			}
+		}),
+		config: *MakeConfig(),
+		expectedServicePort: corev1.ServicePort{
+			Name:     eventListenerServicePortName,
+			Protocol: corev1.ProtocolTCP,
+			Port:     k8sResSvcPort,
 			TargetPort: intstr.IntOrString{
 				IntVal: int32(eventListenerContainerPort),
 			},
