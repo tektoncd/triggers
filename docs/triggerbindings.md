@@ -196,13 +196,13 @@ This data can be accessed on the `context` parameter, as an example:
 $(context.eventID) # access the internal eventID of the request
 ```
 
-## Accessing JSON keys containing periods (`.`)
+## Accessing JSON keys containing special characters like (`.`) or (`/`)
 
 To access a JSON key that contains a period (`.`), you must escape the period with a backslash (`\.`). For example:
 
 ```shell script
-# Body contains a `tekton.dev` field: {"body": {"tekton.dev": "triggers"}}
-$(body.tekton\.dev) -> "triggers"
+# Body contains a `tekton.dev` field: {"body": {"dev.tekton.dev/foo": "triggers"}}
+$(body.dev\.tekton\.dev\/foo) -> "triggers"
 ```
 
 ## Fallback to default values
@@ -347,3 +347,4 @@ $ binding-eval -b testdata/triggerbinding.yaml -r testdata/http.txt
   }
 ]
 ```
+
