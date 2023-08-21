@@ -147,6 +147,9 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
 				container.Resources = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Resources
 				container.Env = append(container.Env, el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].Env...)
+				container.ReadinessProbe = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].ReadinessProbe
+				container.LivenessProbe = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].LivenessProbe
+				container.StartupProbe = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].StartupProbe
 			}
 		}
 
@@ -200,27 +203,31 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 		} else {
 			scheme = corev1.URISchemeHTTP
 		}
-		container.LivenessProbe = &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: scheme,
-					Port:   intstr.FromInt(eventListenerContainerPort),
+		if container.LivenessProbe == nil {
+			container.LivenessProbe = &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/live",
+						Scheme: scheme,
+						Port:   intstr.FromInt(eventListenerContainerPort),
+					},
 				},
-			},
-			PeriodSeconds:    int32(*c.PeriodSeconds),
-			FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),
+				FailureThreshold: int32(*c.FailureThreshold),
+			}
 		}
-		container.ReadinessProbe = &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
-					Scheme: scheme,
-					Port:   intstr.FromInt(eventListenerContainerPort),
+		if container.ReadinessProbe == nil {
+			container.ReadinessProbe = &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/live",
+						Scheme: scheme,
+						Port:   intstr.FromInt(eventListenerContainerPort),
+					},
 				},
-			},
-			PeriodSeconds:    int32(*c.PeriodSeconds),
-			FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),
+				FailureThreshold: int32(*c.FailureThreshold),
+			}
 		}
 		container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)
 	}

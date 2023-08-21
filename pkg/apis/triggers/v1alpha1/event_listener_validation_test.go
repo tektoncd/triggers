@@ -478,6 +478,37 @@ func Test_EventListenerValidate(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Valid EventListener with probes",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					Template: &v1alpha1.EventListenerTemplate{
+						Ref: ptr.String("tt"),
+					},
+				}},
+				Resources: v1alpha1.Resources{
+					KubernetesResource: &v1alpha1.KubernetesResource{
+						WithPodSpec: duckv1.WithPodSpec{
+							Template: duckv1.PodSpecable{
+								Spec: corev1.PodSpec{
+									ServiceAccountName: "k8sresource",
+									Containers: []corev1.Container{{
+										ReadinessProbe: &corev1.Probe{
+											InitialDelaySeconds: int32(10),
+										},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, {
 		name: "Valid EventListener with custom resources",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1203,6 +1234,24 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 	}, {
+		name: "custom resource with probe data",
+		el: &v1alpha1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1alpha1.EventListenerSpec{
+				Triggers: []v1alpha1.EventListenerTrigger{{
+					TriggerRef: "triggerref",
+				}},
+				Resources: v1alpha1.Resources{
+					CustomResource: &v1alpha1.CustomResource{
+						RawExtension: getRawDataWithPobes(t),
+					},
+				},
+			},
+		},
+	}, {
 		name: "empty spec for eventlistener",
 		el: &v1alpha1.EventListener{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1296,6 +1345,31 @@ func getValidRawData(t *testing.T) runtime.RawExtension {
 							},
 						},
 					}},
+				}},
+			},
+		}},
+	})
+}
+
+func getRawDataWithPobes(t *testing.T) runtime.RawExtension {
+	return test.RawExtension(t, duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "knativeservice",
+		},
+		Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "tekton-triggers-example-sa",
+				Containers: []corev1.Container{{
+					ReadinessProbe: &corev1.Probe{
+						FailureThreshold: int32(10),
+					},
+					LivenessProbe: &corev1.Probe{
+						FailureThreshold: int32(10),
+					},
 				}},
 			},
 		}},
