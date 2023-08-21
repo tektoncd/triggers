@@ -542,6 +542,34 @@ func Test_EventListenerValidate(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "Valid EventListener with probes",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: myObjectMeta,
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+					}},
+					Resources: triggersv1beta1.Resources{
+						KubernetesResource: &triggersv1beta1.KubernetesResource{
+							WithPodSpec: duckv1.WithPodSpec{
+								Template: duckv1.PodSpecable{
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{{
+											ReadinessProbe: &corev1.Probe{
+												InitialDelaySeconds: int32(10),
+											},
+										}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}}
 
 	for _, tc := range tests {
@@ -1232,6 +1260,25 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.triggers[0].template or bindings or interceptors", "spec.triggers[0].triggerRef"),
+	}, {
+		name: "custom resource with probe data",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					TriggerRef: "triggerref",
+				}},
+				Resources: triggersv1beta1.Resources{
+					CustomResource: &triggersv1beta1.CustomResource{
+						RawExtension: getRawDataWithPobes(t),
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("spec.resources.customResource.spec.template.spec.containers[0].livenessProbe, spec.resources.customResource.spec.template.spec.containers[0].readinessProbe"),
 	},
 		{
 			name: "missing label and namespace selector",
@@ -1386,6 +1433,31 @@ func getValidRawData(t *testing.T) runtime.RawExtension {
 							},
 						},
 					}},
+				}},
+			},
+		}},
+	})
+}
+
+func getRawDataWithPobes(t *testing.T) runtime.RawExtension {
+	return test.RawExtension(t, duckv1.WithPod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "serving.knative.dev/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "knativeservice",
+		},
+		Spec: duckv1.WithPodSpec{Template: duckv1.PodSpecable{
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "tekton-triggers-example-sa",
+				Containers: []corev1.Container{{
+					ReadinessProbe: &corev1.Probe{
+						FailureThreshold: int32(10),
+					},
+					LivenessProbe: &corev1.Probe{
+						FailureThreshold: int32(10),
+					},
 				}},
 			},
 		}},

@@ -265,7 +265,7 @@ You can optionally customize the sink deployment for your `EventListener` using 
 - Kubernetes Resource using the `kubernetesResource` field
 - Custom Resource objects via the `CustomResource` field
 
-Legal values for the `PodSpec` and `Containers` sub-fields for both `kubernetesResource` and `CustomResource` fields are:
+Legal values for the `PodSpec` sub-fields for both `kubernetesResource` and `CustomResource` are:
 ```
 ServiceAccountName
 NodeSelector
@@ -275,7 +275,18 @@ Affinity
 TopologySpreadConstraints
 ```
 
-Legal values for the `Containers` sub-field are:
+Legal values for the `Containers` sub-field for `kubernetesResource` and `CustomResource` are:
+
+**kubernetesResource:**
+```
+Resources
+Env
+LivenessProbe
+ReadinessProbe
+StartupProbe
+```
+
+**CustomResource:**
 ```
 Resources
 Env
