@@ -40,6 +40,13 @@ Further documentation available:
 
 ## Releases
 
+### v0.25
+
+- **Latest Release**: [v0.25.0][v0-25-0] (2023-08-29) ([docs][v0-25-0-docs], [examples][v0-25-0-examples])
+- **Initial Release**: [v0.24.1][v0-24-1] (2023-06-11)
+- **End of Life**: 2023-09-30
+- **Patch Releases**: [v0.25.0][v0-25-0]
+
 ### v0.24 (LTS)
 
 - **Latest Release**: [v0.24.1][v0-24-1] (2023-06-11) ([docs][v0-24-1-docs], [examples][v0-24-1-examples])
@@ -96,4 +103,7 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [v0-24-1]: https://github.com/tektoncd/triggers/releases/tag/v0.24.1
 [v0-24-1-docs]: https://github.com/tektoncd/triggers/tree/v0.24.1/docs#tekton-triggers
 [v0-24-1-examples]: https://github.com/tektoncd/triggers/tree/v0.24.1/examples#examples
+[v0-25-0]: https://github.com/tektoncd/triggers/releases/tag/v0.25.0
+[v0-25-0-docs]: https://github.com/tektoncd/triggers/tree/v0.25.0/docs#tekton-triggers
+[v0-25-0-examples]: https://github.com/tektoncd/triggers/tree/v0.25.0/examples#examples
 
