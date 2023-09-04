@@ -442,6 +442,35 @@ which can be accessed by indexing.
      <pre>{"testing":"value"}.marshalJSON() == "{\"testing\": \"value\"}"</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+     first()
+    </th>
+    <td>
+     <pre>&lt;jsonArray&gt;.first() -> &lt;jsonObject&gt;</pre>
+    </td>
+    <td>
+     Returns the first element in the array.
+    </td>
+    <td>
+     <pre>[1, 2, 3, 4, 5].first() == 1</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+     last()
+    </th>
+    <td>
+     <pre>&lt;jsonArray&gt;.last() -> &lt;jsonObject&gt;</pre>
+    </td>
+    <td>
+     Returns the last element in the array.
+    </td>
+    <td>
+     <pre>[1, 2, 3, 4, 5].last() == 5</pre>
+    </td>
+  </tr>
+
 </table>
 
 ## Troubleshooting CEL expressions
