@@ -440,6 +440,10 @@ func TestExpressionEvaluation(t *testing.T) {
 				},
 			},
 		},
+		"numbers": []int64{
+			1, 2, 3, 4, 5,
+		},
+		"emptyList": []int64{},
 	}
 
 	refParts := strings.Split(testRef, "/")
@@ -620,6 +624,47 @@ func TestExpressionEvaluation(t *testing.T) {
 			name: "extension string join",
 			expr: "body.jsonArray.join(', ')",
 			want: types.String("one, two"),
+		},
+		{
+			name: "last element in array",
+			expr: "body.testURL.parseURL().path.split('/').last()",
+			want: types.String("to"),
+		},
+		{
+			name: "last element in empty array",
+			expr: `body.emptyList.last()`,
+			want: types.NullValue,
+		},
+		{
+			name: "last element in numeric array",
+			expr: `body.numbers.last()`,
+			want: types.Int(5),
+		},
+		{
+			name: "last element in literal array",
+			expr: "[1, 2, 3, 4, 5].last()",
+			want: types.Int(5),
+		},
+		{
+			name: "first element in literal array",
+			expr: "[1, 2, 3, 4, 5].first()",
+			want: types.Int(1),
+		},
+		{
+			name: "first element in array",
+			// Splitting gets an empty route element so this filters it out.
+			expr: "body.testURL.parseURL().path.split('/').filter(t, t.size() > 0).first()",
+			want: types.String("path"),
+		},
+		{
+			name: "first element in empty array",
+			expr: `body.emptyList.first()`,
+			want: types.NullValue,
+		},
+		{
+			name: "first element in numeric array",
+			expr: `body.numbers.first()`,
+			want: types.Int(1),
 		},
 	}
 	for _, tt := range tests {
