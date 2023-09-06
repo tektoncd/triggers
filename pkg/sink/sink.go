@@ -248,7 +248,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 			}
 		}()
 
-		if err := cehttp.WriteResponseWriter(request.Context(), eventResponse, http.StatusAccepted, response); err != nil {
+		if err := cehttp.WriteResponseWriter(request.Context(), eventResponse, http.StatusOK, response); err != nil {
 			log.Errorf("failed to write back cloud event sink response: %v", err)
 			r.emitEvents(r.EventRecorder, el, events.TriggerProcessingFailedV1, err)
 			r.sendCloudEvents(nil, *el, eventID, events.TriggerProcessingFailedV1)
