@@ -8,4 +8,4 @@ spec:
     - name: gitrevision
       value: $(body.changes[0].ref.displayId)
     - name: gitrepositoryurl
-      value: $(body.repository.links.clone[0].href)
+      value: $(body.repository.links.clone[?(@.name=="ssh")].href)
