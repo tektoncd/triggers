@@ -23,6 +23,7 @@ linters:
   - revive
   - misspell
   - unconvert
+  - gosimple
 issues:
   exclude-rules:
     - path: _test\.go
