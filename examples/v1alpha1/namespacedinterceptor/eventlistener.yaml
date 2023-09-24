@@ -23,7 +23,7 @@ spec:
           params:
             - name: gitrevision
             - name: gitrepositoryurl
-          resourcetemplates:
+          resourceTemplates:
             - apiVersion: tekton.dev/v1beta1
               kind: TaskRun
               metadata:

@@ -12,7 +12,7 @@ spec:
       description: The git repository url
     - name: namespace
       description: The namespace to create the resources
-  resourcetemplates:
+  resourceTemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
       metadata:

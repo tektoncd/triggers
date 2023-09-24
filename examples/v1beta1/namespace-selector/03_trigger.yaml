@@ -42,7 +42,7 @@ spec:
     default: This is the default message
   - name: contenttype
     description: The Content-Type of the event
-  resourcetemplates:
+  resourceTemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:

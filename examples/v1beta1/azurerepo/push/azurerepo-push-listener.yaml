@@ -58,7 +58,7 @@ spec:
     - name: azurerepo-url
     - name: azurerepo-name
     - name: pusher-name
-  resourcetemplates:
+  resourceTemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:
