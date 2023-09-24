@@ -192,7 +192,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: "missing field(s)",
-			Paths:   []string{"spec.resourcetemplates"},
+			Paths:   []string{"spec.resourceTemplates"},
 		},
 	}, {
 		name: "resource template missing kind",
@@ -218,7 +218,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: "missing field(s)",
-			Paths:   []string{"spec.resourcetemplates[0].kind"},
+			Paths:   []string{"spec.resourceTemplates[0].kind"},
 		},
 	}, {
 		name: "resource template missing apiVersion",
@@ -244,7 +244,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: "missing field(s)",
-			Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
+			Paths:   []string{"spec.resourceTemplates[0].apiVersion"},
 		},
 	}, {
 		name: "resource template invalid apiVersion",
@@ -271,7 +271,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: `invalid value: no kind "pipelinerun" is registered for version "foobar"`,
-			Paths:   []string{"spec.resourcetemplates[0]"},
+			Paths:   []string{"spec.resourceTemplates[0]"},
 		},
 	}, {
 		name: "resource template invalid kind",
@@ -298,7 +298,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: `invalid value: no kind "tekton.dev/v1alpha1" is registered for version "foo"`,
-			Paths:   []string{"spec.resourcetemplates[0]"},
+			Paths:   []string{"spec.resourceTemplates[0]"},
 		},
 	}, {
 		name: "tt.params used in resource template are declared",
@@ -334,7 +334,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 		},
 		want: &apis.FieldError{
 			Message: "invalid value: undeclared param '$(tt.params.foo)'",
-			Paths:   []string{"spec.resourcetemplates[0]"},
+			Paths:   []string{"spec.resourceTemplates[0]"},
 			Details: "'$(tt.params.foo)' must be declared in spec.params",
 		},
 	}, {
@@ -378,7 +378,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 				Namespace: "foo",
 			},
 		},
-		want: apis.ErrMissingField("spec", "spec.resourcetemplates"),
+		want: apis.ErrMissingField("spec", "spec.resourceTemplates"),
 	}}
 
 	for _, tc := range tcs {

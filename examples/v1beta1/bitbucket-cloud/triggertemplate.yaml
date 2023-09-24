@@ -9,7 +9,7 @@ spec:
     - name: gitrepourl
     - name: gitreponame
     - name: pushername
-  resourcetemplates:
+  resourceTemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:

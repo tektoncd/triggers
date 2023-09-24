@@ -67,7 +67,7 @@ spec:
     - name: azurerepo-pullreq-html-url
     - name: azurerepo-pullreq-title
     - name: azurerepo-pullreq-user
-  resourcetemplates:
+  resourceTemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:

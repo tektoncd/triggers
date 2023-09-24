@@ -70,7 +70,7 @@ triggers:
       spec: 
         params:
           - name: "my-param-name"
-        resourcetemplates:
+        resourceTemplates:
         - apiVersion: "tekton.dev/v1beta1"
           kind: TaskRun
           metadata:
