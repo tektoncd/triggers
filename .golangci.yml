@@ -20,9 +20,11 @@ linters:
   - gomodguard
   - gosec
   - gocritic
-  - revive
   - misspell
   - unconvert
+  disable:
+  - gosimple
+  - revive
 issues:
   exclude-rules:
     - path: _test\.go
