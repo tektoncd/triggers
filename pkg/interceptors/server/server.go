@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1alpha1"
@@ -25,6 +23,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/interceptors/github"
 	"github.com/tektoncd/triggers/pkg/interceptors/gitlab"
 	"github.com/tektoncd/triggers/pkg/interceptors/slack"
+	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -160,7 +159,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 }
 
 func CreateAndValidateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, logger *zap.SugaredLogger, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface) {
-	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger)
+	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, false)
 	if err != nil {
 		return
 	}
@@ -173,7 +172,8 @@ func CreateAndValidateCerts(ctx context.Context, coreV1Interface corev1.CoreV1In
 	service.checkCertValidity(ctx, serverCert, caCert, coreV1Interface, logger, tc, time.Minute)
 }
 
-func createCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, noAfter time.Time, logger *zap.SugaredLogger) ([]byte, []byte, error) {
+func createCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, noAfter time.Time,
+	logger *zap.SugaredLogger, certsExpire bool) ([]byte, []byte, error) {
 	interceptorSvcName := os.Getenv(interceptorTLSSvcKey)
 	interceptorSecretName := os.Getenv(interceptorTLSSecretKey)
 	namespace := system.Namespace()
@@ -189,6 +189,19 @@ func createCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, no
 		}
 		logger.Infof("error accessing certificate secret %q: %v", interceptorSecretName, err)
 		return []byte{}, []byte{}, err
+	}
+
+	// checking the secret data existence, if secret exist and certs are not expired just return those instead of recreating.
+	if !certsExpire {
+		if serverKeyVal, ok := secret.Data[certresources.ServerKey]; ok {
+			if serverCertVal, ok := secret.Data[certresources.ServerCert]; ok {
+				if caCertVal, ok := secret.Data[certresources.CACert]; ok {
+					if string(serverKeyVal) != "" && string(serverCertVal) != "" && string(caCertVal) != "" {
+						return secret.Data[certresources.ServerCert], secret.Data[certresources.CACert], nil
+					}
+				}
+			}
+		}
 	}
 
 	serverKey, serverCert, caCert, err := certresources.CreateCerts(ctx, interceptorSvcName, namespace, noAfter)
@@ -265,7 +278,7 @@ func (is *Server) checkCertValidity(ctx context.Context, serverCert, caCert []by
 			if _, err := cert.Verify(opts); err != nil {
 				logger.Errorf("failed to verify certificate: %v", err.Error())
 
-				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger)
+				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, true)
 				if err != nil {
 					logger.Errorf("failed to create certs %v", err)
 				}
