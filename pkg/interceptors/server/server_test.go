@@ -212,13 +212,13 @@ func Test_SecretNotExist(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
-	_, _, err := createCerts(ctx, clientSet, time.Now().Add(Decade), logger.Sugar())
+	_, _, err := createCerts(ctx, clientSet, time.Now().Add(Decade), logger.Sugar(), false)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		t.Error(err)
 	}
 }
 
-func createSecret(t *testing.T, noAfter time.Time) (v1.CoreV1Interface, []byte, []byte, error) {
+func createSecret(t *testing.T, noAfter time.Time, certExpire bool) (v1.CoreV1Interface, []byte, []byte, error) {
 	t.Setenv(interceptorTLSSvcKey, testsvc)
 	t.Setenv(interceptorTLSSecretKey, testsecrets)
 	t.Setenv("SYSTEM_NAMESPACE", testns)
@@ -236,12 +236,12 @@ func createSecret(t *testing.T, noAfter time.Time) (v1.CoreV1Interface, []byte, 
 	if _, err := clientSet.Secrets(namespace).Create(ctx, localObject, metav1.CreateOptions{}); err != nil {
 		t.Error(err)
 	}
-	sCert, caCert, err := createCerts(ctx, clientSet, noAfter, logger.Sugar())
+	sCert, caCert, err := createCerts(ctx, clientSet, noAfter, logger.Sugar(), certExpire)
 	return clientSet, sCert, caCert, err
 }
 
 func Test_CreateSecret(t *testing.T) {
-	_, sCert, caCert, err := createSecret(t, time.Now().Add(Decade))
+	_, sCert, caCert, err := createSecret(t, time.Now().Add(Decade), true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -253,7 +253,7 @@ func Test_CreateSecret(t *testing.T) {
 func Test_CheckCertValidity(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 	logger := zaptest.NewLogger(t)
-	clientSet, sCert, caCert, err := createSecret(t, time.Now().Add(second))
+	clientSet, sCert, caCert, err := createSecret(t, time.Now().Add(second), false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -286,7 +286,7 @@ func Test_CheckCertValidity(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	// Making sure that certs expired and and generated one is different than old certs
+	// Making sure that certs expired and generated one is different than old certs
 	if string(ciNew1.Spec.ClientConfig.CaBundle) == "" || string(ciNew1.Spec.ClientConfig.CaBundle) == string(ciNew.Spec.ClientConfig.CaBundle) {
 		t.Error("timeout or failed to regenerate certificate after the certificate expire")
 	}
