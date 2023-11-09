@@ -52,9 +52,9 @@ func (t *listableTracker) watchOnDynamicObject(ctx context.Context, gvr schema.G
 	if err != nil {
 		return err
 	}
-	shInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+	_, err = shInformer.AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterController(&v1beta1.EventListener{}),
 		Handler:    controller.HandleAll(t.impl.EnqueueControllerOf),
 	})
-	return nil
+	return err
 }
