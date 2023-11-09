@@ -23,6 +23,7 @@ import (
 	interceptorreconciler "github.com/tektoncd/triggers/pkg/client/injection/reconciler/triggers/v1alpha1/interceptor"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
@@ -36,7 +37,9 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 			}
 		})
 
-		interceptorInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := interceptorInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Interceptor informer event handler: %w", err)
+		}
 
 		return impl
 	}

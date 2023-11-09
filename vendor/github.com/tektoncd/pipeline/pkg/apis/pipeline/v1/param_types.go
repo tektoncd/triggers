@@ -154,6 +154,29 @@ type Param struct {
 	Value ParamValue `json:"value"`
 }
 
+// GetVarSubstitutionExpressions extracts all the value between "$(" and ")"" for a Parameter
+func (p Param) GetVarSubstitutionExpressions() ([]string, bool) {
+	var allExpressions []string
+	switch p.Value.Type {
+	case ParamTypeArray:
+		// array type
+		for _, value := range p.Value.ArrayVal {
+			allExpressions = append(allExpressions, validateString(value)...)
+		}
+	case ParamTypeString:
+		// string type
+		allExpressions = append(allExpressions, validateString(p.Value.StringVal)...)
+	case ParamTypeObject:
+		// object type
+		for _, value := range p.Value.ObjectVal {
+			allExpressions = append(allExpressions, validateString(value)...)
+		}
+	default:
+		return nil, false
+	}
+	return allExpressions, len(allExpressions) != 0
+}
+
 // ExtractNames returns a set of unique names
 func (ps Params) ExtractNames() sets.String {
 	names := sets.String{}
@@ -183,6 +206,29 @@ func (ps Params) extractParamMapArrVals() map[string][]string {
 		paramsMap[p.Name] = p.Value.ArrayVal
 	}
 	return paramsMap
+}
+
+// ParseTaskandResultName parses "task name", "result name" from a Matrix Context Variable
+// Valid Example 1:
+// - Input: tasks.myTask.matrix.length
+// - Output: "myTask", ""
+// Valid Example 2:
+// - Input: tasks.myTask.matrix.ResultName.length
+// - Output: "myTask", "ResultName"
+func (p Param) ParseTaskandResultName() (string, string) {
+	if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
+		for _, expression := range expressions {
+			subExpressions := strings.Split(expression, ".")
+			pipelineTaskName := subExpressions[1]
+			if len(subExpressions) == 4 {
+				return pipelineTaskName, ""
+			} else if len(subExpressions) == 5 {
+				resultName := subExpressions[3]
+				return pipelineTaskName, resultName
+			}
+		}
+	}
+	return "", ""
 }
 
 // Params is a list of Param

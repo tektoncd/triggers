@@ -50,8 +50,8 @@ func main() {
 	ctx = injection.WithConfig(ctx, cfg)
 
 	dc := dynamic.NewForConfigOrDie(cfg)
-	dc = dynamicClientset.New(tekton.WithClient(dc))
-	ctx = context.WithValue(ctx, dynamicclient.Key{}, dc)
+	dClientSet := dynamicClientset.New(tekton.WithClient(dc))
+	ctx = context.WithValue(ctx, dynamicclient.Key{}, dClientSet)
 
 	sinkArgs, err := sink.GetArgs()
 	if err != nil {

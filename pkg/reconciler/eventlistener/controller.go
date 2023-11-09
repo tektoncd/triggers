@@ -73,17 +73,23 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 
 		reconciler.podspecableTracker = dynamicduck.NewListableTracker(ctx, duckinformer.Get, impl)
 
-		eventListenerInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := eventListenerInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register EventListener informer event handler: %w", err)
+		}
 
-		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1beta1.EventListener{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Deployment informer event handler: %w", err)
+		}
 
-		serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1beta1.EventListener{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Service informer event handler: %w", err)
+		}
 
 		return impl
 	}
