@@ -21,15 +21,8 @@ package clustertriggerbinding
 import (
 	context "context"
 
-	apistriggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	v1beta1 "github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1beta1"
-	client "github.com/tektoncd/triggers/pkg/client/injection/client"
 	factory "github.com/tektoncd/triggers/pkg/client/injection/informers/factory"
-	triggersv1beta1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	cache "k8s.io/client-go/tools/cache"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -37,7 +30,6 @@ import (
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
-	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -49,11 +41,6 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
-func withDynamicInformer(ctx context.Context) context.Context {
-	inf := &wrapper{client: client.Get(ctx), resourceVersion: injection.GetResourceVersion(ctx)}
-	return context.WithValue(ctx, Key{}, inf)
-}
-
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1beta1.ClusterTriggerBindingInformer {
 	untyped := ctx.Value(Key{})
@@ -62,49 +49,4 @@ func Get(ctx context.Context) v1beta1.ClusterTriggerBindingInformer {
 			"Unable to fetch github.com/tektoncd/triggers/pkg/client/informers/externalversions/triggers/v1beta1.ClusterTriggerBindingInformer from context.")
 	}
 	return untyped.(v1beta1.ClusterTriggerBindingInformer)
-}
-
-type wrapper struct {
-	client versioned.Interface
-
-	resourceVersion string
-}
-
-var _ v1beta1.ClusterTriggerBindingInformer = (*wrapper)(nil)
-var _ triggersv1beta1.ClusterTriggerBindingLister = (*wrapper)(nil)
-
-func (w *wrapper) Informer() cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(nil, &apistriggersv1beta1.ClusterTriggerBinding{}, 0, nil)
-}
-
-func (w *wrapper) Lister() triggersv1beta1.ClusterTriggerBindingLister {
-	return w
-}
-
-// SetResourceVersion allows consumers to adjust the minimum resourceVersion
-// used by the underlying client.  It is not accessible via the standard
-// lister interface, but can be accessed through a user-defined interface and
-// an implementation check e.g. rvs, ok := foo.(ResourceVersionSetter)
-func (w *wrapper) SetResourceVersion(resourceVersion string) {
-	w.resourceVersion = resourceVersion
-}
-
-func (w *wrapper) List(selector labels.Selector) (ret []*apistriggersv1beta1.ClusterTriggerBinding, err error) {
-	lo, err := w.client.TriggersV1beta1().ClusterTriggerBindings().List(context.TODO(), v1.ListOptions{
-		LabelSelector:   selector.String(),
-		ResourceVersion: w.resourceVersion,
-	})
-	if err != nil {
-		return nil, err
-	}
-	for idx := range lo.Items {
-		ret = append(ret, &lo.Items[idx])
-	}
-	return ret, nil
-}
-
-func (w *wrapper) Get(name string) (*apistriggersv1beta1.ClusterTriggerBinding, error) {
-	return w.client.TriggersV1beta1().ClusterTriggerBindings().Get(context.TODO(), name, v1.GetOptions{
-		ResourceVersion: w.resourceVersion,
-	})
 }

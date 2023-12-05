@@ -22,11 +22,14 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"log"
+	"net"
 	"net/http"
 	"time"
 
 	// Injection stuff
 
+	"knative.dev/pkg/controller"
 	kubeinformerfactory "knative.dev/pkg/injection/clients/namespacedkube/informers/factory"
 	"knative.dev/pkg/network/handlers"
 
@@ -68,6 +71,10 @@ type Options struct {
 	// before shutting down.
 	GracePeriod time.Duration
 
+	// ControllerOptions encapsulates options for creating a new controller,
+	// including throttling and stats behavior.
+	ControllerOptions *controller.ControllerOptions
+
 	// EnableHTTP2 enables HTTP2 for webhooks.
 	// Mitigate CVE-2023-44487 by disabling HTTP2 by default until the Go
 	// standard library and golang.org/x/net are fully fixed.
@@ -105,6 +112,9 @@ type Webhook struct {
 
 	// The TLS configuration to use for serving (or nil for non-TLS)
 	tlsConfig *tls.Config
+
+	// testListener is only used in testing so we don't get port conflicts
+	testListener net.Listener
 }
 
 // New constructs a Webhook
@@ -207,7 +217,6 @@ func New(
 		default:
 			return nil, fmt.Errorf("unknown webhook controller type:  %T", controller)
 		}
-
 	}
 
 	return
@@ -218,6 +227,15 @@ func New(
 func (wh *Webhook) InformersHaveSynced() {
 	wh.synced()
 	wh.Logger.Info("Informers have been synced, unblocking admission webhooks.")
+}
+
+type zapWrapper struct {
+	logger *zap.SugaredLogger
+}
+
+func (z *zapWrapper) Write(p []byte) (n int, err error) {
+	z.logger.Errorw(string(p))
+	return len(p), nil
 }
 
 // Run implements the admission controller run loop.
@@ -237,6 +255,7 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 	}
 
 	server := &http.Server{
+		ErrorLog:          log.New(&zapWrapper{logger}, "", 0),
 		Handler:           drainer,
 		Addr:              fmt.Sprint(":", wh.Options.Port),
 		TLSConfig:         wh.tlsConfig,
@@ -244,18 +263,27 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		TLSNextProto:      nextProto,
 	}
 
+	var serve = server.ListenAndServe
+
+	if server.TLSConfig != nil && wh.testListener != nil {
+		serve = func() error {
+			return server.ServeTLS(wh.testListener, "", "")
+		}
+	} else if server.TLSConfig != nil {
+		serve = func() error {
+			return server.ListenAndServeTLS("", "")
+		}
+	} else if wh.testListener != nil {
+		serve = func() error {
+			return server.Serve(wh.testListener)
+		}
+	}
+
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if server.TLSConfig != nil {
-			if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logger.Errorw("ListenAndServeTLS for admission webhook returned error", zap.Error(err))
-				return err
-			}
-		} else {
-			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logger.Errorw("ListenAndServe for admission webhook returned error", zap.Error(err))
-				return err
-			}
+		if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Errorw("ListenAndServe for admission webhook returned error", zap.Error(err))
+			return err
 		}
 		return nil
 	})
