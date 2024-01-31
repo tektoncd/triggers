@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/google/cel-go/cel"
@@ -145,6 +146,16 @@ import (
 //
 // 		body.jsonObjectOrList.marshalJSON()
 
+// translate
+//
+// translate returns a copy of src, replacing matches of the with the replacement string repl. Inside repl, $ signs are interpreted as in Expand, so for instance $1 represents the text of the first submatch.
+//
+// 		<string>.translate(string, string) -> <string>
+//
+// Examples:
+//
+// 		"this is $aN INvalid5string ".replace("[^a-z0-9]+", "") == "thisisaninvalid5string"
+
 // Triggers creates and returns a new cel.Lib with the triggers extensions.
 func Triggers(ctx context.Context, ns string, sg interceptors.SecretGetter) cel.EnvOption {
 	return cel.Lib(triggersLib{ctx: ctx, defaultNS: ns, secretGetter: sg})
@@ -194,6 +205,9 @@ func (t triggersLib) CompileOptions() []cel.EnvOption {
 		cel.Function("first",
 			cel.MemberOverload("first_list", []*cel.Type{listStrDyn}, cel.DynType,
 				cel.UnaryBinding(listFirst))),
+		cel.Function("translate",
+			cel.MemberOverload("translate_string_string", []*cel.Type{cel.StringType, cel.StringType, cel.StringType}, cel.StringType,
+				cel.FunctionBinding(translateString))),
 	}
 }
 
@@ -276,6 +290,7 @@ func parseJSONString(val ref.Val) ref.Val {
 	if err != nil {
 		return types.NewErr("failed to create a new registry in parseJSON: %w", err)
 	}
+
 	return types.NewDynamicMap(r, decodedVal)
 }
 
@@ -351,6 +366,30 @@ func listFirst(val ref.Val) ref.Val {
 	}
 
 	return l.Get(types.Int(0))
+}
+
+func translateString(vals ...ref.Val) ref.Val {
+	regstr, ok := vals[1].(types.String)
+	if !ok {
+		return types.ValOrErr(regstr, "unexpected type '%v' used in translate", vals[1].Type())
+	}
+
+	src, ok := vals[0].(types.String)
+	if !ok {
+		return types.ValOrErr(src, "unexpected type '%v' used in translate", vals[0].Type())
+	}
+
+	repl, ok := vals[2].(types.String)
+	if !ok {
+		return types.ValOrErr(repl, "unexpected type '%v' used in translate", vals[2].Type())
+	}
+
+	re, err := regexp.Compile(string(regstr))
+	if err != nil {
+		return types.NewErr("failed to parse regular expression for translation: %w", err)
+	}
+
+	return types.String(re.ReplaceAllString(string(src), string(repl)))
 }
 
 func max(x, y types.Int) types.Int {
