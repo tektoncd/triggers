@@ -470,7 +470,21 @@ which can be accessed by indexing.
      <pre>[1, 2, 3, 4, 5].last() == 5</pre>
     </td>
   </tr>
-
+  <tr>
+    <th>
+     translate()
+    </th>
+    <td>
+     <pre>&lt;string&gt;.translate(string, string) -> &lt;string&gt;</pre>
+    </td>
+    <td>
+     Uses a regular expression to replace characters from the source string with characters from the replacements.
+    </td>
+    <td>
+     <pre>"This is $an Invalid5String ".translate("[^a-z0-9]+", "") == "hisisannvalid5tring"</pre><br />
+     <pre>"This is $an Invalid5String ".translate("[^a-z0-9]+", "ABC") == "ABChisABCisABCanABCnvalid5ABCtring"</pre>
+    </td>
+  </tr>
 </table>
 
 ## Troubleshooting CEL expressions

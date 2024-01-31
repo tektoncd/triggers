@@ -216,6 +216,19 @@ func TestInterceptor_Process(t *testing.T) {
 			"three": "default",
 		},
 	}, {
+		name: "string replacement with regexp",
+		CEL: &InterceptorParams{
+			Overlays: []Overlay{
+				{Key: "replaced1", Expression: `body.value.lowerAscii().translate("[^a-z0-9]+", "")`},
+				{Key: "replaced2", Expression: `body.value.lowerAscii().translate("[^a-z0-9]+", "ABC")`},
+			},
+		},
+		body: json.RawMessage(`{"value":"This is $an Invalid5String"}`),
+		wantExtensions: map[string]interface{}{
+			"replaced1": "thisisaninvalid5string",
+			"replaced2": "thisABCisABCanABCinvalid5string",
+		},
+	}, {
 		name: "filters and overlays can access passed in extensions",
 		CEL: &InterceptorParams{
 			Filter: `extensions.foo == "bar"`,
@@ -278,7 +291,7 @@ func TestInterceptor_Process(t *testing.T) {
 			if tt.wantExtensions != nil {
 				got := res.Extensions
 				if diff := cmp.Diff(tt.wantExtensions, got); diff != "" {
-					rt.Fatalf("cel.Process() did return correct extensions (-wantMsg+got): %v", diff)
+					rt.Fatalf("cel.Process() did not return correct extensions (-wantMsg+got): %v", diff)
 				}
 			}
 		})
@@ -343,6 +356,16 @@ func TestInterceptor_Process_Error(t *testing.T) {
 		body:     []byte(`{"value":"test"}`),
 		wantCode: codes.InvalidArgument,
 		wantMsg:  `expression "test.value" check failed: ERROR:.*undeclared reference to 'test'`,
+	}, {
+		name: "unable to parse regexp in translate",
+		CEL: &InterceptorParams{
+			Overlays: []Overlay{
+				{Key: "converted", Expression: `body.value.translate("[^a-z0-9+", "")`},
+			},
+		},
+		body:     []byte(`{"value":"testing"}`),
+		wantCode: codes.InvalidArgument,
+		wantMsg:  "failed to parse regular expression for translation: error parsing regexp: missing closing ]",
 	},
 	}
 	for _, tt := range tests {
