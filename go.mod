@@ -38,14 +38,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-//  TODO: Remove this once https://github.com/knative/pkg/issues/2759 is fixed
-replace (
-	k8s.io/api => k8s.io/api v0.26.7
-	k8s.io/apimachinery => k8s.io/apimachinery v0.26.7
-	k8s.io/client-go => k8s.io/client-go v0.26.7
-	k8s.io/code-generator => k8s.io/code-generator v0.26.7
-)
-
 require (
 	cloud.google.com/go v0.111.0 // indirect
 	cloud.google.com/go/compute v1.23.3 // indirect
