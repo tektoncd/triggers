@@ -25,10 +25,11 @@ import (
 )
 
 var (
-	allowedAnnotations = sets.NewString(
+	allowedAnnotations = sets.New[string](
 		IngressClassAnnotationKey,
 		CertificateClassAnnotationKey,
 		DisableAutoTLSAnnotationKey,
+		DisableExternalDomainTLSAnnotationKey,
 		HTTPOptionAnnotationKey,
 
 		IngressClassAnnotationAltKey,

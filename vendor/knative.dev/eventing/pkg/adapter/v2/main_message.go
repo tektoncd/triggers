@@ -27,19 +27,19 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 	"knative.dev/eventing/pkg/metrics/source"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/profiling"
 	"knative.dev/pkg/signals"
-
-	"knative.dev/eventing/pkg/kncloudevents"
 )
 
 type MessageAdapter interface {
 	Start(ctx context.Context) error
 }
 
-type MessageAdapterConstructor func(ctx context.Context, env EnvConfigAccessor, adapter *kncloudevents.HTTPMessageSender, reporter source.StatsReporter) MessageAdapter
+type MessageAdapterConstructor func(ctx context.Context, env EnvConfigAccessor, sink duckv1.Addressable, reporter source.StatsReporter) MessageAdapter
 
 func MainMessageAdapter(component string, ector EnvConfigConstructor, ctor MessageAdapterConstructor) {
 	MainMessageAdapterWithContext(signals.NewContext(), component, ector, ctor)
@@ -100,19 +100,25 @@ func MainMessageAdapterWithContext(ctx context.Context, component string, ector 
 	}
 
 	// Retrieve tracing config
-	if err := env.SetupTracing(logger); err != nil {
+	tracer, err := env.SetupTracing(logger)
+	if err != nil {
 		// If tracing doesn't work, we will log an error, but allow the adapter
 		// to continue to start.
 		logger.Error("Error setting up trace publishing", zap.Error(err))
 	}
+	defer tracer.Shutdown(context.Background())
 
-	httpBindingsSender, err := kncloudevents.NewHTTPMessageSenderWithTarget(env.GetSink())
+	sinkURL, err := apis.ParseURL(env.GetSink())
 	if err != nil {
-		logger.Fatal("error building cloud event client", zap.Error(err))
+		logger.Fatal("error parsing sink URL", zap.Error(err))
+	}
+	sink := duckv1.Addressable{
+		URL:     sinkURL,
+		CACerts: env.GetCACerts(),
 	}
 
 	// Configuring the adapter
-	adapter := ctor(ctx, env, httpBindingsSender, reporter)
+	adapter := ctor(ctx, env, sink, reporter)
 
 	// Finally start the adapter (blocking)
 	if err := adapter.Start(ctx); err != nil {

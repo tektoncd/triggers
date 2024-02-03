@@ -67,7 +67,8 @@ var (
 	noTimeout      = 0 * time.Second
 	errGCSTimeout  = errors.New("GCS timeout")
 
-	robotRegex = regexp.MustCompile(`<Details>(\S+@\S+)\s`)
+	robotRegex  = regexp.MustCompile(`<Details>(\S+@\S+)\s`)
+	nonHexRegex = regexp.MustCompile(`[^0-9a-f]`)
 )
 
 type sizeBytes int64
@@ -140,6 +141,7 @@ type Fetcher struct {
 	OS  OS
 
 	DestDir    string
+	KeepSource bool
 	StagingDir string
 
 	// mu guards CreatedDirs
@@ -402,14 +404,15 @@ func (gf *Fetcher) fetchObjectOnce(ctx context.Context, j job, dest string, brea
 		result.err = errGCSTimeout
 		return result
 	default:
-		result.size = sizeBytes(n)
-		return result
+		// Fallthrough
 	}
+
+	result.size = sizeBytes(n)
 
 	// Verify the sha1sum before declaring success.
 	if j.sha1sum != "" {
-		got := fmt.Sprintf("%x", h.Sum(nil))
-		want := j.sha1sum
+		got := strings.ToLower(fmt.Sprintf("%x", h.Sum(nil)))
+		want := strings.ToLower(nonHexRegex.ReplaceAllString(j.sha1sum, ""))
 		if got != want {
 			result.err = fmt.Errorf("%s SHA mismatch, got %q, want %q", j.filename, got, want)
 			return result
@@ -702,44 +705,25 @@ func (gf *Fetcher) fetchFromZip(ctx context.Context) (err error) {
 	}
 
 	// Unzip into the destination directory
-	unzipStart := time.Now()
 	zipfile := filepath.Join(zipDir, gf.Object)
-	zipReader, err := zip.OpenReader(zipfile)
+	unzipStart := time.Now()
+	numFiles, err := unzip(zipfile, gf.DestDir)
 	if err != nil {
-		return fmt.Errorf("failed to open archive %s: %v", zipfile, err)
-	}
-	defer func() {
-		if cerr := zipReader.Close(); cerr != nil {
-			err = fmt.Errorf("Failed to close file %q: %v", zipfile, cerr)
-		}
-	}()
-
-	numFiles := 0
-	for _, file := range zipReader.File {
-		if file.FileInfo().IsDir() {
-			continue
-		}
-
-		numFiles++
-		zf, err := file.Open()
-		if err != nil {
-			return err
-		}
-		if err := gf.copyFile(file.Name, file.Mode(), zf); err != nil {
-			return err
-		}
+		return err
 	}
 	unzipDuration := time.Since(unzipStart)
 
-	// Remove the zip file (best effort only, no harm if this fails).
-	if err := os.RemoveAll(zipfile); err != nil {
-		gf.log("Failed to remove zipfile %s, continuing: %v", zipfile, err)
-	}
+	if !gf.KeepSource {
+		// Remove the zip file (best effort only, no harm if this fails).
+		if err := os.RemoveAll(zipfile); err != nil {
+			gf.log("Failed to remove zipfile %s, continuing: %v", zipfile, err)
+		}
 
-	// Final cleanup of staging directory, which is only a temporary staging
-	// location for downloading the zipfile in this case.
-	if err := gf.OS.RemoveAll(gf.StagingDir); err != nil {
-		gf.log("Failed to remove staging dir %q, continuing: %v", gf.StagingDir, err)
+		// Final cleanup of staging directory, which is only a temporary staging
+		// location for downloading the zipfile in this case.
+		if err := gf.OS.RemoveAll(gf.StagingDir); err != nil {
+			gf.log("Failed to remove staging dir %q, continuing: %v", gf.StagingDir, err)
+		}
 	}
 
 	mib := float64(report.size) / 1024 / 1024
@@ -760,6 +744,76 @@ func (gf *Fetcher) fetchFromZip(ctx context.Context) (err error) {
 	gf.log("Total time:        %9.2f s", time.Since(started).Seconds())
 	gf.log("******************************************************")
 	return nil
+}
+
+func unzip(zipfile, dest string) (numFiles int, err error) {
+	zipReader, err := zip.OpenReader(zipfile)
+	if err != nil {
+		return 0, fmt.Errorf("opening archive %s: %v", zipfile, err)
+	}
+	defer func() {
+		if cerr := zipReader.Close(); cerr != nil {
+			err = fmt.Errorf("closing archive %s: %v", zipfile, cerr)
+		}
+	}()
+
+	numFiles = 0
+	for _, file := range zipReader.File {
+		target := filepath.Join(dest, file.Name)
+
+		if file.FileInfo().IsDir() {
+			// Create directory with appropriate permissions if it doesn't exist.
+			if _, err := os.Stat(target); os.IsNotExist(err) {
+				if err := os.MkdirAll(target, file.Mode()); err != nil {
+					return 0, fmt.Errorf("making directory %s: %v", target, err)
+				}
+				continue
+			} else if err != nil {
+				return 0, fmt.Errorf("checking existence on %s: %v", target, err)
+			}
+			// If directory already exists, it may have been created below as a
+			// parent directory when processing a file. In this case, we must
+			// set the directory's permissions correctly.
+			if err := os.Chmod(target, file.Mode()); err != nil {
+				return 0, fmt.Errorf("setting permissions on %s: %v", target, err)
+			}
+			continue
+		}
+
+		// Create parent directories with full access. This only matters if the
+		// file comes from zipReader before the directory. In this case, the
+		// file permissions will be set to the correct value when the directory
+		// itself is processed above.
+		if err := os.MkdirAll(filepath.Dir(target), 0777); err != nil {
+			return 0, fmt.Errorf("making parent directories for %s: %v", target, err)
+		}
+
+		// Actually copy the bytes, using func to get early defer calls
+		// (important for large numbers of files).
+		numFiles++
+		reader, err := file.Open()
+		if err != nil {
+			return 0, fmt.Errorf("opening file in %s: %v", target, err)
+		}
+		if err := func() (ferr error) {
+			writer, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE, file.Mode())
+			if err != nil {
+				return fmt.Errorf("opening target file %s: %v", target, err)
+			}
+			defer func() {
+				if cerr := writer.Close(); cerr != nil {
+					ferr = fmt.Errorf("closing target file %s: %v", target, cerr)
+				}
+			}()
+			if _, err := io.Copy(writer, reader); err != nil {
+				return fmt.Errorf("copying %s to %s: %v", file.Name, target, err)
+			}
+			return nil
+		}(); err != nil {
+			return 0, err
+		}
+	}
+	return numFiles, nil
 }
 
 // fetchFromTarGz is used when downloading a single .tar.gz of source files. It
@@ -833,15 +887,18 @@ func (gf *Fetcher) fetchFromTarGz(ctx context.Context) (err error) {
 	}
 	untgzDuration := time.Since(untgzStart)
 
-	// Remove the tgz file (best effort only, no harm if this fails).
-	if err := gf.OS.RemoveAll(tgzfile); err != nil {
-		gf.log("Failed to remove tgzfile %s, continuing: %v", tgzfile, err)
-	}
 
-	// Final cleanup of staging directory, which is only a temporary staging
-	// location for downloading the tgzfile in this case.
-	if err := gf.OS.RemoveAll(gf.StagingDir); err != nil {
-		gf.log("Failed to remove staging dir %q, continuing: %v", gf.StagingDir, err)
+	if !gf.KeepSource {
+		// Remove the tgz file (best effort only, no harm if this fails).
+		if err := gf.OS.RemoveAll(tgzfile); err != nil {
+			gf.log("Failed to remove tgzfile %s, continuing: %v", tgzfile, err)
+		}
+
+		// Final cleanup of staging directory, which is only a temporary staging
+		// location for downloading the tgzfile in this case.
+		if err := gf.OS.RemoveAll(gf.StagingDir); err != nil {
+			gf.log("Failed to remove staging dir %q, continuing: %v", gf.StagingDir, err)
+		}
 	}
 
 	mib := float64(report.size) / 1024 / 1024

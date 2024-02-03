@@ -15,25 +15,25 @@ package mapper
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
+	"github.com/prometheus/statsd_exporter/pkg/level"
 	"github.com/prometheus/statsd_exporter/pkg/mapper/fsm"
 )
 
 var (
 	// The first segment of a match cannot start with a number
-	statsdMetricRE = `[a-zA-Z_](-?[a-zA-Z0-9_])*`
+	statsdMetricRE = `[a-zA-Z_]([a-zA-Z0-9_\-])*`
 	// The subsequent segments of a match can start with a number
 	// See https://github.com/prometheus/statsd_exporter/issues/328
-	statsdMetricSubsequentRE = `[a-zA-Z0-9_](-?[a-zA-Z0-9_])*`
+	statsdMetricSubsequentRE = `[a-zA-Z0-9_]([a-zA-Z0-9_\-])*`
 	templateReplaceRE        = `(\$\{?\d+\}?)`
 
 	metricLineRE = regexp.MustCompile(`^(\*|` + statsdMetricRE + `)(\.\*|\.` + statsdMetricSubsequentRE + `)*$`)
@@ -43,7 +43,7 @@ var (
 
 type MetricMapper struct {
 	Registerer prometheus.Registerer
-	Defaults   mapperConfigDefaults `yaml:"defaults"`
+	Defaults   MapperConfigDefaults `yaml:"defaults"`
 	Mappings   []MetricMapping      `yaml:"mappings"`
 	FSM        *fsm.FSM
 	doFSM      bool
@@ -57,22 +57,24 @@ type MetricMapper struct {
 }
 
 type SummaryOptions struct {
-	Quantiles  []metricObjective `yaml:"quantiles"`
+	Quantiles  []MetricObjective `yaml:"quantiles"`
 	MaxAge     time.Duration     `yaml:"max_age"`
 	AgeBuckets uint32            `yaml:"age_buckets"`
 	BufCap     uint32            `yaml:"buf_cap"`
 }
 
 type HistogramOptions struct {
-	Buckets []float64 `yaml:"buckets"`
+	Buckets                     []float64 `yaml:"buckets"`
+	NativeHistogramBucketFactor float64   `yaml:"native_histogram_bucket_factor"`
+	NativeHistogramMaxBuckets   uint32    `yaml:"native_histogram_max_buckets"`
 }
 
-type metricObjective struct {
+type MetricObjective struct {
 	Quantile float64 `yaml:"quantile"`
 	Error    float64 `yaml:"error"`
 }
 
-var defaultQuantiles = []metricObjective{
+var defaultQuantiles = []MetricObjective{
 	{Quantile: 0.5, Error: 0.05},
 	{Quantile: 0.9, Error: 0.01},
 	{Quantile: 0.99, Error: 0.001},
@@ -87,6 +89,12 @@ func (m *MetricMapper) InitFromYAMLString(fileContents string) error {
 
 	if len(n.Defaults.HistogramOptions.Buckets) == 0 {
 		n.Defaults.HistogramOptions.Buckets = prometheus.DefBuckets
+	}
+	if n.Defaults.HistogramOptions.NativeHistogramBucketFactor == 0 {
+		n.Defaults.HistogramOptions.NativeHistogramBucketFactor = 1.1
+	}
+	if n.Defaults.HistogramOptions.NativeHistogramMaxBuckets <= 0 {
+		n.Defaults.HistogramOptions.NativeHistogramMaxBuckets = 256
 	}
 
 	if len(n.Defaults.SummaryOptions.Quantiles) == 0 {
@@ -233,6 +241,10 @@ func (m *MetricMapper) InitFromYAMLString(fileContents string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	if m.Logger == nil {
+		m.Logger = log.NewNopLogger()
+	}
+
 	m.Defaults = n.Defaults
 	m.Mappings = n.Mappings
 
@@ -259,15 +271,11 @@ func (m *MetricMapper) InitFromYAMLString(fileContents string) error {
 		m.MappingsCount.Set(float64(len(n.Mappings)))
 	}
 
-	if m.Logger == nil {
-		m.Logger = log.NewNopLogger()
-	}
-
 	return nil
 }
 
 func (m *MetricMapper) InitFromFile(fileName string) error {
-	mappingStr, err := ioutil.ReadFile(fileName)
+	mappingStr, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
@@ -381,7 +389,6 @@ func (m *MetricMapper) GetMapping(statsdMetric string, statsdMetricType MetricTy
 // make a shallow copy so that we do not overwrite name
 // as multiple names can be matched by same mapping
 func copyMetricMapping(in *MetricMapping) *MetricMapping {
-	var out MetricMapping
-	out = *in
+	out := *in
 	return &out
 }
