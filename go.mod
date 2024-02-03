@@ -1,6 +1,6 @@
 module github.com/tektoncd/triggers
 
-go 1.19
+go 1.21
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
@@ -30,8 +30,8 @@ require (
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.27.1
 	k8s.io/code-generator v0.26.5
-	k8s.io/klog/v2 v2.100.1
-	k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
+	k8s.io/klog/v2 v2.110.1
+	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	knative.dev/eventing v0.30.1-0.20220407170245-58865afba92c
 	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626
 	knative.dev/serving v0.30.1-0.20220402124840-21c05dc9d9a4
@@ -70,6 +70,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/gnostic v0.6.9 // indirect
+	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-containerregistry v0.17.0 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -96,6 +97,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/openzipkin/zipkin-go v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -139,10 +141,10 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
+	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	knative.dev/networking v0.0.0-20220404212543-dde40b019aff // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
