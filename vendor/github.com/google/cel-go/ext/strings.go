@@ -96,7 +96,7 @@ const (
 //	"a map inside a list: %s".format([[1, 2, 3, {"a": "x", "b": "y", "c": "z"}]]) // returns "a map inside a list: [1, 2, 3, {"a":"x", "b":"y", "c":"d"}]"
 //	"true bool: %s - false bool: %s\nbinary bool: %b".format([true, false, true]) // returns "true bool: true - false bool: false\nbinary bool: 1"
 //
-// Passing an incorrect type (an integer to `%s`) is considered an error, as well as attempting
+// Passing an incorrect type (a string to `%b`) is considered an error, as well as attempting
 // to use more formatting clauses than there are arguments (`%d %d %d` while passing two ints, for instance).
 // If compile-time checking is enabled, and the formatting string is a constant, and the argument list is a literal,
 // then letting any arguments go unused/unformatted is also considered an error.
