@@ -39,6 +39,15 @@ const (
 	Allowed Flag = "Allowed"
 )
 
+// service annotations under features.knative.dev/*
+const (
+	// QueueProxyPodInfoFeatureKey gates mouting of podinfo with the value 'enabled'
+	QueueProxyPodInfoFeatureKey = "features.knative.dev/queueproxy-podinfo"
+
+	// DryRunFeatureKey gates the podspec dryrun feature and runs with the value 'enabled'
+	DryRunFeatureKey = "features.knative.dev/podspec-dryrun"
+)
+
 func defaultFeaturesConfig() *Features {
 	return &Features{
 		MultiContainer:                   Enabled,
@@ -50,14 +59,20 @@ func defaultFeaturesConfig() *Features {
 		PodSpecNodeSelector:              Disabled,
 		PodSpecRuntimeClassName:          Disabled,
 		PodSpecSecurityContext:           Disabled,
+		PodSpecShareProcessNamespace:     Disabled,
 		PodSpecPriorityClassName:         Disabled,
 		PodSpecSchedulerName:             Disabled,
 		ContainerSpecAddCapabilities:     Disabled,
 		PodSpecTolerations:               Disabled,
-		PodSpecVolumesEmptyDir:           Disabled,
+		PodSpecVolumesEmptyDir:           Enabled,
 		PodSpecPersistentVolumeClaim:     Disabled,
 		PodSpecPersistentVolumeWrite:     Disabled,
+		QueueProxyMountPodInfo:           Disabled,
+		QueueProxyResourceDefaults:       Disabled,
 		PodSpecInitContainers:            Disabled,
+		PodSpecDNSPolicy:                 Disabled,
+		PodSpecDNSConfig:                 Disabled,
+		SecurePodDefaults:                Disabled,
 		TagHeaderBasedRouting:            Disabled,
 		AutoDetectHTTP2:                  Disabled,
 	}
@@ -77,6 +92,7 @@ func NewFeaturesConfigFromMap(data map[string]string) (*Features, error) {
 		asFlag("kubernetes.podspec-nodeselector", &nc.PodSpecNodeSelector),
 		asFlag("kubernetes.podspec-runtimeclassname", &nc.PodSpecRuntimeClassName),
 		asFlag("kubernetes.podspec-securitycontext", &nc.PodSpecSecurityContext),
+		asFlag("kubernetes.podspec-shareprocessnamespace", &nc.PodSpecShareProcessNamespace),
 		asFlag("kubernetes.podspec-priorityclassname", &nc.PodSpecPriorityClassName),
 		asFlag("kubernetes.podspec-schedulername", &nc.PodSpecSchedulerName),
 		asFlag("kubernetes.containerspec-addcapabilities", &nc.ContainerSpecAddCapabilities),
@@ -85,7 +101,12 @@ func NewFeaturesConfigFromMap(data map[string]string) (*Features, error) {
 		asFlag("kubernetes.podspec-init-containers", &nc.PodSpecInitContainers),
 		asFlag("kubernetes.podspec-persistent-volume-claim", &nc.PodSpecPersistentVolumeClaim),
 		asFlag("kubernetes.podspec-persistent-volume-write", &nc.PodSpecPersistentVolumeWrite),
+		asFlag("kubernetes.podspec-dnspolicy", &nc.PodSpecDNSPolicy),
+		asFlag("kubernetes.podspec-dnsconfig", &nc.PodSpecDNSConfig),
+		asFlag("secure-pod-defaults", &nc.SecurePodDefaults),
 		asFlag("tag-header-based-routing", &nc.TagHeaderBasedRouting),
+		asFlag("queueproxy.resource-defaults", &nc.QueueProxyResourceDefaults),
+		asFlag("queueproxy.mount-podinfo", &nc.QueueProxyMountPodInfo),
 		asFlag("autodetect-http2", &nc.AutoDetectHTTP2)); err != nil {
 		return nil, err
 	}
@@ -108,6 +129,7 @@ type Features struct {
 	PodSpecNodeSelector              Flag
 	PodSpecRuntimeClassName          Flag
 	PodSpecSecurityContext           Flag
+	PodSpecShareProcessNamespace     Flag
 	PodSpecPriorityClassName         Flag
 	PodSpecSchedulerName             Flag
 	ContainerSpecAddCapabilities     Flag
@@ -116,6 +138,11 @@ type Features struct {
 	PodSpecInitContainers            Flag
 	PodSpecPersistentVolumeClaim     Flag
 	PodSpecPersistentVolumeWrite     Flag
+	QueueProxyMountPodInfo           Flag
+	QueueProxyResourceDefaults       Flag
+	PodSpecDNSPolicy                 Flag
+	PodSpecDNSConfig                 Flag
+	SecurePodDefaults                Flag
 	TagHeaderBasedRouting            Flag
 	AutoDetectHTTP2                  Flag
 }
