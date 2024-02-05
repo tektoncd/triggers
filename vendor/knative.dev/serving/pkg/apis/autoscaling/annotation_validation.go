@@ -58,7 +58,7 @@ func ValidateAnnotations(ctx context.Context, config *autoscalerconfig.Config, a
 		Also(validateWindow(anns)).
 		Also(validateLastPodRetention(anns)).
 		Also(validateScaleDownDelay(anns)).
-		Also(validateMetric(anns)).
+		Also(validateMetric(config, anns)).
 		Also(validateAlgorithm(anns)).
 		Also(validateInitialScale(config, anns))
 }
@@ -191,6 +191,27 @@ func validateMinMaxScale(config *autoscalerconfig.Config, m map[string]string) *
 		errs = errs.Also(validateMaxScaleWithinLimit(k, max, config.MaxScaleLimit))
 	}
 
+	// if ActivationScale is also set, validate that min <= nz min <= max
+	if k, v, ok := ActivationScale.Get(m); ok {
+		if nzMin, err := strconv.ParseInt(v, 10, 32); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(v, k))
+		} else if min > int32(nzMin) {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("min-scale=%d is greater than activation-scale=%d", min, nzMin),
+				Paths:   []string{k},
+			})
+		} else if max < int32(nzMin) && max != 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("max-scale=%d is less than activation-scale=%d", max, nzMin),
+				Paths:   []string{k},
+			})
+		} else if nzMin < 2 {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("activation-scale=%d must be greater than 1", nzMin),
+				Paths:   []string{k},
+			})
+		}
+	}
 	return errs
 }
 
@@ -213,9 +234,9 @@ func validateMaxScaleWithinLimit(key string, maxScale, maxScaleLimit int32) (err
 	return errs
 }
 
-func validateMetric(m map[string]string) *apis.FieldError {
+func validateMetric(c *autoscalerconfig.Config, m map[string]string) *apis.FieldError {
 	if _, metric, ok := MetricAnnotation.Get(m); ok {
-		classValue := KPA
+		classValue := c.PodAutoscalerClass
 		if _, c, ok := ClassAnnotation.Get(m); ok {
 			classValue = c
 		}
