@@ -13,7 +13,7 @@ spec:
   - name: message
     description: The message to print
     default: This is the default message
-  resourceTemplates:
+  resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:

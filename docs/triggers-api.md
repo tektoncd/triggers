@@ -2517,7 +2517,7 @@ TriggerTemplateSpec
 </tr>
 <tr>
 <td>
-<code>resourceTemplates</code><br/>
+<code>resourcetemplates</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerResourceTemplate">
 []TriggerResourceTemplate
@@ -2575,7 +2575,7 @@ TriggerTemplateStatus
 </tr>
 <tr>
 <td>
-<code>resourceTemplates</code><br/>
+<code>resourcetemplates</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerResourceTemplate">
 []TriggerResourceTemplate
@@ -4634,7 +4634,7 @@ TriggerTemplateSpec
 </tr>
 <tr>
 <td>
-<code>resourceTemplates</code><br/>
+<code>resourcetemplates</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1beta1.TriggerResourceTemplate">
 []TriggerResourceTemplate
@@ -4692,7 +4692,7 @@ TriggerTemplateStatus
 </tr>
 <tr>
 <td>
-<code>resourceTemplates</code><br/>
+<code>resourcetemplates</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1beta1.TriggerResourceTemplate">
 []TriggerResourceTemplate

@@ -35,7 +35,7 @@ spec:
         spec:
           params:
             - name: response
-          resourceTemplates:
+          resourcetemplates:
             - apiVersion: tekton.dev/v1beta1
               kind: TaskRun
               metadata:
