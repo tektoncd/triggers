@@ -57,7 +57,7 @@ metadata:
 spec:
   params:
     - name: changedfiles
-  resourceTemplates:
+  resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:

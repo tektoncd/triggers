@@ -50,7 +50,7 @@ spec:
     - name: aws-codecommit-commit
     - name: aws-codecommit-branch
     - name: aws-codecommit-useridentity
-  resourceTemplates:
+  resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:
