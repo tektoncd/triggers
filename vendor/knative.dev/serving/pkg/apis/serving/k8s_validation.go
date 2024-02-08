@@ -832,13 +832,9 @@ func validateProbe(p *corev1.Probe, port corev1.ContainerPort) *apis.FieldError 
 		handlers = append(handlers, "exec")
 		errs = errs.Also(apis.CheckDisallowedFields(*h.Exec, *ExecActionMask(h.Exec))).ViaField("exec")
 	}
-	if h.GRPC != nil {
-		handlers = append(handlers, "gRPC")
-		errs = errs.Also(apis.CheckDisallowedFields(*h.GRPC, *GRPCActionMask(h.GRPC))).ViaField("grpc")
-	}
 
 	if len(handlers) == 0 {
-		errs = errs.Also(apis.ErrMissingOneOf("httpGet", "tcpSocket", "exec", "grpc"))
+		errs = errs.Also(apis.ErrMissingOneOf("httpGet", "tcpSocket", "exec"))
 	} else if len(handlers) > 1 {
 		errs = errs.Also(apis.ErrMultipleOneOf(handlers...))
 	}

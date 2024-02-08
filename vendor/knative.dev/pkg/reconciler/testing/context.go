@@ -18,9 +18,10 @@ package testing
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,9 +54,7 @@ func SetupFakeContextWithCancel(t testing.TB, fs ...func(context.Context) contex
 	for _, f := range fs {
 		ctx = f(ctx)
 	}
-	ctx = injection.WithConfig(ctx, &rest.Config{})
-
-	ctx, is := injection.Fake.SetupInformers(ctx, injection.GetConfig(ctx))
+	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is
 }
 
@@ -95,7 +94,7 @@ func RunAndSyncInformers(ctx context.Context, informers ...controller.Informer) 
 
 		c.PrependReactor("list", "*", func(action clientgotesting.Action) (handled bool, ret runtime.Object, err error) {
 			// Every list (before actual informer usage) is going to be followed by a Watch call.
-			watchesPending.Add(1)
+			watchesPending.Inc()
 			return false, nil, nil
 		})
 
@@ -109,7 +108,7 @@ func RunAndSyncInformers(ctx context.Context, informers ...controller.Informer) 
 				return false, nil, err
 			}
 
-			watchesPending.Add(-1)
+			watchesPending.Dec()
 
 			return true, watch, nil
 		})

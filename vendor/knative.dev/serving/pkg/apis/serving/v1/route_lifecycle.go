@@ -174,11 +174,10 @@ func (rs *RouteStatus) MarkCertificateReady(name string) {
 
 // MarkCertificateNotReady marks the RouteConditionCertificateProvisioned
 // condition to indicate that the Certificate is not ready.
-func (rs *RouteStatus) MarkCertificateNotReady(c *v1alpha1.Certificate) {
-	certificateCondition := c.Status.GetCondition("Ready")
+func (rs *RouteStatus) MarkCertificateNotReady(name string) {
 	routeCondSet.Manage(rs).MarkUnknown(RouteConditionCertificateProvisioned,
 		"CertificateNotReady",
-		"Certificate %s is not ready: %s", c.Name, certificateCondition.GetReason())
+		"Certificate %s is not ready.", name)
 }
 
 // MarkCertificateNotOwned changes the RouteConditionCertificateProvisioned
@@ -191,10 +190,10 @@ func (rs *RouteStatus) MarkCertificateNotOwned(name string) {
 }
 
 const (
-	// ExternalDomainTLSNotEnabledMessage is the message which is set on the
+	// AutoTLSNotEnabledMessage is the message which is set on the
 	// RouteConditionCertificateProvisioned condition when it is set to True
-	// because external-domain-tls was not enabled.
-	ExternalDomainTLSNotEnabledMessage = "external-domain-tls is not enabled"
+	// because AutoTLS was not enabled.
+	AutoTLSNotEnabledMessage = "autoTLS is not enabled"
 
 	// TLSNotEnabledForClusterLocalMessage is the message which is set on the
 	// RouteConditionCertificateProvisioned condition when it is set to True
@@ -203,7 +202,7 @@ const (
 )
 
 // MarkTLSNotEnabled sets RouteConditionCertificateProvisioned to true when
-// certificate config such as external-domain-tls is not enabled or private cluster-local service.
+// certificate config such as autoTLS is not enabled or private cluster-local service.
 func (rs *RouteStatus) MarkTLSNotEnabled(msg string) {
 	routeCondSet.Manage(rs).MarkTrueWithReason(RouteConditionCertificateProvisioned,
 		"TLSNotEnabled", msg)
