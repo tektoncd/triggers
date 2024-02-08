@@ -26,15 +26,15 @@ require (
 	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.27.6
-	k8s.io/apiextensions-apiserver v0.27.6
+	k8s.io/apiextensions-apiserver v0.27.1
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.27.6
 	k8s.io/code-generator v0.27.6
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
 	knative.dev/eventing v0.30.1-0.20220407170245-58865afba92c
-	knative.dev/pkg v0.0.0-20231023151236-29775d7c9e5c
-	knative.dev/serving v0.39.0
+	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626
+	knative.dev/serving v0.38.6
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -127,6 +127,7 @@ require (
 	go.opentelemetry.io/otel v1.21.0 // indirect
 	go.opentelemetry.io/otel/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/automaxprocs v1.5.3 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
