@@ -19,8 +19,6 @@ package sink
 import (
 	"fmt"
 
-	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"go.uber.org/zap"
 	discoveryclient "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -62,7 +60,7 @@ func (r DefaultAuthOverride) OverrideAuthentication(sa string,
 	clusterConfig.Impersonate = rest.ImpersonationConfig{
 		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, sa),
 	}
-	dc, err := dynamic.NewForConfig(clusterConfig)
+	dynamicClient, err = dynamic.NewForConfig(clusterConfig)
 	if err != nil {
 		log.Errorf("overrideAuthentication: problem getting dynamic client set: %#v\n", err)
 		return
@@ -72,7 +70,6 @@ func (r DefaultAuthOverride) OverrideAuthentication(sa string,
 		log.Errorf("overrideAuthentication: problem getting kube client: %#v\n", err)
 		return
 	}
-	dynamicClient = dynamicClientset.New(tekton.WithClient(dc))
 	discoveryClient = kubeClient.Discovery()
 
 	return

@@ -26,8 +26,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
-	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -135,7 +133,6 @@ func TestCreateResource(t *testing.T) {
 	test.AddTektonResources(kubeClient)
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	logger := zaptest.NewLogger(t)
 
@@ -199,7 +196,7 @@ func TestCreateResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dynamicClient.ClearActions()
-			if err := Create(logger.Sugar(), tt.json, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicSet); err != nil {
+			if err := Create(logger.Sugar(), tt.json, triggerName, eventID, elName, elNamespace, kubeClient.Discovery(), dynamicClient); err != nil {
 				t.Errorf("createTaskRun() returned error: %s", err)
 			}
 

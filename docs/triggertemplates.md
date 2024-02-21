@@ -78,8 +78,9 @@ Keep the following in mind:
   * `tekton.dev/triggers-eventid`:`<EventID>` to track resources created by a specific event.
 
 * To support arbitrary resource types, Tekton resolves resource templates internally as byte blobs. Because of this, Tekton only validates these
-  resources when processing an event rather than at the creation of the `TriggerTemplate`. Thus, you can **only** specify Tekton resources in a
-  `TriggerTemplate`.
+  resources when processing an event rather than at the creation of the `TriggerTemplate`. The default assigned cluster role to the `EventListener`
+  service account only allows creating Tekton resources. You will need to add the appropriate roles to the `EventListener`'s service account to be able to create other
+  non Tekton resources.
 
 * As of Tekton Pipelines [0.8.0](https://github.com/tektoncd/pipeline/releases/tag/v0.8.0), you can embed resource definitions directly in
   your `TriggerTemplate` definition. To prevent a race condition between creating and using resources, you **must** embed each resource definition

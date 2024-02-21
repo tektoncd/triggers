@@ -15,18 +15,6 @@ type Clientset struct {
 // to initialize extensions.
 type Option func(*Clientset)
 
-// New creates a new Clientset with the provided options.
-func New(opts ...Option) *Clientset {
-	cs := &Clientset{
-		config: make(map[schema.GroupVersionResource]dynamic.Interface),
-	}
-	for _, o := range opts {
-		o(cs)
-	}
-
-	return cs
-}
-
 // Add adds a new mapping for the given resource.
 func (r *Clientset) Add(resource schema.GroupVersionResource, client dynamic.Interface) {
 	r.config[resource] = client

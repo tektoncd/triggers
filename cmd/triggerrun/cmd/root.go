@@ -33,8 +33,6 @@ import (
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
-	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/template"
 	"go.uber.org/zap"
@@ -254,7 +252,6 @@ func newSink(ctx context.Context, config *rest.Config) sink.Sink {
 		log.Fatalf("Failed to get the dynamic client: %v", err)
 	}
 
-	dynamicCS := dynamicClientset.New(tekton.WithClient(dynamicClient))
 	kubeClient, _, err := getKubeClient(kubeconfig)
 	if err != nil {
 		log.Fatalf("fail to get clients: %v", err)
@@ -266,7 +263,7 @@ func newSink(ctx context.Context, config *rest.Config) sink.Sink {
 		Auth:                   sink.DefaultAuthOverride{},
 		WGProcessTriggers:      &sync.WaitGroup{},
 		DiscoveryClient:        sinkClients.DiscoveryClient,
-		DynamicClient:          dynamicCS,
+		DynamicClient:          dynamicClient,
 		Logger:                 logging.FromContext(ctx),
 		EventListenerNamespace: "default",
 	}
