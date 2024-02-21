@@ -31,8 +31,6 @@ import (
 	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/triggers/pkg/adapter"
-	dynamicClientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/sink/cloudevent"
@@ -50,8 +48,7 @@ func main() {
 	ctx = injection.WithConfig(ctx, cfg)
 
 	dc := dynamic.NewForConfigOrDie(cfg)
-	dClientSet := dynamicClientset.New(tekton.WithClient(dc))
-	ctx = context.WithValue(ctx, dynamicclient.Key{}, dClientSet)
+	ctx = context.WithValue(ctx, dynamicclient.Key{}, dc)
 
 	sinkArgs, err := sink.GetArgs()
 	if err != nil {

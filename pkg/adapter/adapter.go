@@ -210,10 +210,13 @@ func (s *sinker) Start(ctx context.Context) error {
 		return err
 	}
 	// Create EventListener Sink
+
+	dynamicClient := dynamicclient.Get(ctx)
+
 	r := sink.Sink{
 		KubeClientSet:          kubeclient.Get(ctx),
 		DiscoveryClient:        s.Clients.DiscoveryClient,
-		DynamicClient:          dynamicclient.Get(ctx),
+		DynamicClient:          dynamicClient,
 		TriggersClient:         s.Clients.TriggersClient,
 		HTTPClient:             clientObj,
 		CEClient:               s.Clients.CEClient,

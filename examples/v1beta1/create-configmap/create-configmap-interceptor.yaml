@@ -1,0 +1,58 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: create-configmap-listener
+spec:
+  triggers:
+    - name: create-configmap-listener
+      interceptors:
+        - name: "only when field is something"
+          ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.action in ['opened']"
+      bindings:
+        - ref: create-configmap-binding
+      template:
+        ref: create-configmap-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: create-configmap-binding
+spec:
+  params:
+    - name: action
+      value: $(body.action)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: create-configmap-template
+spec:
+  params:
+    - name: action
+  resourcetemplates:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        generateName: sample-
+      data:
+        field: "Action is : $(tt.params.action)"

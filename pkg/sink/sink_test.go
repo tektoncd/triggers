@@ -40,8 +40,6 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	dynamicclientset "github.com/tektoncd/triggers/pkg/client/dynamic/clientset"
-	"github.com/tektoncd/triggers/pkg/client/dynamic/clientset/tekton"
 	clusterinterceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/clusterinterceptor"
 	interceptorinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1alpha1/interceptor"
 	clustertriggerbindinginformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/clustertriggerbinding"
@@ -153,7 +151,6 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 	logger := zaptest.NewLogger(t)
 
 	dynamicClient := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	dynamicSet := dynamicclientset.New(tekton.WithClient(dynamicClient))
 
 	// Setup a handler for core interceptors using httptest
 	httpClient := setupInterceptors(t, clients.Kube, logger.Sugar(), webhookInterceptor)
@@ -164,7 +161,7 @@ func getSinkAssets(t *testing.T, res test.Resources, elName string, webhookInter
 	r := Sink{
 		EventListenerName:           elName,
 		EventListenerNamespace:      namespace,
-		DynamicClient:               dynamicSet,
+		DynamicClient:               dynamicClient,
 		DiscoveryClient:             clients.Kube.Discovery(),
 		KubeClientSet:               clients.Kube,
 		TriggersClient:              clients.Triggers,

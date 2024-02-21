@@ -247,7 +247,7 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 			Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
 		},
 	}, {
-		name: "resource template invalid apiVersion",
+		name: "resource template other kind then tekton resource",
 		template: &v1alpha1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "tt",
@@ -262,44 +262,14 @@ func TestTriggerTemplate_Validate(t *testing.T) {
 				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
 					RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
 						TypeMeta: metav1.TypeMeta{
-							APIVersion: "foobar",
-							Kind:       "pipelinerun",
+							APIVersion: "v1",
+							Kind:       "batch/Job",
 						},
 					}),
 				}},
 			},
 		},
-		want: &apis.FieldError{
-			Message: `invalid value: no kind "pipelinerun" is registered for version "foobar"`,
-			Paths:   []string{"spec.resourcetemplates[0]"},
-		},
-	}, {
-		name: "resource template invalid kind",
-		template: &v1alpha1.TriggerTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "tt",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TriggerTemplateSpec{
-				Params: []v1alpha1.ParamSpec{{
-					Name:        "foo",
-					Description: "desc",
-					Default:     ptr.String("val"),
-				}},
-				ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
-					RawExtension: test.RawExtension(t, pipelinev1.PipelineRun{
-						TypeMeta: metav1.TypeMeta{
-							APIVersion: "foo",
-							Kind:       "tekton.dev/v1alpha1",
-						},
-					}),
-				}},
-			},
-		},
-		want: &apis.FieldError{
-			Message: `invalid value: no kind "tekton.dev/v1alpha1" is registered for version "foo"`,
-			Paths:   []string{"spec.resourcetemplates[0]"},
-		},
+		want: nil,
 	}, {
 		name: "tt.params used in resource template are declared",
 		template: &v1alpha1.TriggerTemplate{
