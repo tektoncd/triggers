@@ -485,6 +485,36 @@ which can be accessed by indexing.
      <pre>"This is $an Invalid5String ".translate("[^a-z0-9]+", "ABC") == "ABChisABCisABCanABCnvalid5ABCtring"</pre>
     </td>
   </tr>
+  <tr>
+    <th>
+     lowerAscii()
+    </th>
+    <td>
+     <pre>&lt;string&gt;.lowerAscii() -> &lt;string&gt;</pre>
+    </td>
+    <td>
+     Returns a new string where all ASCII characters are lower-cased.
+    </td>
+    <td>
+     <pre>"TacoCat".lowerAscii() == "tacocat"</pre><br />
+     <pre>"TacoCÆt Xii".lowerAscii() == "tacocÆt xii"</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+     upperAscii()
+    </th>
+    <td>
+     <pre>&lt;string&gt;.upperAscii() -> &lt;string&gt;</pre>
+    </td>
+    <td>
+     Returns a new string where all ASCII characters are upper-cased.
+    </td>
+    <td>
+     <pre>"TacoCat".upperAscii() == "TACOCAT"</pre><br />
+     <pre>"TacoCÆt Xii".upperAscii() == "TACOCÆT XII"</pre>
+    </td>
+  </tr>
 </table>
 
 ## Troubleshooting CEL expressions
