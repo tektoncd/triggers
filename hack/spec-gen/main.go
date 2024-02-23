@@ -52,7 +52,7 @@ func main() {
 			Info: &spec.Info{
 				InfoProps: spec.InfoProps{
 					Title:       "Tekton",
-					Description: "Tekton Pipeline",
+					Description: "Tekton Triggers",
 					Version:     version,
 				},
 			},
