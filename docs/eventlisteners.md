@@ -609,7 +609,7 @@ You can expose this service as you would with any regular Kubernetes service. A 
 
 ### Exposing an `EventListener` using a `LoadBalancer` Service
 
-If your Kuberentes cluster supports [external load balancers](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer), 
+If your Kubernetes cluster supports [external load balancers](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer), 
 you can set the `serviceType` field to `LoadBalancer` to switch the Kubernetes service type:
 
 ```yaml
