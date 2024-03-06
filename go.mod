@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470
-	github.com/cloudevents/sdk-go/v2 v2.14.0
+	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/cel-go v0.19.0
 	github.com/google/go-cmp v0.6.0
@@ -150,7 +150,7 @@ require (
 	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
-	knative.dev/networking v0.0.0-20231017124814-2a7676e912b7 // indirect
+	knative.dev/networking v0.0.0-20231012062757-a5958051caf8 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )

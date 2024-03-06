@@ -64,8 +64,8 @@ github.com/cespare/xxhash/v2
 ## explicit; go 1.14
 github.com/cloudevents/sdk-go/observability/opencensus/v2/client
 github.com/cloudevents/sdk-go/observability/opencensus/v2/http
-# github.com/cloudevents/sdk-go/v2 v2.14.0
-## explicit; go 1.17
+# github.com/cloudevents/sdk-go/v2 v2.15.2
+## explicit; go 1.18
 github.com/cloudevents/sdk-go/v2
 github.com/cloudevents/sdk-go/v2/binding
 github.com/cloudevents/sdk-go/v2/binding/format
@@ -1257,7 +1257,7 @@ knative.dev/eventing/pkg/metrics/source
 knative.dev/eventing/pkg/observability
 knative.dev/eventing/pkg/observability/client
 knative.dev/eventing/pkg/reconciler/source
-# knative.dev/networking v0.0.0-20231017124814-2a7676e912b7
+# knative.dev/networking v0.0.0-20231012062757-a5958051caf8
 ## explicit; go 1.18
 knative.dev/networking/pkg/apis/networking
 knative.dev/networking/pkg/apis/networking/v1alpha1
