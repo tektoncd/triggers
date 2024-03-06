@@ -29,7 +29,6 @@ var (
 		IngressClassAnnotationKey,
 		CertificateClassAnnotationKey,
 		DisableAutoTLSAnnotationKey,
-		DisableExternalDomainTLSAnnotationKey,
 		HTTPOptionAnnotationKey,
 
 		IngressClassAnnotationAltKey,
