@@ -3975,6 +3975,18 @@ int32
 </tr>
 <tr>
 <td>
+<code>serviceLoadBalancerClass</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Define the .spec.loadBalancerClass for Service with the type LoadBalancer.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>spec</code><br/>
 <em>
 <a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#WithPodSpec">

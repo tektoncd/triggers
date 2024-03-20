@@ -64,13 +64,19 @@ func MakeService(ctx context.Context, el *v1beta1.EventListener, c Config) *core
 
 	servicePort = ServicePort(el, c)
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: ObjectMeta(el, FilterLabels(ctx, el.Labels), c.StaticResourceLabels),
 		Spec: corev1.ServiceSpec{
 			Selector: GenerateLabels(el.Name, c.StaticResourceLabels),
 			Type:     serviceType,
 			Ports:    []corev1.ServicePort{servicePort, metricsPort}},
 	}
+
+	if el.Spec.Resources.KubernetesResource != nil && el.Spec.Resources.KubernetesResource.ServiceLoadBalancerClass != nil {
+		svc.Spec.LoadBalancerClass = el.Spec.Resources.KubernetesResource.ServiceLoadBalancerClass
+	}
+
+	return svc
 }
 
 func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
