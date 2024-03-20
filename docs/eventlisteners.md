@@ -332,6 +332,15 @@ spec:
       servicePort: 8128
 ```
 
+If you use a loadbalancer service, you can optionally define a (LoadBalancerClass)[https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class] with the `ServiceLoadBalancerClass` attribute.
+```yaml
+spec:
+  resources:
+    kubernetesResource:
+      serviceType: LoadBalancer
+      serviceLoadBalancerClass: internal
+```
+
 #### Specifying `Replicas`
 
 You can optionally use the `replicas` field to instruct Tekton Triggers to deploy more than one instance of your `EventListener` in individual Kubernetes Pods.
