@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/ptr"
 )
 
 // makeEL is a helper to build an EventListener for tests.
@@ -91,6 +92,13 @@ func withTLSPort(el *v1beta1.EventListener) {
 func withServiceTypeLoadBalancer(el *v1beta1.EventListener) {
 	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
 		ServiceType: "LoadBalancer",
+	}
+}
+
+func withServiceTypeLoadBalancerClass(el *v1beta1.EventListener) {
+	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+		ServiceType:              "LoadBalancer",
+		ServiceLoadBalancerClass: ptr.String("lbc"),
 	}
 }
 

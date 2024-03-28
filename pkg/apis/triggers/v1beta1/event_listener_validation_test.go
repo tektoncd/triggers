@@ -443,6 +443,22 @@ func Test_EventListenerValidate(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Valid EventListener with loadBalancerClass",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: myObjectMeta,
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					TriggerRef: "triggerref",
+				}},
+				Resources: triggersv1beta1.Resources{
+					KubernetesResource: &triggersv1beta1.KubernetesResource{
+						ServiceType:              corev1.ServiceTypeLoadBalancer,
+						ServiceLoadBalancerClass: ptr.String("lbc"),
+					},
+				},
+			},
+		},
+	}, {
 		name: "valid EventListener with embedded TriggerTemplate",
 		ctx:  ctxWithAlphaFieldsEnabled,
 		el: &triggersv1beta1.EventListener{
@@ -1210,6 +1226,26 @@ func TestEventListenerValidate_error(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.resources.customResource", "spec.resources.kubernetesResource"),
+	}, {
+		name: "user specify a loadbalancerclass for a non-lb service type",
+		el: &triggersv1beta1.EventListener{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{{
+					TriggerRef: "triggerref",
+				}},
+				Resources: triggersv1beta1.Resources{
+					KubernetesResource: &triggersv1beta1.KubernetesResource{
+						ServiceType:              corev1.ServiceTypeNodePort,
+						ServiceLoadBalancerClass: ptr.String("sentinel"),
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("sentinel", "spec.resources.kubernetesResource.serviceLoadBalancerClass", "ServiceLoadBalancerClass is only needed for LoadBalancer service type"),
 	}, {
 		name: "user specify multiple containers, unsupported podspec and container field in custom resources",
 		el: &triggersv1beta1.EventListener{
