@@ -37,6 +37,7 @@ or more [`Interceptors`](./interceptors.md).
 - [Specifying `EventListener` timeouts](#specifying-eventlistener-timeouts)
 - [Annotations in `EventListeners`](#annotations-in-eventlisteners)
 - [Understanding `EventListener` response](#understanding-eventlistener-response)
+  - [Response to CloudEvents](#response-to-cloudevents)
 - [TLS HTTPS support in `EventListeners`](#tls-https-support-in-eventlisteners)
 - [Obtaining the status of deployed `EventListeners`](#obtaining-the-status-of-deployed-eventlisteners)
 - [Configuring logging for `EventListeners`](#configuring-logging-for-eventlisteners)
@@ -48,7 +49,6 @@ or more [`Interceptors`](./interceptors.md).
   - [Deploying each `EventListener` in its own namespace](#deploying-each-eventlistener-in-its-own-namespace)
   - [Deploying multiple `EventListeners` in the same namespace](#deploying-multiple-eventlisteners-in-the-same-namespace)
 - [CloudEvents during Trigger Processing](#cloud-events-during-trigger-processing)
-
 
 ## Structure of an `EventListener`
 
@@ -527,6 +527,33 @@ After detecting an event, the `EventListener` responds with the following messag
 - `eventListenerUID` - [UID](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids) of the target EventListener.
 - `eventID` - UID assigned to this event request
 
+### Response to CloudEvents
+
+EventListener can acts as sink for CloudEvents. When it acts as such, then its response is different from above.
+
+EventListener sends out this cloudevent as response assuming an EventListener with name `listener` in the `default` namespace with uuid `ea71a6e4-9531-43a1-94fe-6136515d938c`:
+```
+type: dev.tekton.event.triggers.accepted.v1
+source: listener
+subject: default.listener accepted eventID
+id: 14a657c3-6816-45bf-b214-4afdaefc4ebd
+```
+
+`id` is assigned `eventID`.
+
+It also has following data:
+```json
+{
+  "eventListener": "listener",
+  "namespace": "default",
+  "eventListenerUID": "ea71a6e4-9531-43a1-94fe-6136515d938c",
+  "eventID": "14a657c3-6816-45bf-b214-4afdaefc4ebd"
+}
+```
+
+- `eventID` - UID assigned to this event request
+
+
 ### Deprecated Fields
 
 These fields are included in `EventListener` responses, but will be removed in a future release.
@@ -745,6 +772,3 @@ The [cloud event](https://github.com/cloudevents/spec) that is sent to a target 
 | dev.tekton.event.triggers.successful.v1 | triggers processing successful and a resource created |
 | dev.tekton.event.triggers.failed.v1 | triggers failed in eventlistener |
 | dev.tekton.event.triggers.done.v1 | triggers processing done in eventlistener handle |
-
-
-
