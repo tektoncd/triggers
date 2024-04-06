@@ -76,6 +76,7 @@ func MakeService(ctx context.Context, el *v1beta1.EventListener, c Config) *core
 func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 	var elCert, elKey string
 
+	nodePort := int32(0)
 	servicePortName := eventListenerServicePortName
 	servicePort := *c.Port
 
@@ -89,6 +90,9 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 		}
 		if el.Spec.Resources.KubernetesResource.ServicePort != nil {
 			servicePort = int(*el.Spec.Resources.KubernetesResource.ServicePort)
+			if el.Spec.Resources.KubernetesResource.ServiceType == corev1.ServiceTypeNodePort {
+				nodePort = *el.Spec.Resources.KubernetesResource.ServicePort
+			}
 		}
 	}
 
@@ -112,14 +116,17 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 		}
 	}
 
-	return corev1.ServicePort{
+	svc := corev1.ServicePort{
 		Name:     servicePortName,
 		Protocol: corev1.ProtocolTCP,
 		Port:     int32(servicePort),
 		TargetPort: intstr.IntOrString{
 			IntVal: int32(eventListenerContainerPort),
 		},
+		NodePort: nodePort,
 	}
+
+	return svc
 }
 
 // ListenerHostname returns the intended hostname for the EventListener service.

@@ -94,6 +94,14 @@ func withServiceTypeLoadBalancer(el *v1beta1.EventListener) {
 	}
 }
 
+func withNodePort30300(el *v1beta1.EventListener) {
+	port := int32(30300)
+	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+		ServiceType: corev1.ServiceTypeNodePort,
+		ServicePort: &port,
+	}
+}
+
 func withServicePort80(el *v1beta1.EventListener) {
 	port := int32(80)
 	el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
