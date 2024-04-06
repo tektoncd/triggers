@@ -97,6 +97,8 @@ var (
 		"app.kubernetes.io/part-of":    "Triggers",
 		"eventlistener":                eventListenerName,
 	}
+
+	nodePortServicePortNumber int32 = 30300
 )
 
 // compareCondition compares two conditions based on their Type field.
@@ -605,11 +607,12 @@ func TestReconcile(t *testing.T) {
 		el.Spec.ServiceAccountName = updatedSa
 	})
 
-	elWithNodePortServiceType := makeEL(withStatus, func(el *v1beta1.EventListener) {
+	elWithNodePortServiceType := makeEL(func(el *v1beta1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
 			ServiceType: corev1.ServiceTypeNodePort,
+			ServicePort: ptr.Int32(nodePortServicePortNumber),
 		}
-	})
+	}, withStatus)
 
 	elWithTolerations := makeEL(withStatus, func(el *v1beta1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
@@ -647,9 +650,10 @@ func TestReconcile(t *testing.T) {
 		})
 	})
 
-	elWithKubernetesResource := makeEL(withStatus, func(el *v1beta1.EventListener) {
+	elWithKubernetesResource := makeEL(func(el *v1beta1.EventListener) {
 		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
 			ServiceType: corev1.ServiceTypeNodePort,
+			ServicePort: &nodePortServicePortNumber,
 			WithPodSpec: duckv1.WithPodSpec{
 				Template: duckv1.PodSpecable{
 					Spec: corev1.PodSpec{
@@ -671,7 +675,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 		}
-	})
+	}, withStatus)
 
 	elWithCustomResourceForEnv := makeEL(withStatus, withKnativeStatus, func(el *v1beta1.EventListener) {
 		el.Spec.Resources.CustomResource = &v1beta1.CustomResource{
@@ -1014,10 +1018,13 @@ func TestReconcile(t *testing.T) {
 
 	elServiceTypeNodePort := makeService(func(s *corev1.Service) {
 		s.Spec.Type = corev1.ServiceTypeNodePort
+		s.Spec.Ports[0].Port = nodePortServicePortNumber
+		s.Spec.Ports[0].NodePort = nodePortServicePortNumber
 	})
 
 	elServiceWithUpdatedNodePort := makeService(func(s *corev1.Service) {
 		s.Spec.Type = corev1.ServiceTypeNodePort
+		s.Spec.Ports[0].Port = 30300
 		s.Spec.Ports[0].NodePort = 30000
 	})
 

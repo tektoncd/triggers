@@ -97,6 +97,38 @@ func TestService(t *testing.T) {
 				},
 			},
 		}}, {
+		name: "EventListener with node port: 30300",
+		el:   makeEL(withNodePort30300, withStatus),
+		want: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      generatedResourceName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "EventListener",
+					"app.kubernetes.io/part-of":    "Triggers",
+					"eventlistener":                eventListenerName,
+				},
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: corev1.ServiceSpec{
+				Type: corev1.ServiceTypeNodePort,
+				Ports: []corev1.ServicePort{{
+					Name:     eventListenerServicePortName,
+					Protocol: corev1.ProtocolTCP,
+					Port:     int32(30300),
+					NodePort: int32(30300),
+					TargetPort: intstr.IntOrString{
+						IntVal: int32(eventListenerContainerPort),
+					},
+				}, metricsPort},
+				Selector: map[string]string{
+					"app.kubernetes.io/managed-by": "EventListener",
+					"app.kubernetes.io/part-of":    "Triggers",
+					"eventlistener":                eventListenerName,
+				},
+			},
+		},
+	}, {
 		name: "EventListener with service port: 80",
 		el:   makeEL(withServicePort80, withStatus),
 		want: &corev1.Service{
