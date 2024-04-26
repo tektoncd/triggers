@@ -149,7 +149,8 @@ func verifyDefaultServiceAccountExists(t *testing.T, namespace string, kubeClien
 	defaultSA := "default"
 	t.Logf("Verify SA %s is created in namespace %s", defaultSA, namespace)
 
-	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	ctx := context.Background()
+	if err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(_ context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(context.Background(), defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil

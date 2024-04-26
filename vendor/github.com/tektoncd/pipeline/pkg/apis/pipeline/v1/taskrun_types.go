@@ -15,12 +15,12 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +43,8 @@ type TaskRunSpec struct {
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
+	// Specifying PipelineSpec can be disabled by setting
+	// `disable-inline-spec` feature flag..
 	// +optional
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a TaskRun (and maybe more later on)
@@ -242,7 +244,7 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  reason.String(),
-		Message: err.Error(),
+		Message: pipelineErrors.GetErrorMessage(err),
 	})
 	succeeded := trs.GetCondition(apis.ConditionSucceeded)
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
@@ -353,10 +355,13 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState `json:",inline"`
-	Name                  string              `json:"name,omitempty"`
-	Container             string              `json:"container,omitempty"`
-	ImageID               string              `json:"imageID,omitempty"`
-	Results               []TaskRunStepResult `json:"results,omitempty"`
+	Name                  string                `json:"name,omitempty"`
+	Container             string                `json:"container,omitempty"`
+	ImageID               string                `json:"imageID,omitempty"`
+	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	TerminationReason     string                `json:"terminationReason,omitempty"`
+	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
+	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
@@ -404,7 +409,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	}
 	for _, ref := range tr.GetOwnerReferences() {
 		if ref.Kind == pipeline.PipelineRunControllerName {
-			return fmt.Sprintf("%s-pvc", ref.Name)
+			return ref.Name + "-pvc"
 		}
 	}
 	return ""

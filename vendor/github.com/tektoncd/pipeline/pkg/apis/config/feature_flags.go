@@ -68,6 +68,8 @@ const (
 	DefaultRunningInEnvWithInjectedSidecars = true
 	// DefaultAwaitSidecarReadiness is the default value for "await-sidecar-readiness".
 	DefaultAwaitSidecarReadiness = true
+	// DefaultDisableInlineSpec is the default value of "disable-inline-spec"
+	DefaultDisableInlineSpec = ""
 	// DefaultRequireGitSSHSecretKnownHosts is the default value for "require-git-ssh-secret-known-hosts".
 	DefaultRequireGitSSHSecretKnownHosts = false
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
@@ -96,20 +98,20 @@ const (
 	DefaultCoschedule = CoscheduleWorkspaces
 	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
 	KeepPodOnCancel = "keep-pod-on-cancel"
-	// DefaultEnableKeepPodOnCancel is the default value for "keep-pod-on-cancel"
-	DefaultEnableKeepPodOnCancel = false
 	// EnableCELInWhenExpression is the flag to enabled CEL in WhenExpression
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
-	// DefaultEnableCELInWhenExpression is the default value for EnableCELInWhenExpression
-	DefaultEnableCELInWhenExpression = false
 	// EnableStepActions is the flag to enable the use of StepActions in Steps
 	EnableStepActions = "enable-step-actions"
-	// DefaultEnableStepActions is the default value for EnableStepActions
-	DefaultEnableStepActions = false
+
+	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
+	EnableArtifacts = "enable-artifacts"
+
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
-	// DefaultEnableParamEnum is the default value for EnableParamEnum
-	DefaultEnableParamEnum = false
+
+	// DisableInlineSpec is the flag to disable embedded spec
+	// in Taskrun or Pipelinerun
+	DisableInlineSpec = "disable-inline-spec"
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -129,12 +131,47 @@ const (
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
-var DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+var (
+	DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+
+	// DefaultEnableKeepPodOnCancel is the default PerFeatureFlag value for "keep-pod-on-cancel"
+	DefaultEnableKeepPodOnCancel = PerFeatureFlag{
+		Name:      KeepPodOnCancel,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableCELInWhenExpression is the default PerFeatureFlag value for EnableCELInWhenExpression
+	DefaultEnableCELInWhenExpression = PerFeatureFlag{
+		Name:      EnableCELInWhenExpression,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableStepActions is the default PerFeatureFlag value for EnableStepActions
+	DefaultEnableStepActions = PerFeatureFlag{
+		Name:      EnableStepActions,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableStepActions
+	DefaultEnableArtifacts = PerFeatureFlag{
+		Name:      EnableStepActions,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
+	DefaultEnableParamEnum = PerFeatureFlag{
+		Name:      EnableParamEnum,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+)
 
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
-//
-//nolint:musttag
 type FeatureFlags struct {
 	DisableAffinityAssistant         bool
 	DisableCredsInit                 bool
@@ -161,6 +198,8 @@ type FeatureFlags struct {
 	EnableCELInWhenExpression bool
 	EnableStepActions         bool
 	EnableParamEnum           bool
+	EnableArtifacts           bool
+	DisableInlineSpec         string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -174,6 +213,19 @@ func GetFeatureFlagsConfigName() string {
 
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
+	setPerFeatureFlag := func(key string, defaultValue PerFeatureFlag, feature *bool) error {
+		if cfg, ok := cfgMap[key]; ok {
+			value, err := strconv.ParseBool(cfg)
+			if err != nil {
+				return fmt.Errorf("failed parsing feature flags config %q: %w for feature %s", cfg, err, key)
+			}
+			*feature = value
+			return nil
+		}
+		*feature = defaultValue.Enabled
+		return nil
+	}
+
 	setFeature := func(key string, defaultValue bool, feature *bool) error {
 		if cfg, ok := cfgMap[key]; ok {
 			value, err := strconv.ParseBool(cfg)
@@ -221,7 +273,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
 		return nil, err
 	}
-	if err := setFeature(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
+	if err := setPerFeatureFlag(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
 		return nil, err
 	}
 	if err := setEnforceNonFalsifiability(cfgMap, &tc.EnforceNonfalsifiability); err != nil {
@@ -233,15 +285,23 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
+	if err := setPerFeatureFlag(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
+	if err := setPerFeatureFlag(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
+	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
 		return nil, err
 	}
+
+	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
+		return nil, err
+	}
+	if err := setFeatureInlineSpec(cfgMap, DisableInlineSpec, DefaultDisableInlineSpec, &tc.DisableInlineSpec); err != nil {
+		return nil, err
+	}
+
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
 	// each feature's individual flag.
@@ -300,7 +360,7 @@ func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffini
 // setEnforceNonFalsifiability sets the "enforce-nonfalsifiability" flag based on the content of a given map.
 // If the feature gate is invalid, then an error is returned.
 func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) error {
-	var value = DefaultEnforceNonfalsifiability
+	value := DefaultEnforceNonfalsifiability
 	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
 		value = strings.ToLower(cfg)
 	}
@@ -313,6 +373,15 @@ func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) erro
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
 	}
+}
+
+func setFeatureInlineSpec(cfgMap map[string]string, key string, defaultValue string, feature *string) error {
+	if cfg, ok := cfgMap[key]; ok {
+		*feature = cfg
+		return nil
+	}
+	*feature = strings.ReplaceAll(defaultValue, " ", "")
+	return nil
 }
 
 // setResultExtractionMethod sets the "results-from" flag based on the content of a given map.
@@ -344,7 +413,7 @@ func setMaxResultSize(cfgMap map[string]string, defaultValue int, feature *int) 
 	}
 	// if max limit is > 1.5 MB (CRD limit).
 	if value >= 1572864 {
-		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, fmt.Sprint(value))
+		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, strconv.Itoa(value))
 	}
 	*feature = value
 	return nil
@@ -381,8 +450,6 @@ func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
 }
 
-// TODO(#7285): Patch the default values of new features that were added after
-// `enable-api-fields` was no longer used.
 type PerFeatureFlag struct {
 	// Name of the feature flag
 	Name string

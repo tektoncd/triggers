@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeTriggers struct {
 	ns   string
 }
 
-var triggersResource = schema.GroupVersionResource{Group: "triggers.tekton.dev", Version: "v1beta1", Resource: "triggers"}
+var triggersResource = v1beta1.SchemeGroupVersion.WithResource("triggers")
 
-var triggersKind = schema.GroupVersionKind{Group: "triggers.tekton.dev", Version: "v1beta1", Kind: "Trigger"}
+var triggersKind = v1beta1.SchemeGroupVersion.WithKind("Trigger")
 
 // Get takes name of the trigger, and returns the corresponding trigger object, and an error if there is any.
 func (c *FakeTriggers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.Trigger, err error) {

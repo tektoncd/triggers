@@ -249,6 +249,8 @@ func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
 type PipelineRunSpec struct {
 	// +optional
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
+	// Specifying PipelineSpec can be disabled by setting
+	// `disable-inline-spec` feature flag..
 	// +optional
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
@@ -484,6 +486,9 @@ type ChildStatusReference struct {
 	runtime.TypeMeta `json:",inline"`
 	// Name is the name of the TaskRun or Run this is referencing.
 	Name string `json:"name,omitempty"`
+	// DisplayName is a user-facing name of the pipelineTask that may be
+	// used to populate a UI.
+	DisplayName string `json:"displayName,omitempty"`
 	// PipelineTaskName is the name of the PipelineTask this is referencing.
 	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
 
