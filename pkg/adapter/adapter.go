@@ -149,8 +149,8 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 		count      int
 		httpsCILen int
 	)
-
-	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	ctx := context.Background()
+	if err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(_ context.Context) (bool, error) {
 		clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
 		if err != nil {
 			return false, err

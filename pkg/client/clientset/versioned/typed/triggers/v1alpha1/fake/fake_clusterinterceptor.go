@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeClusterInterceptors struct {
 	Fake *FakeTriggersV1alpha1
 }
 
-var clusterinterceptorsResource = schema.GroupVersionResource{Group: "triggers.tekton.dev", Version: "v1alpha1", Resource: "clusterinterceptors"}
+var clusterinterceptorsResource = v1alpha1.SchemeGroupVersion.WithResource("clusterinterceptors")
 
-var clusterinterceptorsKind = schema.GroupVersionKind{Group: "triggers.tekton.dev", Version: "v1alpha1", Kind: "ClusterInterceptor"}
+var clusterinterceptorsKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterInterceptor")
 
 // Get takes name of the clusterInterceptor, and returns the corresponding clusterInterceptor object, and an error if there is any.
 func (c *FakeClusterInterceptors) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterInterceptor, err error) {
