@@ -116,7 +116,7 @@ func TestWebHookInterceptor_NotOK(t *testing.T) {
 	})
 
 	// Create test server
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}))
 	defer ts.Close()

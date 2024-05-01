@@ -162,7 +162,7 @@ func verifyDefaultServiceAccountExists(t *testing.T, namespace string, kubeClien
 
 func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	var output []byte
-	printOrAdd := func(kind, name string, i interface{}) {
+	printOrAdd := func(_, _ string, i interface{}) {
 		bs, err := json.Marshal(i)
 		if err != nil {
 			return
