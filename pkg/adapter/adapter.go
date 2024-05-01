@@ -248,7 +248,7 @@ func (s *sinker) Start(ctx context.Context) error {
 
 	// For handling Liveness Probe
 	// TODO(dibyom): Livness, metrics etc. should be on a separate port
-	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/live", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(200)
 		fmt.Fprint(w, "ok")
 	})
@@ -276,7 +276,7 @@ func (s *sinker) Start(ctx context.Context) error {
 }
 
 func New(sinkArgs sink.Args, sinkClients sink.Clients, recorder *sink.Recorder) adapter.AdapterConstructor {
-	return func(ctx context.Context, processed adapter.EnvConfigAccessor, ceClient cloudevents.Client) adapter.Adapter {
+	return func(ctx context.Context, processed adapter.EnvConfigAccessor, _ cloudevents.Client) adapter.Adapter {
 		env := processed.(*envConfig)
 		logger := logging.FromContext(ctx)
 

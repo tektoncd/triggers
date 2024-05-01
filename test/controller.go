@@ -102,7 +102,7 @@ type Assets struct {
 
 func init() {
 	// Register a separate fake dynamic client with out schemes.
-	injection.Fake.RegisterClient(func(ctx context.Context, cfg *rest.Config) context.Context {
+	injection.Fake.RegisterClient(func(ctx context.Context, _ *rest.Config) context.Context {
 		scheme := runtime.NewScheme()
 		err := servingv1.AddToScheme(scheme)
 		if err != nil {

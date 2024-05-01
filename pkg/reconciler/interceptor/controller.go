@@ -27,11 +27,11 @@ import (
 )
 
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
-	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 		interceptorInformer := interceptorinformer.Get(ctx)
 		reconciler := &Reconciler{}
 
-		impl := interceptorreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
+		impl := interceptorreconciler.NewImpl(ctx, reconciler, func(_ *controller.Impl) controller.Options {
 			return controller.Options{
 				AgentName: ControllerName,
 			}

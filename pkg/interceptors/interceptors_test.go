@@ -289,7 +289,7 @@ func TestResolveToURL(t *testing.T) {
 		want   string
 	}{{
 		name: "ClusterInterceptor has status.address.url",
-		getter: func(n string) (*v1alpha1.ClusterInterceptor, error) {
+		getter: func(_ string) (*v1alpha1.ClusterInterceptor, error) {
 			return &v1alpha1.ClusterInterceptor{
 				Status: v1alpha1.ClusterInterceptorStatus{
 					AddressStatus: duckv1.AddressStatus{
@@ -338,7 +338,7 @@ func TestResolveToURL(t *testing.T) {
 	}
 
 	t.Run("interceptor has no URL", func(t *testing.T) {
-		fakeGetter := func(name string) (*v1alpha1.ClusterInterceptor, error) {
+		fakeGetter := func(_ string) (*v1alpha1.ClusterInterceptor, error) {
 			return &v1alpha1.ClusterInterceptor{
 				Spec: v1alpha1.ClusterInterceptorSpec{
 					ClientConfig: v1alpha1.ClientConfig{

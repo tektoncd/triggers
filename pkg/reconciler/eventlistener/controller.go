@@ -62,7 +62,7 @@ func NewController(config resources.Config) func(context.Context, configmap.Watc
 			Metrics:           metrics.Get(ctx),
 		}
 
-		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
+		impl := eventlistenerreconciler.NewImpl(ctx, reconciler, func(_ *controller.Impl) controller.Options {
 			configStore := cfg.NewStore(logger.Named("config-store"))
 			configStore.WatchConfigs(cmw)
 			return controller.Options{

@@ -631,7 +631,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.Write([]byte(tt.githubServerReply))
 			}))
 			ctx, _ := test.SetupFakeContext(t)
@@ -913,7 +913,7 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.Write([]byte(tt.githubServerReply))
 			}))
 			ctx, _ := test.SetupFakeContext(t)

@@ -29,7 +29,7 @@ func FeatureFlagsToContext(ctx context.Context, flags map[string]string) (contex
 // the feature-flag configmap.
 // nolint:unused,deadcode
 func requireGate(name, value string) func(context.Context, *testing.T, *clients, string) {
-	return func(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	return func(ctx context.Context, t *testing.T, c *clients, _ string) {
 		featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
