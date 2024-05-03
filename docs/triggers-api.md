@@ -28,6 +28,8 @@ Resource Types:
 <a href="#triggers.tekton.dev/v1alpha1.Trigger">Trigger</a>
 </li><li>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerBinding">TriggerBinding</a>
+</li><li>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate</a>
 </li></ul>
 <h3 id="triggers.tekton.dev/v1alpha1.ClusterTriggerBinding">ClusterTriggerBinding
 </h3>
@@ -470,6 +472,108 @@ TriggerBindingSpec
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerBindingStatus">
 TriggerBindingStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate
+</h3>
+<div>
+<p>TriggerTemplate takes parameters and uses them to create CRDs</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+triggers.tekton.dev/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>TriggerTemplate</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
+TriggerTemplateSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the desired state of the TriggerTemplate from the client</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.ParamSpec">
+[]ParamSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourcetemplates</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerResourceTemplate">
+[]TriggerResourceTemplate
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateStatus">
+TriggerTemplateStatus
 </a>
 </em>
 </td>
@@ -2460,95 +2564,10 @@ TriggerTemplateSpec
 </tr>
 </tbody>
 </table>
-<h3 id="triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate
-</h3>
-<div>
-<p>TriggerTemplate takes parameters and uses them to create CRDs</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metadata</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
-TriggerTemplateSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Spec holds the desired state of the TriggerTemplate from the client</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1alpha1.ParamSpec">
-[]ParamSpec
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>resourcetemplates</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1alpha1.TriggerResourceTemplate">
-[]TriggerResourceTemplate
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td>
-<code>status</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateStatus">
-TriggerTemplateStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">TriggerTemplateSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.TriggerSpecTemplate">TriggerSpecTemplate</a>, <a href="#triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate</a>, <a href="#triggers.tekton.dev/v1alpha1.TriggerSpecTemplate">TriggerSpecTemplate</a>)
 </p>
 <div>
 <p>TriggerTemplateSpec holds the desired state of TriggerTemplate</p>
@@ -2670,6 +2689,8 @@ Resource Types:
 <a href="#triggers.tekton.dev/v1beta1.Trigger">Trigger</a>
 </li><li>
 <a href="#triggers.tekton.dev/v1beta1.TriggerBinding">TriggerBinding</a>
+</li><li>
+<a href="#triggers.tekton.dev/v1beta1.TriggerTemplate">TriggerTemplate</a>
 </li></ul>
 <h3 id="triggers.tekton.dev/v1beta1.ClusterTriggerBinding">ClusterTriggerBinding
 </h3>
@@ -3135,6 +3156,108 @@ TriggerBindingSpec
 <em>
 <a href="#triggers.tekton.dev/v1beta1.TriggerBindingStatus">
 TriggerBindingStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1beta1.TriggerTemplate">TriggerTemplate
+</h3>
+<div>
+<p>TriggerTemplate takes parameters and uses them to create CRDs</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+triggers.tekton.dev/v1beta1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>TriggerTemplate</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.TriggerTemplateSpec">
+TriggerTemplateSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the desired state of the TriggerTemplate from the client</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.ParamSpec">
+[]ParamSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourcetemplates</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.TriggerResourceTemplate">
+[]TriggerResourceTemplate
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1beta1.TriggerTemplateStatus">
+TriggerTemplateStatus
 </a>
 </em>
 </td>
@@ -4577,95 +4700,10 @@ TriggerTemplateSpec
 </tr>
 </tbody>
 </table>
-<h3 id="triggers.tekton.dev/v1beta1.TriggerTemplate">TriggerTemplate
-</h3>
-<div>
-<p>TriggerTemplate takes parameters and uses them to create CRDs</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metadata</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.TriggerTemplateSpec">
-TriggerTemplateSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Spec holds the desired state of the TriggerTemplate from the client</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.ParamSpec">
-[]ParamSpec
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>resourcetemplates</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.TriggerResourceTemplate">
-[]TriggerResourceTemplate
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td>
-<code>status</code><br/>
-<em>
-<a href="#triggers.tekton.dev/v1beta1.TriggerTemplateStatus">
-TriggerTemplateStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="triggers.tekton.dev/v1beta1.TriggerTemplateSpec">TriggerTemplateSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.TriggerSpecTemplate">TriggerSpecTemplate</a>, <a href="#triggers.tekton.dev/v1beta1.TriggerTemplate">TriggerTemplate</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1beta1.TriggerTemplate">TriggerTemplate</a>, <a href="#triggers.tekton.dev/v1beta1.TriggerSpecTemplate">TriggerSpecTemplate</a>)
 </p>
 <div>
 <p>TriggerTemplateSpec holds the desired state of TriggerTemplate</p>
