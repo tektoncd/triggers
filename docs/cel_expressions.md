@@ -59,8 +59,10 @@ You can either explicitly convert the number, or add another double value e.g.
 
 ```yaml
 interceptors:
-  - cel:
-      overlays:
+  - ref:
+      name: cel
+      params:
+      - name: overlays:
         - key: count_plus_1
           expression: "body.count + 1.0"
         - key: count_plus_2
@@ -85,10 +87,13 @@ The following example will generate an error with the JSON example.
 
 ```yaml
 interceptors:
-  - cel:
-      overlays:
-        - key: bad_measure_times_3
-          expression: "body.measure * 3"
+  - ref:
+      name: cel
+      params:
+      - name: overlays:
+        values:
+          - key: bad_measure_times_3
+            expression: "body.measure * 3"
 ```
 
 **bad_measure_times_3** will fail with
@@ -150,6 +155,14 @@ This would add an extensions key `filtered` with only one of the labels.
 
 All the functionality from the cel-go project's [CEL extension](https://github.com/google/cel-go/tree/master/ext) is available in
 your CEL expressions.
+
+The following extensions are available:
+
+ * [Strings](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Strings).
+ * [Encoders](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Encoders)
+ * [Sets](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Sets)
+ * [Lists](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Lists)
+ * [Math](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Math)
 
 ### cel-go Bytes
 

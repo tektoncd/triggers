@@ -105,6 +105,9 @@ func makeCelEnv(ctx context.Context, ns string, sg interceptors.SecretGetter) (*
 		Triggers(ctx, ns, sg),
 		celext.Strings(),
 		celext.Encoders(),
+		celext.Sets(),
+		celext.Lists(),
+		celext.Math(),
 		cel.Declarations(
 			decls.NewVar("body", mapStrDyn),
 			decls.NewVar("header", mapStrDyn),

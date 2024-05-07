@@ -689,7 +689,23 @@ func TestExpressionEvaluation(t *testing.T) {
 			expr: `body.numbers.first()`,
 			want: types.Int(1),
 		},
+		{
+			name: "sets extension sets.contains",
+			expr: `sets.contains(body.numbers, [1, 6])`,
+			want: types.False,
+		},
+		{
+			name: "slicing arrays",
+			expr: `[1,2,3,4].slice(1,3)`,
+			want: reg.NativeToValue([]int{2, 3}),
+		},
+		{
+			name: "cel maths",
+			expr: `math.greatest(body.numbers)`,
+			want: types.Int(5),
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(rt *testing.T) {
 			ctx, _ := test.SetupFakeContext(rt)
