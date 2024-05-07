@@ -45,6 +45,13 @@ The "Getting Started with Tekton Triggers" guide walks you through setting up an
 Version specific links are available in the [releases](releases.md) page and on the
 [Tekton website](https://tekton.dev/docs).
 
+### Required Kubernetes Version
+
+- Starting from the v0.27.x release of Tekton: **Kubernetes version 1.27 or later**
+- Starting from the v0.26.x release of Tekton: **Kubernetes version 1.25 or later**
+- Starting from the v0.25.x release of Tekton: **Kubernetes version 1.24 or later**
+- Starting from the v0.24.x release of Tekton: **Kubernetes version 1.24 or later**
+
 ## Want to contribute?
 
 Hooray!
