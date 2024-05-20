@@ -17,20 +17,28 @@ limitations under the License.
 package config
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	defaultServiceAccountKey   = "default-service-account"
+	defaultRunAsUserKey        = "default-run-as-user"
+	defaultRunAsGroupKey       = "default-run-as-group"
 	DefaultServiceAccountValue = "default"
+	defaultRunAsUserValue      = 65532
+	defaultRunAsGroupValue     = 65532
 )
 
 // Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
 type Defaults struct {
 	DefaultServiceAccount string
+	DefaultRunAsUser      int64
+	DefaultRunAsGroup     int64
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -52,17 +60,45 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		return false
 	}
 
-	return other.DefaultServiceAccount == cfg.DefaultServiceAccount
+	return other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
+		other.DefaultRunAsUser == cfg.DefaultRunAsUser &&
+		other.DefaultRunAsGroup == cfg.DefaultRunAsGroup
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	tc := Defaults{
 		DefaultServiceAccount: DefaultServiceAccountValue,
+		DefaultRunAsUser:      defaultRunAsUserValue,
+		DefaultRunAsGroup:     defaultRunAsGroupValue,
 	}
 
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
 		tc.DefaultServiceAccount = defaultServiceAccount
+	}
+
+	if defaultRunAsUser, ok := cfgMap[defaultRunAsUserKey]; ok {
+		if defaultRunAsUser == "" {
+			tc.DefaultRunAsUser = 0
+		} else {
+			runAsUser, err := strconv.ParseInt(defaultRunAsUser, 10, 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing runAsUser config %q", defaultRunAsUser)
+			}
+			tc.DefaultRunAsUser = runAsUser
+		}
+	}
+
+	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
+		if defaultRunAsGroup == "" {
+			tc.DefaultRunAsGroup = 0
+		} else {
+			runAsGroup, err := strconv.ParseInt(defaultRunAsGroup, 10, 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing runAsUser config %q", defaultRunAsGroup)
+			}
+			tc.DefaultRunAsGroup = runAsGroup
+		}
 	}
 
 	return &tc, nil

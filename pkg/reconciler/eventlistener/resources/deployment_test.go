@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfg "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +69,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -103,7 +104,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -146,7 +147,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -192,7 +193,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -235,7 +236,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "bob",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -265,7 +266,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
 								addCertsForSecureConnection(config)),
 						},
 						Volumes: []corev1.Volume{{
@@ -319,7 +320,7 @@ func TestDeployment(t *testing.T) {
 						}},
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -349,7 +350,7 @@ func TestDeployment(t *testing.T) {
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
 							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(setProbes()), config),
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setProbes()), config),
 								addCertsForSecureConnection(config)),
 						},
 						SecurityContext: &strongerSecurityPolicy,
@@ -361,7 +362,8 @@ func TestDeployment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MakeDeployment(context.Background(), tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
+			got, err := MakeDeployment(context.Background(), tt.el, &reconcilersource.EmptyVarsGenerator{}, config,
+				cfg.FromContextOrDefaults(context.Background()))
 			if err != nil {
 				t.Fatalf("MakeDeployment() = %v", err)
 			}
@@ -374,7 +376,8 @@ func TestDeployment(t *testing.T) {
 
 func TestDeploymentError(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "bad")
-	got, err := MakeDeployment(context.Background(), makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig())
+	got, err := MakeDeployment(context.Background(), makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig(),
+		cfg.FromContextOrDefaults(context.Background()))
 	if err == nil {
 		t.Fatalf("MakeDeployment() = %v, wanted error", got)
 	}

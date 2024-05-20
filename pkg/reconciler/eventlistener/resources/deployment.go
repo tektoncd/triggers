@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,14 +42,12 @@ var (
 	}
 )
 
-func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*appsv1.Deployment, error) {
-
+func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, cfg *config.Config) (*appsv1.Deployment, error) {
 	opt, err := addDeploymentBits(el, c)
 	if err != nil {
 		return nil, err
 	}
-
-	container := MakeContainer(el, configAcc, c, opt, addCertsForSecureConnection(c))
+	container := MakeContainer(el, configAcc, c, cfg, opt, addCertsForSecureConnection(c))
 
 	filteredLabels := FilterLabels(ctx, el.Labels)
 

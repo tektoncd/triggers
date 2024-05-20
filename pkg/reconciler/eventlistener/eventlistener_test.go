@@ -593,6 +593,10 @@ func TestReconcile(t *testing.T) {
 		c.SetSecurityContext = ptr.Bool(false)
 	})
 
+	configWithSetSecurityContext := resources.MakeConfig(func(c *resources.Config) {
+		c.SetSecurityContext = ptr.Bool(true)
+	})
+
 	configWithSetEventListenerEventEnable := resources.MakeConfig(func(c *resources.Config) {
 		c.SetEventListenerEvent = ptr.String("enable")
 	})
@@ -889,7 +893,28 @@ func TestReconcile(t *testing.T) {
 
 	deploymentMissingSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
-		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{}
+		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+			RunAsUser:  ptr.Int64(65532),
+			RunAsGroup: ptr.Int64(65532),
+		}
+	})
+
+	deploymentWithSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
+		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: ptr.Bool(true),
+		}
+		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+			AllowPrivilegeEscalation: ptr.Bool(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			RunAsNonRoot: ptr.Bool(true),
+			RunAsUser:    ptr.Int64(65532),
+			RunAsGroup:   ptr.Int64(65532),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		}
 	})
 
 	deploymentEventListenerEvent := makeDeployment(func(d *appsv1.Deployment) {
@@ -1332,12 +1357,13 @@ func TestReconcile(t *testing.T) {
 			Services:       []*corev1.Service{elServiceWithTLSConnection},
 		},
 	}, {
-		name: "eventlistener with security context",
-		key:  reconcileKey,
+		name:   "eventlistener with security context",
+		key:    reconcileKey,
+		config: configWithSetSecurityContext,
 		startResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},
 			EventListeners: []*v1beta1.EventListener{elWithStatus},
-			Deployments:    []*appsv1.Deployment{deploymentMissingSecurityContext},
+			Deployments:    []*appsv1.Deployment{deploymentWithSecurityContext},
 		},
 		endResources: test.Resources{
 			Namespaces:     []*corev1.Namespace{namespaceResource},

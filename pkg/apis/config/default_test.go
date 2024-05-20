@@ -36,6 +36,8 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.Defaults{
 				DefaultServiceAccount: "default",
+				DefaultRunAsUser:      65532,
+				DefaultRunAsGroup:     65532,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -54,8 +56,20 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	DefaultsConfigEmptyName := "config-defaults-empty"
 	expectedConfig := &config.Defaults{
 		DefaultServiceAccount: "default",
+		DefaultRunAsUser:      65532,
+		DefaultRunAsGroup:     65532,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
+}
+
+func TestNewDefaultsFromConfigMapWithEmptyVal(t *testing.T) {
+	DefaultsConfigEmptyVal := "config-defaults-triggers-empty-val"
+	expectedConfig := &config.Defaults{
+		DefaultServiceAccount: "default",
+		DefaultRunAsUser:      0,
+		DefaultRunAsGroup:     0,
+	}
+	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyVal, expectedConfig)
 }
 
 func TestEquals(t *testing.T) {
