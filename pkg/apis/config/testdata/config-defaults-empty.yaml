@@ -37,3 +37,5 @@ data:
     # default-timeout-minutes contains the default number of
     # minutes to use for TaskRun, if none is specified.
     default-service-accounts: "default"
+    default-run-as-user: "65532"
+    default-run-as-group: "65532"

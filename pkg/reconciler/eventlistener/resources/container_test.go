@@ -17,10 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfg "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +37,7 @@ func TestContainer(t *testing.T) {
 	tests := []struct {
 		name string
 		el   *v1beta1.EventListener
+		cm   cfg.Config
 		want corev1.Container
 		opts []ContainerOption
 	}{{
@@ -480,7 +483,7 @@ func TestContainer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, tt.opts...)
+			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, cfg.FromContextOrDefaults(context.Background()), tt.opts...)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("MakeContainer() did not return expected. -want, +got: %s", diff)
 			}

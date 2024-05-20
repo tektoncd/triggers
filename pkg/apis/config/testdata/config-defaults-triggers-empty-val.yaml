@@ -19,5 +19,5 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-service-account: "default"
-  default-run-as-user: "65532"
-  default-run-as-group: "65532"
+  default-run-as-user: ""
+  default-run-as-group: ""

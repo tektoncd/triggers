@@ -19,6 +19,7 @@ package resources
 import (
 	"strconv"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +29,7 @@ import (
 
 type ContainerOption func(*corev1.Container)
 
-func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, opts ...ContainerOption) corev1.Container {
+func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, cfg *config.Config, opts ...ContainerOption) corev1.Container {
 	isMultiNS := false
 	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
 		isMultiNS = true
@@ -56,15 +57,15 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			// 65532 is the distroless nonroot user ID
-			RunAsUser:    ptr.Int64(65532),
-			RunAsGroup:   ptr.Int64(65532),
 			RunAsNonRoot: ptr.Bool(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		}
 	}
+
+	containerSecurityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
+	containerSecurityContext.RunAsGroup = ptr.Int64(cfg.Defaults.DefaultRunAsGroup)
 
 	container := corev1.Container{
 		Name:  "event-listener",
