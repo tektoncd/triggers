@@ -104,6 +104,7 @@ spec:
               value: config-leader-election-triggers-controllers
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - "ALL"
