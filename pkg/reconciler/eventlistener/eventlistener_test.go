@@ -292,6 +292,12 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 					}},
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr.Bool(true),
+						RunAsUser:    ptr.Int64(65532),
+						RunAsGroup:   ptr.Int64(65532),
+						FSGroup:      ptr.Int64(65532),
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
 					},
 				},
 			},
@@ -900,6 +906,12 @@ func TestReconcile(t *testing.T) {
 	deploymentMissingReadOnlyRootFilesystem := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
 			RunAsNonRoot: ptr.Bool(true),
+			RunAsUser:    ptr.Int64(65532),
+			RunAsGroup:   ptr.Int64(65532),
+			FSGroup:      ptr.Int64(65532),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
 		}
 		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
 			AllowPrivilegeEscalation: ptr.Bool(false),
@@ -923,6 +935,12 @@ func TestReconcile(t *testing.T) {
 	deploymentWithSecurityContext := makeDeployment(func(d *appsv1.Deployment) {
 		d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
 			RunAsNonRoot: ptr.Bool(true),
+			RunAsUser:    ptr.Int64(65532),
+			RunAsGroup:   ptr.Int64(65532),
+			FSGroup:      ptr.Int64(65532),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
 		}
 		d.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
 			AllowPrivilegeEscalation: ptr.Bool(false),
