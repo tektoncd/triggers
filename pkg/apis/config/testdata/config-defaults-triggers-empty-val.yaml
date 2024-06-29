@@ -21,4 +21,5 @@ data:
   default-service-account: "default"
   default-run-as-user: ""
   default-run-as-group: ""
+  default-fs-group: ""
   default-run-as-non-root: ""
