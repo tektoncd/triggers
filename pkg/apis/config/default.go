@@ -26,8 +26,8 @@ import (
 
 const (
 	defaultServiceAccountKey   = "default-service-account"
-	defaultRunAsUserKey        = "default-run-as-user"
-	defaultRunAsGroupKey       = "default-run-as-group"
+	DefaultRunAsUserKey        = "default-run-as-user"
+	DefaultRunAsGroupKey       = "default-run-as-group"
 	DefaultServiceAccountValue = "default"
 	defaultRunAsUserValue      = 65532
 	defaultRunAsGroupValue     = 65532
@@ -77,7 +77,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultServiceAccount = defaultServiceAccount
 	}
 
-	if defaultRunAsUser, ok := cfgMap[defaultRunAsUserKey]; ok {
+	if defaultRunAsUser, ok := cfgMap[DefaultRunAsUserKey]; ok {
 		if defaultRunAsUser == "" {
 			tc.DefaultRunAsUser = 0
 		} else {
@@ -89,7 +89,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		}
 	}
 
-	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
+	if defaultRunAsGroup, ok := cfgMap[DefaultRunAsGroupKey]; ok {
 		if defaultRunAsGroup == "" {
 			tc.DefaultRunAsGroup = 0
 		} else {
