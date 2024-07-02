@@ -60,6 +60,7 @@ spec:
               "-el-port",
               "8080",
               "-el-security-context=true",
+              "-el-read-only-root-filesystem=true",
               "-el-events",
               "disable",
               "-el-readtimeout",

@@ -62,6 +62,10 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		}
+
+		if *c.SetReadOnlyRootFilesystem {
+			containerSecurityContext.ReadOnlyRootFilesystem = ptr.Bool(true)
+		}
 	}
 
 	if !cfg.Defaults.IsDefaultRunAsUserEmpty {
