@@ -92,9 +92,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -166,9 +167,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -219,9 +221,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -281,9 +284,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -344,9 +348,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -407,9 +412,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -471,9 +477,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
