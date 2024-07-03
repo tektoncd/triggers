@@ -28,7 +28,8 @@ Resource            |Event      |Event Type
 `EventListener`     | `Done`    | `dev.tekton.event.triggers.done.v1`
 `EventListener`     | `Failed`  | `dev.tekton.event.triggers.failed.v1`
 
-##Note
+## Note
+
 By default Kubernetes events are disabled for EventListener.
 
 To enable Kubernetes events add/update controller.yaml with below arg
