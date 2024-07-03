@@ -586,7 +586,6 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is a specification of a custom task",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},
@@ -848,8 +847,7 @@ func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.Open
 					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
 				},
@@ -1149,7 +1147,6 @@ func schema_pkg_apis_pipeline_v1_PipelineResult(ref common.ReferenceCallback) co
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the expression used to retrieve the value",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
@@ -1275,7 +1272,6 @@ func schema_pkg_apis_pipeline_v1_PipelineRunResult(ref common.ReferenceCallback)
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value is the result returned from the execution of this PipelineRun",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
@@ -3159,7 +3155,7 @@ func schema_pkg_apis_pipeline_v1_StepResult(ref common.ReferenceCallback) common
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "StepResult used to describe the Results of a Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.",
+				Description: "StepResult used to describe the Results of a Step.\n\nThis is field is at an BETA stability level and gated by \"enable-step-actions\" feature flag.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -3853,7 +3849,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunResult(ref common.ReferenceCallback) com
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the given value of the result",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
