@@ -17,7 +17,9 @@ limitations under the License.
 package config
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -26,9 +28,11 @@ const (
 	defaultServiceAccountKey   = "default-service-account"
 	defaultRunAsUserKey        = "default-run-as-user"
 	defaultRunAsGroupKey       = "default-run-as-group"
+	defaultRunAsNonRootKey     = "default-run-as-non-root"
 	DefaultServiceAccountValue = "default"
 	defaultRunAsUserValue      = "65532"
 	defaultRunAsGroupValue     = "65532"
+	defaultRunAsNonRootValue   = true
 )
 
 // Defaults holds the default configurations
@@ -37,6 +41,7 @@ type Defaults struct {
 	DefaultServiceAccount string
 	DefaultRunAsUser      string
 	DefaultRunAsGroup     string
+	DefaultRunAsNonRoot   bool
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -60,7 +65,8 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 
 	return other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
 		other.DefaultRunAsUser == cfg.DefaultRunAsUser &&
-		other.DefaultRunAsGroup == cfg.DefaultRunAsGroup
+		other.DefaultRunAsGroup == cfg.DefaultRunAsGroup &&
+		other.DefaultRunAsNonRoot == cfg.DefaultRunAsNonRoot
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
@@ -69,6 +75,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultServiceAccount: DefaultServiceAccountValue,
 		DefaultRunAsUser:      defaultRunAsUserValue,
 		DefaultRunAsGroup:     defaultRunAsGroupValue,
+		DefaultRunAsNonRoot:   defaultRunAsNonRootValue,
 	}
 
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
@@ -81,6 +88,20 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 
 	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
 		tc.DefaultRunAsGroup = defaultRunAsGroup
+	}
+
+	if defaultRunAsNonRoot, ok := cfgMap[defaultRunAsNonRootKey]; ok {
+		if defaultRunAsNonRoot != "" {
+			runAsNonRoot, err := strconv.ParseBool(defaultRunAsNonRoot)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing runAsGroup config %v", defaultRunAsNonRoot)
+			}
+			tc.DefaultRunAsNonRoot = runAsNonRoot
+		} else {
+			// if "" value is provided via configmap set back to default value which is true
+			tc.DefaultRunAsNonRoot = defaultRunAsNonRootValue
+		}
+
 	}
 
 	return &tc, nil

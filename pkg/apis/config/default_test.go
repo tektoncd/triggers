@@ -38,6 +38,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultServiceAccount: "default",
 				DefaultRunAsUser:      "65532",
 				DefaultRunAsGroup:     "65532",
+				DefaultRunAsNonRoot:   true,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -58,6 +59,7 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 		DefaultServiceAccount: "default",
 		DefaultRunAsUser:      "65532",
 		DefaultRunAsGroup:     "65532",
+		DefaultRunAsNonRoot:   true,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
@@ -68,6 +70,7 @@ func TestNewDefaultsFromConfigMapWithEmptyVal(t *testing.T) {
 		DefaultServiceAccount: "default",
 		DefaultRunAsUser:      "",
 		DefaultRunAsGroup:     "",
+		DefaultRunAsNonRoot:   true, // when empty value set from configmap we set back to default value for runAsNonRoot
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyVal, expectedConfig)
 }

@@ -58,7 +58,7 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			RunAsNonRoot: ptr.Bool(true),
+			RunAsNonRoot: ptr.Bool(cfg.Defaults.DefaultRunAsNonRoot),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
