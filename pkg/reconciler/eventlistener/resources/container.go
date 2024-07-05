@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/tektoncd/triggers/pkg/apis/config"
@@ -29,7 +30,7 @@ import (
 
 type ContainerOption func(*corev1.Container)
 
-func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, cfg *config.Config, opts ...ContainerOption) corev1.Container {
+func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, cfg *config.Config, opts ...ContainerOption) (corev1.Container, error) {
 	isMultiNS := false
 	if len(el.Spec.NamespaceSelector.MatchNames) != 0 {
 		isMultiNS = true
@@ -64,8 +65,20 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		}
 	}
 
-	containerSecurityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
-	containerSecurityContext.RunAsGroup = ptr.Int64(cfg.Defaults.DefaultRunAsGroup)
+	if cfg.Defaults.DefaultRunAsUser != "" {
+		runAsUser, err := strconv.ParseInt(cfg.Defaults.DefaultRunAsUser, 10, 0)
+		if err != nil {
+			return corev1.Container{}, errors.New("failed parsing runAsUser config default-run-as-user")
+		}
+		containerSecurityContext.RunAsUser = ptr.Int64(runAsUser)
+	}
+	if cfg.Defaults.DefaultRunAsGroup != "" {
+		runAsGroup, err := strconv.ParseInt(cfg.Defaults.DefaultRunAsGroup, 10, 0)
+		if err != nil {
+			return corev1.Container{}, errors.New("failed parsing runAsGroup config default-run-as-group")
+		}
+		containerSecurityContext.RunAsGroup = ptr.Int64(runAsGroup)
+	}
 
 	container := corev1.Container{
 		Name:  "event-listener",
@@ -111,5 +124,5 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		opt(&container)
 	}
 
-	return container
+	return container, nil
 }

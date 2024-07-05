@@ -17,9 +17,7 @@ limitations under the License.
 package config
 
 import (
-	"fmt"
 	"os"
-	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -29,16 +27,16 @@ const (
 	defaultRunAsUserKey        = "default-run-as-user"
 	defaultRunAsGroupKey       = "default-run-as-group"
 	DefaultServiceAccountValue = "default"
-	defaultRunAsUserValue      = 65532
-	defaultRunAsGroupValue     = 65532
+	defaultRunAsUserValue      = "65532"
+	defaultRunAsGroupValue     = "65532"
 )
 
 // Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
 type Defaults struct {
 	DefaultServiceAccount string
-	DefaultRunAsUser      int64
-	DefaultRunAsGroup     int64
+	DefaultRunAsUser      string
+	DefaultRunAsGroup     string
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -78,27 +76,11 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if defaultRunAsUser, ok := cfgMap[defaultRunAsUserKey]; ok {
-		if defaultRunAsUser == "" {
-			tc.DefaultRunAsUser = 0
-		} else {
-			runAsUser, err := strconv.ParseInt(defaultRunAsUser, 10, 0)
-			if err != nil {
-				return nil, fmt.Errorf("failed parsing runAsUser config %q", defaultRunAsUser)
-			}
-			tc.DefaultRunAsUser = runAsUser
-		}
+		tc.DefaultRunAsUser = defaultRunAsUser
 	}
 
 	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
-		if defaultRunAsGroup == "" {
-			tc.DefaultRunAsGroup = 0
-		} else {
-			runAsGroup, err := strconv.ParseInt(defaultRunAsGroup, 10, 0)
-			if err != nil {
-				return nil, fmt.Errorf("failed parsing runAsUser config %q", defaultRunAsGroup)
-			}
-			tc.DefaultRunAsGroup = runAsGroup
-		}
+		tc.DefaultRunAsGroup = defaultRunAsGroup
 	}
 
 	return &tc, nil
