@@ -43,27 +43,6 @@ func TestDeployment(t *testing.T) {
 		"eventlistener":                eventListenerName,
 	}
 
-	cData, err := MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-		cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
-		addCertsForSecureConnection(config))
-	if err != nil {
-		t.Error(err)
-	}
-
-	cDataWithTLS, err := MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, config,
-		cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
-		addCertsForSecureConnection(config))
-	if err != nil {
-		t.Error(err)
-	}
-
-	cDataWithProbes, err := MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, config,
-		cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setProbes()), config),
-		addCertsForSecureConnection(config))
-	if err != nil {
-		t.Error(err)
-	}
-
 	tests := []struct {
 		name string
 		el   *v1beta1.EventListener
@@ -88,8 +67,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cData},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
 			},
@@ -119,8 +102,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cData},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
 			},
@@ -158,8 +145,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cData},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 						Tolerations: []corev1.Toleration{{
 							Key:   "foo",
 							Value: "bar",
@@ -200,8 +191,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cData},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 						NodeSelector: map[string]string{
 							"foo": "bar",
 						},
@@ -239,8 +234,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "bob",
-						Containers:         []corev1.Container{cData},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
 			},
@@ -265,7 +264,11 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cDataWithTLS},
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
+								addCertsForSecureConnection(config)),
+						},
 						Volumes: []corev1.Volume{{
 							Name: "https-connection",
 							VolumeSource: corev1.VolumeSource{
@@ -315,7 +318,11 @@ func TestDeployment(t *testing.T) {
 						TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
 							MaxSkew: 1,
 						}},
-						Containers:      []corev1.Container{cData},
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), config),
+								addCertsForSecureConnection(config)),
+						},
 						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
@@ -341,8 +348,12 @@ func TestDeployment(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
-						Containers:         []corev1.Container{cDataWithProbes},
-						SecurityContext:    &strongerSecurityPolicy,
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, config,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setProbes()), config),
+								addCertsForSecureConnection(config)),
+						},
+						SecurityContext: &strongerSecurityPolicy,
 					},
 				},
 			},
