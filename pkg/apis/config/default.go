@@ -30,8 +30,8 @@ const (
 	defaultRunAsGroupKey       = "default-run-as-group"
 	defaultRunAsNonRootKey     = "default-run-as-non-root"
 	DefaultServiceAccountValue = "default"
-	defaultRunAsUserValue      = "65532"
-	defaultRunAsGroupValue     = "65532"
+	defaultRunAsUserValue      = 65532
+	defaultRunAsGroupValue     = 65532
 	defaultRunAsNonRootValue   = true
 )
 
@@ -39,9 +39,13 @@ const (
 // +k8s:deepcopy-gen=true
 type Defaults struct {
 	DefaultServiceAccount string
-	DefaultRunAsUser      string
-	DefaultRunAsGroup     string
+	DefaultRunAsUser      int64
+	DefaultRunAsGroup     int64
 	DefaultRunAsNonRoot   bool
+	// These two fields are used to decide whether to configure
+	// runAsUser and runAsGroup within a Security Context Constraint (SCC).
+	IsDefaultRunAsUserEmpty  bool
+	IsDefaultRunAsGroupEmpty bool
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -83,18 +87,36 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if defaultRunAsUser, ok := cfgMap[defaultRunAsUserKey]; ok {
-		tc.DefaultRunAsUser = defaultRunAsUser
+		if defaultRunAsUser != "" {
+			runAsUser, err := strconv.ParseInt(defaultRunAsUser, 10, 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing runAsUser config %q", defaultRunAsUser)
+			}
+			tc.DefaultRunAsUser = runAsUser
+		} else {
+			// if runAsUser is "" don't set runAsUser in SCC
+			tc.IsDefaultRunAsUserEmpty = true
+		}
 	}
 
 	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
-		tc.DefaultRunAsGroup = defaultRunAsGroup
+		if defaultRunAsGroup != "" {
+			runAsGroup, err := strconv.ParseInt(defaultRunAsGroup, 10, 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing runAsGroup config %q", defaultRunAsGroup)
+			}
+			tc.DefaultRunAsGroup = runAsGroup
+		} else {
+			// if runAsGroup is "" don't set runAsGroup in SCC
+			tc.IsDefaultRunAsGroupEmpty = true
+		}
 	}
 
 	if defaultRunAsNonRoot, ok := cfgMap[defaultRunAsNonRootKey]; ok {
 		if defaultRunAsNonRoot != "" {
 			runAsNonRoot, err := strconv.ParseBool(defaultRunAsNonRoot)
 			if err != nil {
-				return nil, fmt.Errorf("failed parsing runAsGroup config %v", defaultRunAsNonRoot)
+				return nil, fmt.Errorf("failed parsing runAsNonRoot config %q", defaultRunAsNonRoot)
 			}
 			tc.DefaultRunAsNonRoot = runAsNonRoot
 		} else {

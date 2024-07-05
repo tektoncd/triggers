@@ -48,7 +48,7 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 		namespace = el.GetNamespace()
 	}
 
-	container, err := MakeContainer(el, configAcc, c, cfg, func(c *corev1.Container) {
+	container := MakeContainer(el, configAcc, c, cfg, func(c *corev1.Container) {
 		// handle env and resources for custom object
 		if len(original.Spec.Template.Spec.Containers) == 1 {
 			c.Env = append(c.Env, original.Spec.Template.Spec.Containers[0].Env...)
@@ -77,9 +77,6 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 			SuccessThreshold: 1,
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	podlabels := kmeta.UnionMaps(FilterLabels(ctx, el.Labels), GenerateLabels(el.Name, c.StaticResourceLabels))
 
