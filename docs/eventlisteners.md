@@ -125,7 +125,7 @@ Below is an example `Trigger` definition that embeds a `triggerTemplate` definit
 triggers:
   - name: "my-trigger"
     template:
-      spec: 
+      spec:
         params:
           - name: "my-param-name"
         resourceTemplates:
@@ -332,7 +332,7 @@ spec:
       servicePort: 8128
 ```
 
-If you use a loadbalancer service, you can optionally define a (LoadBalancerClass)[https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class] with the `ServiceLoadBalancerClass` attribute.
+If you use a loadbalancer service, you can optionally define a [LoadBalancerClass](https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class) with the `ServiceLoadBalancerClass` attribute.
 ```yaml
 spec:
   resources:

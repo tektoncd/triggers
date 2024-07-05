@@ -62,7 +62,8 @@ interceptors:
   - ref:
       name: cel
       params:
-      - name: overlays:
+      - name: overlays
+        values:
         - key: count_plus_1
           expression: "body.count + 1.0"
         - key: count_plus_2
@@ -340,7 +341,7 @@ interceptor.
   </tr>
   <tr>
     <th>
-      decodeb64 **deprecated: please use base64.decode**
+      decodeb64 <b>deprecated: please use base64.decode</b>
     </th>
     <td>
       <pre>&lt;string&gt;.decodeb64() -> string</pre>
