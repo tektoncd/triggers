@@ -483,7 +483,10 @@ func TestContainer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, cfg.FromContextOrDefaults(context.Background()), tt.opts...)
+			got, err := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, cfg.FromContextOrDefaults(context.Background()), tt.opts...)
+			if err != nil {
+				t.Error(err)
+			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("MakeContainer() did not return expected. -want, +got: %s", diff)
 			}

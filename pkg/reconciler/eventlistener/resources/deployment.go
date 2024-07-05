@@ -47,7 +47,10 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 	if err != nil {
 		return nil, err
 	}
-	container := MakeContainer(el, configAcc, c, cfg, opt, addCertsForSecureConnection(c))
+	container, err := MakeContainer(el, configAcc, c, cfg, opt, addCertsForSecureConnection(c))
+	if err != nil {
+		return nil, err
+	}
 
 	filteredLabels := FilterLabels(ctx, el.Labels)
 
