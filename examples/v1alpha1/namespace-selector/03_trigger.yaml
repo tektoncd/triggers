@@ -41,7 +41,7 @@ spec:
   params:
   - name: gitrevision
     description: The git revision
-    default: master
+    default: main
   - name: gitrepositoryurl
     description: The git repository url
   - name: message
