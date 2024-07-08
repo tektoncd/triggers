@@ -63,7 +63,7 @@ interceptors:
       name: cel
       params:
       - name: overlays
-        values:
+        value:
         - key: count_plus_1
           expression: "body.count + 1.0"
         - key: count_plus_2
@@ -91,8 +91,8 @@ interceptors:
   - ref:
       name: cel
       params:
-      - name: overlays:
-        values:
+      - name: overlays
+        value:
           - key: bad_measure_times_3
             expression: "body.measure * 3"
 ```
@@ -133,15 +133,17 @@ You can use this in filters in the following ways:
 
 You can also parse additional data from each of the labels:
 ```yaml
-overlays:
-- key: suffixes
-  expression: "body.labels.map(x, x.name.substring(x.name.lastIndexOf('-')+1))"
+- name: overlays
+  value:
+  - key: suffixes
+    expression: "body.labels.map(x, x.name.substring(x.name.lastIndexOf('-')+1))"
 ```
 This yields an array of `["a", "b"]` in the `suffixes` extension key.
 ```yaml
-overlays:
-- key: filtered
-  expression: "body.labels.filter(x, x.name.endsWith('-b'))"
+- name: overlays
+  value:
+  - key: filtered
+    expression: "body.labels.filter(x, x.name.endsWith('-b'))"
 ```
 This would add an extensions key `filtered` with only one of the labels.
 ```yaml
@@ -184,8 +186,11 @@ you will need to explicitly convert it to a CEL string.
 
 ```yaml
 interceptors:
-  - cel:
-      overlays:
+  - ref:
+      name: "cel"
+    params:
+      - name: "overlays"
+        value:
         - key: base64_decoded
           expression: "string(base64.decode(body.b64Value))"
 ```
