@@ -8,3 +8,5 @@ spec:
     value: main
   - name: gitrepositoryurl
     value: https://github.com/tektoncd/triggers
+  - name: contenttype
+    value: $(header.Content-Type)
