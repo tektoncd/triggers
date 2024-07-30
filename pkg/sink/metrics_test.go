@@ -112,7 +112,7 @@ func TestRecordRecordDurationMetrics(t *testing.T) {
 	}}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			defer metricstest.Unregister("event_count", "http_duration_seconds")
+			defer metricstest.Unregister("event_received_count", "http_duration_seconds")
 			logger := zaptest.NewLogger(t).Sugar()
 			metrics.FlushExporter()
 			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
@@ -148,7 +148,7 @@ func TestRecordRecordCountMetrics(t *testing.T) {
 	}}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			defer metricstest.Unregister("event_count", "http_duration_seconds")
+			defer metricstest.Unregister("event_received_count", "http_duration_seconds")
 			logger := zaptest.NewLogger(t).Sugar()
 			metrics.FlushExporter()
 			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
@@ -165,7 +165,7 @@ func TestRecordRecordCountMetrics(t *testing.T) {
 				Logger:   logger,
 			}
 			s.recordCountMetrics(failTag)
-			metricstest.CheckCountData(t, "event_count", test.expectedTags, test.expectedCount)
+			metricstest.CheckCountData(t, "event_received_count", test.expectedTags, test.expectedCount)
 		})
 	}
 }
