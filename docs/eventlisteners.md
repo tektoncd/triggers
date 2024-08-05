@@ -185,8 +185,7 @@ spec:
 [TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for
 a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked.
 
-You can optionally specify one or more `Triggers` that define the actions to take when the `EventListener` detects a qualifying event. You can specify *either* a reference to an
-external `Trigger` object *or* reference/define the `TriggerBindings`, `TriggerTemplates`, and `Interceptors` in the `Trigger` definition. A `TriggerGroup` definition specifies the following fields:
+A `TriggerGroup` definition specifies the following fields:
 
 - `name` - (optional) a valid [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set) that uniquely identifies the `TriggerGroup`
 - `interceptors` - a list of [`Interceptors`](#specifying-interceptors) that will process event payload data before passing it to the downstream `Triggers`
