@@ -66,13 +66,12 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 		if *c.SetReadOnlyRootFilesystem {
 			containerSecurityContext.ReadOnlyRootFilesystem = ptr.Bool(true)
 		}
-	}
-
-	if !cfg.Defaults.IsDefaultRunAsUserEmpty {
-		containerSecurityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
-	}
-	if !cfg.Defaults.IsDefaultRunAsGroupEmpty {
-		containerSecurityContext.RunAsGroup = ptr.Int64(cfg.Defaults.DefaultRunAsGroup)
+		if !cfg.Defaults.IsDefaultRunAsUserEmpty {
+			containerSecurityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
+		}
+		if !cfg.Defaults.IsDefaultRunAsGroupEmpty {
+			containerSecurityContext.RunAsGroup = ptr.Int64(cfg.Defaults.DefaultRunAsGroup)
+		}
 	}
 
 	container := corev1.Container{
