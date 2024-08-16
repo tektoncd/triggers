@@ -142,7 +142,7 @@ func TestCreateResource(t *testing.T) {
 		want pipelinev1.TaskRun
 	}{{
 		name: "TaskRun without namespace",
-		json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName": ""}}`),
+		json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"artifacts":{},"podName": ""}}`),
 		want: pipelinev1.TaskRun{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "tekton.dev/v1beta1",
@@ -168,7 +168,7 @@ func TestCreateResource(t *testing.T) {
 
 		{
 			name: "TaskRun with namespace",
-			json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","namespace":"bar","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"podName":""}}`),
+			json: json.RawMessage(`{"kind":"TaskRun","apiVersion":"tekton.dev/v1beta1","metadata":{"name":"my-taskrun","namespace":"bar","creationTimestamp":null,"labels":{"someLabel":"bar"}},"spec":{"serviceAccountName":"","taskRef":{"name":"my-task"}},"status":{"artifacts":{},"podName":""}}`),
 			want: pipelinev1.TaskRun{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "tekton.dev/v1beta1",
