@@ -20,7 +20,7 @@ var (
 		"The eventlistener HTTP request duration",
 		stats.UnitDimensionless)
 	elDistribution = view.Distribution(metrics.BucketsNBy10(0.001, 5)...)
-	eventRcdCount     = stats.Float64("event_received_count",
+	eventRcdCount  = stats.Float64("event_received_count",
 		"number of events received by sink",
 		stats.UnitDimensionless)
 	triggeredResources = stats.Int64("triggered_resources", "Count of the number of triggered eventlistener resources", stats.UnitDimensionless)
