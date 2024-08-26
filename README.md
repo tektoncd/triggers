@@ -47,7 +47,7 @@ Version specific links are available in the [releases](releases.md) page and on 
 
 ### Required Kubernetes Version
 
-- Starting from the v0.28.x release of Tekton: **Kubernetes version 1.28 or later**
+- Starting from the v0.29.x release of Tekton: **Kubernetes version 1.28 or later**
 - Starting from the v0.27.x release of Tekton: **Kubernetes version 1.27 or later**
 - Starting from the v0.26.x release of Tekton: **Kubernetes version 1.25 or later**
 - Starting from the v0.25.x release of Tekton: **Kubernetes version 1.24 or later**

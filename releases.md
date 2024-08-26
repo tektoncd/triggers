@@ -40,12 +40,12 @@ Further documentation available:
 
 ## Releases
 
-### v0.28
+### v0.29 (LTS)
 
-- **Latest Release**: [v0.28.0][v0-28-0] (2024-07-08) ([docs][v0-28-0-docs], [examples][v0-28-0-examples])
-- **Initial Release**: [v0.28.0][v0-28-0] (2024-07-08)
-- **End of Life**: 2024-08-08
-- **Patch Releases**: [v0.28.0][v0-28-0]
+- **Latest Release**: [v0.29.0][v0-29-0] (2024-08-21) ([docs][v0-29-0-docs], [examples][v0-29-0-examples])
+- **Initial Release**: [v0.29.0][v0-29-0] (2024-08-21)
+- **End of Life**: 2025-08-21
+- **Patch Releases**: [v0.29.0][v0-29-0]
 
 ### v0.27 (LTS)
 
