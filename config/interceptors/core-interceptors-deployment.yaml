@@ -82,6 +82,7 @@ spec:
           timeoutSeconds: 5
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
           runAsGroup: 65532
