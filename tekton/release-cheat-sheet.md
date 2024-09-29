@@ -8,15 +8,8 @@ the triggers repo, a terminal window and a text editor.
 
 1. `cd` to root of Triggers git checkout.
 
-1. Make sure the release `Task` and `Pipeline` are up-to-date on the
-   cluster.
+1. Make sure the release `Pipeline` is up-to-date on the cluster.
 
-   - [publish-triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
-
-     This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
-     ```shell script
-     kubectl apply -f tekton/publish.yaml
-     ```
    - [triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/release-pipeline.yaml)
      ```shell script
      kubectl apply -f tekton/release-pipeline.yaml
@@ -58,11 +51,19 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     tkn --context dogfooding pipeline start triggers-release \
-      --param=gitRevision="${TRIGGERS_RELEASE_GIT_SHA}" \
-      --param=versionTag="${VERSION_TAG}" \
-      --param=serviceAccountPath=release.json \
-      --param=releaseBucket=gs://tekton-releases/triggers \
+      --param package=github.com/tektoncd/triggers \
+      --param imageRegistry=ghcr.io \
+      --param imageRegistryPath=tektoncd/triggers \
+      --param imageRegistryRegions="" \
+      --param imageRegistryUser=tekton-robot \
+      --param gitRevision="${TRIGGERS_RELEASE_GIT_SHA}" \
+      --param versionTag="${VERSION_TAG}" \
+      --param serviceAccountPath=release.json \
+      --param serviceAccountImagesPath=credentials \
+      --param releaseBucket=gs://tekton-releases/triggers \
+      --param koExtraArgs="" \
       --workspace name=release-secret,secret=release-secret \
+      --workspace name=release-images-secret,secret=ghcr-creds \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
     ```
 
