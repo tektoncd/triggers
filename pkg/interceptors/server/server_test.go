@@ -212,7 +212,7 @@ func Test_SecretNotExist(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	ctx, _ := test.SetupFakeContext(t)
 	clientSet := fakekubeclient.Get(ctx).CoreV1()
-	_, _, err := createCerts(ctx, clientSet, time.Now().Add(Decade), logger.Sugar(), false)
+	_, _, err := createCerts(ctx, clientSet, time.Now().Add(Century), logger.Sugar(), false)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		t.Error(err)
 	}
@@ -241,7 +241,7 @@ func createSecret(t *testing.T, noAfter time.Time, certExpire bool) (v1.CoreV1In
 }
 
 func Test_CreateSecret(t *testing.T) {
-	_, sCert, caCert, err := createSecret(t, time.Now().Add(Decade), true)
+	_, sCert, caCert, err := createSecret(t, time.Now().Add(Century), true)
 	if err != nil {
 		t.Error(err)
 	}
