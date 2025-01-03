@@ -322,7 +322,7 @@ To use a GitLab `Interceptor` as a GitLab webhook validator, do the following:
 
 To use a GitLab `Interceptor` as a filter for event data, specify the event types
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
-accepts data event types listed in [Events](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#events).
+accepts data event types listed in [Events](https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html).
 
 Below is an example GitLab `Interceptor` reference:
 
