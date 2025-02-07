@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -441,6 +440,7 @@ func TestEventListenerCreate(t *testing.T) {
 		defer func() {
 			close(stopChan)
 		}()
+
 		go func(stopChan chan struct{}, errChan chan error) {
 			config, err := clientcmd.BuildConfigFromFlags("", knativetest.Flags.Kubeconfig)
 			if err != nil {
@@ -453,9 +453,17 @@ func TestEventListenerCreate(t *testing.T) {
 				return
 			}
 
-			path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
-			hostIP := strings.TrimPrefix(config.Host, "https://")
-			serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
+			// parsing the host to split host and path for
+			// cases where the host has a path prefix like https://host:8433/some/path
+			hostURL, err := url.Parse(config.Host)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			// adds back the already present path if it exists
+			path := fmt.Sprintf("%s/api/v1/namespaces/%s/pods/%s/portforward", hostURL.Path, namespace, podName)
+			serverURL := url.URL{Scheme: "https", Path: path, Host: hostURL.Host}
 			dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
 			out, errOut := new(Buffer), new(Buffer)
 			readyChan := make(chan struct{}, 1)
