@@ -31,6 +31,73 @@ which need `-tags=e2e` to be enabled.
 Environment variables used by end to end tests:
 
 - `KO_DOCKER_REPO` - Set this to an image registry your tests can push images to
+**kubeconfig**:
+
+- Use `--kubeconfig` flag pointing to a kubeconfig file, defaults to `~/.kube/config`.
+or
+- `KUBECONFIG` - Set this environment variable with the path to a kubeconfig file that will be used when [running](#running) tests
+
+Setting up the configuration file may differ between environments. Here is an example using a Kubernetes cluster behind a path `<host>/k/cluster`:
+
+```yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: [REDACTED]
+    server: https://k8s.example.com/k/cluster
+  name: proxy
+contexts:
+- context:
+    cluster: proxy
+    namespace: default
+    user: kubeconfig-user
+  name: proxy
+current-context: proxy
+kind: Config
+preferences: {}
+users:
+- name: kubeconfig-user
+  user:
+    token: [REDACTED]
+```
+
+And another example using [minikube](https://minikube.sigs.k8s.io/):
+
+```yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: "[REDACTED]"
+    extensions:
+    - extension:
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: cluster_info
+    server: https://127.0.0.1:32771
+  name: minikube
+contexts:
+- context:
+    cluster: minikube
+    extensions:
+    - extension:
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: context_info
+    namespace: default
+    user: minikube
+  name: minikube
+current-context: minikube
+kind: Config
+preferences: {}
+users:
+- name: minikube
+  user: {} # redacted
+```
+
+**Configuration issues**:
+
+- Having multiple `config` files in `KUBECONFIG` (i.e., `KUBECONFIG=$HOME/.kube/config:$HOME/.kube/config-2`) will cause test cases to fail. You can either assign `KUBECONFIG` to a single file or use the `--kubeconfig` flag when [running](#running) tests.
+
 
 ### Running
 
@@ -94,6 +161,8 @@ To run the YAML e2e tests, run the following command:
 ```bash
 ./test/e2e-tests-yaml.sh
 ```
+
+### Configuration
 
 ### Adding integration tests
 
