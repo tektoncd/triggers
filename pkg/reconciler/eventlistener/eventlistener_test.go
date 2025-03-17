@@ -274,6 +274,9 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						}, {
 							Name:  "METRICS_PROMETHEUS_PORT",
 							Value: "9000",
+						}, {
+							Name:  "KUBERNETES_MIN_VERSION",
+							Value: "v1.28.0",
 						}},
 						SecurityContext: &corev1.SecurityContext{
 							AllowPrivilegeEscalation: ptr.Bool(false),
@@ -442,6 +445,9 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						}, {
 							Name:  "METRICS_PROMETHEUS_PORT",
 							Value: "9000",
+						}, {
+							Name:  "KUBERNETES_MIN_VERSION",
+							Value: "v1.28.0",
 						}},
 						SecurityContext: &corev1.SecurityContext{
 							AllowPrivilegeEscalation: ptr.Bool(false),
@@ -594,6 +600,7 @@ func withDeletionTimestamp(el *v1beta1.EventListener) {
 func TestReconcile(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
 	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	t.Setenv("KUBERNETES_MIN_VERSION", "v1.28.0")
 
 	customPort := 80
 
@@ -989,6 +996,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: "9000",
+		}, {
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: "v1.28.0",
 		}}
 	})
 
@@ -1067,6 +1077,9 @@ func TestReconcile(t *testing.T) {
 		}, {
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: "9000",
+		}, {
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: "v1.28.0",
 		}}
 	})
 

@@ -72,6 +72,8 @@ spec:
           value: tekton-triggers-core-interceptors
         - name: INTERCEPTOR_TLS_SECRET_NAME
           value: tekton-triggers-core-interceptors-certs
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.28.0"
         readinessProbe:
           httpGet:
             path: /ready
