@@ -32,6 +32,7 @@ import (
 func TestCustomObject(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
 	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	t.Setenv("KUBERNETES_MIN_VERSION", "v1.28.0")
 
 	config := *MakeConfig()
 	metadata := map[string]interface{}{
@@ -107,6 +108,10 @@ func TestCustomObject(t *testing.T) {
 		map[string]interface{}{
 			"name":  "METRICS_PROMETHEUS_PORT",
 			"value": "9000",
+		},
+		map[string]interface{}{
+			"name":  "KUBERNETES_MIN_VERSION",
+			"value": "v1.28.0",
 		},
 	}
 
@@ -468,6 +473,7 @@ func TestCustomObject(t *testing.T) {
 func TestCustomObjectError(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
 	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	t.Setenv("KUBERNETES_MIN_VERSION", "v1.28.0")
 
 	config := *MakeConfig()
 
