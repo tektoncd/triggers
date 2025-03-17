@@ -65,6 +65,10 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 			// env METRICS_PROMETHEUS_PORT set by controller
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		}, corev1.EnvVar{
+			// KUBERNETES_MIN_VERSION overrides the Min version of k8s required
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: os.Getenv("KUBERNETES_MIN_VERSION"),
 		})
 
 		c.ReadinessProbe = &corev1.Probe{
