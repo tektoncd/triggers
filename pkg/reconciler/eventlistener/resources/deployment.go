@@ -194,6 +194,10 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			// env METRICS_PROMETHEUS_PORT set by controller
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		}, corev1.EnvVar{
+			// KUBERNETES_MIN_VERSION overrides the min k8s version required to run EL.
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: os.Getenv("KUBERNETES_MIN_VERSION"),
 		})
 	}, nil
 }
