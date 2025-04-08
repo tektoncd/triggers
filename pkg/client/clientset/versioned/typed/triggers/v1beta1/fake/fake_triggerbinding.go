@@ -41,22 +41,24 @@ var triggerbindingsKind = v1beta1.SchemeGroupVersion.WithKind("TriggerBinding")
 
 // Get takes name of the triggerBinding, and returns the corresponding triggerBinding object, and an error if there is any.
 func (c *FakeTriggerBindings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.TriggerBinding, err error) {
+	emptyResult := &v1beta1.TriggerBinding{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(triggerbindingsResource, c.ns, name), &v1beta1.TriggerBinding{})
+		Invokes(testing.NewGetActionWithOptions(triggerbindingsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TriggerBinding), err
 }
 
 // List takes label and field selectors, and returns the list of TriggerBindings that match those selectors.
 func (c *FakeTriggerBindings) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.TriggerBindingList, err error) {
+	emptyResult := &v1beta1.TriggerBindingList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(triggerbindingsResource, triggerbindingsKind, c.ns, opts), &v1beta1.TriggerBindingList{})
+		Invokes(testing.NewListActionWithOptions(triggerbindingsResource, triggerbindingsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakeTriggerBindings) List(ctx context.Context, opts v1.ListOptions) (re
 // Watch returns a watch.Interface that watches the requested triggerBindings.
 func (c *FakeTriggerBindings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(triggerbindingsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(triggerbindingsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a triggerBinding and creates it.  Returns the server's representation of the triggerBinding, and an error, if there is any.
 func (c *FakeTriggerBindings) Create(ctx context.Context, triggerBinding *v1beta1.TriggerBinding, opts v1.CreateOptions) (result *v1beta1.TriggerBinding, err error) {
+	emptyResult := &v1beta1.TriggerBinding{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(triggerbindingsResource, c.ns, triggerBinding), &v1beta1.TriggerBinding{})
+		Invokes(testing.NewCreateActionWithOptions(triggerbindingsResource, c.ns, triggerBinding, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TriggerBinding), err
 }
 
 // Update takes the representation of a triggerBinding and updates it. Returns the server's representation of the triggerBinding, and an error, if there is any.
 func (c *FakeTriggerBindings) Update(ctx context.Context, triggerBinding *v1beta1.TriggerBinding, opts v1.UpdateOptions) (result *v1beta1.TriggerBinding, err error) {
+	emptyResult := &v1beta1.TriggerBinding{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(triggerbindingsResource, c.ns, triggerBinding), &v1beta1.TriggerBinding{})
+		Invokes(testing.NewUpdateActionWithOptions(triggerbindingsResource, c.ns, triggerBinding, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TriggerBinding), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTriggerBindings) UpdateStatus(ctx context.Context, triggerBinding *v1beta1.TriggerBinding, opts v1.UpdateOptions) (*v1beta1.TriggerBinding, error) {
+func (c *FakeTriggerBindings) UpdateStatus(ctx context.Context, triggerBinding *v1beta1.TriggerBinding, opts v1.UpdateOptions) (result *v1beta1.TriggerBinding, err error) {
+	emptyResult := &v1beta1.TriggerBinding{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(triggerbindingsResource, "status", c.ns, triggerBinding), &v1beta1.TriggerBinding{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(triggerbindingsResource, "status", c.ns, triggerBinding, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TriggerBinding), err
 }
@@ -123,7 +128,7 @@ func (c *FakeTriggerBindings) Delete(ctx context.Context, name string, opts v1.D
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeTriggerBindings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(triggerbindingsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(triggerbindingsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.TriggerBindingList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakeTriggerBindings) DeleteCollection(ctx context.Context, opts v1.Dele
 
 // Patch applies the patch and returns the patched triggerBinding.
 func (c *FakeTriggerBindings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.TriggerBinding, err error) {
+	emptyResult := &v1beta1.TriggerBinding{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(triggerbindingsResource, c.ns, name, pt, data, subresources...), &v1beta1.TriggerBinding{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(triggerbindingsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TriggerBinding), err
 }

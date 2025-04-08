@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type TriggerLister interface {
 
 // triggerLister implements the TriggerLister interface.
 type triggerLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.Trigger]
 }
 
 // NewTriggerLister returns a new TriggerLister.
 func NewTriggerLister(indexer cache.Indexer) TriggerLister {
-	return &triggerLister{indexer: indexer}
-}
-
-// List lists all Triggers in the indexer.
-func (s *triggerLister) List(selector labels.Selector) (ret []*v1alpha1.Trigger, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Trigger))
-	})
-	return ret, err
+	return &triggerLister{listers.New[*v1alpha1.Trigger](indexer, v1alpha1.Resource("trigger"))}
 }
 
 // Triggers returns an object that can list and get Triggers.
 func (s *triggerLister) Triggers(namespace string) TriggerNamespaceLister {
-	return triggerNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return triggerNamespaceLister{listers.NewNamespaced[*v1alpha1.Trigger](s.ResourceIndexer, namespace)}
 }
 
 // TriggerNamespaceLister helps list and get Triggers.
@@ -74,26 +66,5 @@ type TriggerNamespaceLister interface {
 // triggerNamespaceLister implements the TriggerNamespaceLister
 // interface.
 type triggerNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Triggers in the indexer for a given namespace.
-func (s triggerNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Trigger, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Trigger))
-	})
-	return ret, err
-}
-
-// Get retrieves the Trigger from the indexer for a given namespace and name.
-func (s triggerNamespaceLister) Get(name string) (*v1alpha1.Trigger, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("trigger"), name)
-	}
-	return obj.(*v1alpha1.Trigger), nil
+	listers.ResourceIndexer[*v1alpha1.Trigger]
 }
