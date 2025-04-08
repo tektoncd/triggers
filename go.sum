@@ -769,8 +769,8 @@ github.com/stvp/go-udp-testing v0.0.0-20201019212854-469649b16807/go.mod h1:7jxm
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/tektoncd/pipeline v1.0.0 h1:qq/BtjwtvZV7qhd6BnL5sGoBM4vVqpCtz/+hMbs6p94=
 github.com/tektoncd/pipeline v1.0.0/go.mod h1:4XV9M4YrbCmsI4yDePcc5V8SM0Uso+S+0km80/dTD1I=
-github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460 h1:J9Gk3j1x4Yi1qzcUn0w4KekxVdD7qTMdoGCChw3G32A=
-github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460/go.mod h1:Ks1fp1nPnhJxxT810eOkq2skeIiDuYjq3cIgpS5Gxk4=
+github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1 h1:nv7BsOAZ1ifQX9Lw1hYFo1f7e62dTDyyVPJBuljgZKw=
+github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1/go.mod h1:eDs4O8vTNkyKZ/+AEuo4nYDfpyn1AzbgIcQ1QMQaKJk=
 github.com/tidwall/gjson v1.14.2 h1:6BBkirS0rAHjumnjHF6qgy5d2YAJ1TLIaFE2lzfOLqo=
 github.com/tidwall/gjson v1.14.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1 h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=

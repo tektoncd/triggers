@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,36 @@ type ClusterTriggerBindingsGetter interface {
 
 // ClusterTriggerBindingInterface has methods to work with ClusterTriggerBinding resources.
 type ClusterTriggerBindingInterface interface {
-	Create(ctx context.Context, clusterTriggerBinding *v1alpha1.ClusterTriggerBinding, opts v1.CreateOptions) (*v1alpha1.ClusterTriggerBinding, error)
-	Update(ctx context.Context, clusterTriggerBinding *v1alpha1.ClusterTriggerBinding, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerBinding, error)
+	Create(ctx context.Context, clusterTriggerBinding *triggersv1alpha1.ClusterTriggerBinding, opts v1.CreateOptions) (*triggersv1alpha1.ClusterTriggerBinding, error)
+	Update(ctx context.Context, clusterTriggerBinding *triggersv1alpha1.ClusterTriggerBinding, opts v1.UpdateOptions) (*triggersv1alpha1.ClusterTriggerBinding, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, clusterTriggerBinding *v1alpha1.ClusterTriggerBinding, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerBinding, error)
+	UpdateStatus(ctx context.Context, clusterTriggerBinding *triggersv1alpha1.ClusterTriggerBinding, opts v1.UpdateOptions) (*triggersv1alpha1.ClusterTriggerBinding, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterTriggerBinding, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterTriggerBindingList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1alpha1.ClusterTriggerBinding, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1alpha1.ClusterTriggerBindingList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTriggerBinding, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1alpha1.ClusterTriggerBinding, err error)
 	ClusterTriggerBindingExpansion
 }
 
 // clusterTriggerBindings implements ClusterTriggerBindingInterface
 type clusterTriggerBindings struct {
-	*gentype.ClientWithList[*v1alpha1.ClusterTriggerBinding, *v1alpha1.ClusterTriggerBindingList]
+	*gentype.ClientWithList[*triggersv1alpha1.ClusterTriggerBinding, *triggersv1alpha1.ClusterTriggerBindingList]
 }
 
 // newClusterTriggerBindings returns a ClusterTriggerBindings
 func newClusterTriggerBindings(c *TriggersV1alpha1Client) *clusterTriggerBindings {
 	return &clusterTriggerBindings{
-		gentype.NewClientWithList[*v1alpha1.ClusterTriggerBinding, *v1alpha1.ClusterTriggerBindingList](
+		gentype.NewClientWithList[*triggersv1alpha1.ClusterTriggerBinding, *triggersv1alpha1.ClusterTriggerBindingList](
 			"clustertriggerbindings",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.ClusterTriggerBinding { return &v1alpha1.ClusterTriggerBinding{} },
-			func() *v1alpha1.ClusterTriggerBindingList { return &v1alpha1.ClusterTriggerBindingList{} }),
+			func() *triggersv1alpha1.ClusterTriggerBinding { return &triggersv1alpha1.ClusterTriggerBinding{} },
+			func() *triggersv1alpha1.ClusterTriggerBindingList {
+				return &triggersv1alpha1.ClusterTriggerBindingList{}
+			},
+		),
 	}
 }
