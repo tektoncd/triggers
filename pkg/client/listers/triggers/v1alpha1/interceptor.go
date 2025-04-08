@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // InterceptorLister helps list Interceptors.
@@ -30,7 +30,7 @@ import (
 type InterceptorLister interface {
 	// List lists all Interceptors in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.Interceptor, err error)
 	// Interceptors returns an object that can list and get Interceptors.
 	Interceptors(namespace string) InterceptorNamespaceLister
 	InterceptorListerExpansion
@@ -38,17 +38,17 @@ type InterceptorLister interface {
 
 // interceptorLister implements the InterceptorLister interface.
 type interceptorLister struct {
-	listers.ResourceIndexer[*v1alpha1.Interceptor]
+	listers.ResourceIndexer[*triggersv1alpha1.Interceptor]
 }
 
 // NewInterceptorLister returns a new InterceptorLister.
 func NewInterceptorLister(indexer cache.Indexer) InterceptorLister {
-	return &interceptorLister{listers.New[*v1alpha1.Interceptor](indexer, v1alpha1.Resource("interceptor"))}
+	return &interceptorLister{listers.New[*triggersv1alpha1.Interceptor](indexer, triggersv1alpha1.Resource("interceptor"))}
 }
 
 // Interceptors returns an object that can list and get Interceptors.
 func (s *interceptorLister) Interceptors(namespace string) InterceptorNamespaceLister {
-	return interceptorNamespaceLister{listers.NewNamespaced[*v1alpha1.Interceptor](s.ResourceIndexer, namespace)}
+	return interceptorNamespaceLister{listers.NewNamespaced[*triggersv1alpha1.Interceptor](s.ResourceIndexer, namespace)}
 }
 
 // InterceptorNamespaceLister helps list and get Interceptors.
@@ -56,15 +56,15 @@ func (s *interceptorLister) Interceptors(namespace string) InterceptorNamespaceL
 type InterceptorNamespaceLister interface {
 	// List lists all Interceptors in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.Interceptor, err error)
 	// Get retrieves the Interceptor from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Interceptor, error)
+	Get(name string) (*triggersv1alpha1.Interceptor, error)
 	InterceptorNamespaceListerExpansion
 }
 
 // interceptorNamespaceLister implements the InterceptorNamespaceLister
 // interface.
 type interceptorNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.Interceptor]
+	listers.ResourceIndexer[*triggersv1alpha1.Interceptor]
 }

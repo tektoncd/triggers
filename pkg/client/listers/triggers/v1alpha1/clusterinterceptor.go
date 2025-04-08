@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ClusterInterceptorLister helps list ClusterInterceptors.
@@ -30,19 +30,19 @@ import (
 type ClusterInterceptorLister interface {
 	// List lists all ClusterInterceptors in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ClusterInterceptor, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.ClusterInterceptor, err error)
 	// Get retrieves the ClusterInterceptor from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ClusterInterceptor, error)
+	Get(name string) (*triggersv1alpha1.ClusterInterceptor, error)
 	ClusterInterceptorListerExpansion
 }
 
 // clusterInterceptorLister implements the ClusterInterceptorLister interface.
 type clusterInterceptorLister struct {
-	listers.ResourceIndexer[*v1alpha1.ClusterInterceptor]
+	listers.ResourceIndexer[*triggersv1alpha1.ClusterInterceptor]
 }
 
 // NewClusterInterceptorLister returns a new ClusterInterceptorLister.
 func NewClusterInterceptorLister(indexer cache.Indexer) ClusterInterceptorLister {
-	return &clusterInterceptorLister{listers.New[*v1alpha1.ClusterInterceptor](indexer, v1alpha1.Resource("clusterinterceptor"))}
+	return &clusterInterceptorLister{listers.New[*triggersv1alpha1.ClusterInterceptor](indexer, triggersv1alpha1.Resource("clusterinterceptor"))}
 }

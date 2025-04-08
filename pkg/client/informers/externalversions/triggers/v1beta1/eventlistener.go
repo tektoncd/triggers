@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	apistriggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/triggers/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // EventListeners.
 type EventListenerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.EventListenerLister
+	Lister() triggersv1beta1.EventListenerLister
 }
 
 type eventListenerInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredEventListenerInformer(client versioned.Interface, namespace stri
 				return client.TriggersV1beta1().EventListeners(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&triggersv1beta1.EventListener{},
+		&apistriggersv1beta1.EventListener{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *eventListenerInformer) defaultInformer(client versioned.Interface, resy
 }
 
 func (f *eventListenerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&triggersv1beta1.EventListener{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistriggersv1beta1.EventListener{}, f.defaultInformer)
 }
 
-func (f *eventListenerInformer) Lister() v1beta1.EventListenerLister {
-	return v1beta1.NewEventListenerLister(f.Informer().GetIndexer())
+func (f *eventListenerInformer) Lister() triggersv1beta1.EventListenerLister {
+	return triggersv1beta1.NewEventListenerLister(f.Informer().GetIndexer())
 }

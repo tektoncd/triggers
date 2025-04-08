@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type TriggerTemplatesGetter interface {
 
 // TriggerTemplateInterface has methods to work with TriggerTemplate resources.
 type TriggerTemplateInterface interface {
-	Create(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.CreateOptions) (*v1alpha1.TriggerTemplate, error)
-	Update(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.UpdateOptions) (*v1alpha1.TriggerTemplate, error)
+	Create(ctx context.Context, triggerTemplate *triggersv1alpha1.TriggerTemplate, opts v1.CreateOptions) (*triggersv1alpha1.TriggerTemplate, error)
+	Update(ctx context.Context, triggerTemplate *triggersv1alpha1.TriggerTemplate, opts v1.UpdateOptions) (*triggersv1alpha1.TriggerTemplate, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.UpdateOptions) (*v1alpha1.TriggerTemplate, error)
+	UpdateStatus(ctx context.Context, triggerTemplate *triggersv1alpha1.TriggerTemplate, opts v1.UpdateOptions) (*triggersv1alpha1.TriggerTemplate, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TriggerTemplate, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TriggerTemplateList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1alpha1.TriggerTemplate, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1alpha1.TriggerTemplateList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TriggerTemplate, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1alpha1.TriggerTemplate, err error)
 	TriggerTemplateExpansion
 }
 
 // triggerTemplates implements TriggerTemplateInterface
 type triggerTemplates struct {
-	*gentype.ClientWithList[*v1alpha1.TriggerTemplate, *v1alpha1.TriggerTemplateList]
+	*gentype.ClientWithList[*triggersv1alpha1.TriggerTemplate, *triggersv1alpha1.TriggerTemplateList]
 }
 
 // newTriggerTemplates returns a TriggerTemplates
 func newTriggerTemplates(c *TriggersV1alpha1Client, namespace string) *triggerTemplates {
 	return &triggerTemplates{
-		gentype.NewClientWithList[*v1alpha1.TriggerTemplate, *v1alpha1.TriggerTemplateList](
+		gentype.NewClientWithList[*triggersv1alpha1.TriggerTemplate, *triggersv1alpha1.TriggerTemplateList](
 			"triggertemplates",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.TriggerTemplate { return &v1alpha1.TriggerTemplate{} },
-			func() *v1alpha1.TriggerTemplateList { return &v1alpha1.TriggerTemplateList{} }),
+			func() *triggersv1alpha1.TriggerTemplate { return &triggersv1alpha1.TriggerTemplate{} },
+			func() *triggersv1alpha1.TriggerTemplateList { return &triggersv1alpha1.TriggerTemplateList{} },
+		),
 	}
 }

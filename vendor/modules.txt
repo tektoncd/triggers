@@ -422,8 +422,8 @@ github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460
-## explicit; go 1.22
+# github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
+## explicit; go 1.23
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
 # github.com/tidwall/gjson v1.14.2

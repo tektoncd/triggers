@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type InterceptorsGetter interface {
 
 // InterceptorInterface has methods to work with Interceptor resources.
 type InterceptorInterface interface {
-	Create(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.CreateOptions) (*v1alpha1.Interceptor, error)
-	Update(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.UpdateOptions) (*v1alpha1.Interceptor, error)
+	Create(ctx context.Context, interceptor *triggersv1alpha1.Interceptor, opts v1.CreateOptions) (*triggersv1alpha1.Interceptor, error)
+	Update(ctx context.Context, interceptor *triggersv1alpha1.Interceptor, opts v1.UpdateOptions) (*triggersv1alpha1.Interceptor, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.UpdateOptions) (*v1alpha1.Interceptor, error)
+	UpdateStatus(ctx context.Context, interceptor *triggersv1alpha1.Interceptor, opts v1.UpdateOptions) (*triggersv1alpha1.Interceptor, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Interceptor, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.InterceptorList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1alpha1.Interceptor, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1alpha1.InterceptorList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Interceptor, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1alpha1.Interceptor, err error)
 	InterceptorExpansion
 }
 
 // interceptors implements InterceptorInterface
 type interceptors struct {
-	*gentype.ClientWithList[*v1alpha1.Interceptor, *v1alpha1.InterceptorList]
+	*gentype.ClientWithList[*triggersv1alpha1.Interceptor, *triggersv1alpha1.InterceptorList]
 }
 
 // newInterceptors returns a Interceptors
 func newInterceptors(c *TriggersV1alpha1Client, namespace string) *interceptors {
 	return &interceptors{
-		gentype.NewClientWithList[*v1alpha1.Interceptor, *v1alpha1.InterceptorList](
+		gentype.NewClientWithList[*triggersv1alpha1.Interceptor, *triggersv1alpha1.InterceptorList](
 			"interceptors",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.Interceptor { return &v1alpha1.Interceptor{} },
-			func() *v1alpha1.InterceptorList { return &v1alpha1.InterceptorList{} }),
+			func() *triggersv1alpha1.Interceptor { return &triggersv1alpha1.Interceptor{} },
+			func() *triggersv1alpha1.InterceptorList { return &triggersv1alpha1.InterceptorList{} },
+		),
 	}
 }
