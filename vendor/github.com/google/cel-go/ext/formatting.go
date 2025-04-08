@@ -407,7 +407,7 @@ type stringFormatValidator struct{}
 
 // Name returns the name of the validator.
 func (stringFormatValidator) Name() string {
-	return "cel.lib.ext.validate.functions.string.format"
+	return "cel.validator.string_format"
 }
 
 // Configure implements the ASTValidatorConfigurer interface and augments the list of functions to skip
