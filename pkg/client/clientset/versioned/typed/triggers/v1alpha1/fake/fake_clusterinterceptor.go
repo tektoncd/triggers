@@ -40,20 +40,22 @@ var clusterinterceptorsKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterInter
 
 // Get takes name of the clusterInterceptor, and returns the corresponding clusterInterceptor object, and an error if there is any.
 func (c *FakeClusterInterceptors) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterInterceptor, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptor{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(clusterinterceptorsResource, name), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootGetActionWithOptions(clusterinterceptorsResource, name, options), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ClusterInterceptor), err
 }
 
 // List takes label and field selectors, and returns the list of ClusterInterceptors that match those selectors.
 func (c *FakeClusterInterceptors) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ClusterInterceptorList, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptorList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(clusterinterceptorsResource, clusterinterceptorsKind, opts), &v1alpha1.ClusterInterceptorList{})
+		Invokes(testing.NewRootListActionWithOptions(clusterinterceptorsResource, clusterinterceptorsKind, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -72,36 +74,39 @@ func (c *FakeClusterInterceptors) List(ctx context.Context, opts v1.ListOptions)
 // Watch returns a watch.Interface that watches the requested clusterInterceptors.
 func (c *FakeClusterInterceptors) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(clusterinterceptorsResource, opts))
+		InvokesWatch(testing.NewRootWatchActionWithOptions(clusterinterceptorsResource, opts))
 }
 
 // Create takes the representation of a clusterInterceptor and creates it.  Returns the server's representation of the clusterInterceptor, and an error, if there is any.
 func (c *FakeClusterInterceptors) Create(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.CreateOptions) (result *v1alpha1.ClusterInterceptor, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptor{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(clusterinterceptorsResource, clusterInterceptor), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootCreateActionWithOptions(clusterinterceptorsResource, clusterInterceptor, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ClusterInterceptor), err
 }
 
 // Update takes the representation of a clusterInterceptor and updates it. Returns the server's representation of the clusterInterceptor, and an error, if there is any.
 func (c *FakeClusterInterceptors) Update(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (result *v1alpha1.ClusterInterceptor, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptor{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(clusterinterceptorsResource, clusterInterceptor), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootUpdateActionWithOptions(clusterinterceptorsResource, clusterInterceptor, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ClusterInterceptor), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeClusterInterceptors) UpdateStatus(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (*v1alpha1.ClusterInterceptor, error) {
+func (c *FakeClusterInterceptors) UpdateStatus(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (result *v1alpha1.ClusterInterceptor, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptor{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(clusterinterceptorsResource, "status", clusterInterceptor), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootUpdateSubresourceActionWithOptions(clusterinterceptorsResource, "status", clusterInterceptor, opts), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ClusterInterceptor), err
 }
@@ -115,7 +120,7 @@ func (c *FakeClusterInterceptors) Delete(ctx context.Context, name string, opts 
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeClusterInterceptors) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(clusterinterceptorsResource, listOpts)
+	action := testing.NewRootDeleteCollectionActionWithOptions(clusterinterceptorsResource, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ClusterInterceptorList{})
 	return err
@@ -123,10 +128,11 @@ func (c *FakeClusterInterceptors) DeleteCollection(ctx context.Context, opts v1.
 
 // Patch applies the patch and returns the patched clusterInterceptor.
 func (c *FakeClusterInterceptors) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterInterceptor, err error) {
+	emptyResult := &v1alpha1.ClusterInterceptor{}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(clusterinterceptorsResource, name, pt, data, subresources...), &v1alpha1.ClusterInterceptor{})
+		Invokes(testing.NewRootPatchSubresourceActionWithOptions(clusterinterceptorsResource, name, pt, data, opts, subresources...), emptyResult)
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ClusterInterceptor), err
 }
