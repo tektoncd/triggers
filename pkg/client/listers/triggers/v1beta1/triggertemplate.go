@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TriggerTemplateLister helps list TriggerTemplates.
@@ -30,7 +30,7 @@ import (
 type TriggerTemplateLister interface {
 	// List lists all TriggerTemplates in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.TriggerTemplate, err error)
+	List(selector labels.Selector) (ret []*triggersv1beta1.TriggerTemplate, err error)
 	// TriggerTemplates returns an object that can list and get TriggerTemplates.
 	TriggerTemplates(namespace string) TriggerTemplateNamespaceLister
 	TriggerTemplateListerExpansion
@@ -38,17 +38,17 @@ type TriggerTemplateLister interface {
 
 // triggerTemplateLister implements the TriggerTemplateLister interface.
 type triggerTemplateLister struct {
-	listers.ResourceIndexer[*v1beta1.TriggerTemplate]
+	listers.ResourceIndexer[*triggersv1beta1.TriggerTemplate]
 }
 
 // NewTriggerTemplateLister returns a new TriggerTemplateLister.
 func NewTriggerTemplateLister(indexer cache.Indexer) TriggerTemplateLister {
-	return &triggerTemplateLister{listers.New[*v1beta1.TriggerTemplate](indexer, v1beta1.Resource("triggertemplate"))}
+	return &triggerTemplateLister{listers.New[*triggersv1beta1.TriggerTemplate](indexer, triggersv1beta1.Resource("triggertemplate"))}
 }
 
 // TriggerTemplates returns an object that can list and get TriggerTemplates.
 func (s *triggerTemplateLister) TriggerTemplates(namespace string) TriggerTemplateNamespaceLister {
-	return triggerTemplateNamespaceLister{listers.NewNamespaced[*v1beta1.TriggerTemplate](s.ResourceIndexer, namespace)}
+	return triggerTemplateNamespaceLister{listers.NewNamespaced[*triggersv1beta1.TriggerTemplate](s.ResourceIndexer, namespace)}
 }
 
 // TriggerTemplateNamespaceLister helps list and get TriggerTemplates.
@@ -56,15 +56,15 @@ func (s *triggerTemplateLister) TriggerTemplates(namespace string) TriggerTempla
 type TriggerTemplateNamespaceLister interface {
 	// List lists all TriggerTemplates in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.TriggerTemplate, err error)
+	List(selector labels.Selector) (ret []*triggersv1beta1.TriggerTemplate, err error)
 	// Get retrieves the TriggerTemplate from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.TriggerTemplate, error)
+	Get(name string) (*triggersv1beta1.TriggerTemplate, error)
 	TriggerTemplateNamespaceListerExpansion
 }
 
 // triggerTemplateNamespaceLister implements the TriggerTemplateNamespaceLister
 // interface.
 type triggerTemplateNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.TriggerTemplate]
+	listers.ResourceIndexer[*triggersv1beta1.TriggerTemplate]
 }

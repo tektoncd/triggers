@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type EventListenersGetter interface {
 
 // EventListenerInterface has methods to work with EventListener resources.
 type EventListenerInterface interface {
-	Create(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.CreateOptions) (*v1beta1.EventListener, error)
-	Update(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.UpdateOptions) (*v1beta1.EventListener, error)
+	Create(ctx context.Context, eventListener *triggersv1beta1.EventListener, opts v1.CreateOptions) (*triggersv1beta1.EventListener, error)
+	Update(ctx context.Context, eventListener *triggersv1beta1.EventListener, opts v1.UpdateOptions) (*triggersv1beta1.EventListener, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.UpdateOptions) (*v1beta1.EventListener, error)
+	UpdateStatus(ctx context.Context, eventListener *triggersv1beta1.EventListener, opts v1.UpdateOptions) (*triggersv1beta1.EventListener, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.EventListener, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.EventListenerList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1beta1.EventListener, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1beta1.EventListenerList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.EventListener, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1beta1.EventListener, err error)
 	EventListenerExpansion
 }
 
 // eventListeners implements EventListenerInterface
 type eventListeners struct {
-	*gentype.ClientWithList[*v1beta1.EventListener, *v1beta1.EventListenerList]
+	*gentype.ClientWithList[*triggersv1beta1.EventListener, *triggersv1beta1.EventListenerList]
 }
 
 // newEventListeners returns a EventListeners
 func newEventListeners(c *TriggersV1beta1Client, namespace string) *eventListeners {
 	return &eventListeners{
-		gentype.NewClientWithList[*v1beta1.EventListener, *v1beta1.EventListenerList](
+		gentype.NewClientWithList[*triggersv1beta1.EventListener, *triggersv1beta1.EventListenerList](
 			"eventlisteners",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.EventListener { return &v1beta1.EventListener{} },
-			func() *v1beta1.EventListenerList { return &v1beta1.EventListenerList{} }),
+			func() *triggersv1beta1.EventListener { return &triggersv1beta1.EventListener{} },
+			func() *triggersv1beta1.EventListenerList { return &triggersv1beta1.EventListenerList{} },
+		),
 	}
 }

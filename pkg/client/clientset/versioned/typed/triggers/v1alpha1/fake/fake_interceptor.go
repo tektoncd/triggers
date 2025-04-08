@@ -19,129 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeInterceptors implements InterceptorInterface
-type FakeInterceptors struct {
+// fakeInterceptors implements InterceptorInterface
+type fakeInterceptors struct {
+	*gentype.FakeClientWithList[*v1alpha1.Interceptor, *v1alpha1.InterceptorList]
 	Fake *FakeTriggersV1alpha1
-	ns   string
 }
 
-var interceptorsResource = v1alpha1.SchemeGroupVersion.WithResource("interceptors")
-
-var interceptorsKind = v1alpha1.SchemeGroupVersion.WithKind("Interceptor")
-
-// Get takes name of the interceptor, and returns the corresponding interceptor object, and an error if there is any.
-func (c *FakeInterceptors) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Interceptor, err error) {
-	emptyResult := &v1alpha1.Interceptor{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(interceptorsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeInterceptors(fake *FakeTriggersV1alpha1, namespace string) triggersv1alpha1.InterceptorInterface {
+	return &fakeInterceptors{
+		gentype.NewFakeClientWithList[*v1alpha1.Interceptor, *v1alpha1.InterceptorList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("interceptors"),
+			v1alpha1.SchemeGroupVersion.WithKind("Interceptor"),
+			func() *v1alpha1.Interceptor { return &v1alpha1.Interceptor{} },
+			func() *v1alpha1.InterceptorList { return &v1alpha1.InterceptorList{} },
+			func(dst, src *v1alpha1.InterceptorList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.InterceptorList) []*v1alpha1.Interceptor {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.InterceptorList, items []*v1alpha1.Interceptor) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.Interceptor), err
-}
-
-// List takes label and field selectors, and returns the list of Interceptors that match those selectors.
-func (c *FakeInterceptors) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.InterceptorList, err error) {
-	emptyResult := &v1alpha1.InterceptorList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(interceptorsResource, interceptorsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.InterceptorList{ListMeta: obj.(*v1alpha1.InterceptorList).ListMeta}
-	for _, item := range obj.(*v1alpha1.InterceptorList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested interceptors.
-func (c *FakeInterceptors) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(interceptorsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a interceptor and creates it.  Returns the server's representation of the interceptor, and an error, if there is any.
-func (c *FakeInterceptors) Create(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.CreateOptions) (result *v1alpha1.Interceptor, err error) {
-	emptyResult := &v1alpha1.Interceptor{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(interceptorsResource, c.ns, interceptor, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Interceptor), err
-}
-
-// Update takes the representation of a interceptor and updates it. Returns the server's representation of the interceptor, and an error, if there is any.
-func (c *FakeInterceptors) Update(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.UpdateOptions) (result *v1alpha1.Interceptor, err error) {
-	emptyResult := &v1alpha1.Interceptor{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(interceptorsResource, c.ns, interceptor, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Interceptor), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeInterceptors) UpdateStatus(ctx context.Context, interceptor *v1alpha1.Interceptor, opts v1.UpdateOptions) (result *v1alpha1.Interceptor, err error) {
-	emptyResult := &v1alpha1.Interceptor{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(interceptorsResource, "status", c.ns, interceptor, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Interceptor), err
-}
-
-// Delete takes name of the interceptor and deletes it. Returns an error if one occurs.
-func (c *FakeInterceptors) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(interceptorsResource, c.ns, name, opts), &v1alpha1.Interceptor{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeInterceptors) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(interceptorsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.InterceptorList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched interceptor.
-func (c *FakeInterceptors) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Interceptor, err error) {
-	emptyResult := &v1alpha1.Interceptor{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(interceptorsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Interceptor), err
 }

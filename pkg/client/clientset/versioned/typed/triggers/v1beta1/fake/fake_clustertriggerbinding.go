@@ -19,120 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1beta1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeClusterTriggerBindings implements ClusterTriggerBindingInterface
-type FakeClusterTriggerBindings struct {
+// fakeClusterTriggerBindings implements ClusterTriggerBindingInterface
+type fakeClusterTriggerBindings struct {
+	*gentype.FakeClientWithList[*v1beta1.ClusterTriggerBinding, *v1beta1.ClusterTriggerBindingList]
 	Fake *FakeTriggersV1beta1
 }
 
-var clustertriggerbindingsResource = v1beta1.SchemeGroupVersion.WithResource("clustertriggerbindings")
-
-var clustertriggerbindingsKind = v1beta1.SchemeGroupVersion.WithKind("ClusterTriggerBinding")
-
-// Get takes name of the clusterTriggerBinding, and returns the corresponding clusterTriggerBinding object, and an error if there is any.
-func (c *FakeClusterTriggerBindings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ClusterTriggerBinding, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBinding{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetActionWithOptions(clustertriggerbindingsResource, name, options), emptyResult)
-	if obj == nil {
-		return emptyResult, err
+func newFakeClusterTriggerBindings(fake *FakeTriggersV1beta1) triggersv1beta1.ClusterTriggerBindingInterface {
+	return &fakeClusterTriggerBindings{
+		gentype.NewFakeClientWithList[*v1beta1.ClusterTriggerBinding, *v1beta1.ClusterTriggerBindingList](
+			fake.Fake,
+			"",
+			v1beta1.SchemeGroupVersion.WithResource("clustertriggerbindings"),
+			v1beta1.SchemeGroupVersion.WithKind("ClusterTriggerBinding"),
+			func() *v1beta1.ClusterTriggerBinding { return &v1beta1.ClusterTriggerBinding{} },
+			func() *v1beta1.ClusterTriggerBindingList { return &v1beta1.ClusterTriggerBindingList{} },
+			func(dst, src *v1beta1.ClusterTriggerBindingList) { dst.ListMeta = src.ListMeta },
+			func(list *v1beta1.ClusterTriggerBindingList) []*v1beta1.ClusterTriggerBinding {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1beta1.ClusterTriggerBindingList, items []*v1beta1.ClusterTriggerBinding) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1beta1.ClusterTriggerBinding), err
-}
-
-// List takes label and field selectors, and returns the list of ClusterTriggerBindings that match those selectors.
-func (c *FakeClusterTriggerBindings) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.ClusterTriggerBindingList, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBindingList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListActionWithOptions(clustertriggerbindingsResource, clustertriggerbindingsKind, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1beta1.ClusterTriggerBindingList{ListMeta: obj.(*v1beta1.ClusterTriggerBindingList).ListMeta}
-	for _, item := range obj.(*v1beta1.ClusterTriggerBindingList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested clusterTriggerBindings.
-func (c *FakeClusterTriggerBindings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchActionWithOptions(clustertriggerbindingsResource, opts))
-}
-
-// Create takes the representation of a clusterTriggerBinding and creates it.  Returns the server's representation of the clusterTriggerBinding, and an error, if there is any.
-func (c *FakeClusterTriggerBindings) Create(ctx context.Context, clusterTriggerBinding *v1beta1.ClusterTriggerBinding, opts v1.CreateOptions) (result *v1beta1.ClusterTriggerBinding, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBinding{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateActionWithOptions(clustertriggerbindingsResource, clusterTriggerBinding, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ClusterTriggerBinding), err
-}
-
-// Update takes the representation of a clusterTriggerBinding and updates it. Returns the server's representation of the clusterTriggerBinding, and an error, if there is any.
-func (c *FakeClusterTriggerBindings) Update(ctx context.Context, clusterTriggerBinding *v1beta1.ClusterTriggerBinding, opts v1.UpdateOptions) (result *v1beta1.ClusterTriggerBinding, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBinding{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateActionWithOptions(clustertriggerbindingsResource, clusterTriggerBinding, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ClusterTriggerBinding), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeClusterTriggerBindings) UpdateStatus(ctx context.Context, clusterTriggerBinding *v1beta1.ClusterTriggerBinding, opts v1.UpdateOptions) (result *v1beta1.ClusterTriggerBinding, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBinding{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceActionWithOptions(clustertriggerbindingsResource, "status", clusterTriggerBinding, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ClusterTriggerBinding), err
-}
-
-// Delete takes name of the clusterTriggerBinding and deletes it. Returns an error if one occurs.
-func (c *FakeClusterTriggerBindings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(clustertriggerbindingsResource, name, opts), &v1beta1.ClusterTriggerBinding{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeClusterTriggerBindings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionActionWithOptions(clustertriggerbindingsResource, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1beta1.ClusterTriggerBindingList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched clusterTriggerBinding.
-func (c *FakeClusterTriggerBindings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ClusterTriggerBinding, err error) {
-	emptyResult := &v1beta1.ClusterTriggerBinding{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceActionWithOptions(clustertriggerbindingsResource, name, pt, data, opts, subresources...), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ClusterTriggerBinding), err
 }

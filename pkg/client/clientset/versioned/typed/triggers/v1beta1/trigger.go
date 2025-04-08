@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type TriggersGetter interface {
 
 // TriggerInterface has methods to work with Trigger resources.
 type TriggerInterface interface {
-	Create(ctx context.Context, trigger *v1beta1.Trigger, opts v1.CreateOptions) (*v1beta1.Trigger, error)
-	Update(ctx context.Context, trigger *v1beta1.Trigger, opts v1.UpdateOptions) (*v1beta1.Trigger, error)
+	Create(ctx context.Context, trigger *triggersv1beta1.Trigger, opts v1.CreateOptions) (*triggersv1beta1.Trigger, error)
+	Update(ctx context.Context, trigger *triggersv1beta1.Trigger, opts v1.UpdateOptions) (*triggersv1beta1.Trigger, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.Trigger, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.TriggerList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1beta1.Trigger, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1beta1.TriggerList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.Trigger, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1beta1.Trigger, err error)
 	TriggerExpansion
 }
 
 // triggers implements TriggerInterface
 type triggers struct {
-	*gentype.ClientWithList[*v1beta1.Trigger, *v1beta1.TriggerList]
+	*gentype.ClientWithList[*triggersv1beta1.Trigger, *triggersv1beta1.TriggerList]
 }
 
 // newTriggers returns a Triggers
 func newTriggers(c *TriggersV1beta1Client, namespace string) *triggers {
 	return &triggers{
-		gentype.NewClientWithList[*v1beta1.Trigger, *v1beta1.TriggerList](
+		gentype.NewClientWithList[*triggersv1beta1.Trigger, *triggersv1beta1.TriggerList](
 			"triggers",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.Trigger { return &v1beta1.Trigger{} },
-			func() *v1beta1.TriggerList { return &v1beta1.TriggerList{} }),
+			func() *triggersv1beta1.Trigger { return &triggersv1beta1.Trigger{} },
+			func() *triggersv1beta1.TriggerList { return &triggersv1beta1.TriggerList{} },
+		),
 	}
 }

@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type ClusterInterceptorsGetter interface {
 
 // ClusterInterceptorInterface has methods to work with ClusterInterceptor resources.
 type ClusterInterceptorInterface interface {
-	Create(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.CreateOptions) (*v1alpha1.ClusterInterceptor, error)
-	Update(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (*v1alpha1.ClusterInterceptor, error)
+	Create(ctx context.Context, clusterInterceptor *triggersv1alpha1.ClusterInterceptor, opts v1.CreateOptions) (*triggersv1alpha1.ClusterInterceptor, error)
+	Update(ctx context.Context, clusterInterceptor *triggersv1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (*triggersv1alpha1.ClusterInterceptor, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, clusterInterceptor *v1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (*v1alpha1.ClusterInterceptor, error)
+	UpdateStatus(ctx context.Context, clusterInterceptor *triggersv1alpha1.ClusterInterceptor, opts v1.UpdateOptions) (*triggersv1alpha1.ClusterInterceptor, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterInterceptor, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterInterceptorList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1alpha1.ClusterInterceptor, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1alpha1.ClusterInterceptorList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterInterceptor, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1alpha1.ClusterInterceptor, err error)
 	ClusterInterceptorExpansion
 }
 
 // clusterInterceptors implements ClusterInterceptorInterface
 type clusterInterceptors struct {
-	*gentype.ClientWithList[*v1alpha1.ClusterInterceptor, *v1alpha1.ClusterInterceptorList]
+	*gentype.ClientWithList[*triggersv1alpha1.ClusterInterceptor, *triggersv1alpha1.ClusterInterceptorList]
 }
 
 // newClusterInterceptors returns a ClusterInterceptors
 func newClusterInterceptors(c *TriggersV1alpha1Client) *clusterInterceptors {
 	return &clusterInterceptors{
-		gentype.NewClientWithList[*v1alpha1.ClusterInterceptor, *v1alpha1.ClusterInterceptorList](
+		gentype.NewClientWithList[*triggersv1alpha1.ClusterInterceptor, *triggersv1alpha1.ClusterInterceptorList](
 			"clusterinterceptors",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.ClusterInterceptor { return &v1alpha1.ClusterInterceptor{} },
-			func() *v1alpha1.ClusterInterceptorList { return &v1alpha1.ClusterInterceptorList{} }),
+			func() *triggersv1alpha1.ClusterInterceptor { return &triggersv1alpha1.ClusterInterceptor{} },
+			func() *triggersv1alpha1.ClusterInterceptorList { return &triggersv1alpha1.ClusterInterceptorList{} },
+		),
 	}
 }
