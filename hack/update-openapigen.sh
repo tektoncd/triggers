@@ -39,8 +39,9 @@ trap cleanup EXIT
 
 echo "Generating OpenAPI specification ..."
 go run k8s.io/kube-openapi/cmd/openapi-gen \
-    --input-dirs github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1 \
-    --output-package ./pkg/apis/triggers/v1beta1 -o ./ \
+    github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1 knative.dev/pkg/apis knative.dev/pkg/apis/duck/v1beta1 \
+    --output-pkg ./pkg/apis/triggers/v1beta1 --output-dir ./pkg/apis/triggers/v1beta1 \
+    --output-file openapi_generated.go \
     --go-header-file hack/boilerplate/boilerplate.go.txt \
     -r "${TMP_DIFFROOT}/api-report"
 

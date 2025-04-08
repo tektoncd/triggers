@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type TriggerTemplateLister interface {
 
 // triggerTemplateLister implements the TriggerTemplateLister interface.
 type triggerTemplateLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.TriggerTemplate]
 }
 
 // NewTriggerTemplateLister returns a new TriggerTemplateLister.
 func NewTriggerTemplateLister(indexer cache.Indexer) TriggerTemplateLister {
-	return &triggerTemplateLister{indexer: indexer}
-}
-
-// List lists all TriggerTemplates in the indexer.
-func (s *triggerTemplateLister) List(selector labels.Selector) (ret []*v1alpha1.TriggerTemplate, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TriggerTemplate))
-	})
-	return ret, err
+	return &triggerTemplateLister{listers.New[*v1alpha1.TriggerTemplate](indexer, v1alpha1.Resource("triggertemplate"))}
 }
 
 // TriggerTemplates returns an object that can list and get TriggerTemplates.
 func (s *triggerTemplateLister) TriggerTemplates(namespace string) TriggerTemplateNamespaceLister {
-	return triggerTemplateNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return triggerTemplateNamespaceLister{listers.NewNamespaced[*v1alpha1.TriggerTemplate](s.ResourceIndexer, namespace)}
 }
 
 // TriggerTemplateNamespaceLister helps list and get TriggerTemplates.
@@ -74,26 +66,5 @@ type TriggerTemplateNamespaceLister interface {
 // triggerTemplateNamespaceLister implements the TriggerTemplateNamespaceLister
 // interface.
 type triggerTemplateNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all TriggerTemplates in the indexer for a given namespace.
-func (s triggerTemplateNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TriggerTemplate, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TriggerTemplate))
-	})
-	return ret, err
-}
-
-// Get retrieves the TriggerTemplate from the indexer for a given namespace and name.
-func (s triggerTemplateNamespaceLister) Get(name string) (*v1alpha1.TriggerTemplate, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("triggertemplate"), name)
-	}
-	return obj.(*v1alpha1.TriggerTemplate), nil
+	listers.ResourceIndexer[*v1alpha1.TriggerTemplate]
 }

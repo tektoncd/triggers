@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type TriggerBindingLister interface {
 
 // triggerBindingLister implements the TriggerBindingLister interface.
 type triggerBindingLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.TriggerBinding]
 }
 
 // NewTriggerBindingLister returns a new TriggerBindingLister.
 func NewTriggerBindingLister(indexer cache.Indexer) TriggerBindingLister {
-	return &triggerBindingLister{indexer: indexer}
-}
-
-// List lists all TriggerBindings in the indexer.
-func (s *triggerBindingLister) List(selector labels.Selector) (ret []*v1alpha1.TriggerBinding, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TriggerBinding))
-	})
-	return ret, err
+	return &triggerBindingLister{listers.New[*v1alpha1.TriggerBinding](indexer, v1alpha1.Resource("triggerbinding"))}
 }
 
 // TriggerBindings returns an object that can list and get TriggerBindings.
 func (s *triggerBindingLister) TriggerBindings(namespace string) TriggerBindingNamespaceLister {
-	return triggerBindingNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return triggerBindingNamespaceLister{listers.NewNamespaced[*v1alpha1.TriggerBinding](s.ResourceIndexer, namespace)}
 }
 
 // TriggerBindingNamespaceLister helps list and get TriggerBindings.
@@ -74,26 +66,5 @@ type TriggerBindingNamespaceLister interface {
 // triggerBindingNamespaceLister implements the TriggerBindingNamespaceLister
 // interface.
 type triggerBindingNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all TriggerBindings in the indexer for a given namespace.
-func (s triggerBindingNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TriggerBinding, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TriggerBinding))
-	})
-	return ret, err
-}
-
-// Get retrieves the TriggerBinding from the indexer for a given namespace and name.
-func (s triggerBindingNamespaceLister) Get(name string) (*v1alpha1.TriggerBinding, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("triggerbinding"), name)
-	}
-	return obj.(*v1alpha1.TriggerBinding), nil
+	listers.ResourceIndexer[*v1alpha1.TriggerBinding]
 }

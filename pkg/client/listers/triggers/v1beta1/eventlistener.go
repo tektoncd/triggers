@@ -20,8 +20,8 @@ package v1beta1
 
 import (
 	v1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type EventListenerLister interface {
 
 // eventListenerLister implements the EventListenerLister interface.
 type eventListenerLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1beta1.EventListener]
 }
 
 // NewEventListenerLister returns a new EventListenerLister.
 func NewEventListenerLister(indexer cache.Indexer) EventListenerLister {
-	return &eventListenerLister{indexer: indexer}
-}
-
-// List lists all EventListeners in the indexer.
-func (s *eventListenerLister) List(selector labels.Selector) (ret []*v1beta1.EventListener, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.EventListener))
-	})
-	return ret, err
+	return &eventListenerLister{listers.New[*v1beta1.EventListener](indexer, v1beta1.Resource("eventlistener"))}
 }
 
 // EventListeners returns an object that can list and get EventListeners.
 func (s *eventListenerLister) EventListeners(namespace string) EventListenerNamespaceLister {
-	return eventListenerNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return eventListenerNamespaceLister{listers.NewNamespaced[*v1beta1.EventListener](s.ResourceIndexer, namespace)}
 }
 
 // EventListenerNamespaceLister helps list and get EventListeners.
@@ -74,26 +66,5 @@ type EventListenerNamespaceLister interface {
 // eventListenerNamespaceLister implements the EventListenerNamespaceLister
 // interface.
 type eventListenerNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all EventListeners in the indexer for a given namespace.
-func (s eventListenerNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.EventListener, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.EventListener))
-	})
-	return ret, err
-}
-
-// Get retrieves the EventListener from the indexer for a given namespace and name.
-func (s eventListenerNamespaceLister) Get(name string) (*v1beta1.EventListener, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1beta1.Resource("eventlistener"), name)
-	}
-	return obj.(*v1beta1.EventListener), nil
+	listers.ResourceIndexer[*v1beta1.EventListener]
 }

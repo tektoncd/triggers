@@ -41,22 +41,24 @@ var eventlistenersKind = v1beta1.SchemeGroupVersion.WithKind("EventListener")
 
 // Get takes name of the eventListener, and returns the corresponding eventListener object, and an error if there is any.
 func (c *FakeEventListeners) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.EventListener, err error) {
+	emptyResult := &v1beta1.EventListener{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(eventlistenersResource, c.ns, name), &v1beta1.EventListener{})
+		Invokes(testing.NewGetActionWithOptions(eventlistenersResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.EventListener), err
 }
 
 // List takes label and field selectors, and returns the list of EventListeners that match those selectors.
 func (c *FakeEventListeners) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.EventListenerList, err error) {
+	emptyResult := &v1beta1.EventListenerList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(eventlistenersResource, eventlistenersKind, c.ns, opts), &v1beta1.EventListenerList{})
+		Invokes(testing.NewListActionWithOptions(eventlistenersResource, eventlistenersKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakeEventListeners) List(ctx context.Context, opts v1.ListOptions) (res
 // Watch returns a watch.Interface that watches the requested eventListeners.
 func (c *FakeEventListeners) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(eventlistenersResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(eventlistenersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a eventListener and creates it.  Returns the server's representation of the eventListener, and an error, if there is any.
 func (c *FakeEventListeners) Create(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.CreateOptions) (result *v1beta1.EventListener, err error) {
+	emptyResult := &v1beta1.EventListener{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(eventlistenersResource, c.ns, eventListener), &v1beta1.EventListener{})
+		Invokes(testing.NewCreateActionWithOptions(eventlistenersResource, c.ns, eventListener, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.EventListener), err
 }
 
 // Update takes the representation of a eventListener and updates it. Returns the server's representation of the eventListener, and an error, if there is any.
 func (c *FakeEventListeners) Update(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.UpdateOptions) (result *v1beta1.EventListener, err error) {
+	emptyResult := &v1beta1.EventListener{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(eventlistenersResource, c.ns, eventListener), &v1beta1.EventListener{})
+		Invokes(testing.NewUpdateActionWithOptions(eventlistenersResource, c.ns, eventListener, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.EventListener), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeEventListeners) UpdateStatus(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.UpdateOptions) (*v1beta1.EventListener, error) {
+func (c *FakeEventListeners) UpdateStatus(ctx context.Context, eventListener *v1beta1.EventListener, opts v1.UpdateOptions) (result *v1beta1.EventListener, err error) {
+	emptyResult := &v1beta1.EventListener{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(eventlistenersResource, "status", c.ns, eventListener), &v1beta1.EventListener{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(eventlistenersResource, "status", c.ns, eventListener, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.EventListener), err
 }
@@ -123,7 +128,7 @@ func (c *FakeEventListeners) Delete(ctx context.Context, name string, opts v1.De
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeEventListeners) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(eventlistenersResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(eventlistenersResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.EventListenerList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakeEventListeners) DeleteCollection(ctx context.Context, opts v1.Delet
 
 // Patch applies the patch and returns the patched eventListener.
 func (c *FakeEventListeners) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.EventListener, err error) {
+	emptyResult := &v1beta1.EventListener{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(eventlistenersResource, c.ns, name, pt, data, subresources...), &v1beta1.EventListener{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(eventlistenersResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.EventListener), err
 }
