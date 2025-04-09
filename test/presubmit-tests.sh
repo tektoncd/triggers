@@ -26,8 +26,15 @@
 export DISABLE_MD_LINTING=1
 export DISABLE_MD_LINK_CHECK=1
 
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
+echo "setup kind"
+sh $(dirname $0)/setup-kind.sh
 
+
+set -o allexport
+source $(dirname $0)/e2e-tests-kind-prow.env
+set +o allexport
+
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
 function post_build_tests() {
     return_code=0
