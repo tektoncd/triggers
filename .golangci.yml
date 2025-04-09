@@ -13,7 +13,7 @@ linters-settings:
     exclude: .errcheck.txt
 linters:
   enable:
-  - deadcode
+  - unused
   - errcheck
   - gofmt
   - goimports
@@ -32,3 +32,5 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   # TODO(abayer): Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment, like we do in Pipeline.
+  modules-download-mode: vendor
+  timeout: 20m
