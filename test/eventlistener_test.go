@@ -37,11 +37,14 @@ import (
 	"knative.dev/pkg/ptr"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	eventReconciler "github.com/tektoncd/triggers/pkg/reconciler/eventlistener"
 	"github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"github.com/tektoncd/triggers/pkg/sink"
@@ -51,9 +54,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/client-go/transport/spdy"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -170,7 +170,7 @@ func TestEventListenerCreate(t *testing.T) {
 	defaultValueStr := "defaultvalue"
 
 	// TriggerTemplate
-	tt, err := c.TriggersClient.TriggersV1alpha1().TriggerTemplates(namespace).Create(context.Background(),
+	tt, err := c.TriggersClient.TriggersV1beta1().TriggerTemplates(namespace).Create(context.Background(),
 		&triggersv1.TriggerTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "my-triggertemplate",
@@ -213,7 +213,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// TriggerBinding
-	tb, err := c.TriggersClient.TriggersV1alpha1().TriggerBindings(namespace).Create(context.Background(),
+	tb, err := c.TriggersClient.TriggersV1beta1().TriggerBindings(namespace).Create(context.Background(),
 		&triggersv1.TriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-triggerbinding"},
 			Spec: triggersv1.TriggerBindingSpec{
@@ -239,7 +239,7 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 
 	// ClusterTriggerBinding
-	ctb, err := c.TriggersClient.TriggersV1alpha1().ClusterTriggerBindings().Create(context.Background(),
+	ctb, err := c.TriggersClient.TriggersV1beta1().ClusterTriggerBindings().Create(context.Background(),
 		&triggersv1.ClusterTriggerBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-clustertriggerbinding"},
 			Spec: triggersv1.TriggerBindingSpec{
@@ -292,6 +292,7 @@ func TestEventListenerCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Role: %s", err)
 	}
+
 	_, err = c.KubeClient.RbacV1().ClusterRoleBindings().Create(context.Background(),
 		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-rolebinding"},
@@ -312,7 +313,10 @@ func TestEventListenerCreate(t *testing.T) {
 	}
 	impersonateRBAC(t, sa.Name, namespace, c.KubeClient)
 
-	el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Create(context.Background(), &triggersv1.EventListener{
+	// ElPort forward sink pod for http request
+	portString := strconv.Itoa(8080)
+
+	el := &triggersv1.EventListener{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-eventlistener",
 			Namespace: namespace,
@@ -357,7 +361,21 @@ func TestEventListenerCreate(t *testing.T) {
 				},
 			},
 		},
-	}, metav1.CreateOptions{})
+	}
+
+	elKindNodePort := os.Getenv("EL_KIND_NODE_PORT")
+	if elKindNodePort != "" {
+		portString = elKindNodePort
+		nodePort, err := strconv.Atoi(elKindNodePort)
+		if err != nil {
+			fmt.Printf("Error converting EL_KIND_NODE_PORT to integer: %v\n", err)
+			return
+		}
+		el.Spec.Resources.KubernetesResource.ServiceType = corev1.ServiceTypeNodePort
+		el.Spec.Resources.KubernetesResource.ServicePort = ptr.Int32(int32(nodePort))
+	}
+
+	el, err = c.TriggersClient.TriggersV1beta1().EventListeners(namespace).Create(context.Background(), el, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create EventListener: %s", err)
 	}
@@ -409,64 +427,84 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("Error listing EventListener sink pods: %s", err)
 	}
 
-	// ElPort forward sink pod for http request
-	portString := strconv.Itoa(8080)
-	podName := sinkPods.Items[0].Name
-	stopChan, errChan := make(chan struct{}, 1), make(chan error, 1)
+	// Get DISABLE_PORT_FORWARD environment variable
+	disablePortForward := os.Getenv("DISABLE_PORT_FORWARD")
+	if disablePortForward == "" {
+		disablePortForward = "false"
+	}
 
-	defer func() {
-		close(stopChan)
-	}()
-	go func(stopChan chan struct{}, errChan chan error) {
-		config, err := clientcmd.BuildConfigFromFlags("", knativetest.Flags.Kubeconfig)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		roundTripper, upgrader, err := spdy.RoundTripperFor(config)
-		if err != nil {
-			errChan <- err
-			return
-		}
+	// Convert DISABLE_PORT_FORWARD to boolean
+	if disablePortForward != "true" {
+		podName := sinkPods.Items[0].Name
+		stopChan, errChan := make(chan struct{}, 1), make(chan error, 1)
 
-		path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
-		hostIP := strings.TrimPrefix(config.Host, "https://")
-		serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
-		dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
-		out, errOut := new(Buffer), new(Buffer)
-		readyChan := make(chan struct{}, 1)
-		forwarder, err := portforward.New(dialer, []string{portString}, stopChan, readyChan, out, errOut)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		go func() {
-			// revive:disable:empty-block
-			for range readyChan {
-			}
-			// revive:enable:empty-block
-			if len(errOut.String()) != 0 {
-				errChan <- fmt.Errorf("%s", errOut)
-			}
-			close(errChan)
+		defer func() {
+			close(stopChan)
 		}()
-		if err = forwarder.ForwardPorts(); err != nil { // This locks until stopChan is closed.
-			errChan <- err
-			return
-		}
-	}(stopChan, errChan)
+		go func(stopChan chan struct{}, errChan chan error) {
+			config, err := clientcmd.BuildConfigFromFlags("", knativetest.Flags.Kubeconfig)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			roundTripper, upgrader, err := spdy.RoundTripperFor(config)
+			if err != nil {
+				errChan <- err
+				return
+			}
 
-	if err := <-errChan; err != nil {
-		t.Fatalf("Forwarding stream of data failed:: %v", err)
+			path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
+			hostIP := strings.TrimPrefix(config.Host, "https://")
+			serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
+			dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
+			out, errOut := new(Buffer), new(Buffer)
+			readyChan := make(chan struct{}, 1)
+			forwarder, err := portforward.New(dialer, []string{portString}, stopChan, readyChan, out, errOut)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			go func() {
+				// revive:disable:empty-block
+				for range readyChan {
+				}
+				// revive:enable:empty-block
+				if len(errOut.String()) != 0 {
+					errChan <- fmt.Errorf("%s", errOut)
+				}
+				close(errChan)
+			}()
+			if err = forwarder.ForwardPorts(); err != nil { // This locks until stopChan is closed.
+				errChan <- err
+				return
+			}
+		}(stopChan, errChan)
+
+		if err := <-errChan; err != nil {
+			t.Fatalf("Forwarding stream of data failed:: %v", err)
+		}
 	}
+
+	fmt.Printf("\nel.Spec.Resources.KubernetesResource.ServiceType: %v", el.Spec.Resources.KubernetesResource.ServiceType)
+	fmt.Printf("\nel.Spec.Resources.KubernetesResource.ServicePort: %v", *el.Spec.Resources.KubernetesResource.ServicePort)
+
 	// Send POST request to EventListener sink
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
-	if err != nil {
-		t.Fatalf("Error creating POST request: %s", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
+	var resp *http.Response
+	if err := WaitFor(func() (bool, error) {
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+		if err != nil {
+			return false, err
+		}
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			fmt.Printf("\n req to el failed, err: %v\n", err)
+			return false, nil
+		}
+		fmt.Printf("\n request to el succeeded\n")
+		return true, nil
+	}); err != nil {
 		t.Fatalf("Error sending POST request: %v", err)
 	}
 
@@ -512,7 +550,7 @@ func TestEventListenerCreate(t *testing.T) {
 
 	// now set the trigger SA to the original one, should not get a 401/403
 	if err := WaitFor(func() (bool, error) {
-		el, err := c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Get(context.Background(), el.Name, metav1.GetOptions{})
+		el, err := c.TriggersClient.TriggersV1beta1().EventListeners(namespace).Get(context.Background(), el.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -520,7 +558,7 @@ func TestEventListenerCreate(t *testing.T) {
 			trigger.ServiceAccountName = sa.Name
 			el.Spec.Triggers[i] = trigger
 		}
-		_, err = c.TriggersClient.TriggersV1alpha1().EventListeners(namespace).Update(context.Background(), el, metav1.UpdateOptions{})
+		_, err = c.TriggersClient.TriggersV1beta1().EventListeners(namespace).Update(context.Background(), el, metav1.UpdateOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -534,7 +572,7 @@ func TestEventListenerCreate(t *testing.T) {
 		t.Fatalf("EventListener not ready after trigger auth update: %s", err)
 	}
 	// Send POST request to EventListener sink
-	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%s", portString), bytes.NewBuffer(eventBodyJSON))
 	if err != nil {
 		t.Fatalf("Error creating POST request for trigger auth: %s", err)
 	}

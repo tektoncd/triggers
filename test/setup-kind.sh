@@ -130,6 +130,11 @@ kind: Cluster
 nodes:
 - role: control-plane
   image: "${KIND_IMAGE}"
+  extraPortMappings:
+  - containerPort: 30303
+    hostPort: 30303
+    listenAddress: "0.0.0.0"
+    protocol: TCP
 EOF
 
 for i in $(seq 1 1 "${NODE_COUNT}");
@@ -202,17 +207,18 @@ $(containerd_config)
     endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
 EOF
 
-echo '--- kind.yaml'
-cat kind.yaml
-
 # Check the version of kind
 kind --version
 
 # Check we can talk to docker
 docker ps
 
+echo '--- kind.yaml'
+cat kind.yaml
+
 # Create a cluster!
 kind create cluster --config kind.yaml
+
 
 
 #############################################################
