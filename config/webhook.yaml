@@ -67,6 +67,8 @@ spec:
               value: tekton.dev/triggers
             - name: CONFIG_LEADERELECTION_NAME
               value: config-leader-election-triggers-webhook
+            - name: KUBERNETES_MIN_VERSION
+              value: "v1.28.0"
           ports:
             - name: metrics
               containerPort: 9000
