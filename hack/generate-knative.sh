@@ -84,9 +84,14 @@ if grep -qw "injection" <<<"${GENS}"; then
   fi
 
   echo "Generating injection for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}"
-
+  echo $CLIENT_PKG
+  echo $APIS_PKG
+  echo  ${OUTPUT_PKG}
   # Clear old injection
   rm -rf ${OUTPUT_PKG}
+
+OUTPUT_DIR=$(echo $OUTPUT_PKG | sed 's/^github\.com\/tektoncd\/triggers\///')
+
 
   ${PREFIX}/injection-gen \
     --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
@@ -94,5 +99,6 @@ if grep -qw "injection" <<<"${GENS}"; then
     --external-versions-informers-package ${EXTERNAL_INFORMER_PKG} \
     --listers-package ${LISTERS_PKG} \
     --output-package ${OUTPUT_PKG} \
+    --output-dir "${OUTPUT_DIR}" \
     "$@"
 fi
