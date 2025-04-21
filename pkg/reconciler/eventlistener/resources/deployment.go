@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	baseSecurityPolicy = corev1.PodSecurityContext{
+	baseSecurityPolicy = &corev1.PodSecurityContext{
 		RunAsNonRoot: ptr.Bool(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
@@ -45,7 +45,7 @@ var (
 	}
 )
 
-func getStrongerSecurityPolicy(cfg *config.Config) corev1.PodSecurityContext {
+func getStrongerSecurityPolicy(cfg *config.Config) *corev1.PodSecurityContext {
 	securityContext := baseSecurityPolicy
 	if !cfg.Defaults.IsDefaultRunAsUserEmpty {
 		securityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
@@ -97,6 +97,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		}
 	}
 
+	var securityContext *corev1.PodSecurityContext
 	if el.Spec.Resources.KubernetesResource != nil {
 		if el.Spec.Resources.KubernetesResource.Replicas != nil {
 			replicas = el.Spec.Resources.KubernetesResource.Replicas
@@ -121,10 +122,12 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		}
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
 		podlabels = kmeta.UnionMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		if *c.SetSecurityContext {
+			securityContext = el.Spec.Resources.KubernetesResource.Template.Spec.SecurityContext
+		}
 	}
 
-	var securityContext corev1.PodSecurityContext
-	if *c.SetSecurityContext {
+	if *c.SetSecurityContext && securityContext == nil {
 		securityContext = getStrongerSecurityPolicy(cfg)
 	}
 
@@ -147,7 +150,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 					ServiceAccountName:        serviceAccountName,
 					Containers:                []corev1.Container{container},
 					Volumes:                   vol,
-					SecurityContext:           &securityContext,
+					SecurityContext:           securityContext,
 					Affinity:                  affinity,
 					TopologySpreadConstraints: topologySpreadConstraints,
 				},
@@ -176,7 +179,6 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 				container.StartupProbe = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].StartupProbe
 			}
 		}
-
 		container.Ports = append(container.Ports, corev1.ContainerPort{
 			ContainerPort: int32(metricsPort),
 			Protocol:      corev1.ProtocolTCP,

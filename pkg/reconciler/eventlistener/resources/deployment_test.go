@@ -74,7 +74,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -109,7 +109,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -152,7 +152,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 						Tolerations: []corev1.Toleration{{
 							Key:   "foo",
 							Value: "bar",
@@ -198,7 +198,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 						NodeSelector: map[string]string{
 							"foo": "bar",
 						},
@@ -241,7 +241,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -279,7 +279,7 @@ func TestDeployment(t *testing.T) {
 								},
 							},
 						}},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -325,7 +325,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -355,7 +355,7 @@ func TestDeployment(t *testing.T) {
 								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &expectedSecurityContext,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -386,7 +386,7 @@ func TestDeployment(t *testing.T) {
 								getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup("0"), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(expectedSecurityContext, ptr.Int64(0)),
+						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(*expectedSecurityContext, ptr.Int64(0)),
 					},
 				},
 			},
@@ -417,7 +417,40 @@ func TestDeployment(t *testing.T) {
 								getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup(""), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
 								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(expectedSecurityContext, nil),
+						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(*expectedSecurityContext, ptr.Int64(0)),
+					},
+				},
+			},
+		},
+	}, {
+		name: "Set securityContext from EL",
+		el:   makeEL(setSecurityContext()),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setSecurityContext()), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setSecurityContext()), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
+						},
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: ptr.Bool(true),
+							RunAsGroup:   ptr.Int64(1000),
+						},
 					},
 				},
 			},
@@ -559,6 +592,29 @@ func setProbes() func(*v1beta1.EventListener) {
 							},
 							StartupProbe: &corev1.Probe{
 								InitialDelaySeconds: 10,
+							},
+						}},
+					},
+				},
+			},
+		}
+	}
+}
+
+func setSecurityContext() func(*v1beta1.EventListener) {
+	return func(el *v1beta1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: ptr.Bool(true),
+							RunAsGroup:   ptr.Int64(1000),
+						},
+						Containers: []corev1.Container{{
+							SecurityContext: &corev1.SecurityContext{
+								RunAsNonRoot: ptr.Bool(true),
+								RunAsGroup:   ptr.Int64(1000),
 							},
 						}},
 					},
