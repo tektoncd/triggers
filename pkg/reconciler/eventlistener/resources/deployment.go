@@ -178,6 +178,7 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 		}
 
 		container.Ports = append(container.Ports, corev1.ContainerPort{
+			// #nosec G115 -- conversion from int64 to int32 is safe because ContainerPort is defined as int32 in Kubernetes API, and metricsPort is from ParseInt which is within valid int32 range
 			ContainerPort: int32(metricsPort),
 			Protocol:      corev1.ProtocolTCP,
 		})
@@ -240,7 +241,9 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
+				// #nosec G115 -- conversion from int to int32 is safe because PeriodSeconds is defined as int32 in the Kubernetes API, and the value originates from the flag package which only supports int, not int32.
+				PeriodSeconds: int32(*c.PeriodSeconds),
+				// #nosec G115 -- conversion from int to int32 is safe because FailureThreshold is defined as int32 in the Kubernetes API, and the value originates from the flag package which only supports int, not int32.
 				FailureThreshold: int32(*c.FailureThreshold),
 			}
 		}
@@ -253,7 +256,9 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
+				// #nosec G115 -- conversion from int to int32 is safe because PeriodSeconds is defined as int32 in the Kubernetes API, and the value originates from the flag package which only supports int, not int32.
+				PeriodSeconds: int32(*c.PeriodSeconds),
+				// #nosec G115 -- conversion from int to int32 is safe because FailureThreshold is defined as int32 in the Kubernetes API, and the value originates from the flag package which only supports int, not int32.
 				FailureThreshold: int32(*c.FailureThreshold),
 			}
 		}

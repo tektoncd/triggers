@@ -125,7 +125,8 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 	svc := corev1.ServicePort{
 		Name:     servicePortName,
 		Protocol: corev1.ProtocolTCP,
-		Port:     int32(servicePort),
+		// #nosec G115 -- conversion from int to int32 is safe because Port is defined as int32 in the Kubernetes API, and the value originates from the flag package which only supports int, not int32.
+		Port: int32(servicePort),
 		TargetPort: intstr.IntOrString{
 			IntVal: int32(eventListenerContainerPort),
 		},

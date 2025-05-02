@@ -229,7 +229,7 @@ func matchHeader(vals ...ref.Val) ref.Val {
 func truncateString(lhs, rhs ref.Val) ref.Val {
 	str := lhs.(types.String)
 	n := rhs.(types.Int)
-	return str[:max(n, types.Int(len(str)))]
+	return str[:maxVal(n, types.Int(len(str)))]
 }
 
 func canonicalHeader(lhs, rhs ref.Val) ref.Val {
@@ -392,7 +392,7 @@ func translateString(vals ...ref.Val) ref.Val {
 	return types.String(re.ReplaceAllString(string(src), string(repl)))
 }
 
-func max(x, y types.Int) types.Int {
+func maxVal(x, y types.Int) types.Int {
 	switch x.Compare(y) {
 	case types.IntNegOne:
 		return x
