@@ -27,7 +27,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
@@ -100,7 +100,8 @@ func evaluate(expr string, env *cel.Env, data map[string]interface{}) (ref.Val, 
 }
 
 func makeCelEnv(ctx context.Context, ns string, sg interceptors.SecretGetter) (*cel.Env, error) {
-	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
+	mapStrDyn := types.NewMapType(types.StringType, types.DynType)
+
 	return cel.NewEnv(
 		Triggers(ctx, ns, sg),
 		celext.Strings(),
@@ -108,12 +109,13 @@ func makeCelEnv(ctx context.Context, ns string, sg interceptors.SecretGetter) (*
 		celext.Sets(),
 		celext.Lists(),
 		celext.Math(),
-		cel.Declarations(
-			decls.NewVar("body", mapStrDyn),
-			decls.NewVar("header", mapStrDyn),
-			decls.NewVar("extensions", mapStrDyn),
-			decls.NewVar("requestURL", decls.String),
+		cel.VariableDecls(
+			decls.NewVariable("body", mapStrDyn),
+			decls.NewVariable("header", mapStrDyn),
+			decls.NewVariable("extensions", mapStrDyn),
+			decls.NewVariable("requestURL", types.StringType),
 		))
+
 }
 
 func makeEvalContext(body []byte, h http.Header, url string, extensions map[string]interface{}) (map[string]interface{}, error) {

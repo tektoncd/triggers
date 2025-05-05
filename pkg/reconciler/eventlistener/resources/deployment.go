@@ -161,7 +161,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, error) {
 	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 	// env METRICS_PROMETHEUS_PORT set by controller
-	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
+	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 		}
 
 		container.Ports = append(container.Ports, corev1.ContainerPort{
-			ContainerPort: int32(metricsPort),
+			ContainerPort: int32(metricsPort), //nolint: gosec
 			Protocol:      corev1.ProtocolTCP,
 		})
 
@@ -236,8 +236,8 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
-				FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),    //nolint: gosec
+				FailureThreshold: int32(*c.FailureThreshold), //nolint: gosec
 			}
 		}
 		if container.ReadinessProbe == nil {
@@ -249,8 +249,8 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
-				FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),    //nolint: gosec
+				FailureThreshold: int32(*c.FailureThreshold), //nolint: gosec
 			}
 		}
 		container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)
