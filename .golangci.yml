@@ -1,116 +1,147 @@
+version: "2"
 run:
   build-tags:
-  - e2e
-  skip-dirs:
-  - vendor
-  - pkg/client/clientset/(.*)/fake
-  - pkg/client/injection
-  skip-files:
-  - .*/zz_generated.deepcopy.go
-  - pkg/apis/triggers/v1beta1/openapi_generated.go
-linters-settings:
-  errcheck:
-    exclude: .errcheck.txt
+    - e2e
 linters:
   enable:
-  - bodyclose
-  - containedctx
-  - decorder
-  - depguard
-  - dogsled
-  - dupword
-  - errcheck
-  - errchkjson
-  - errname
-  - errorlint
-  - exhaustive
-  - goconst
-  - gocritic
-  - gofmt
-  - goimports
-  - gomodguard
-  - gosec
-  - gosimple
-  - govet
-  - maintidx
-  - makezero
-  - misspell
-  - musttag
-  - nakedret
-  - nilerr
-  - nilnil
-  - noctx
-  - nolintlint
-  - nosprintfhostport
-  - thelper
-  - typecheck
-  - unconvert
-  - unused
-  - usestdlibvars
-  - whitespace
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - decorder
+    - depguard
+    - dogsled
+    - dupword
+    - durationcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - forbidigo
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - goconst
+    - gocritic
+    - goheader
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosmopolitan
+    - grouper
+    - importas
+    - inamedparam
+    - interfacebloat
+    - intrange
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - perfsprint
+    - promlinter
+    - protogetter
+    - reassign
+    - rowserrcheck
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - tagalign
+    - testableexamples
+    - testifylint
+    - thelper
+    - unconvert
+    - usestdlibvars
+    - usetesting
+    - whitespace
+    - zerologlint
   disable:
-  - cyclop
-  - dupl
-  - exhaustruct
-  - forcetypeassert
-  - funlen
-  - gci
-  - gochecknoglobals
-  - gochecknoinits
-  - gocognit
-  - gocyclo
-  - godot
-  - godox
-  - err113
-  - gofumpt
-  - gomoddirectives
-  - iface
-  - ireturn
-  - lll
-  - mnd
-  - nestif
-  - nlreturn
-  - nonamedreturns
-  - paralleltest
-  - prealloc
-  - predeclared
-  - recvcheck
-  - revive
-  - staticcheck
-  - stylecheck
-  - tagliatelle
-  - testpackage
-  - tparallel
-  - unparam
-  - varnamelen
-  - wastedassign
-  - wrapcheck
-  - wsl
-  # Enabling presets means that new linters that we automatically adopt new
-  # linters that augment a preset. This also opts us in for replacement linters
-  # when a linter is deprecated.
-  presets:
-  - bugs
-  - comment
-  - complexity
-  - error
-  - format
-  - import
-  - metalinter
-  - module
-  - performance
-  - sql
-  - style
-  - test
-  - unused
+    - cyclop
+    - dupl
+    - err113
+    - exhaustruct
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - gocyclo
+    - godot
+    - godox
+    - gomoddirectives
+    - iface
+    - ireturn
+    - lll
+    - mnd
+    - nestif
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
+    - prealloc
+    - predeclared
+    - recvcheck
+    - revive
+    - staticcheck
+    - tagliatelle
+    - testpackage
+    - tparallel
+    - unparam
+    - varnamelen
+    - wastedassign
+    - wrapcheck
+    - wsl
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - vendor
+      - pkg/client/clientset/(.*)/fake
+      - pkg/client/injection
+      - .*/zz_generated.deepcopy.go
+      - pkg/apis/triggers/v1beta1/openapi_generated.go
+
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
   max-issues-per-linter: 0
   max-same-issues: 0
-  # TODO(abayer): Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment, like we do in Pipeline.
-  modules-download-mode: vendor
-  timeout: 20m
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - vendor
+      - vendor
+      - pkg/client/clientset/(.*)/fake
+      - pkg/client/injection
+      - .*/zz_generated.deepcopy.go
+      - pkg/apis/triggers/v1beta1/openapi_generated.go
