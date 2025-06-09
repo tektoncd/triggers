@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfg "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,17 +36,19 @@ func TestDeployment(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
 	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
 
-	config := *MakeConfig()
+	resourcesConfig := *MakeConfig()
 	labels := map[string]string{
 		"app.kubernetes.io/managed-by": "EventListener",
 		"app.kubernetes.io/part-of":    "Triggers",
 		"eventlistener":                eventListenerName,
 	}
+	expectedSecurityContext := getStrongerSecurityPolicy(cfg.FromContextOrDefaults(context.Background()))
 
 	tests := []struct {
-		name string
-		el   *v1beta1.EventListener
-		want *appsv1.Deployment
+		name   string
+		el     *v1beta1.EventListener
+		config *cfg.Config
+		want   *appsv1.Deployment
 	}{{
 		name: "vanilla",
 		el:   makeEL(),
@@ -67,11 +70,11 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -102,11 +105,11 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -145,11 +148,11 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 						Tolerations: []corev1.Toleration{{
 							Key:   "foo",
 							Value: "bar",
@@ -191,11 +194,11 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 						NodeSelector: map[string]string{
 							"foo": "bar",
 						},
@@ -234,11 +237,11 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "bob",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -264,9 +267,9 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(withTLSEnvFrom("Bill")), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(withTLSEnvFrom("Bill")), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
 						Volumes: []corev1.Volume{{
 							Name: "https-connection",
@@ -276,7 +279,7 @@ func TestDeployment(t *testing.T) {
 								},
 							},
 						}},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -318,11 +321,11 @@ func TestDeployment(t *testing.T) {
 							MaxSkew: 1,
 						}},
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
 					},
 				},
 			},
@@ -348,11 +351,106 @@ func TestDeployment(t *testing.T) {
 					Spec: corev1.PodSpec{
 						ServiceAccountName: "sa",
 						Containers: []corev1.Container{
-							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, config,
-								mustAddDeployBits(t, makeEL(setProbes()), config),
-								addCertsForSecureConnection(config)),
+							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
 						},
-						SecurityContext: &strongerSecurityPolicy,
+						SecurityContext: expectedSecurityContext,
+					},
+				},
+			},
+		},
+	}, {
+		name:   "with overridden runAsGroup, runAsUser, fsGroup",
+		el:     makeEL(setProbes()),
+		config: getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup("0"),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup("0"), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
+						},
+						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(*expectedSecurityContext, ptr.Int64(0)),
+					},
+				},
+			},
+		},
+	}, {
+		name:   "support empty defaults runAsGroup, runAsUser, fsGroup for distributions such as OpenShift",
+		el:     makeEL(setProbes()),
+		config: getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup(""),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setProbes()), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup(""), mustAddDeployBits(t, makeEL(setProbes()), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
+						},
+						SecurityContext: getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(*expectedSecurityContext, ptr.Int64(0)),
+					},
+				},
+			},
+		},
+	}, {
+		name: "Set securityContext from EL",
+		el:   makeEL(setSecurityContext()),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(setSecurityContext()), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(setSecurityContext()), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
+						},
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: ptr.Bool(true),
+							RunAsGroup:   ptr.Int64(1000),
+						},
 					},
 				},
 			},
@@ -361,7 +459,12 @@ func TestDeployment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MakeDeployment(context.Background(), tt.el, &reconcilersource.EmptyVarsGenerator{}, config)
+			config := tt.config
+			if config == nil {
+				config = cfg.FromContextOrDefaults(context.Background())
+			}
+			got, err := MakeDeployment(context.Background(), tt.el, &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+				config)
 			if err != nil {
 				t.Fatalf("MakeDeployment() = %v", err)
 			}
@@ -372,9 +475,30 @@ func TestDeployment(t *testing.T) {
 	}
 }
 
+func getSecurityContextWithoverriddenRunAsGroupAndRunAsUser(securityContext corev1.PodSecurityContext, overriddenValue *int64) *corev1.PodSecurityContext {
+	securityContextCopy := securityContext.DeepCopy()
+
+	securityContextCopy.RunAsUser = overriddenValue
+	securityContextCopy.RunAsGroup = overriddenValue
+	securityContextCopy.FSGroup = overriddenValue
+	return securityContextCopy
+}
+
+func getConfigWithoverriddenRunAsGroupAndRunAsUserAndFsGroup(value string) *cfg.Config {
+	config := cfg.FromContextOrDefaults(context.Background())
+	defaults, err := cfg.NewDefaultsFromMap(map[string]string{cfg.DefaultRunAsGroupKey: value, cfg.DefaultRunAsUserKey: value, cfg.DefaultFSGroupKey: value})
+	if err != nil {
+		panic(err)
+	}
+
+	config.Defaults = defaults
+	return config
+}
+
 func TestDeploymentError(t *testing.T) {
 	t.Setenv("METRICS_PROMETHEUS_PORT", "bad")
-	got, err := MakeDeployment(context.Background(), makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig())
+	got, err := MakeDeployment(context.Background(), makeEL(), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig(),
+		cfg.FromContextOrDefaults(context.Background()))
 	if err == nil {
 		t.Fatalf("MakeDeployment() = %v, wanted error", got)
 	}
@@ -468,6 +592,29 @@ func setProbes() func(*v1beta1.EventListener) {
 							},
 							StartupProbe: &corev1.Probe{
 								InitialDelaySeconds: 10,
+							},
+						}},
+					},
+				},
+			},
+		}
+	}
+}
+
+func setSecurityContext() func(*v1beta1.EventListener) {
+	return func(el *v1beta1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: ptr.Bool(true),
+							RunAsGroup:   ptr.Int64(1000),
+						},
+						Containers: []corev1.Container{{
+							SecurityContext: &corev1.SecurityContext{
+								RunAsNonRoot: ptr.Bool(true),
+								RunAsGroup:   ptr.Int64(1000),
 							},
 						}},
 					},

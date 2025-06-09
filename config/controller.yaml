@@ -60,6 +60,7 @@ spec:
               "-el-port",
               "8080",
               "-el-security-context=true",
+              "-el-read-only-root-filesystem=true",
               "-el-events",
               "disable",
               "-el-readtimeout",
@@ -102,8 +103,11 @@ spec:
               value: "9000"
             - name: CONFIG_LEADERELECTION_NAME
               value: config-leader-election-triggers-controllers
+            - name: KUBERNETES_MIN_VERSION
+              value: "v1.28.0"
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - "ALL"

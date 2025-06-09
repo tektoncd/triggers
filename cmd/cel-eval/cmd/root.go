@@ -11,7 +11,8 @@ import (
 	"os"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
 	celext "github.com/google/cel-go/ext"
 	"github.com/spf13/cobra"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -72,7 +73,7 @@ func evalCEL(ctx context.Context, w io.Writer, expressionPath, httpPath string) 
 		return fmt.Errorf("error making eval context: %w", err)
 	}
 
-	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
+	mapStrDyn := types.NewMapType(types.StringType, types.DynType)
 	env, err := cel.NewEnv(
 		triggerscel.Triggers(ctx, "default", secretGetter{}),
 		celext.Strings(),
@@ -80,11 +81,11 @@ func evalCEL(ctx context.Context, w io.Writer, expressionPath, httpPath string) 
 		celext.Sets(),
 		celext.Lists(),
 		celext.Math(),
-		cel.Declarations(
-			decls.NewVar("body", mapStrDyn),
-			decls.NewVar("header", mapStrDyn),
-			decls.NewVar("extensions", mapStrDyn),
-			decls.NewVar("requestURL", decls.String),
+		cel.VariableDecls(
+			decls.NewVariable("body", mapStrDyn),
+			decls.NewVariable("header", mapStrDyn),
+			decls.NewVariable("extensions", mapStrDyn),
+			decls.NewVariable("requestURL", types.StringType),
 		))
 	if err != nil {
 		log.Fatal(err)

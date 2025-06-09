@@ -329,7 +329,7 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 			}
 		}
 		if !resp.Continue {
-			eventLog.Infof("interceptor stopped trigger processing: %v", resp.Status.Err())
+			eventLog.Debugf("interceptor stopped trigger processing: %v", resp.Status.Err())
 			return
 		}
 	}
@@ -423,7 +423,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 
 	if iresp != nil {
 		if !iresp.Continue {
-			log.Infof("interceptor stopped trigger processing: %v", iresp.Status.Err())
+			log.Debugf("interceptor stopped trigger processing: %v", iresp.Status.Err())
 			return
 		}
 	}

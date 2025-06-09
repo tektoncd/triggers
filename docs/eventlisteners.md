@@ -70,7 +70,7 @@ An `EventListener` definition consists of the following fields:
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-See our [Tekton Triggers examples](https://github.com/tektoncd/triggers/tree/master/examples) for ready-to-use example `EventListener` definitions.
+See our [Tekton Triggers examples](https://github.com/tektoncd/triggers/tree/main/examples) for ready-to-use example `EventListener` definitions.
 
 ## Specifying the Kubernetes service account
 
@@ -125,7 +125,7 @@ Below is an example `Trigger` definition that embeds a `triggerTemplate` definit
 triggers:
   - name: "my-trigger"
     template:
-      spec: 
+      spec:
         params:
           - name: "my-param-name"
         resourceTemplates:
@@ -185,8 +185,7 @@ spec:
 [TEP-0053](https://github.com/tektoncd/community/blob/main/teps/0053-nested-triggers.md). `TriggerGroups` allow for
 a common set of interceptors to be defined inline in the `EventListenerSpec` before `Triggers` are invoked.
 
-You can optionally specify one or more `Triggers` that define the actions to take when the `EventListener` detects a qualifying event. You can specify *either* a reference to an
-external `Trigger` object *or* reference/define the `TriggerBindings`, `TriggerTemplates`, and `Interceptors` in the `Trigger` definition. A `TriggerGroup` definition specifies the following fields:
+A `TriggerGroup` definition specifies the following fields:
 
 - `name` - (optional) a valid [Kubernetes name](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set) that uniquely identifies the `TriggerGroup`
 - `interceptors` - a list of [`Interceptors`](#specifying-interceptors) that will process event payload data before passing it to the downstream `Triggers`
@@ -273,6 +272,7 @@ Tolerations
 Containers
 Affinity
 TopologySpreadConstraints
+SecurityContext
 ```
 
 Legal values for the `Containers` sub-field for `kubernetesResource` and `CustomResource` are:
@@ -284,12 +284,14 @@ Env
 LivenessProbe
 ReadinessProbe
 StartupProbe
+SecurityContext
 ```
 
 **CustomResource:**
 ```
 Resources
 Env
+SecurityContext
 ```
 
 ### Specifying a `kubernetesResource` object
@@ -311,6 +313,8 @@ spec:
               key: "value"
           spec:
             serviceAccountName: tekton-triggers-github-sa
+            securityContext:
+              runAsNonRoot: true
             nodeSelector:
               app: test
             tolerations:
@@ -318,6 +322,9 @@ spec:
               value: value
               operator: Equal
               effect: NoSchedule
+            containers:
+            - securityContext:
+                readOnlyRootFilesystem: true
 ```
 
 #### Specifying `Service` configuration
@@ -332,7 +339,7 @@ spec:
       servicePort: 8128
 ```
 
-If you use a loadbalancer service, you can optionally define a (LoadBalancerClass)[https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class] with the `ServiceLoadBalancerClass` attribute.
+If you use a loadbalancer service, you can optionally define a [LoadBalancerClass](https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class) with the `ServiceLoadBalancerClass` attribute.
 ```yaml
 spec:
   resources:
@@ -375,7 +382,7 @@ type EventListenerStatus struct {
 }
 ```
 
-**Note:** The CRD must follow the [WithPod{}](https://github.com/knative/pkg/blob/master/apis/duck/v1/podspec_types.go#L41) spec. 
+**Note:** The CRD must follow the [WithPod{}](https://github.com/knative/pkg/blob/main/apis/duck/v1/podspec_types.go#L41) spec. 
 
 Below is an example `resources:` field definition specifying a `CustomResource` object using a [Knative Service](https://knative.dev/docs/):
 
@@ -574,7 +581,7 @@ These fields are included in `EventListener` responses, but will be removed in a
 
 Tekton Triggers supports both HTTP and TLS-based HTTPS connections. To configure your `EventListener` for TLS,
 add the `TLS_CERT` and `TLS_KEY` reserved environment variables using the `secretKeyRef` variable type, then
-specify a `secret` containing the `cert` and `key` files. See [TEP-0027](https://github.com/tektoncd/community/blob/master/teps/0027-https-connection-to-triggers-eventlistener.md)
+specify a `secret` containing the `cert` and `key` files. See [TEP-0027](https://github.com/tektoncd/community/blob/main/teps/0027-https-connection-to-triggers-eventlistener.md)
 and our [TLS configuration example](../examples/v1beta1/eventlistener-tls-connection/README.md) for more information.
 
 ## Obtaining the status of deployed `EventListeners`
@@ -620,7 +627,7 @@ The following pipeline metrics are available on the `eventlistener` Service on p
 |  Name | Type | Labels/Tags | Status |
 | ---------- | ----------- | :-: | ----------- |
 | `eventlistener_triggered_resources` | Counter | `kind`=&lt;kind&gt; | experimental |
-| `eventlistener_event_count` | Counter | `status`=&lt;status&gt; | experimental |
+| `eventlistener_event_received_count` | Counter | `status`=&lt;status&gt; | experimental |
 | `eventlistener_http_duration_seconds_[bucket, sum, count]` | Histogram | - | experimental |
 
 Several kinds of exporters can be configured for an `EventListener`, including Prometheus, Google Stackdriver, and many others.
@@ -699,11 +706,11 @@ Below is a high-level walkthrough through the deployment of an `EventListener` u
 
 1. Instantiate the example `EventListener` on your cluster:
    ```bash
-   kubectl create -f https://github.com/tektoncd/triggers/tree/master/examples/github
+   kubectl create -f https://github.com/tektoncd/triggers/tree/main/examples/v1beta1/github
    ```
    
    Tekton Triggers creates a new `Deployment` and `Service` for the `EventListener`. using the `EventListener` definition,
-   [`metadata.labels`](https://github.com/tektoncd/triggers/blob/master/docs/eventlisteners.md#labels), and pre-existing values
+   [`metadata.labels`](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md#labels), and pre-existing values
    such as container `Image`, `Name`, and `Port`. Tekton Triggers uses the `EventListener` name prefixed with `el-` to name the
    `Deployment` and `Service` when instantiating them. For example, if the `EventListener` name is `foo`, the `Deployment` and
    `Service` names are named `el-foo`.
@@ -728,7 +735,7 @@ Below is a high-level walkthrough through the deployment of an `EventListener` u
    github-listener-interceptor   http://el-github-listener-interceptor.ptest.svc.cluster.local:8080   True        MinimumReplicasAvailable
    ```
 
-   See our [GitHub `EventListener` example](https://github.com/tektoncd/triggers/blob/master/examples/github/README.md) to try instantiating an `EventListener` locally.
+   See our [GitHub `EventListener` example](https://github.com/tektoncd/triggers/blob/main/examples/v1beta1/github/README.md) to try instantiating an `EventListener` locally.
 
 ## Deploying `EventListeners` in multi-tenant scenarios
 

@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ClusterTriggerBindingLister helps list ClusterTriggerBindings.
@@ -30,39 +30,19 @@ import (
 type ClusterTriggerBindingLister interface {
 	// List lists all ClusterTriggerBindings in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerBinding, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.ClusterTriggerBinding, err error)
 	// Get retrieves the ClusterTriggerBinding from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ClusterTriggerBinding, error)
+	Get(name string) (*triggersv1alpha1.ClusterTriggerBinding, error)
 	ClusterTriggerBindingListerExpansion
 }
 
 // clusterTriggerBindingLister implements the ClusterTriggerBindingLister interface.
 type clusterTriggerBindingLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*triggersv1alpha1.ClusterTriggerBinding]
 }
 
 // NewClusterTriggerBindingLister returns a new ClusterTriggerBindingLister.
 func NewClusterTriggerBindingLister(indexer cache.Indexer) ClusterTriggerBindingLister {
-	return &clusterTriggerBindingLister{indexer: indexer}
-}
-
-// List lists all ClusterTriggerBindings in the indexer.
-func (s *clusterTriggerBindingLister) List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerBinding, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ClusterTriggerBinding))
-	})
-	return ret, err
-}
-
-// Get retrieves the ClusterTriggerBinding from the index for a given name.
-func (s *clusterTriggerBindingLister) Get(name string) (*v1alpha1.ClusterTriggerBinding, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("clustertriggerbinding"), name)
-	}
-	return obj.(*v1alpha1.ClusterTriggerBinding), nil
+	return &clusterTriggerBindingLister{listers.New[*triggersv1alpha1.ClusterTriggerBinding](indexer, triggersv1alpha1.Resource("clustertriggerbinding"))}
 }

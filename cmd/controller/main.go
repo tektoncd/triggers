@@ -39,15 +39,16 @@ const (
 )
 
 var (
-	image                 = flag.String("el-image", elresources.DefaultImage, "The container image for the EventListener Pod.")
-	port                  = flag.Int("el-port", elresources.DefaultPort, "The container port for the EventListener to listen on.")
-	setSecurityContext    = flag.Bool("el-security-context", elresources.DefaultSetSecurityContext, "Add a security context to the event listener deployment.")
-	setEventListenerEvent = flag.String("el-events", elresources.DefaultEventListenerEvent, "Enable events for event listener deployment.")
-	readTimeOut           = flag.Int64("el-readtimeout", elresources.DefaultReadTimeout, "The read timeout for EventListener Server.")
-	writeTimeOut          = flag.Int64("el-writetimeout", elresources.DefaultWriteTimeout, "The write timeout for EventListener Server.")
-	idleTimeOut           = flag.Int64("el-idletimeout", elresources.DefaultIdleTimeout, "The idle timeout for EventListener Server.")
-	timeOutHandler        = flag.Int64("el-timeouthandler", elresources.DefaultTimeOutHandler, "The timeout for Timeout Handler of EventListener Server.")
-	httpClientReadTimeOut = flag.Int64("el-httpclient-readtimeout", elresources.DefaultHTTPClientReadTimeOut,
+	image                     = flag.String("el-image", elresources.DefaultImage, "The container image for the EventListener Pod.")
+	port                      = flag.Int("el-port", elresources.DefaultPort, "The container port for the EventListener to listen on.")
+	setSecurityContext        = flag.Bool("el-security-context", elresources.DefaultSetSecurityContext, "Add a security context to the event listener deployment.")
+	setReadOnlyRootFilesystem = flag.Bool("el-read-only-root-filesystem", elresources.DefaultSetReadOnlyRootFilesystem, "Sets readOnlyRootFilesystem to the provided value for the event listener deployment. Note: only applied when flag el-security-context is set to true.")
+	setEventListenerEvent     = flag.String("el-events", elresources.DefaultEventListenerEvent, "Enable events for event listener deployment.")
+	readTimeOut               = flag.Int64("el-readtimeout", elresources.DefaultReadTimeout, "The read timeout for EventListener Server.")
+	writeTimeOut              = flag.Int64("el-writetimeout", elresources.DefaultWriteTimeout, "The write timeout for EventListener Server.")
+	idleTimeOut               = flag.Int64("el-idletimeout", elresources.DefaultIdleTimeout, "The idle timeout for EventListener Server.")
+	timeOutHandler            = flag.Int64("el-timeouthandler", elresources.DefaultTimeOutHandler, "The timeout for Timeout Handler of EventListener Server.")
+	httpClientReadTimeOut     = flag.Int64("el-httpclient-readtimeout", elresources.DefaultHTTPClientReadTimeOut,
 		"The HTTP Client read timeout for EventListener Server.")
 	httpClientKeepAlive = flag.Int64("el-httpclient-keep-alive", elresources.DefaultHTTPClientKeepAlive,
 		"The HTTP Client read timeout for EventListener Server.")
@@ -71,6 +72,7 @@ func main() {
 		Image:                           image,
 		Port:                            port,
 		SetSecurityContext:              setSecurityContext,
+		SetReadOnlyRootFilesystem:       setReadOnlyRootFilesystem,
 		SetEventListenerEvent:           setEventListenerEvent,
 		ReadTimeOut:                     readTimeOut,
 		WriteTimeOut:                    writeTimeOut,

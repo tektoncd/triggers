@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +33,7 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
-func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config) (*unstructured.Unstructured, error) {
+func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc reconcilersource.ConfigAccessor, c Config, cfg *config.Config) (*unstructured.Unstructured, error) {
 	original := &duckv1.WithPod{}
 	decoder := json.NewDecoder(bytes.NewBuffer(el.Spec.Resources.CustomResource.Raw))
 	if err := decoder.Decode(&original); err != nil {
@@ -47,7 +48,7 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 		namespace = el.GetNamespace()
 	}
 
-	container := MakeContainer(el, configAcc, c, func(c *corev1.Container) {
+	container := MakeContainer(el, configAcc, c, cfg, func(c *corev1.Container) {
 		// handle env and resources for custom object
 		if len(original.Spec.Template.Spec.Containers) == 1 {
 			c.Env = append(c.Env, original.Spec.Template.Spec.Containers[0].Env...)
@@ -64,6 +65,10 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 			// env METRICS_PROMETHEUS_PORT set by controller
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		}, corev1.EnvVar{
+			// KUBERNETES_MIN_VERSION overrides the Min version of k8s required
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: os.Getenv("KUBERNETES_MIN_VERSION"),
 		})
 
 		c.ReadinessProbe = &corev1.Probe{

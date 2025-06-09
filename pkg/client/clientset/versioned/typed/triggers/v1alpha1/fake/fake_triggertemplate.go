@@ -19,123 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTriggerTemplates implements TriggerTemplateInterface
-type FakeTriggerTemplates struct {
+// fakeTriggerTemplates implements TriggerTemplateInterface
+type fakeTriggerTemplates struct {
+	*gentype.FakeClientWithList[*v1alpha1.TriggerTemplate, *v1alpha1.TriggerTemplateList]
 	Fake *FakeTriggersV1alpha1
-	ns   string
 }
 
-var triggertemplatesResource = v1alpha1.SchemeGroupVersion.WithResource("triggertemplates")
-
-var triggertemplatesKind = v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate")
-
-// Get takes name of the triggerTemplate, and returns the corresponding triggerTemplate object, and an error if there is any.
-func (c *FakeTriggerTemplates) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TriggerTemplate, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(triggertemplatesResource, c.ns, name), &v1alpha1.TriggerTemplate{})
-
-	if obj == nil {
-		return nil, err
+func newFakeTriggerTemplates(fake *FakeTriggersV1alpha1, namespace string) triggersv1alpha1.TriggerTemplateInterface {
+	return &fakeTriggerTemplates{
+		gentype.NewFakeClientWithList[*v1alpha1.TriggerTemplate, *v1alpha1.TriggerTemplateList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("triggertemplates"),
+			v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"),
+			func() *v1alpha1.TriggerTemplate { return &v1alpha1.TriggerTemplate{} },
+			func() *v1alpha1.TriggerTemplateList { return &v1alpha1.TriggerTemplateList{} },
+			func(dst, src *v1alpha1.TriggerTemplateList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TriggerTemplateList) []*v1alpha1.TriggerTemplate {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.TriggerTemplateList, items []*v1alpha1.TriggerTemplate) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.TriggerTemplate), err
-}
-
-// List takes label and field selectors, and returns the list of TriggerTemplates that match those selectors.
-func (c *FakeTriggerTemplates) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TriggerTemplateList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(triggertemplatesResource, triggertemplatesKind, c.ns, opts), &v1alpha1.TriggerTemplateList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.TriggerTemplateList{ListMeta: obj.(*v1alpha1.TriggerTemplateList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TriggerTemplateList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested triggerTemplates.
-func (c *FakeTriggerTemplates) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(triggertemplatesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a triggerTemplate and creates it.  Returns the server's representation of the triggerTemplate, and an error, if there is any.
-func (c *FakeTriggerTemplates) Create(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.CreateOptions) (result *v1alpha1.TriggerTemplate, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(triggertemplatesResource, c.ns, triggerTemplate), &v1alpha1.TriggerTemplate{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TriggerTemplate), err
-}
-
-// Update takes the representation of a triggerTemplate and updates it. Returns the server's representation of the triggerTemplate, and an error, if there is any.
-func (c *FakeTriggerTemplates) Update(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.UpdateOptions) (result *v1alpha1.TriggerTemplate, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(triggertemplatesResource, c.ns, triggerTemplate), &v1alpha1.TriggerTemplate{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TriggerTemplate), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTriggerTemplates) UpdateStatus(ctx context.Context, triggerTemplate *v1alpha1.TriggerTemplate, opts v1.UpdateOptions) (*v1alpha1.TriggerTemplate, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(triggertemplatesResource, "status", c.ns, triggerTemplate), &v1alpha1.TriggerTemplate{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TriggerTemplate), err
-}
-
-// Delete takes name of the triggerTemplate and deletes it. Returns an error if one occurs.
-func (c *FakeTriggerTemplates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(triggertemplatesResource, c.ns, name, opts), &v1alpha1.TriggerTemplate{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTriggerTemplates) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(triggertemplatesResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.TriggerTemplateList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched triggerTemplate.
-func (c *FakeTriggerTemplates) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TriggerTemplate, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(triggertemplatesResource, c.ns, name, pt, data, subresources...), &v1alpha1.TriggerTemplate{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TriggerTemplate), err
 }

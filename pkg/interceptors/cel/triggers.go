@@ -392,7 +392,7 @@ func translateString(vals ...ref.Val) ref.Val {
 	return types.String(re.ReplaceAllString(string(src), string(repl)))
 }
 
-func max(x, y types.Int) types.Int {
+func max(x, y types.Int) types.Int { //nolint: revive
 	switch x.Compare(y) {
 	case types.IntNegOne:
 		return x

@@ -587,6 +587,48 @@ func Test_EventListenerValidate(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			name: "Valid EventListener with kubernetes resources for securityContext",
+			el: &triggersv1beta1.EventListener{
+				ObjectMeta: myObjectMeta,
+				Spec: triggersv1beta1.EventListenerSpec{
+					Triggers: []triggersv1beta1.EventListenerTrigger{{
+						Template: &triggersv1beta1.EventListenerTemplate{
+							Ref: ptr.String("tt"),
+						},
+					}},
+					Resources: triggersv1beta1.Resources{
+						KubernetesResource: &triggersv1beta1.KubernetesResource{
+							WithPodSpec: duckv1.WithPodSpec{
+								Template: duckv1.PodSpecable{
+									Spec: corev1.PodSpec{
+										ServiceAccountName: "k8sresource",
+										SecurityContext: &corev1.PodSecurityContext{
+											RunAsNonRoot: ptr.Bool(true),
+										},
+										Containers: []corev1.Container{{
+											Resources: corev1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+													corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+												},
+												Requests: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.Quantity{Format: resource.DecimalSI},
+													corev1.ResourceMemory: resource.Quantity{Format: resource.BinarySI},
+												},
+											},
+											SecurityContext: &corev1.SecurityContext{
+												RunAsNonRoot: ptr.Bool(true),
+												RunAsUser:    ptr.Int64(65532),
+											},
+										}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}}
 
 	for _, tc := range tests {

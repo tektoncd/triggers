@@ -23,6 +23,8 @@ var (
 	DefaultPort = 8080
 	// DefaultSetSecurityContext is the SetSecurityContext value used by default.
 	DefaultSetSecurityContext = true
+	// DefaultSetReadOnlyRootFilesystem is the SetReadOnlyRootFilesystem value used by default.
+	DefaultSetReadOnlyRootFilesystem = true
 	// DefaultEventListenerEvent is the EventListenerEvent value used by default.
 	DefaultEventListenerEvent = "disable"
 	// DefaultReadTimeout is the ReadTimeout used by default.
@@ -63,6 +65,8 @@ type Config struct {
 	Port *int
 	// SetSecurityContext defines if the security context is set.
 	SetSecurityContext *bool
+	// SetReadOnlyRootFilesystem defines the value for readOnlyRootFilesystem
+	SetReadOnlyRootFilesystem *bool
 	// SetEventListenerEvent defines to enable or disable of emitting events for EventListener.
 	SetEventListenerEvent *string
 	// ReadTimeOut defines the read timeout for EventListener Server.
@@ -99,11 +103,11 @@ type ConfigOption func(d *Config)
 // It generates a default Config for the EventListener without any flags set and accepts functions for modification.
 func MakeConfig(ops ...ConfigOption) *Config {
 	c := &Config{
-		Image:                 &DefaultImage,
-		Port:                  &DefaultPort,
-		SetSecurityContext:    &DefaultSetSecurityContext,
-		SetEventListenerEvent: &DefaultEventListenerEvent,
-
+		Image:                           &DefaultImage,
+		Port:                            &DefaultPort,
+		SetSecurityContext:              &DefaultSetSecurityContext,
+		SetEventListenerEvent:           &DefaultEventListenerEvent,
+		SetReadOnlyRootFilesystem:       &DefaultSetReadOnlyRootFilesystem,
 		ReadTimeOut:                     &DefaultReadTimeout,
 		WriteTimeOut:                    &DefaultWriteTimeout,
 		IdleTimeOut:                     &DefaultIdleTimeout,

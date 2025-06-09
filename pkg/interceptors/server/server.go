@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	Decade                  = 100 * 365 * 24 * time.Hour
+	Century                 = 100 * 365 * 24 * time.Hour
 	interceptorTLSSecretKey = "INTERCEPTOR_TLS_SECRET_NAME"
 	interceptorTLSSvcKey    = "INTERCEPTOR_TLS_SVC_NAME"
 )
@@ -159,7 +159,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 }
 
 func CreateAndValidateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, logger *zap.SugaredLogger, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface) {
-	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, false)
+	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Century), logger, false)
 	if err != nil {
 		return
 	}
@@ -278,7 +278,7 @@ func (is *Server) checkCertValidity(ctx context.Context, serverCert, caCert []by
 			if _, err := cert.Verify(opts); err != nil {
 				logger.Errorf("failed to verify certificate: %v", err.Error())
 
-				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, true)
+				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Century), logger, true)
 				if err != nil {
 					logger.Errorf("failed to create certs %v", err)
 				}

@@ -72,6 +72,8 @@ spec:
           value: tekton-triggers-core-interceptors
         - name: INTERCEPTOR_TLS_SECRET_NAME
           value: tekton-triggers-core-interceptors-certs
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.28.0"
         readinessProbe:
           httpGet:
             path: /ready
@@ -82,6 +84,7 @@ spec:
           timeoutSeconds: 5
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
           runAsGroup: 65532

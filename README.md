@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **Migrate Images from *gcr.io* to *ghcr.io*.**
+>
+> To reduce costs, we've migrated all our new and old Tekton releases to the free tier on [ghcr.io/tektoncd](https://github.com/orgs/tektoncd/packages?repo_name=triggers). <br />
+> Read more [here](https://tekton.dev/blog/2025/04/03/migration-to-github-container-registry/).
+
+---
+
 # Tekton Triggers
 
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/tektoncd/triggers)
@@ -47,6 +55,7 @@ Version specific links are available in the [releases](releases.md) page and on 
 
 ### Required Kubernetes Version
 
+- Starting from the v0.29.x release of Tekton: **Kubernetes version 1.28 or later**
 - Starting from the v0.27.x release of Tekton: **Kubernetes version 1.27 or later**
 - Starting from the v0.26.x release of Tekton: **Kubernetes version 1.25 or later**
 - Starting from the v0.25.x release of Tekton: **Kubernetes version 1.24 or later**

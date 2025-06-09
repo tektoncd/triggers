@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // InterceptorLister helps list Interceptors.
@@ -30,7 +30,7 @@ import (
 type InterceptorLister interface {
 	// List lists all Interceptors in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.Interceptor, err error)
 	// Interceptors returns an object that can list and get Interceptors.
 	Interceptors(namespace string) InterceptorNamespaceLister
 	InterceptorListerExpansion
@@ -38,25 +38,17 @@ type InterceptorLister interface {
 
 // interceptorLister implements the InterceptorLister interface.
 type interceptorLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*triggersv1alpha1.Interceptor]
 }
 
 // NewInterceptorLister returns a new InterceptorLister.
 func NewInterceptorLister(indexer cache.Indexer) InterceptorLister {
-	return &interceptorLister{indexer: indexer}
-}
-
-// List lists all Interceptors in the indexer.
-func (s *interceptorLister) List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Interceptor))
-	})
-	return ret, err
+	return &interceptorLister{listers.New[*triggersv1alpha1.Interceptor](indexer, triggersv1alpha1.Resource("interceptor"))}
 }
 
 // Interceptors returns an object that can list and get Interceptors.
 func (s *interceptorLister) Interceptors(namespace string) InterceptorNamespaceLister {
-	return interceptorNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return interceptorNamespaceLister{listers.NewNamespaced[*triggersv1alpha1.Interceptor](s.ResourceIndexer, namespace)}
 }
 
 // InterceptorNamespaceLister helps list and get Interceptors.
@@ -64,36 +56,15 @@ func (s *interceptorLister) Interceptors(namespace string) InterceptorNamespaceL
 type InterceptorNamespaceLister interface {
 	// List lists all Interceptors in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error)
+	List(selector labels.Selector) (ret []*triggersv1alpha1.Interceptor, err error)
 	// Get retrieves the Interceptor from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Interceptor, error)
+	Get(name string) (*triggersv1alpha1.Interceptor, error)
 	InterceptorNamespaceListerExpansion
 }
 
 // interceptorNamespaceLister implements the InterceptorNamespaceLister
 // interface.
 type interceptorNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Interceptors in the indexer for a given namespace.
-func (s interceptorNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Interceptor, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Interceptor))
-	})
-	return ret, err
-}
-
-// Get retrieves the Interceptor from the indexer for a given namespace and name.
-func (s interceptorNamespaceLister) Get(name string) (*v1alpha1.Interceptor, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("interceptor"), name)
-	}
-	return obj.(*v1alpha1.Interceptor), nil
+	listers.ResourceIndexer[*triggersv1alpha1.Interceptor]
 }

@@ -19,15 +19,14 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	scheme "github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // TriggersGetter has a method to return a TriggerInterface.
@@ -38,141 +37,32 @@ type TriggersGetter interface {
 
 // TriggerInterface has methods to work with Trigger resources.
 type TriggerInterface interface {
-	Create(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.CreateOptions) (*v1alpha1.Trigger, error)
-	Update(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.UpdateOptions) (*v1alpha1.Trigger, error)
+	Create(ctx context.Context, trigger *triggersv1alpha1.Trigger, opts v1.CreateOptions) (*triggersv1alpha1.Trigger, error)
+	Update(ctx context.Context, trigger *triggersv1alpha1.Trigger, opts v1.UpdateOptions) (*triggersv1alpha1.Trigger, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Trigger, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TriggerList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*triggersv1alpha1.Trigger, error)
+	List(ctx context.Context, opts v1.ListOptions) (*triggersv1alpha1.TriggerList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Trigger, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *triggersv1alpha1.Trigger, err error)
 	TriggerExpansion
 }
 
 // triggers implements TriggerInterface
 type triggers struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*triggersv1alpha1.Trigger, *triggersv1alpha1.TriggerList]
 }
 
 // newTriggers returns a Triggers
 func newTriggers(c *TriggersV1alpha1Client, namespace string) *triggers {
 	return &triggers{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*triggersv1alpha1.Trigger, *triggersv1alpha1.TriggerList](
+			"triggers",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *triggersv1alpha1.Trigger { return &triggersv1alpha1.Trigger{} },
+			func() *triggersv1alpha1.TriggerList { return &triggersv1alpha1.TriggerList{} },
+		),
 	}
-}
-
-// Get takes name of the trigger, and returns the corresponding trigger object, and an error if there is any.
-func (c *triggers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Trigger, err error) {
-	result = &v1alpha1.Trigger{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("triggers").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of Triggers that match those selectors.
-func (c *triggers) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TriggerList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.TriggerList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("triggers").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested triggers.
-func (c *triggers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("triggers").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a trigger and creates it.  Returns the server's representation of the trigger, and an error, if there is any.
-func (c *triggers) Create(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.CreateOptions) (result *v1alpha1.Trigger, err error) {
-	result = &v1alpha1.Trigger{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("triggers").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(trigger).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a trigger and updates it. Returns the server's representation of the trigger, and an error, if there is any.
-func (c *triggers) Update(ctx context.Context, trigger *v1alpha1.Trigger, opts v1.UpdateOptions) (result *v1alpha1.Trigger, err error) {
-	result = &v1alpha1.Trigger{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("triggers").
-		Name(trigger.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(trigger).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the trigger and deletes it. Returns an error if one occurs.
-func (c *triggers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("triggers").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *triggers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("triggers").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched trigger.
-func (c *triggers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Trigger, err error) {
-	result = &v1alpha1.Trigger{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("triggers").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

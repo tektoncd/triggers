@@ -15,6 +15,9 @@ spec:
   - name: interceptorImages
     description: List of cmd/* paths to be published as images in release manifest interceptors.yaml
     default: "interceptors"
+  - name: koExtraArgs
+    description: Extra args to be passed to ko
+    default: "--preserve-import-paths"
   - name: versionTag
     description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
   - name: imageRegistry
@@ -25,6 +28,9 @@ spec:
   - name: imageRegistryRegions
     description: The target image registry regions
     default: "us eu asia"
+  - name: imageRegistryUser
+    description: Username to be used to login to the container registry
+    default: "_json_key"
   - name: releaseAsLatest
     description: Whether to tag and publish this release as Triggers' latest
     default: "true"
@@ -49,14 +55,18 @@ spec:
     env:
     - name: "PROJECT_ROOT"
       value: "$(workspaces.source.path)"
-    - name: CONTAINER_REGISTY_CREDENTIALS
+    - name: CONTAINER_REGISTRY_CREDENTIALS
       value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
     - name: CONTAINER_REGISTRY
       value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
+    - name: CONTAINER_REGISTRY_USER
+      value: "$(params.imageRegistryUser)"
     - name: REGIONS
       value: "$(params.imageRegistryRegions)"
     - name: OUTPUT_RELEASE_DIR
       value: "$(workspaces.output.path)/$(params.versionTag)"
+    - name: KO_EXTRA_ARGS
+      value: "$(params.koExtraArgs)"
   results:
     # IMAGES result is picked up by Tekton Chains to sign the release.
     # See https://github.com/tektoncd/plumbing/blob/main/docs/signing.md for more info.
@@ -64,26 +74,26 @@ spec:
   steps:
 
   - name: container-registy-auth
-    image: gcr.io/go-containerregistry/crane:debug
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:8ebcdd154abd06371886fee6583c7c9bbc4e88a2999c493266b1580f605e0e7c
     script: |
-      #!/busybox/sh
+      #!/bin/sh
       set -ex
 
       # Login to the container registry
-      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
-        crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
+      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTRY_CREDENTIALS} | \
+        crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin $(params.imageRegistry) 2>&1 | \
         sed 's,^.*logged in via \(.*\)$,\1,g')
 
       # Auth with account credentials for all regions.
       for region in ${REGIONS}
       do
         HOSTNAME=${region}.$(params.imageRegistry)
-        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+        cat ${CONTAINER_REGISTRY_CREDENTIALS} | crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin ${HOSTNAME}
       done
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko@sha256:9ee3ae5273b1f55bf01ba71bd79b5a4a9d357c51c0fdabf1efec8bd7e7087983
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:8c4dbc57bcfd4c0a68f62c42da3f22932b0f3f54d4724c65841ad78406bc09ad
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -104,7 +114,7 @@ spec:
       # For each cmd/* directory, include a full gzipped tar of all source in
       # vendor/. This is overkill. Some deps' licenses require the source to be
       # included in the container image when they're used as a dependency.
-      # Rather than trying to determine which deps have this requirement (an(params.imageRegistryd
+      # Rather than trying to determine which deps have this requirement (and
       # probably get it wrong), we'll just targz up the whole vendor tree and
       # include it. As of 9/20/2019, this amounts to about 11MB of additional
       # data in each image.
@@ -116,59 +126,98 @@ spec:
         fi
       done
 
-      # Rewrite "devel" to params.versionTag
-      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/*.yaml
-      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/interceptors/*.yaml
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
-      ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
-      ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/interceptors > $OUTPUT_RELEASE_DIR/interceptors.yaml
+      # Make a local git tag to make git status happy :)
+      # The real "tagging" will happen with the "create-release" pipeline.
+      git tag $(params.versionTag)
+
+      ko resolve \
+        --image-label=org.opencontainers.image.source=https://$(params.package) \
+        --platform=$(params.platforms) \
+        -t $(params.versionTag) ${KO_EXTRA_ARGS} \
+        -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
+      ko resolve \
+        --image-label=org.opencontainers.image.source=https://$(params.package) \
+        --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
+        -t $(params.versionTag) \
+        -f ${PROJECT_ROOT}/config/interceptors > $OUTPUT_RELEASE_DIR/interceptors.yaml
+
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
-      ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.notags.yaml
-      ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/interceptors > $OUTPUT_RELEASE_DIR/interceptors.notags.yaml
+      ko resolve \
+        --image-label=org.opencontainers.image.source=https://$(params.package) \
+        --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
+        -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.notags.yaml
+      ko resolve \
+        --image-label=org.opencontainers.image.source=https://$(params.package) \
+        --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
+        -f ${PROJECT_ROOT}/config/interceptors > $OUTPUT_RELEASE_DIR/interceptors.notags.yaml
 
+      # Rewrite "devel" to params.versionTag
+      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
+      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
+      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/interceptors.yaml
+      sed -i -e 's/\(triggers.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/interceptors.notags.yaml
   - name: koparse
-    image: gcr.io/tekton-releases/dogfooding/koparse:latest
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:ae363d70e3c2fb75e96aaeb561dcea20383c27a47f0266c8179bbb72b89c2430
     script: |
       set -ex
 
-      IMAGES_PATH=${CONTAINER_REGISTRY}/$(params.package)
+      # Find "--preserve-import-paths" in a list of args
+      function find_preserve_import_path() {
+        for arg in $@; do
+          if [[ "$arg" == "--preserve-import-paths" ]]; then
+            return 0
+          fi
+        done
+        return 1
+      }
+
+      # If "--preserve-import-paths" is used, include "package" in the expected path
+      find_preserve_import_path \
+        $(echo $KO_EXTRA_ARGS) && \
+        PRESERVE_IMPORT_PATH="--preserve-path" || \
+        PRESERVE_IMPORT_PATH="--no-preserve-path"
 
       for cmd in $(params.images)
       do
-        IMAGES="${IMAGES} ${IMAGES_PATH}/cmd/${cmd}:$(params.versionTag)"
+        IMAGES="${IMAGES} $(params.package)/cmd/${cmd}:$(params.versionTag)"
       done
 
       # Parse the built images from the release.yaml generated by ko
       koparse \
         --path $OUTPUT_RELEASE_DIR/release.yaml \
-        --base ${IMAGES_PATH} --images ${IMAGES} > /workspace/built_images
+        --base $(params.package) \
+        --container-registry ${CONTAINER_REGISTRY} \
+        --images ${IMAGES} \
+        ${PRESERVE_IMPORT_PATH} > /workspace/built_images
 
       for cmd in $(params.interceptorImages)
       do
-        INTERCEPTOR_IMAGES="${INTERCEPTOR_IMAGES} ${IMAGES_PATH}/cmd/${cmd}:$(params.versionTag)"
+        INTERCEPTOR_IMAGES="${INTERCEPTOR_IMAGES} $(params.package)/cmd/${cmd}:$(params.versionTag)"
       done
 
       # Parse the built images from the interceptor.yaml generated by ko
       koparse \
         --path $OUTPUT_RELEASE_DIR/interceptors.yaml \
-        --base ${IMAGES_PATH} --images ${INTERCEPTOR_IMAGES} >> /workspace/built_images
+        --base $(params.package) \
+        --container-registry ${CONTAINER_REGISTRY} \
+        --images ${INTERCEPTOR_IMAGES} \
+        ${PRESERVE_IMPORT_PATH} >> /workspace/built_images
 
   - name: tag-images
-    image: gcr.io/go-containerregistry/crane:debug
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:8ebcdd154abd06371886fee6583c7c9bbc4e88a2999c493266b1580f605e0e7c
     script: |
-      #!/busybox/sh
+      #!/bin/sh
       set -ex
 
       # Setup docker-auth
       DOCKER_CONFIG=~/.docker
       mkdir -p ${DOCKER_CONFIG}
       cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
-
-      REGIONS="us eu asia"
 
       # Tag the images and put them in all the regions
       for IMAGE in $(cat /workspace/built_images)

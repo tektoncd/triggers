@@ -67,6 +67,8 @@ spec:
               value: tekton.dev/triggers
             - name: CONFIG_LEADERELECTION_NAME
               value: config-leader-election-triggers-webhook
+            - name: KUBERNETES_MIN_VERSION
+              value: "v1.28.0"
           ports:
             - name: metrics
               containerPort: 9000
@@ -76,6 +78,7 @@ spec:
               containerPort: 8443
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             # User 65532 is the distroless nonroot user ID
             runAsUser: 65532
             runAsGroup: 65532

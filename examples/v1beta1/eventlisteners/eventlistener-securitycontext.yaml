@@ -1,0 +1,31 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: listener-tolerations
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+                securityContext:
+                  readOnlyRootFilesystem: true
+  triggers:
+    - name: foo-trig
+      bindings:
+        - ref: pipeline-binding
+        - ref: message-binding
+      template:
+        ref: pipeline-template

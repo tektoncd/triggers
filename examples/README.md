@@ -10,7 +10,7 @@ of Triggers resources. Many of the sub-folders also contain their own READMEs wi
 ## Pre-Requisites
 To run the examples, you need the following pre-requisites:
 
-1. Ensure you have Tekton Pipelines [installed](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+1. Ensure you have Tekton Pipelines [installed](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
 
 2. Create the service account and all associated roles and bindings by running `kubectl apply -f rbac.yaml`.
 

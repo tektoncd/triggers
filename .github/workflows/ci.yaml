@@ -1,0 +1,84 @@
+name: Tekton Triggers CI
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release-*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  tekton-triggers-integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: on
+      KO_DOCKER_REPO: registry.local:5000/tekton
+      CLUSTER_DOMAIN: c${{ github.run_id }}.local
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          cache-dependency-path: "${{ github.workspace }}/src/github.com/tektoncd/triggers/go.sum"
+          go-version-file: "${{ github.workspace }}/src/github.com/tektoncd/triggers/go.mod"
+
+      - name: Install dependencies
+        working-directory: ./
+        run: |
+          echo '::group::install ko'
+          curl -L https://github.com/ko-build/ko/releases/download/v0.15.4/ko_0.15.4_Linux_x86_64.tar.gz | tar xzf - ko
+          echo '::group:: install go-junit-report'
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          echo '::endgroup::'
+          chmod +x ./ko
+          sudo mv ko /usr/local/bin
+          echo '::endgroup::'
+
+          echo '::group::create required folders'
+          mkdir -p "${ARTIFACTS}"
+          echo '::endgroup::'
+
+          echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+        run: |
+          ${{ github.workspace }}/src/github.com/tektoncd/triggers/test/setup-kind.sh \
+            --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+            --cluster-suffix c${{ github.run_id }}.local \
+            --nodes 3 \
+            --k8s-version v1.29.x \
+            --e2e-script ./test/gh-e2e-tests.sh \
+            --e2e-env ./test/e2e-tests-kind-prow.env
+
+      - name: Upload test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ failure() }}
+        with:
+          path: ${{ env.ARTIFACTS }}

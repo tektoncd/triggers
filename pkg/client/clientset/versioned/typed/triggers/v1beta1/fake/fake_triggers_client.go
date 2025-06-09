@@ -29,23 +29,23 @@ type FakeTriggersV1beta1 struct {
 }
 
 func (c *FakeTriggersV1beta1) ClusterTriggerBindings() v1beta1.ClusterTriggerBindingInterface {
-	return &FakeClusterTriggerBindings{c}
+	return newFakeClusterTriggerBindings(c)
 }
 
 func (c *FakeTriggersV1beta1) EventListeners(namespace string) v1beta1.EventListenerInterface {
-	return &FakeEventListeners{c, namespace}
+	return newFakeEventListeners(c, namespace)
 }
 
 func (c *FakeTriggersV1beta1) Triggers(namespace string) v1beta1.TriggerInterface {
-	return &FakeTriggers{c, namespace}
+	return newFakeTriggers(c, namespace)
 }
 
 func (c *FakeTriggersV1beta1) TriggerBindings(namespace string) v1beta1.TriggerBindingInterface {
-	return &FakeTriggerBindings{c, namespace}
+	return newFakeTriggerBindings(c, namespace)
 }
 
 func (c *FakeTriggersV1beta1) TriggerTemplates(namespace string) v1beta1.TriggerTemplateInterface {
-	return &FakeTriggerTemplates{c, namespace}
+	return newFakeTriggerTemplates(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

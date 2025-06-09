@@ -17,15 +17,18 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfg "github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/ptr"
 )
 
@@ -35,6 +38,7 @@ func TestContainer(t *testing.T) {
 	tests := []struct {
 		name string
 		el   *v1beta1.EventListener
+		cm   cfg.Config
 		want corev1.Container
 		opts []ContainerOption
 	}{{
@@ -89,9 +93,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -163,9 +168,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -216,9 +222,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -278,9 +285,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -341,9 +349,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -404,9 +413,10 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -468,19 +478,87 @@ func TestContainer(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 				},
 				// 65532 is the distroless nonroot user ID
-				RunAsUser:    ptr.Int64(65532),
-				RunAsGroup:   ptr.Int64(65532),
-				RunAsNonRoot: ptr.Bool(true),
+				RunAsUser:              ptr.Int64(65532),
+				RunAsGroup:             ptr.Int64(65532),
+				RunAsNonRoot:           ptr.Bool(true),
+				ReadOnlyRootFilesystem: ptr.Bool(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
+			},
+		},
+	}, {
+		name: "passing securityContext from EL",
+		el: makeEL(func(el *v1beta1.EventListener) {
+			el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+				WithPodSpec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								SecurityContext: &corev1.SecurityContext{
+									RunAsNonRoot: ptr.Bool(true),
+								},
+							}},
+						},
+					},
+				},
+			}
+			el.Annotations = map[string]string{
+				triggers.PayloadValidationAnnotation: "false",
+			}
+		}),
+		want: corev1.Container{
+			Name:  "event-listener",
+			Image: DefaultImage,
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: int32(eventListenerContainerPort),
+				Protocol:      corev1.ProtocolTCP,
+			}},
+			Args: []string{
+				"--el-name=" + eventListenerName,
+				"--el-namespace=" + namespace,
+				"--port=" + strconv.Itoa(eventListenerContainerPort),
+				"--readtimeout=" + strconv.FormatInt(DefaultReadTimeout, 10),
+				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
+				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
+				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
+				"--is-multi-ns=" + strconv.FormatBool(false),
+				"--payload-validation=" + strconv.FormatBool(false),
+				"--cloudevent-uri=",
+			},
+			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
+			}},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: ptr.Bool(true),
 			},
 		},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, tt.opts...)
+			got := MakeContainer(tt.el, &reconcilersource.EmptyVarsGenerator{}, config, cfg.FromContextOrDefaults(context.Background()), tt.opts...)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("MakeContainer() did not return expected. -want, +got: %s", diff)
 			}
