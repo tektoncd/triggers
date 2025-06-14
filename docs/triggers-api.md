@@ -1109,7 +1109,7 @@ knative.dev/pkg/apis/duck/v1alpha1.AddressStatus
 (Members of <code>AddressStatus</code> are embedded into this type.)
 </p>
 <p>EventListener is Addressable. It currently exposes the service DNS
-address of the the EventListener sink</p>
+address of the EventListener sink</p>
 </td>
 </tr>
 <tr>
@@ -3513,7 +3513,7 @@ knative.dev/pkg/apis/duck/v1beta1.AddressStatus
 (Members of <code>AddressStatus</code> are embedded into this type.)
 </p>
 <p>EventListener is Addressable. It currently exposes the service DNS
-address of the the EventListener sink</p>
+address of the EventListener sink</p>
 </td>
 </tr>
 <tr>
