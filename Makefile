@@ -8,7 +8,7 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 			$(PKGS))
 BIN      = $(CURDIR)/.bin
 
-GOLANGCI_VERSION = v1.47.2
+GOLANGCI_VERSION = v2.1.6
 
 GO           = go
 TIMEOUT_UNIT = 5m
@@ -164,11 +164,11 @@ errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
 
 GOLANGCILINT = $(BIN)/golangci-lint
 $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-	cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VERSION)
+        cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
-	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
+	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 
 
 GOIMPORTS = $(BIN)/goimports
 $(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
