@@ -206,7 +206,17 @@ main() {
     info "Knative Example Test Started"
     current_example="custom-resource"
     echo "*** Example ${current_example_version}/${current_example} ***";
+    kubectl delete events -n default  --all
     apply_files
+    sleep 60
+    kubectl get deployment el-custom-resource-listener-00001-deployment -n default
+    kubectl get deployment el-custom-resource-listener-00001-deployment -n default  -o yaml
+    kubectl get pod -n default
+    kubectl get pod -n default -l app=el-custom-resource-listener-00001
+    kubectl get el custom-resource-listener
+    kubectl get el custom-resource-listener -o yaml
+    kubectl logs -f deployments/el-custom-resource-listener-00001-deployment -c queue-proxy
+    kubectl get events
     check_eventlistener
     curl_knative_service
     cleanup

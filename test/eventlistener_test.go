@@ -485,8 +485,6 @@ func TestEventListenerCreate(t *testing.T) {
 		}
 	}
 
-	fmt.Printf("\nel.Spec.Resources.KubernetesResource.ServiceType: %v", el.Spec.Resources.KubernetesResource.ServiceType)
-	fmt.Printf("\nel.Spec.Resources.KubernetesResource.ServicePort: %v", *el.Spec.Resources.KubernetesResource.ServicePort)
 
 	// Send POST request to EventListener sink
 	var resp *http.Response
