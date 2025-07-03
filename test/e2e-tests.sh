@@ -22,7 +22,9 @@ source $(dirname $0)/e2e-common.sh
 
 # Setting defaults
 failed=0
+
 SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
+export SKIP_SECURITY_CTX=${SKIP_SECURITY_CTX:="false"}
 
 
 if [ "${SKIP_INITIALIZE}" != "true" ]; then
@@ -35,17 +37,22 @@ install_triggers_crd
 
 header "Running yaml tests"
 $(dirname $0)/e2e-tests-yaml.sh || failed=1
+(( failed )) && echo "failed yaml tests"
 
 header "Running ingress tests"
 $(dirname $0)/e2e-tests-ingress.sh || failed=1
+(( failed )) && echo "failed ingress tests"
 
 # Run the integration tests
 header "Running Go e2e tests"
 go_test_e2e -timeout=20m ./test || failed=1
 go_test_e2e -timeout=20m ./cmd/... || failed=1
+(( failed )) && echo "failed integration tests"
+
 
 header "Running examples tests"
 $(dirname $0)/e2e-tests-examples.sh || failed=1
+(( failed )) && echo "failed example tests"
 
 (( failed )) && fail_test
 success
