@@ -22,6 +22,8 @@ source $(dirname $0)/e2e-common.sh
 
 set -u -e -o pipefail -x
 
+SKIP_KNATIVE_EG=${SKIP_KNATIVE_EG:="false"}
+
 current_example=""
 current_example_version=""
 yaml_files=""
@@ -202,15 +204,27 @@ main() {
       cleanup
       info "Test Successful"
     done
-    # To test Knative Serving example
-    info "Knative Example Test Started"
-    current_example="custom-resource"
-    echo "*** Example ${current_example_version}/${current_example} ***";
-    apply_files
-    check_eventlistener
-    curl_knative_service
-    cleanup
-    info "Knative Example Test Successful"
+    if [ "${SKIP_KNATIVE_EG}" == "false" ]; then
+        # To test Knative Serving example
+        info "Knative Example Test Started"
+        current_example="custom-resource"
+        echo "*** Example ${current_example_version}/${current_example} ***";
+        kubectl delete events -n default  --all
+        apply_files
+        sleep 60
+        kubectl get deployment el-custom-resource-listener-00001-deployment -n default
+        kubectl get deployment el-custom-resource-listener-00001-deployment -n default  -o yaml
+        kubectl get pod -n default
+        kubectl get pod -n default -l app=el-custom-resource-listener-00001
+        kubectl get el custom-resource-listener
+        kubectl get el custom-resource-listener -o yaml
+        kubectl logs -f deployments/el-custom-resource-listener-00001-deployment -c queue-proxy
+        kubectl get events
+        check_eventlistener
+        curl_knative_service
+        cleanup
+        info "Knative Example Test Successful"
+    fi
   done
 
   echo; echo "*** Completed Examples Test Successfully ***"; echo;

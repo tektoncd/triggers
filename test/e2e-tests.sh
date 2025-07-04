@@ -25,7 +25,7 @@ failed=0
 
 SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
 export SKIP_SECURITY_CTX=${SKIP_SECURITY_CTX:="false"}
-
+export SKIP_KNATIVE_EG=${SKIP_KNATIVE_EG:="false"}
 
 if [ "${SKIP_INITIALIZE}" != "true" ]; then
   initialize $@
