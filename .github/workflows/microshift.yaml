@@ -5,7 +5,7 @@ permissions:
   packages: write
 
 on:
-  pull_request:
+  push:
     branches:
       - main
       - release-*
