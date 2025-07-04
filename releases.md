@@ -40,11 +40,25 @@ Further documentation available:
 
 ## Releases
 
+### v0.32 (LTS)
+
+- **Latest Release**: [v0.32.0][v0-32-0] (2025-05-07) ([docs][v0-32-0-docs], [examples][v0-32-0-examples])
+- **Initial Release**: [v0.32.0][v0-32-0] (2025-05-07)
+- **End of Life**: 2026-05-07
+- **Patch Releases**: [v0.32.0][v0-32-0]
+
+### v0.31 (LTS)
+
+- **Latest Release**: [v0.31.0][v0-31-0] (2025-11-06) ([docs][v0-31-0-docs], [examples][v0-31-0-examples])
+- **Initial Release**: [v0.31.0][v0-31-0] (2025-02-05)
+- **End of Life**: 2026-02-05
+- **Patch Releases**: [v0.31.0][v0-31-0]
+
 
 ### v0.30 (LTS)
 
 - **Latest Release**: [v0.30.0][v0-30-0] (2024-11-06) ([docs][v0-30-0-docs], [examples][v0-30-0-examples])
-- **Initial Release**: [v0.29.0][v0-29-0] (2024-11-06)
+- **Initial Release**: [v0.30.0][v0-30-0] (2024-11-06)
 - **End of Life**: 2025-11-05
 - **Patch Releases**: [v0.30.0][v0-30-0]
 
@@ -56,33 +70,6 @@ Further documentation available:
 - **End of Life**: 2025-08-21
 - **Patch Releases**: [v0.29.0][v0-29-0]
 
-### v0.27 (LTS)
-
-- **Latest Release**: [v0.27.0][v0-27-0] (2024-04-30) ([docs][v0-27-0-docs], [examples][v0-27-0-examples])
-- **Initial Release**: [v0.27.0][v0-27-0] (2024-05-10)
-- **End of Life**: 2025-05-10
-- **Patch Releases**: [v0.27.0][v0-27-0]
-
-### v0.26 (LTS)
-
-- **Latest Release**: [v0.26.2][v0-26-2] (2024-04-30) ([docs][v0-26-2-docs], [examples][v0-26-2-examples])
-- **Initial Release**: [v0.26.0][v0-26-0] (2024-02-07)
-- **End of Life**: 2025-02-07
-- **Patch Releases**: [v0.26.0][v0-26-0] [v0.26.1][v0-26-1]
-
-### v0.25 (LTS)
-
-- **Latest Release**: [v0.25.2][v0-25-2] (2023-10-20) ([docs][v0-25-2-docs], [examples][v0-25-2-examples])
-- **Initial Release**: [v0.25.0][v0-25-0] (2023-08-29)
-- **End of Life**: 2024-11-11
-- **Patch Releases**: [v0.25.0][v0-25-0] [v0.25.1][v0-25-1]
-
-### v0.24 (LTS)
-
-- **Latest Release**: [v0.24.1][v0-24-1] (2023-06-11) ([docs][v0-24-1-docs], [examples][v0-24-1-examples])
-- **Initial Release**: [v0.24.0][v0-24-0] (2023-06-11)
-- **End of Life**: 2024-06-11
-- **Patch Releases**: [v0.24.1][v0-24-1] [v0.24.0][v0-24-0]
 
 ### Required Kubernetes Version
 
@@ -105,28 +92,16 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
-[v0-24-0]: https://github.com/tektoncd/triggers/releases/tag/v0.24.0
-[v0-24-1]: https://github.com/tektoncd/triggers/releases/tag/v0.24.1
-[v0-24-2]: https://github.com/tektoncd/triggers/releases/tag/v0.24.2
-[v0-24-2-docs]: https://github.com/tektoncd/triggers/tree/v0.24.2/docs#tekton-triggers
-[v0-24-2-examples]: https://github.com/tektoncd/triggers/tree/v0.24.2/examples#examples
-[v0-25-0]: https://github.com/tektoncd/triggers/releases/tag/v0.25.0
-[v0-25-1]: https://github.com/tektoncd/triggers/releases/tag/v0.25.1
-[v0-25-2]: https://github.com/tektoncd/triggers/releases/tag/v0.25.2
-[v0-25-2-docs]: https://github.com/tektoncd/triggers/tree/v0.25.2/docs#tekton-triggers
-[v0-25-2-examples]: https://github.com/tektoncd/triggers/tree/v0.25.2/examples#examples
-[v0-26-0]: https://github.com/tektoncd/triggers/releases/tag/v0.26.0
-[v0-26-1]: https://github.com/tektoncd/triggers/releases/tag/v0.26.1
-[v0-26-2]: https://github.com/tektoncd/triggers/releases/tag/v0.26.2
-[v0-26-2-docs]: https://github.com/tektoncd/triggers/tree/v0.26.2/docs#tekton-triggers
-[v0-26-2-examples]: https://github.com/tektoncd/triggers/tree/v0.26.2/examples#examples
-[v0-27-0]: https://github.com/tektoncd/triggers/releases/tag/v0.27.0
-[v0-27-0-docs]: https://github.com/tektoncd/triggers/tree/v0.27.0/docs#tekton-triggers
-[v0-27-0-examples]: https://github.com/tektoncd/triggers/tree/v0.27.0/examples#examples
-[v0-28-0]: https://github.com/tektoncd/triggers/releases/tag/v0.28.0
-[v0-28-0-docs]: https://github.com/tektoncd/triggers/tree/v0.28.0/docs#tekton-triggers
-[v0-28-0-examples]: https://github.com/tektoncd/triggers/tree/v0.28.0/examples#examples
-[v0-30-0]: https://github.com/tektoncd/triggers/releases/tag/v0.28.0
-[v0-30-0-docs]: https://github.com/tektoncd/triggers/tree/v0.28.0/docs#tekton-triggers
-[v0-30-0-examples]: https://github.com/tektoncd/triggers/tree/v0.28.0/examples#examples
+[v0-29-0]: https://github.com/tektoncd/triggers/releases/tag/v0.29.0
+[v0-29-0-docs]: https://github.com/tektoncd/triggers/tree/v0.29.0/docs#tekton-triggers
+[v0-29-0-examples]: https://github.com/tektoncd/triggers/tree/v0.29.0/examples#examples
+[v0-30-0]: https://github.com/tektoncd/triggers/releases/tag/v0.30.0
+[v0-30-0-docs]: https://github.com/tektoncd/triggers/tree/v0.30.0/docs#tekton-triggers
+[v0-30-0-examples]: https://github.com/tektoncd/triggers/tree/v0.30.0/examples#examples
+[v0-31-0]: https://github.com/tektoncd/triggers/releases/tag/v0.31.0
+[v0-31-0-docs]: https://github.com/tektoncd/triggers/tree/v0.31.0/docs#tekton-triggers
+[v0-31-0-examples]: https://github.com/tektoncd/triggers/tree/v0.31.0/examples#examples
+[v0-32-0]: https://github.com/tektoncd/triggers/releases/tag/v0.32.0
+[v0-32-0-docs]: https://github.com/tektoncd/triggers/tree/v0.32.0/docs#tekton-triggers
+[v0-32-0-examples]: https://github.com/tektoncd/triggers/tree/v0.32.0/examples#examples
 
