@@ -1809,3 +1809,72 @@ func makeGitCloneTTSpec(t *testing.T, name string) *triggersv1beta1.TriggerTempl
 		}},
 	}
 }
+
+// TestExecuteInterceptors_ConcurrentMapWrite tests for a race condition that can occur when multiple triggers are
+// processed in parallel that use extensions.
+func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
+	logger := zaptest.NewLogger(t)
+	ctx, _ := test.SetupFakeContext(t)
+	clients := test.SeedResources(t, ctx, test.Resources{ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel}})
+
+	r := Sink{
+		HTTPClient:               setupInterceptors(t, clients.Kube, logger.Sugar(), &sequentialInterceptor{}),
+		Logger:                   logger.Sugar(),
+		ClusterInterceptorLister: clusterinterceptorinformer.Get(ctx).Lister(),
+	}
+
+	// Create interceptors that will add extensions
+	interceptors := []*triggersv1beta1.TriggerInterceptor{
+		{
+			Ref: triggersv1beta1.InterceptorRef{
+				Name: "cel",
+				Kind: triggersv1beta1.ClusterInterceptorKind,
+			},
+			Params: []triggersv1beta1.InterceptorParams{
+				{
+					Name: "overlays",
+					Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+						Key:        "test_key",
+						Expression: "\"test_value\"",
+					}}),
+				},
+			},
+		},
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, "http://example.com", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Shared extensions map - this is the source of the race condition
+	// This is passed from processTriggerGroups to multiple goroutines running processTrigger
+	extensions := make(map[string]interface{})
+
+	// Run many goroutines that will execute interceptors concurrently. An extreme number of goroutines is used to force
+	// the race condition to occur. Alternatively, concurrency can be set to 2 and go test -race can be used.
+	concurrency := 100
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			_, _, _, err := r.ExecuteInterceptors(
+				interceptors,
+				req.Clone(req.Context()),
+				[]byte(`{}`),
+				logger.Sugar(),
+				"test-event-id",
+				"test-trigger-id",
+				"default",
+				extensions,
+			)
+
+			if err != nil {
+				t.Logf("Goroutine %d error: %v", id, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	t.Log("Test completed without panic")
+}
