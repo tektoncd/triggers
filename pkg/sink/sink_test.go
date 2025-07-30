@@ -1173,6 +1173,142 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+	}, {
+		name: "with TriggerGroups and CEL interceptors - multiple triggers with extensions (data race test)",
+		resources: test.Resources{
+			Triggers: []*triggersv1beta1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "trigger-1",
+					Namespace: namespace,
+					Labels:    map[string]string{"group": "race-test"},
+				},
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name: "overlays",
+							Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+								Key:        "extensions.trigger1_ext",
+								Expression: "'value1'",
+							}}),
+						}},
+					}},
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{
+						{Name: "url", Value: ptr.String("$(body.repository.url)")},
+						{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
+						{Name: "name", Value: ptr.String("git-clone-run-trigger1")},
+						{Name: "app", Value: ptr.String("$(body.foo)")},
+						{Name: "type", Value: ptr.String("$(header.Content-Type)")}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "trigger-2",
+					Namespace: namespace,
+					Labels:    map[string]string{"group": "race-test"},
+				},
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name: "overlays",
+							Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+								Key:        "extensions.trigger2_ext",
+								Expression: "'value2'",
+							}}),
+						}},
+					}},
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{
+						{Name: "url", Value: ptr.String("$(body.repository.url)")},
+						{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
+						{Name: "name", Value: ptr.String("git-clone-run-trigger2")},
+						{Name: "app", Value: ptr.String("$(body.foo)")},
+						{Name: "type", Value: ptr.String("$(header.Content-Type)")}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}},
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+						Name: "race-test-group",
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+							Params: []triggersv1beta1.InterceptorParams{
+								{Name: "filter", Value: test.ToV1JSON(t, "has(body.head_commit)")},
+								{Name: "overlays", Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+									Key:        "extensions.group_ext",
+									Expression: "'group_value'",
+								}})},
+							},
+						}},
+						TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"group": "race-test"},
+							},
+						},
+					}},
+				},
+			}},
+			TriggerBindings:     []*triggersv1beta1.TriggerBinding{gitCloneTB},
+			TriggerTemplates:    []*triggersv1beta1.TriggerTemplate{gitCloneTT},
+			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
+		},
+		eventBody: eventBody,
+		want: []pipelinev1.TaskRun{
+			{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-run-trigger1",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app":                                  "bar\t\r\nbaz昨",
+						"type":                                 "application/json",
+						"triggers.tekton.dev/eventlistener":    eventListenerName,
+						"triggers.tekton.dev/trigger":          "trigger-1",
+						"triggers.tekton.dev/triggers-eventid": "12345",
+					},
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					Params: []pipelinev1.Param{
+						{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"}},
+						{Name: "git-revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"}},
+					},
+					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+				},
+			},
+			{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-run-trigger2",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app":                                  "bar\t\r\nbaz昨",
+						"type":                                 "application/json",
+						"triggers.tekton.dev/eventlistener":    eventListenerName,
+						"triggers.tekton.dev/trigger":          "trigger-2",
+						"triggers.tekton.dev/triggers-eventid": "12345",
+					},
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					Params: []pipelinev1.Param{
+						{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"}},
+						{Name: "git-revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"}},
+					},
+					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+				},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
