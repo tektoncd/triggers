@@ -32,16 +32,11 @@ type ScheduledTemplateSpec struct {
 	// +listType=atomic
 	// Resource template can have one or more pipelineruns, taskruns or other allowed Kubernetes and Tekton resources
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
-	//URL of the external event trigger is listening to
+	// URL of the external event trigger is listening to
 	CloudEventSink *apis.URL `json:"cloudEventSink,omitempty"`
 	// Cron job schedule for the trigger
 	Schedule string `json:"schedule,omitempty"`
 }
-
-// ScheduledResourceTemplate describes a resource to create
-/*type ScheduledResourceTemplate struct {
-	runtime.RawExtension `json:",inline"`
-}*/
 
 // ScheduledTemplateStatus describes the desired state of ScheduledTemplate
 type ScheduledTemplateStatus struct{}
