@@ -396,7 +396,6 @@ func TestInterceptor_Process_Error(t *testing.T) {
 			}
 			if !checkMessageContains(t, tt.wantMsg, res.Status.Message) {
 				t.Fatalf("cel.Process() got %+v, wanted status.message to contain %s", res.Status.Err(), tt.wantMsg)
-
 			}
 		})
 	}
@@ -425,7 +424,6 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	wantErrMsg := "failed to marshal json"
 	if !checkMessageContains(t, wantErrMsg, res.Status.Message) {
 		t.Fatalf("cel.Process() got %+v, wanted status.message to contain %s", res.Status.Err(), wantErrMsg)
-
 	}
 }
 

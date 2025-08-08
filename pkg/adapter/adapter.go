@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -74,7 +75,7 @@ type sinker struct {
 	Clients  sink.Clients
 	Recorder *sink.Recorder
 
-	injCtx context.Context
+	injCtx context.Context //nolint:containedctx
 }
 
 var _ adapter.Adapter = (*sinker)(nil)
@@ -112,7 +113,7 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 
 	err := s.getCertFromInterceptor(certPool)
 	if err != nil {
-		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %v", err)
+		return &http.Client{}, fmt.Errorf("Timed out waiting on CaBundle to available for clusterInterceptor: %w", err)
 	}
 
 	// running go routine here to add/update certPool if there is new or change in caCert bundle.
@@ -135,12 +136,12 @@ func (s *sinker) getHTTPClient() (*http.Client, error) {
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
 			Dial: (&net.Dialer{
-				Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second,
-				KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,
+				Timeout:   s.Args.ElHTTPClientReadTimeOut * time.Second, //nolint:durationcheck
+				KeepAlive: s.Args.ElHTTPClientKeepAlive * time.Second,   //nolint:durationcheck
 			}).Dial,
-			TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,
-			ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,
-			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil
+			TLSHandshakeTimeout:   s.Args.ElHTTPClientTLSHandshakeTimeout * time.Second,         //nolint:durationcheck
+			ResponseHeaderTimeout: s.Args.ElHTTPClientResponseHeaderTimeout * time.Second,       //nolint:durationcheck
+			ExpectContinueTimeout: s.Args.ElHTTPClientExpectContinueTimeout * time.Second}}, nil //nolint:durationcheck
 }
 
 func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
@@ -151,7 +152,7 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 	)
 	ctx := context.Background()
 	if err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(_ context.Context) (bool, error) {
-		clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector())
+		clusterInterceptorList, err := clusterinterceptorsinformer.Get(s.injCtx).Lister().List(labels.NewSelector()) //nolint:contextcheck
 		if err != nil {
 			return false, err
 		}
@@ -170,13 +171,13 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 		}
 
 		if httpsCILen == 0 || httpsCILen != count {
-			return false, fmt.Errorf("empty caBundle in clusterInterceptor spec")
+			return false, errors.New("empty caBundle in clusterInterceptor spec")
 		}
 
 		httpsCILen = 0
 		count = 0
 
-		interceptorList, err := interceptorsinformer.Get(s.injCtx).Lister().Interceptors(s.Namespace).List(labels.Everything())
+		interceptorList, err := interceptorsinformer.Get(s.injCtx).Lister().Interceptors(s.Namespace).List(labels.Everything()) //nolint:contextcheck
 		if err != nil {
 			return false, err
 		}
@@ -194,12 +195,12 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 			}
 		}
 		if httpsCILen != count {
-			return false, fmt.Errorf("empty caBundle in interceptor spec")
+			return false, errors.New("empty caBundle in interceptor spec")
 		}
 
 		return true, nil
 	}); err != nil {
-		return fmt.Errorf("Timed out waiting on CaBundle to available for Interceptor: %v", err)
+		return fmt.Errorf("Timed out waiting on CaBundle to available for Interceptor: %w", err)
 	}
 	return nil
 }
@@ -228,16 +229,16 @@ func (s *sinker) Start(ctx context.Context) error {
 		CloudEventURI:          s.Args.CloudEventURI,
 		Auth:                   sink.DefaultAuthOverride{},
 		WGProcessTriggers:      &sync.WaitGroup{},
-		EventRecorder:          s.createRecorder(s.injCtx, "EventListener"),
+		EventRecorder:          s.createRecorder(s.injCtx, "EventListener"), //nolint:contextcheck
 
 		// Register all the listers we'll need
-		EventListenerLister:         eventlistenerinformer.Get(s.injCtx).Lister(),
-		TriggerLister:               triggersinformer.Get(s.injCtx).Lister(),
-		TriggerBindingLister:        triggerbindingsinformer.Get(s.injCtx).Lister(),
-		ClusterTriggerBindingLister: clustertriggerbindingsinformer.Get(s.injCtx).Lister(),
-		TriggerTemplateLister:       triggertemplatesinformer.Get(s.injCtx).Lister(),
-		ClusterInterceptorLister:    clusterinterceptorsinformer.Get(s.injCtx).Lister(),
-		InterceptorLister:           interceptorsinformer.Get(s.injCtx).Lister(),
+		EventListenerLister:         eventlistenerinformer.Get(s.injCtx).Lister(),          //nolint:contextcheck
+		TriggerLister:               triggersinformer.Get(s.injCtx).Lister(),               //nolint:contextcheck
+		TriggerBindingLister:        triggerbindingsinformer.Get(s.injCtx).Lister(),        //nolint:contextcheck
+		ClusterTriggerBindingLister: clustertriggerbindingsinformer.Get(s.injCtx).Lister(), //nolint:contextcheck
+		TriggerTemplateLister:       triggertemplatesinformer.Get(s.injCtx).Lister(),       //nolint:contextcheck
+		ClusterInterceptorLister:    clusterinterceptorsinformer.Get(s.injCtx).Lister(),    //nolint:contextcheck
+		InterceptorLister:           interceptorsinformer.Get(s.injCtx).Lister(),           //nolint:contextcheck
 	}
 
 	mux := http.NewServeMux()
@@ -249,18 +250,18 @@ func (s *sinker) Start(ctx context.Context) error {
 	// For handling Liveness Probe
 	// TODO(dibyom): Livness, metrics etc. should be on a separate port
 	mux.HandleFunc("/live", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
 	})
 
 	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%s", s.Args.Port),
-		ReadHeaderTimeout: s.Args.ELReadTimeOut * time.Second,
-		ReadTimeout:       s.Args.ELReadTimeOut * time.Second,
-		WriteTimeout:      s.Args.ELWriteTimeOut * time.Second,
-		IdleTimeout:       s.Args.ELIdleTimeOut * time.Second,
+		Addr:              ":" + s.Args.Port,
+		ReadHeaderTimeout: s.Args.ELReadTimeOut * time.Second,  //nolint:durationcheck
+		ReadTimeout:       s.Args.ELReadTimeOut * time.Second,  //nolint:durationcheck
+		WriteTimeout:      s.Args.ELWriteTimeOut * time.Second, //nolint:durationcheck
+		IdleTimeout:       s.Args.ELIdleTimeOut * time.Second,  //nolint:durationcheck
 		Handler: http.TimeoutHandler(mux,
-			s.Args.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"),
+			s.Args.ELTimeOutHandler*time.Second, "EventListener Timeout!\n"), //nolint:durationcheck
 	}
 
 	if s.Args.Cert == "" && s.Args.Key == "" {

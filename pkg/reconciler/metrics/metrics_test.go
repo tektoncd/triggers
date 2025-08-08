@@ -52,7 +52,6 @@ func TestUninitializedMetrics(t *testing.T) {
 
 	metrics.countMetrics(ctx, 3, ciCount)
 	metricstest.CheckStatsNotReported(t, "clusterinterceptor_count")
-
 }
 
 func TestCountMetrics(t *testing.T) {

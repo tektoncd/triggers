@@ -359,7 +359,7 @@ func TestHandleEvent(t *testing.T) {
 
 	// tenGitCloneTriggers is a slice to ten triggers named git-clone-$i
 	tenGitCloneTriggers := []*triggersv1beta1.Trigger{}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		tenGitCloneTriggers = append(tenGitCloneTriggers, &triggersv1beta1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("git-clone-trigger-%d", i),
@@ -379,7 +379,7 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	tenGitCloneTaskRuns := []pipelinev1.TaskRun{}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		tr := gitCloneTaskRun.DeepCopy()
 		tr.Name = fmt.Sprintf("git-clone-run-%d", i)
 		tr.Labels["triggers.tekton.dev/trigger"] = fmt.Sprintf("git-clone-trigger-%d", i)
@@ -1990,7 +1990,7 @@ func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
 	// the race condition to occur. Alternatively, concurrency can be set to 2 and go test -race can be used.
 	concurrency := 2
 	var wg sync.WaitGroup
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()

@@ -171,10 +171,9 @@ func TestObjectMeta(t *testing.T) {
 }
 
 func TestFilterLabels(t *testing.T) {
-
 	tests := []struct {
 		name           string
-		ctx            context.Context
+		ctx            context.Context //nolint:containedctx
 		elLabels       map[string]string
 		expectedLabels map[string]string
 	}{{

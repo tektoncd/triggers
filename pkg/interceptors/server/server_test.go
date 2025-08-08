@@ -105,7 +105,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to marshal errors")
 			}
-			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", tc.path), bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("http://example.com%s", tc.path), bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 			server.ServeHTTP(w, req)
 			resp := w.Result()
@@ -127,7 +127,6 @@ func TestServer_ServeHTTP(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // Tests unexpected error cases where interceptor processing does not happen.
@@ -164,7 +163,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to marshal errors ")
 			}
-			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", tc.path), bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("http://example.com%s", tc.path), bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 			server.ServeHTTP(w, req)
 			resp := w.Result()

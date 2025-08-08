@@ -86,5 +86,4 @@ func AddTektonResources(clientset *fakekubeclientset.Clientset) {
 			Kind:       "TaskRun",
 		}},
 	})
-
 }

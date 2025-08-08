@@ -205,7 +205,7 @@ func addToParams(params *[]InterceptorParams, name string, val interface{}) erro
 func toV1JSON(v interface{}) (apiextensionsv1.JSON, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return apiextensionsv1.JSON{}, fmt.Errorf("json.Marshal() failed: %s", err)
+		return apiextensionsv1.JSON{}, fmt.Errorf("json.Marshal() failed: %w", err)
 	}
 	return apiextensionsv1.JSON{
 		Raw: b,
