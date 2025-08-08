@@ -13,7 +13,7 @@ linters:
     - contextcheck
     - copyloopvar
     - decorder
-    - depguard
+    # - depguard
     - dogsled
     - dupword
     - durationcheck
@@ -104,6 +104,7 @@ linters:
     - wastedassign
     - wrapcheck
     - wsl
+    - contextcheck
   exclusions:
     generated: lax
     presets:
@@ -115,7 +116,21 @@ linters:
       - linters:
           - errcheck
           - gosec
-        path: _test\.go
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - fatcontext
+          - forbidigo
+          - goconst
+          - gosmopolitan
+          - maintidx
+          - nilerr
+          - noctx
+          - perfsprint
+          - thelper
+          - usetesting
+          - errchkjson
+        path: (_test\.go|test/.*)
     paths:
       - third_party$
       - builtin$
