@@ -126,7 +126,7 @@ func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage
 func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the param is valid
 	paramVariable := fmt.Sprintf("$(tt.params.%s)", param.Name)
-	// Escape quotes so that that JSON strings can be appended to regular strings.
+	// Escape quotes so that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
 	if oldEscape {
 		paramValue := strings.ReplaceAll(param.Value, `"`, `\"`)

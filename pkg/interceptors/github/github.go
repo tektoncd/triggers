@@ -35,7 +35,9 @@ import (
 
 var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
-var acceptedEventTypes = []string{"pull_request", "push"}
+const pullRequest = "pull_request"
+
+var acceptedEventTypes = []string{pullRequest, "push"}
 
 type testURLKey string
 
@@ -46,7 +48,7 @@ const (
 )
 
 // In a pull request, these are the only two events that should trigger a PipelineRun/TaskRun
-var ownersEventTypes = []string{"pull_request", "issue_comment"}
+var ownersEventTypes = []string{pullRequest, "issue_comment"}
 
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
@@ -127,7 +129,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
-	actualEvent := headers.Get("X-GitHub-Event")
+	actualEvent := headers.Get("X-Github-Event")
 
 	// Check if the event type is in the allow-list
 	if p.EventTypes != nil {
@@ -201,7 +203,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 
 		var changedFiles string
-		if actualEvent == "pull_request" {
+		if actualEvent == pullRequest {
 			changedFiles, err = getChangedFilesFromPr(ctx, payload, headers.Get("X-Github-Enterprise-Host"), secretToken)
 			if err != nil {
 				return interceptors.Failf(codes.FailedPrecondition, "error getting changed files: %v", err)
@@ -216,7 +218,6 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 			},
 			Continue: true,
 		}
-
 	}
 
 	// For event types pull_request, issue_comment check github owners approval is required
@@ -257,7 +258,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 			return interceptors.Failf(codes.FailedPrecondition, "error checking owner verification: %v", err)
 		}
 
-		if allowed && actualEvent == "pull_request" {
+		if allowed && actualEvent == pullRequest {
 			return &triggersv1.InterceptorResponse{
 				Continue: true,
 			}
@@ -282,7 +283,7 @@ func (w *InterceptorImpl) getGithubTokenSecret(ctx context.Context, r *triggersv
 		return "", nil
 	}
 	if p.AddChangedFiles.PersonalAccessToken.SecretKey == "" {
-		return "", fmt.Errorf("github interceptor githubToken.secretKey is empty")
+		return "", errors.New("github interceptor githubToken.secretKey is empty")
 	}
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 	secretToken, err := w.SecretGetter.Get(ctx, ns, p.AddChangedFiles.PersonalAccessToken)
@@ -295,7 +296,7 @@ func (w *InterceptorImpl) getGithubTokenSecret(ctx context.Context, r *triggersv
 func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, error) {
 	results := payloadDetails{}
 	if body == "" {
-		return results, fmt.Errorf("body is empty")
+		return results, errors.New("body is empty")
 	}
 
 	var jsonMap map[string]interface{}
@@ -309,41 +310,40 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 	if ok {
 		prNum = int(jsonMap["number"].(float64))
 	} else {
-		if eventType == "pull_request" {
-			return results, fmt.Errorf("pull_request body missing 'number' field")
+		if eventType == pullRequest {
+			return results, errors.New("pull_request body missing 'number' field")
 		}
 		prNum = -1
 	}
 
 	repoSection, ok := jsonMap["repository"].(map[string]interface{})
 	if !ok {
-		return results, fmt.Errorf("payload body missing 'repository' field")
+		return results, errors.New("payload body missing 'repository' field")
 	}
 
 	fullName, ok := repoSection["full_name"].(string)
 	if !ok {
-		return results, fmt.Errorf("payload body missing 'repository.full_name' field")
+		return results, errors.New("payload body missing 'repository.full_name' field")
 	}
 
 	changedFiles := []string{}
 
 	commitsSection, ok := jsonMap["commits"].([]interface{})
 	if ok {
-
 		for _, commit := range commitsSection {
 			addedFiles, ok := commit.(map[string]interface{})["added"].([]interface{})
 			if !ok {
-				return results, fmt.Errorf("payload body missing 'commits.*.added' field")
+				return results, errors.New("payload body missing 'commits.*.added' field")
 			}
 
 			modifiedFiles, ok := commit.(map[string]interface{})["modified"].([]interface{})
 			if !ok {
-				return results, fmt.Errorf("payload body missing 'commits.*.modified' field")
+				return results, errors.New("payload body missing 'commits.*.modified' field")
 			}
 
 			removedFiles, ok := commit.(map[string]interface{})["removed"].([]interface{})
 			if !ok {
-				return results, fmt.Errorf("payload body missing 'commits.*.removed' field")
+				return results, errors.New("payload body missing 'commits.*.removed' field")
 			}
 			for _, fileName := range addedFiles {
 				changedFiles = append(changedFiles, fmt.Sprintf("%v", fileName))
@@ -369,7 +369,6 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 }
 
 func getChangedFilesFromPr(ctx context.Context, payload payloadDetails, enterpriseBaseURL string, token string) (string, error) {
-
 	changedFiles := []string{}
 
 	client, err := makeClient(ctx, enterpriseBaseURL, token)
@@ -397,7 +396,6 @@ func getChangedFilesFromPr(ctx context.Context, payload payloadDetails, enterpri
 }
 
 func makeClient(ctx context.Context, enterpriseBaseURL string, token string) (*gh.Client, error) {
-
 	var httpClient *http.Client
 	var client *gh.Client
 	var err error
@@ -437,10 +435,10 @@ func (w *InterceptorImpl) getPersonalAccessTokenSecret(ctx context.Context, r *t
 		return "", nil
 	}
 	if p.GithubOwners.PersonalAccessToken.SecretKey == "" {
-		return "", fmt.Errorf("github interceptor personalAccessToken.secretKey is empty")
+		return "", errors.New("github interceptor personalAccessToken.secretKey is empty")
 	}
 	if r.Context == nil {
-		return "", fmt.Errorf("no request context passed")
+		return "", errors.New("no request context passed")
 	}
 	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
 	secretToken, err := w.SecretGetter.Get(ctx, ns, p.GithubOwners.PersonalAccessToken)
@@ -532,7 +530,6 @@ func checkSenderRepoMembership(ctx context.Context, payload OwnersPayloadDetails
 }
 
 func getContentFromOwners(ctx context.Context, path string, payload OwnersPayloadDetails, client *gh.Client) (string, error) {
-
 	fileContent, directoryContent, _, err := client.Repositories.GetContents(ctx, payload.Owner, payload.Repository, path, &gh.RepositoryContentGetOptions{})
 
 	if err != nil {
@@ -575,7 +572,7 @@ func MatchRegexp(reg, comment string) bool {
 func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, error) {
 	results := OwnersPayloadDetails{}
 	if body == "" {
-		return results, fmt.Errorf("payload body is empty")
+		return results, errors.New("payload body is empty")
 	}
 	var jsonMap map[string]interface{}
 	err := json.Unmarshal([]byte(body), &jsonMap)
@@ -584,10 +581,10 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 	}
 
 	var prNum int
-	if eventType == "pull_request" {
+	if eventType == pullRequest {
 		_, ok := jsonMap["number"]
 		if !ok {
-			return results, fmt.Errorf("pull_request body missing 'number' field")
+			return results, errors.New("pull_request body missing 'number' field")
 		}
 		prNum = int(jsonMap["number"].(float64))
 	} else {
@@ -598,21 +595,21 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 	if eventType == "issue_comment" {
 		issueSection, ok := jsonMap["issue"].(map[string]interface{})
 		if !ok {
-			return results, fmt.Errorf("issue_comment body missing 'issue' section")
+			return results, errors.New("issue_comment body missing 'issue' section")
 		}
 		_, ok = issueSection["number"]
 		if !ok {
-			return results, fmt.Errorf("'number' field missing in the issue section of issue_comment body")
+			return results, errors.New("'number' field missing in the issue section of issue_comment body")
 		}
 		prNum = int(issueSection["number"].(float64))
 
 		issueCommentBodySection, ok := jsonMap["comment"].(map[string]interface{})
 		if !ok {
-			return results, fmt.Errorf("issue_comment body missing 'comment' section")
+			return results, errors.New("issue_comment body missing 'comment' section")
 		}
 		_, ok = issueCommentBodySection["body"]
 		if !ok {
-			return results, fmt.Errorf("'body' field missing in the comment section of issue_comment body")
+			return results, errors.New("'body' field missing in the comment section of issue_comment body")
 		}
 		issueCommentBody = issueCommentBodySection["body"].(string)
 	} else {
@@ -621,17 +618,17 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 
 	repoSection, ok := jsonMap["repository"].(map[string]interface{})
 	if !ok {
-		return results, fmt.Errorf("payload body missing 'repository' field")
+		return results, errors.New("payload body missing 'repository' field")
 	}
 
 	fullName, ok := repoSection["full_name"].(string)
 	if !ok {
-		return results, fmt.Errorf("payload body missing 'repository.full_name' field")
+		return results, errors.New("payload body missing 'repository.full_name' field")
 	}
 
 	senderSection, ok := jsonMap["sender"].(map[string]interface{})
 	if !ok {
-		return results, fmt.Errorf("payload body missing 'sender' field")
+		return results, errors.New("payload body missing 'sender' field")
 	}
 	prSender, _ := senderSection["login"].(string)
 

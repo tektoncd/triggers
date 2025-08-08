@@ -115,7 +115,6 @@ func makeCelEnv(ctx context.Context, ns string, sg interceptors.SecretGetter) (*
 			decls.NewVariable("extensions", mapStrDyn),
 			decls.NewVariable("requestURL", types.StringType),
 		))
-
 }
 
 func makeEvalContext(body []byte, h http.Header, url string, extensions map[string]interface{}) (map[string]interface{}, error) {
@@ -188,7 +187,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		// https://golang.org/pkg/encoding/json/#Marshal
 		//
 		// An alternative might be to return " + val + " for types.Bytes to
-		// simulate the the JSON encoding.
+		// simulate the JSON encoding.
 		case types.String, types.Bytes:
 			raw, err = val.ConvertToNative(structType)
 			if err == nil {

@@ -52,7 +52,7 @@ func Test_EventListenerValidate(t *testing.T) {
 	tests := []struct {
 		name    string
 		el      *triggersv1beta1.EventListener
-		ctx     context.Context
+		ctx     context.Context //nolint:containedctx
 		wantErr *apis.FieldError
 	}{{
 		name: "TriggerTemplate Does Not Exist",
@@ -656,7 +656,7 @@ func TestEventListenerValidate_error(t *testing.T) {
 	tests := []struct {
 		name    string
 		el      *triggersv1beta1.EventListener
-		ctx     context.Context
+		ctx     context.Context //nolint:containedctx
 		wantErr *apis.FieldError
 	}{{
 		name: "Invalid EventListener name",

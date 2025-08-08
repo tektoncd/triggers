@@ -950,12 +950,11 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 }
 
 func Test_getGithubTokenSecret(t *testing.T) {
-
 	ctx, _ := test.SetupFakeContext(t)
 	var secretToken = "secret"
 
 	type args struct {
-		ctx context.Context
+		ctx context.Context //nolint:containedctx
 		r   *triggersv1.InterceptorRequest
 		p   InterceptorParams
 	}
@@ -1059,7 +1058,6 @@ func Test_getGithubTokenSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			clientset := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
@@ -1085,7 +1083,7 @@ func Test_getGithubTokenSecret(t *testing.T) {
 func Test_makeClient(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 	type args struct {
-		ctx               context.Context
+		ctx               context.Context //nolint:containedctx
 		enterpriseBaseURL string
 		token             string
 	}
@@ -1125,18 +1123,16 @@ func Test_makeClient(t *testing.T) {
 			if got.BaseURL.Host != tt.want {
 				t.Errorf("makeClient() = %v, want %v", got.BaseURL.Host, tt.want)
 			}
-
 		})
 	}
 }
 
 func Test_getPersonalAccessTokenSecret(t *testing.T) {
-
 	ctx, _ := test.SetupFakeContext(t)
 	var secretToken = "secret"
 
 	type args struct {
-		ctx context.Context
+		ctx context.Context //nolint:containedctx
 		r   *triggersv1.InterceptorRequest
 		p   InterceptorParams
 	}
@@ -1241,7 +1237,6 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			clientset := fakekubeclient.Get(ctx)
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault

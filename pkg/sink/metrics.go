@@ -95,7 +95,6 @@ func (s *Sink) NewMetricsRecorderInterceptor() MetricsInterceptor {
 }
 
 func (s *Sink) recordDurationMetrics(w *StatusRecorder, elapsed time.Duration) {
-
 	duration := elapsed.Seconds()
 	s.Logger.Debugw("event listener request completed", "status", w.Status, "duration", duration)
 	ctx, err := tag.New(
@@ -111,7 +110,6 @@ func (s *Sink) recordDurationMetrics(w *StatusRecorder, elapsed time.Duration) {
 }
 
 func (s *Sink) recordCountMetrics(status string) {
-
 	s.Logger.Debugw("event listener request", "status", status)
 	ctx, err := tag.New(
 		context.Background(),

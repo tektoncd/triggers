@@ -97,7 +97,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, logger *zap.SugaredLogger) error {
-
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
 		BaseContext: func(listener net.Listener) context.Context {

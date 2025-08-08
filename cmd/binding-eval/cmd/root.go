@@ -19,6 +19,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -113,14 +114,14 @@ func readBindings(path string) ([]*v1beta1.TriggerBinding, error) {
 	for err == nil {
 		_, _, err = decoder.Decode(nil, b)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("error decoding bindings: %w", err)
 			}
 			break
 		}
 		list = append(list, b)
 	}
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("error decoding bindings: %w", err)
 	}
 

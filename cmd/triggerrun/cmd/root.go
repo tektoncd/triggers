@@ -73,7 +73,7 @@ func init() {
 func rootRun(cmd *cobra.Command, args []string) error {
 	err := trigger(triggerFile, httpPath, action, kubeconfig, os.Stdout)
 	if err != nil {
-		return fmt.Errorf("fail to call trigger: %v", err)
+		return fmt.Errorf("fail to call trigger: %w", err)
 	}
 
 	return nil
@@ -152,14 +152,14 @@ func readTrigger(path string) ([]*triggersv1.Trigger, error) {
 	for err == nil {
 		_, _, err = decoder.Decode(nil, b)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("error decoding triggers: %w", err)
 			}
 			break
 		}
 		list = append(list, b)
 	}
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("error decoding triggers: %w", err)
 	}
 
@@ -280,12 +280,12 @@ func getKubeClient(kubeconfig string) (kubernetes.Interface, triggersclientset.I
 
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get the Kubernetes client set: %v", err)
+		return nil, nil, fmt.Errorf("Failed to get the Kubernetes client set: %w", err)
 	}
 
 	client, err := triggersclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get the trigger client set: %v", err)
+		return nil, nil, fmt.Errorf("Failed to get the trigger client set: %w", err)
 	}
 
 	return kubeClient, client, nil
