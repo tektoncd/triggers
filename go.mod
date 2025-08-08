@@ -25,10 +25,10 @@ require (
 	golang.org/x/sync v0.16.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.32.7
-	k8s.io/apiextensions-apiserver v0.32.6
+	k8s.io/apiextensions-apiserver v0.32.7
 	k8s.io/apimachinery v0.32.7
 	k8s.io/client-go v0.32.7
 	k8s.io/code-generator v0.32.7
