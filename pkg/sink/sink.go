@@ -466,13 +466,16 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 	request := triggersv1.InterceptorRequest{
 		Body:       string(event),
 		Header:     in.Header.Clone(),
-		Extensions: extensions,
+		Extensions: make(map[string]interface{}),
 		Context: &triggersv1.TriggerContext{
 			EventURL: in.URL.String(),
 			EventID:  eventID,
 			// t.Name might not be fully accurate until we get rid of triggers inlined within EventListener
 			TriggerID: triggerID,
 		},
+	}
+	for k, v := range extensions {
+		request.Extensions[k] = v
 	}
 
 	// check if string is urlencoded
