@@ -1512,7 +1512,7 @@ func TestExecuteInterceptor_Sequential(t *testing.T) {
 			if err != nil {
 				t.Fatalf("http.NewRequest: %v", err)
 			}
-			resp, header, _, err := r.ExecuteTriggerInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, map[string]interface{}{}, nil)
+			resp, header, _, err := r.ExecuteTriggerInterceptors(trigger, req, []byte(`{}`), logger.Sugar(), eventID, map[string]interface{}{})
 			if err != nil {
 				t.Fatalf("executeInterceptors: %v", err)
 			}
@@ -1588,7 +1588,7 @@ func TestExecuteInterceptor_error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
-	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}, nil); err == nil {
+	if resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, nil, logger.Sugar(), eventID, map[string]interface{}{}); err == nil {
 		t.Errorf("expected error, got: %+v, %v", string(resp), err)
 	}
 
@@ -1613,7 +1613,7 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, resp, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{}, nil)
+	_, _, resp, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("ExecuteInterceptor() unexpected error: %v", err)
 	}
@@ -1690,7 +1690,7 @@ func TestExecuteInterceptor_ExtensionChaining(t *testing.T) {
 		t.Fatalf("http.NewRequest: %v", err)
 	}
 	body := fmt.Sprintf(`{"sha": "%s"}`, sha)
-	resp, _, iresp, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(body), s.Logger, eventID, map[string]interface{}{}, nil)
+	resp, _, iresp, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(body), s.Logger, eventID, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("executeInterceptors: %v", err)
 	}
@@ -1984,11 +1984,10 @@ func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
 	// Shared extensions map - this is the source of the race condition
 	// This is passed from processTriggerGroups to multiple goroutines running processTrigger
 	extensions := make(map[string]interface{})
-	extensionsMutex := &sync.Mutex{}
 
 	// Run many goroutines that will execute interceptors concurrently. An extreme number of goroutines is used to force
 	// the race condition to occur. Alternatively, concurrency can be set to 2 and go test -race can be used.
-	concurrency := 2
+	concurrency := 100
 	var wg sync.WaitGroup
 	for i := range concurrency {
 		wg.Add(1)
@@ -2004,7 +2003,6 @@ func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
 				"test-trigger-id",
 				"default",
 				extensions,
-				extensionsMutex,
 			)
 
 			if err != nil {
