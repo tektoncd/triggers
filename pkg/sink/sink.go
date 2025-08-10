@@ -199,7 +199,7 @@ func (r Sink) HandleEvent(response http.ResponseWriter, request *http.Request) {
 			defer r.WGProcessTriggers.Done()
 			localRequest := request.Clone(request.Context())
 			emptyExtensions := make(map[string]interface{})
-			r.processTrigger(t, el, localRequest, event, eventID, log, emptyExtensions, nil)
+			r.processTrigger(t, el, localRequest, event, eventID, log, emptyExtensions)
 		}(*t)
 	}
 
@@ -316,18 +316,7 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 	log := eventLog.With(zap.String(triggers.TriggerGroupLabelKey, g.Name))
 
 	extensions := map[string]interface{}{}
-	extensionsMutex := &sync.Mutex{}
-	payload, header, resp, err := r.ExecuteInterceptors(
-		g.Interceptors,
-		request,
-		event,
-		log,
-		eventID,
-		fmt.Sprintf("namespaces/%s/triggerGroups/%s", r.EventListenerNamespace, g.Name),
-		r.EventListenerNamespace,
-		extensions,
-		nil,
-	)
+	payload, header, resp, err := r.ExecuteInterceptors(g.Interceptors, request, event, log, eventID, fmt.Sprintf("namespaces/%s/triggerGroups/%s", r.EventListenerNamespace, g.Name), r.EventListenerNamespace, extensions)
 	if err != nil {
 		log.Error(err)
 		return
@@ -362,7 +351,7 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 			// TODO(dibyom): We might be able to get away with only cloning if necessary
 			// i.e. if there are interceptors and iff those interceptors will modify the body/header (i.e. webhook)
 			localRequest := triggerReq.Clone(triggerReq.Context())
-			r.processTrigger(t, el, localRequest, event, eventID, log, extensions, extensionsMutex)
+			r.processTrigger(t, el, localRequest, event, eventID, log, extensions)
 		}(*t)
 	}
 }
@@ -416,19 +405,10 @@ func (r Sink) selectTriggers(namespaceSelector triggersv1.NamespaceSelector, lab
 	return trItems, nil
 }
 
-func (r Sink) processTrigger(
-	t triggersv1.Trigger,
-	el *triggersv1.EventListener,
-	request *http.Request,
-	event []byte,
-	eventID string,
-	eventLog *zap.SugaredLogger,
-	extensions map[string]interface{},
-	extensionsMutex *sync.Mutex,
-) {
+func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger, extensions map[string]interface{}) {
 	log := eventLog.With(zap.String(triggers.TriggerLabelKey, t.Name))
 
-	finalPayload, header, iresp, err := r.ExecuteTriggerInterceptors(t, request, event, log, eventID, extensions, extensionsMutex)
+	finalPayload, header, iresp, err := r.ExecuteTriggerInterceptors(t, request, event, log, eventID, extensions)
 	if err != nil {
 		log.Error(err)
 		return
@@ -470,31 +450,13 @@ func (r Sink) processTrigger(
 	r.sendCloudEvents(request.Header, *el, eventID, events.TriggerProcessingSuccessfulV1)
 }
 
-func (r Sink) ExecuteTriggerInterceptors(
-	t triggersv1.Trigger,
-	in *http.Request,
-	event []byte,
-	log *zap.SugaredLogger,
-	eventID string,
-	extensions map[string]interface{},
-	extensionsMutex *sync.Mutex,
-) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
-	return r.ExecuteInterceptors(t.Spec.Interceptors, in, event, log, eventID, fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), t.Namespace, extensions, extensionsMutex)
+func (r Sink) ExecuteTriggerInterceptors(t triggersv1.Trigger, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, extensions map[string]interface{}) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+	return r.ExecuteInterceptors(t.Spec.Interceptors, in, event, log, eventID, fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), t.Namespace, extensions)
 }
 
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
 // When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
-func (r Sink) ExecuteInterceptors(
-	trInt []*triggersv1.TriggerInterceptor,
-	in *http.Request,
-	event []byte,
-	log *zap.SugaredLogger,
-	eventID string,
-	triggerID string,
-	namespace string,
-	extensions map[string]interface{},
-	extensionsMutex *sync.Mutex,
-) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
+func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, triggerID string, namespace string, extensions map[string]interface{}) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
 	if len(trInt) == 0 {
 		return event, in.Header, nil, nil
 	}
@@ -604,10 +566,6 @@ func (r Sink) ExecuteInterceptors(
 		if interceptorResponse.Extensions != nil {
 			// Merge any extensions and pass it on to the next request in the chain
 			for k, v := range interceptorResponse.Extensions {
-				if extensionsMutex != nil {
-					extensionsMutex.Lock()
-					defer extensionsMutex.Unlock()
-				}
 				request.Extensions[k] = v
 			}
 		}
