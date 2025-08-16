@@ -328,25 +328,36 @@ func GetTLSData(ctx context.Context, logger *zap.SugaredLogger) (*tls.Certificat
 	return &cert, err
 }
 
-func UpdateCACertToClusterInterceptorCRD(ctx context.Context, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface, logger *zap.SugaredLogger, timer time.Duration) {
+func UpdateCACertToClusterInterceptorCRD(ctx context.Context, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface, logger *zap.SugaredLogger, timer time.Duration) func() {
 	interceptorSecretName := os.Getenv(interceptorTLSSecretKey)
 	ticker := time.NewTicker(timer)
+	done := make(chan bool)
+
 	go func() {
+		defer ticker.Stop()
 		for {
-			<-ticker.C
-			secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
-			if err != nil {
-				logger.Errorf("failed to fetch secret %v", err)
+			select {
+			case <-done:
 				return
-			}
-			caCert, ok := secret.Data[certresources.CACert]
-			if !ok {
-				logger.Warn("CACert key missing")
-				return
-			}
-			if err := service.listAndUpdateClusterInterceptorCRD(ctx, tc, caCert); err != nil {
-				return
+			case <-ticker.C:
+				secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
+				if err != nil {
+					logger.Errorf("failed to fetch secret %v", err)
+					return
+				}
+				caCert, ok := secret.Data[certresources.CACert]
+				if !ok {
+					logger.Warn("CACert key missing")
+					return
+				}
+				if err := service.listAndUpdateClusterInterceptorCRD(ctx, tc, caCert); err != nil {
+					return
+				}
 			}
 		}
 	}()
+
+	return func() {
+		close(done)
+	}
 }
