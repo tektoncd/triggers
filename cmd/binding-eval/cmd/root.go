@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -135,7 +136,36 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 	}
 	defer f.Close()
 
-	req, err := http.ReadRequest(bufio.NewReader(f))
+	// Read the entire file content first
+	fileContent, err := io.ReadAll(f)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	// Split into headers and body parts
+	parts := strings.SplitN(string(fileContent), "\n\n", 2)
+	if len(parts) != 2 {
+		parts = strings.SplitN(string(fileContent), "\r\n\r\n", 2)
+	}
+
+	var headerPart, bodyPart string
+	if len(parts) == 2 {
+		headerPart = parts[0]
+		bodyPart = parts[1]
+	} else {
+		headerPart = string(fileContent)
+		bodyPart = ""
+	}
+
+	// Auto compute and fill the content length field if it is not present
+	if len(bodyPart) > 0 && !strings.Contains(headerPart, "Content-Length:") {
+		headerPart += fmt.Sprintf("\nContent-Length: %d", len(bodyPart))
+	}
+
+	// Reconstruct the HTTP request with the Content-Length header
+	reconstructedContent := headerPart + "\n\n" + bodyPart
+
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(reconstructedContent)))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading request: %w", err)
 	}
@@ -144,6 +174,7 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading HTTP body: %w", err)
 	}
+
 	return req, body, nil
 }
 
