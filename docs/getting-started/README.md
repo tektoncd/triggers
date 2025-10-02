@@ -3,6 +3,46 @@
 The following tutorial walks you through building and deploying a Docker image using 
 Tekton Triggers to detect a GitHub webhook request and execute a `Pipeline`.
 
+## Quick Start with CLI (Automated)
+
+You can now automate this entire getting started guide with a single CLI command:
+
+```bash
+tkn triggers bootstrap
+```
+
+This command will:
+- Check and install Tekton Pipelines (if not present)
+- Check and install Tekton Triggers (if not present)
+- Create the `getting-started` namespace
+- Set up RBAC (ServiceAccounts, Roles, RoleBindings)
+- Create EventListener, TriggerTemplate, TriggerBinding
+- Create example Pipeline and Tasks
+- Configure GitHub webhook integration
+
+### Supported Providers
+
+Currently, only **GitHub** webhooks are supported. Support for GitLab and Bitbucket may be added in the future.
+
+### Usage
+
+```bash
+tkn triggers bootstrap
+
+# Specify custom kubeconfig
+tkn triggers bootstrap --kubeconfig /path/to/kubeconfig
+
+# Provide GitHub configuration via flags
+tkn triggers bootstrap \
+  --github-repo <owner/repo> \
+  --github-token <ghp_xxxxx> \
+  --domain <myapp.example.com>
+```
+
+The command will prompt you for GitHub repository, personal access token, and public domain if not provided via flags.
+
+**Note:** If you prefer to set up everything manually, continue with the step-by-step tutorial below.
+
 ## Overview
 
 In this tutorial, you will:
