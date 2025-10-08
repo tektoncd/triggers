@@ -1,0 +1,193 @@
+name: Triggers CI Presubmit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release-*
+
+  pull_request_target:
+    branches:
+      - main
+      - release-*
+
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  SHELL: /bin/bash
+  GOPATH: ${{ github.workspace }}
+  GO111MODULE: on
+  SKIP_INITIALIZE: true
+  SKIP_SECURITY_CTX: true
+  SKIP_KNATIVE_EG: true
+
+jobs:
+  prepare-pr-check:
+    if: |
+      github.event_name == 'pull_request' ||
+      (
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+            (
+            startsWith(github.event.comment.body, '/ok-to-test') ||
+            startsWith(github.event.comment.body, '/retest')
+            )
+      )
+    name: Check PR Author / ok-to-test
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.check.outputs.run_tests }}
+    steps:
+      - name: Install Python yq
+        run: |
+          python3 -m pip install --user yq
+
+      - name: Debug context
+        run: |
+          echo "GITHUB_ACTOR=${GITHUB_ACTOR}"
+          echo "Comment: $(jq -r .comment.body < $GITHUB_EVENT_PATH)"
+          echo "Labels: $(jq -r '.pull_request.labels[].name' < $GITHUB_EVENT_PATH)"
+
+      - name: Check PR author against org.yaml or /ok-to-test label
+        id: check
+        run: |
+          echo "Fetching Tekton org.yaml..."
+          ORG_YAML_URL="https://raw.githubusercontent.com/tektoncd/community/refs/heads/main/org/org.yaml"
+          ORG_YAML=$(curl -sSL "$ORG_YAML_URL")
+
+          # Use Python yq (wraps jq) to extract members and admins
+          IS_MEMBER=$(echo "$ORG_YAML" | ~/.local/bin/yq -r '.orgs.tektoncd.members[]' | grep -Fx "$GITHUB_ACTOR" || true)
+          IS_ADMIN=$(echo "$ORG_YAML" | ~/.local/bin/yq -r '.orgs.tektoncd.admins[]' | grep -Fx "$GITHUB_ACTOR" || true)
+
+          if [[ -n "$IS_MEMBER" || -n "$IS_ADMIN" ]]; then
+            echo " $GITHUB_ACTOR is a Tekton org member or admin."
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo " $GITHUB_ACTOR is NOT a Tekton org member/admin. Checking for /ok-to-test label..."
+
+            LABELS=$(jq -r '.pull_request.labels[].name' < "$GITHUB_EVENT_PATH")
+            if echo "$LABELS" | grep -q '^ok-to-test$'; then
+              echo " /ok-to-test label found."
+              echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            else
+              echo " Not a member and no /ok-to-test label. Skipping tests."
+              echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+
+  unit-tests:
+    name: Unit Tests
+    needs: prepare-pr-check
+    runs-on: ubuntu-latest
+    if: needs.prepare-pr-check.outputs.run_tests == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
+          go-version-file: src/github.com/tektoncd/triggers/go.mod
+
+      - name: Install dependencies
+        run: |
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          mkdir -p "${ARTIFACTS:-/tmp/artifacts}"
+          echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+      - name: Run Unit Tests
+        working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+        run: ./test/presubmit-tests.sh --unit-tests
+
+  integration-tests:
+    name: Integration Tests
+    needs: prepare-pr-check
+    runs-on: ubuntu-latest
+    if: needs.prepare-pr-check.outputs.run_tests == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
+          go-version-file: src/github.com/tektoncd/triggers/go.mod
+
+      - name: Install dependencies (ko, kind, kubectl, go-junit-report)
+        run: |
+          echo '::group::install ko'
+          curl -L https://github.com/ko-build/ko/releases/download/v0.15.4/ko_0.15.4_Linux_x86_64.tar.gz | tar xzf - ko
+          chmod +x ./ko && sudo mv ko /usr/local/bin
+          echo '::endgroup::'
+
+          echo '::group::install kind'
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+          chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+          echo '::endgroup::'
+
+          echo '::group::install kubectl'
+          curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+          echo '::endgroup::'
+
+          echo '::group::install go-junit-report'
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          echo '::endgroup::'
+
+          mkdir -p "${ARTIFACTS:-/tmp/artifacts}"
+          echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+      - name: Run Integration Tests
+        working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+        run: ./test/gh-e2e-tests.sh
+
+  build-tests:
+    name: Build Tests
+    needs: prepare-pr-check
+    runs-on: ubuntu-latest
+    if: needs.prepare-pr-check.outputs.run_tests == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
+          go-version-file: src/github.com/tektoncd/triggers/go.mod
+
+      - name: Install dependencies (go-junit-report, go-licenses)
+        run: |
+          echo '::group::install go-junit-report'
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          echo '::endgroup::'
+
+          echo '::group::install go-licenses'
+          go install github.com/google/go-licenses@latest
+          echo '::endgroup::'
+
+          mkdir -p "${ARTIFACTS:-/tmp/artifacts}"
+          echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+      - name: Run Build Tests
+        working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
+        run: ./test/presubmit-tests.sh --build-tests
