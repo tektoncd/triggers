@@ -6,11 +6,6 @@ on:
       - main
       - release-*
 
-  pull_request_target:
-    branches:
-      - main
-      - release-*
-
   issue_comment:
     types: [created]
 
@@ -26,10 +21,9 @@ env:
   SHELL: /bin/bash
   GOPATH: ${{ github.workspace }}
   GO111MODULE: on
-  SKIP_INITIALIZE: true
-  SKIP_SECURITY_CTX: true
-  SKIP_KNATIVE_EG: true
-
+  KO_DOCKER_REPO: registry.local:5000/tekton
+  CLUSTER_DOMAIN: c${{ github.run_id }}.local
+  ARTIFACTS: ${{ github.workspace }}/artifacts
 jobs:
   prepare-pr-check:
     if: |
@@ -130,33 +124,40 @@ jobs:
           cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
           go-version-file: src/github.com/tektoncd/triggers/go.mod
 
-      - name: Install dependencies (ko, kind, kubectl, go-junit-report)
+      - name: Install dependencies
+        working-directory: ./
         run: |
           echo '::group::install ko'
           curl -L https://github.com/ko-build/ko/releases/download/v0.15.4/ko_0.15.4_Linux_x86_64.tar.gz | tar xzf - ko
-          chmod +x ./ko && sudo mv ko /usr/local/bin
-          echo '::endgroup::'
-
-          echo '::group::install kind'
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
-          chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
-          echo '::endgroup::'
-
-          echo '::group::install kubectl'
-          curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
-          echo '::endgroup::'
-
-          echo '::group::install go-junit-report'
+          echo '::group:: install go-junit-report'
           go install github.com/jstemmer/go-junit-report@v0.9.1
           echo '::endgroup::'
+          chmod +x ./ko
+          sudo mv ko /usr/local/bin
+          echo '::endgroup::'
 
-          mkdir -p "${ARTIFACTS:-/tmp/artifacts}"
+          echo '::group::create required folders'
+          mkdir -p "${ARTIFACTS}"
+          echo '::endgroup::'
+
           echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
-      - name: Run Integration Tests
+      - name: Run Integration tests
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
-        run: ./test/gh-e2e-tests.sh
+        run: |
+          ${{ github.workspace }}/src/github.com/tektoncd/triggers/test/setup-kind.sh \
+            --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+            --cluster-suffix c${{ github.run_id }}.local \
+            --nodes 3 \
+            --k8s-version v1.29.x \
+            --e2e-script ./test/gh-e2e-tests.sh \
+            --e2e-env ./test/e2e-tests-kind-prow.env
+
+      - name: Upload test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ failure() }}
+        with:
+          path: ${{ env.ARTIFACTS }}
 
   build-tests:
     name: Build Tests
