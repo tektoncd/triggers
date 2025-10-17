@@ -30,6 +30,60 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+func Test_escapeTektonVariables(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no tekton variables",
+			input: "simple text without variables",
+			want:  "simple text without variables",
+		},
+		{
+			name:  "single tekton variable",
+			input: "$(tasks.initial-skip-check.results.skip)",
+			want:  "$$(tasks.initial-skip-check.results.skip)",
+		},
+		{
+			name:  "multiple tekton variables",
+			input: "$(tasks.a.results.b) and $(params.c) and $(context.d.e)",
+			want:  "$$(tasks.a.results.b) and $$(params.c) and $$(context.d.e)",
+		},
+		{
+			name:  "tekton variables in yaml",
+			input: `tasks:
+  - name: test
+    value: $(params.foo)
+    result: $(tasks.bar.results.baz)`,
+			want: `tasks:
+  - name: test
+    value: $$(params.foo)
+    result: $$(tasks.bar.results.baz)`,
+		},
+		{
+			name:  "already escaped variable",
+			input: "$$(tasks.already.escaped)",
+			want:  "$$$(tasks.already.escaped)",
+		},
+		{
+			name:  "mixed content",
+			input: "Normal text with $(params.value) and more text",
+			want:  "Normal text with $$(params.value) and more text",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := escapeTektonVariables(tt.input)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("escapeTektonVariables(): -want +got:\n%s", diff)
+			}
+		})
+	}
+}
+
 func Test_applyParamToResourceTemplate(t *testing.T) {
 	var (
 		oneParam = triggersv1.Param{
@@ -139,6 +193,56 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 				rt: json.RawMessage(`{"foo": $(tt.params.p1)}`),
 			},
 			want: json.RawMessage(`{"foo": {"a": "this is a \"quoted\" string"}}`),
+		}, {
+			name: "escape tekton variable syntax - simple",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "pr-body",
+					Value: `$(tasks.initial-skip-check.results.skip)`,
+				},
+				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
+			},
+			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$$(tasks.initial-skip-check.results.skip)"}]}}`),
+		}, {
+			name: "escape tekton variable syntax - multiple occurrences",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "pr-body",
+					Value: `timeout: $(tasks.slack-start.results.thread-timestamp) and $(tasks.initial-skip-check.results.skip)`,
+				},
+				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
+			},
+			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "timeout: $$(tasks.slack-start.results.thread-timestamp) and $$(tasks.initial-skip-check.results.skip)"}]}}`),
+		}, {
+			name: "escape tekton variable syntax - real PR body example",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "pr-body",
+					Value: `Fixed issue with $(tasks.initial-skip-check.results.skip) and $(tasks.slack-start.results.thread-timestamp)`,
+				},
+				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
+			},
+			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "Fixed issue with $$(tasks.initial-skip-check.results.skip) and $$(tasks.slack-start.results.thread-timestamp)"}]}}`),
+		}, {
+			name: "escape tekton variable syntax - params reference",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "pr-body",
+					Value: `value: $(params.git-tag)`,
+				},
+				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
+			},
+			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "value: $$(params.git-tag)"}]}}`),
+		}, {
+			name: "escape tekton variable syntax - context reference",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "pr-body",
+					Value: `name: $(context.pipelineRun.name)`,
+				},
+				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
+			},
+			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "name: $$(context.pipelineRun.name)"}]}}`),
 		},
 	}
 	for _, tt := range tests {
