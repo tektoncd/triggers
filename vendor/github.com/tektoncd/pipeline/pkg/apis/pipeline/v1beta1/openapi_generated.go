@@ -1993,6 +1993,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"managedBy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -2649,7 +2656,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Duration after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -2974,11 +2981,17 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref common.ReferenceCa
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Duration after which the TaskRun times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride", "k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -5458,6 +5471,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Compute resources to use for this TaskRun",
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"managedBy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
