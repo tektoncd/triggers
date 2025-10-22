@@ -732,8 +732,8 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		headers: map[string][]string{
-			"X-GitHub-Event":  {"pull_request"},
-			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody, "sha1")},
+			"X-GitHub-Event":      {"pull_request"},
+			"X-Hub-Signature-256": {test.HMACHeader(t, "secret", eventBody, "sha256")},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {

@@ -28,7 +28,7 @@ Creates an EventListener that listens for GitHub webhook events and adds the fil
 
    The response status code should be `202 Accepted`
 
-   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
+   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature-256.
 
    In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload ex:* `{"action": "opened", "pull_request":{"head":{"sha": "28911bbb5a3e2ea034daf1f6be0a822d50e31e73"}},"repository":{"clone_url": "https://github.com/tektoncd/triggers.git"}}`
    and `secretKey` is the *given secretToken ex:* `1234567`.
