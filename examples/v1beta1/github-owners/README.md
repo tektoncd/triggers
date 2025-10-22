@@ -21,7 +21,7 @@ Creates an EventListener that listens for `pull_request` or `issue_comment` GitH
    ```bash
    curl -v \
    -H 'X-GitHub-Event: pull_request' \
-   -H 'X-Hub-Signature: sha1=70d0ebf86a7973374898b7711acc0897616e2c93' \
+   -H 'X-Hub-Signature-256: sha256=a7b3a3840860ef271afde557e8b6c89cc69539a396417f93d847e1890d3c8184' \
    -H 'Content-Type: application/json' \
    -d '{"action": "opened","number": 1503,"repository":{"full_name": "tektoncd/triggers", "clone_url": "https://github.com/tektoncd/triggers.git"}, "sender":{"login": "dibyom"}}' \
    http://localhost:8080
@@ -29,7 +29,7 @@ Creates an EventListener that listens for `pull_request` or `issue_comment` GitH
 
    The response status code should be `202 Accepted`
 
-   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature.
+   [`HMAC`](https://www.freeformatter.com/hmac-generator.html) tool used to create X-Hub-Signature-256.
 
    In [`HMAC`](https://www.freeformatter.com/hmac-generator.html) `string` is the *body payload ex:* `{"action": "opened","number": 1503,"repository":{"full_name": "tektoncd/triggers", "clone_url": "https://github.com/tektoncd/triggers.git"}, "sender":{"login": "dibyom"}}`
    and `secretKey` is the *given secretToken ex:* `1234567`.

@@ -105,8 +105,8 @@ This means that the selected `Interceptor` is unable to parse the structure of t
 
 ## Troubleshooting signature and token errors
 
-When sending a hook protected by a secret, GitHub includes an `X-Hub-Signature` object in the header, while GitLab includes an `X-GitLab-Token` object.
-You may see `no X-Hub-Signature set` and/or `no X-GitLab-Token header set` errors in your logs in one of the following scenarios:
+When sending a hook protected by a secret, GitHub includes an `X-Hub-Signature-256` object in the header, while GitLab includes an `X-GitLab-Token` object.
+You may see `no X-Hub-Signature-256 header set` and/or `no X-GitLab-Token header set` errors in your logs in one of the following scenarios:
 
 *  If you specify a secret in your `Interceptor` but don't specify it in the hook.
 *  You are sending unsigned payloads to an `Interceptor` that expects signed payloads.
