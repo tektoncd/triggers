@@ -416,7 +416,8 @@ func Test_UpdateCACertToClusterInterceptorCRD(t *testing.T) {
 		t.Error(err)
 	}
 
-	UpdateCACertToClusterInterceptorCRD(ctx, server, faketriggersclient.Get(ctx).TriggersV1alpha1(), logger.Sugar(), time.Second)
+	stopFunc := UpdateCACertToClusterInterceptorCRD(ctx, server, faketriggersclient.Get(ctx).TriggersV1alpha1(), logger.Sugar(), time.Second)
+	defer stopFunc()
 
 	time.Sleep(10 * time.Second)
 	ciNew, err := faketriggersclient.Get(ctx).TriggersV1alpha1().ClusterInterceptors().Get(ctx, "firstci1", metav1.GetOptions{})
