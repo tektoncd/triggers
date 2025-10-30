@@ -32,6 +32,8 @@ type Interface interface {
 	EventListeners() EventListenerInformer
 	// Interceptors returns a InterceptorInformer.
 	Interceptors() InterceptorInformer
+	// ScheduledTemplates returns a ScheduledTemplateInformer.
+	ScheduledTemplates() ScheduledTemplateInformer
 	// Triggers returns a TriggerInformer.
 	Triggers() TriggerInformer
 	// TriggerBindings returns a TriggerBindingInformer.
@@ -69,6 +71,11 @@ func (v *version) EventListeners() EventListenerInformer {
 // Interceptors returns a InterceptorInformer.
 func (v *version) Interceptors() InterceptorInformer {
 	return &interceptorInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ScheduledTemplates returns a ScheduledTemplateInformer.
+func (v *version) ScheduledTemplates() ScheduledTemplateInformer {
+	return &scheduledTemplateInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Triggers returns a TriggerInformer.
