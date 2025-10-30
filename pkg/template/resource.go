@@ -111,6 +111,15 @@ func resolveBindingsToParams(bindings []*triggersv1.TriggerSpecBinding, getTB ge
 	return bindingParams, nil
 }
 
+// escapeTektonVariables escapes Tekton variable syntax in parameter values
+// to prevent them from being interpreted as actual variable references.
+// It replaces $( with $$( which tells Tekton to treat it as literal text.
+func escapeTektonVariables(value string) string {
+	// Escape $( to $$( to prevent Tekton from interpreting it as a variable reference
+	// This handles patterns like $(tasks.xxx), $(params.xxx), $(results.xxx), etc.
+	return strings.ReplaceAll(value, "$(", "$$(")
+}
+
 // applyParamsToResourceTemplate returns the TriggerResourceTemplate with the
 // param values substituted for all matching param variables in the template
 func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
@@ -128,11 +137,14 @@ func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, ol
 	paramVariable := fmt.Sprintf("$(tt.params.%s)", param.Name)
 	// Escape quotes so that JSON strings can be appended to regular strings.
 	// See #257 for discussion on this behavior.
+	paramValue := param.Value
 	if oldEscape {
-		paramValue := strings.ReplaceAll(param.Value, `"`, `\"`)
-		return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(paramValue))
+		paramValue = strings.ReplaceAll(paramValue, `"`, `\"`)
 	}
-	return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(param.Value))
+	// Escape Tekton variable syntax to prevent validation errors
+	// when parameter values contain literal $(tasks.*) or similar patterns
+	paramValue = escapeTektonVariables(paramValue)
+	return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(paramValue))
 }
 
 // UUID generates a Universally Unique IDentifier following RFC 4122.
