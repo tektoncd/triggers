@@ -153,10 +153,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 		header := headers.Get("X-Hub-Signature-256")
 		if header == "" {
-			header = headers.Get("X-Hub-Signature")
-		}
-		if header == "" {
-			return interceptors.Fail(codes.FailedPrecondition, "Must set X-Hub-Signature-256 or X-Hub-Signature header")
+			return interceptors.Fail(codes.FailedPrecondition, "no X-Hub-Signature-256 header set")
 		}
 
 		if r.Context == nil {

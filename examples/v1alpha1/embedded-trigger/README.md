@@ -51,7 +51,7 @@ run the following command in your shell of choice or using Postman:
 curl -X POST \
   http://localhost:8080 \
   -H 'Content-Type: application/json' \
-  -H 'X-Hub-Signature: sha1=2da37dcb9404ff17b714ee7a505c384758ddeb7b' \
+  -H 'X-Hub-Signature-256: sha256=5bfc4c007697a264f4255882e9fbffe34cbe1cf6040118db7e017e6200f45acd' \
   -d '{
 	"repository":
 	{
