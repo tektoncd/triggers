@@ -52,7 +52,7 @@ func Test_escapeTektonVariables(t *testing.T) {
 			want:  "$$(tasks.a.results.b) and $$(params.c) and $$(context.d.e)",
 		},
 		{
-			name:  "tekton variables in yaml",
+			name: "tekton variables in yaml",
 			input: `tasks:
   - name: test
     value: $(params.foo)
