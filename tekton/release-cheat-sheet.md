@@ -133,7 +133,7 @@ the triggers repo, a terminal window and a text editor.
          from the release branch. Refer to previous releases to confirm the expected format.
       1. In the section **Installation one-liner**, add the install instruction for interceptors also. 
          ```bash
-            kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
+            kubectl apply -f https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
          ```
       1. In the section **Attestation**, modify it for inteceptors.yaml also.
          ```bash
@@ -199,7 +199,12 @@ Congratulations, you're done!
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config current-context
+   ```
+   get the context name and replace with current_context_name
+
+   ```bash
+   kubectl config rename-context <current_context_name> dogfooding
    ```
 
 ## Important: Switch `kubectl` back to your own cluster by default.
