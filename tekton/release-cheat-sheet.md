@@ -52,7 +52,7 @@ the triggers repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start triggers-release \
       --param package=github.com/tektoncd/triggers \
-      --param repoName=triggers
+      --param repoName=triggers \
       --param imageRegistry=ghcr.io \
       --param imageRegistryPath=tektoncd/triggers \
       --param imageRegistryRegions="" \
@@ -113,15 +113,19 @@ the triggers repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start \
         --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-        --workspace name=credentials,secret=release-secret \
+        --workspace name=credentials,secret=oci-release-secret \
         -p package="${TEKTON_PACKAGE}" \
         -p git-revision="${TRIGGERS_RELEASE_GIT_SHA}" \
         -p release-tag="${VERSION_TAG}" \
         -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
         -p release-name="Tekton Triggers" \
-        -p bucket="gs://tekton-releases/triggers" \
+        -p bucket="tekton-releases/triggers" \
         -p rekor-uuid="$REKOR_UUID" \
         release-draft
+    ```
+    ```bash
+    NOTE: `release-draft` pipeline is for GCS we need to replace this with the OCI pipeline once its present on the Oracle cluster
+    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note       
     ```
 
     1. Watch logs of create-draft-release
