@@ -112,7 +112,7 @@ spec:
         subPath: git
 
   - name: unit-tests
-    runAfter: [prerelease-precheck]
+    runAfter: [precheck]
     when:
       - cel: "'$(params.runTests)' == 'true'"
     taskRef:
@@ -135,7 +135,7 @@ spec:
       subPath: git
 
   - name: build
-    runAfter: [prerelease-precheck]
+    runAfter: [precheck]
     when:
       - cel: "'$(params.runTests)' == 'true'"
     taskRef:
