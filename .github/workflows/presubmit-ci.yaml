@@ -92,7 +92,7 @@ jobs:
           path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
           go-version-file: src/github.com/tektoncd/triggers/go.mod
@@ -119,7 +119,7 @@ jobs:
           path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
           go-version-file: src/github.com/tektoncd/triggers/go.mod
@@ -171,7 +171,7 @@ jobs:
           path: ${{ github.workspace }}/src/github.com/tektoncd/triggers
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           cache-dependency-path: src/github.com/tektoncd/triggers/go.sum
           go-version-file: src/github.com/tektoncd/triggers/go.mod
