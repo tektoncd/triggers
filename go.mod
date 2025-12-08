@@ -13,8 +13,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
-	github.com/tektoncd/pipeline v1.6.0
+	github.com/spf13/cobra v1.10.2
+	github.com/tektoncd/pipeline v1.7.0
 	github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
 	github.com/tidwall/sjson v1.2.5
 	go.opencensus.io v0.24.0
