@@ -13,25 +13,25 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
-	github.com/tektoncd/pipeline v1.6.0
+	github.com/spf13/cobra v1.10.2
+	github.com/tektoncd/pipeline v1.7.0
 	github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
 	github.com/tidwall/sjson v1.2.5
 	go.opencensus.io v0.24.0
-	go.opentelemetry.io/otel v1.38.0
-	go.opentelemetry.io/otel/metric v1.38.0
+	go.opentelemetry.io/otel v1.39.0
+	go.opentelemetry.io/otel/metric v1.39.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/oauth2 v0.33.0
-	golang.org/x/sync v0.18.0
+	golang.org/x/oauth2 v0.34.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.32.10
-	k8s.io/apiextensions-apiserver v0.32.10
-	k8s.io/apimachinery v0.32.10
-	k8s.io/client-go v0.32.10
-	k8s.io/code-generator v0.32.10
+	k8s.io/api v0.32.11
+	k8s.io/apiextensions-apiserver v0.32.11
+	k8s.io/apimachinery v0.32.11
+	k8s.io/client-go v0.32.11
+	k8s.io/code-generator v0.32.11
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20241212222426-2c72e554b1e7
 	knative.dev/eventing v0.30.3
@@ -131,7 +131,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
