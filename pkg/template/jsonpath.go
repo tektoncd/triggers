@@ -93,7 +93,7 @@ func getResults(values []reflect.Value) ([]byte, error) {
 		case t.Kind() == reflect.String:
 			b, err := json.Marshal(v.Interface())
 			if err != nil {
-				return nil, fmt.Errorf("unable to marshal string value %v: %v", v, err)
+				return nil, fmt.Errorf("unable to marshal string value %v: %w", v, err)
 			}
 			// A valid json string is surrounded by quotation marks; we are using this function to
 			// create a representation of the json value that can be embedded in a CRD definition and
@@ -148,7 +148,7 @@ func relaxedJSONPathExpression(pathExpression string) (string, error) {
 	}
 	submatches := jsonRegexp.FindStringSubmatch(pathExpression)
 	if submatches == nil {
-		return "", fmt.Errorf("unexpected path string, expected a 'name1.name2' or '.name1.name2' or '{name1.name2}' or '{.name1.name2}'")
+		return "", errors.New("unexpected path string, expected a 'name1.name2' or '.name1.name2' or '{name1.name2}' or '{.name1.name2}'")
 	}
 	if len(submatches) != 3 {
 		return "", fmt.Errorf("unexpected submatch list: %v", submatches)

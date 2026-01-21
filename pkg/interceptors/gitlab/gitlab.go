@@ -54,7 +54,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 
 	// Check if the event type is in the allow-list
 	if p.EventTypes != nil {
-		actualEvent := headers.Get("X-GitLab-Event")
+		actualEvent := headers.Get("X-Gitlab-Event")
 		isAllowed := false
 		for _, allowedEvent := range p.EventTypes {
 			if actualEvent == allowedEvent {
@@ -73,9 +73,9 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		if p.SecretRef.SecretKey == "" {
 			return interceptors.Fail(codes.FailedPrecondition, "gitlab interceptor secretRef.secretKey is empty")
 		}
-		header := headers.Get("X-GitLab-Token")
+		header := headers.Get("X-Gitlab-Token")
 		if header == "" {
-			return interceptors.Fail(codes.InvalidArgument, "no X-GitLab-Token header set")
+			return interceptors.Fail(codes.InvalidArgument, "no X-Gitlab-Token header set")
 		}
 
 		if r.Context == nil {

@@ -18,7 +18,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 		klog.Fatal(err.Error())
 	}
-	fmt.Println(string(jsonBytes))
+	log.Println(string(jsonBytes))
 }
 
 func swaggify(name string) string {

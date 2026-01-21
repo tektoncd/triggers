@@ -121,7 +121,7 @@ func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.Inte
 		return nil, err
 	}
 	// TODO: Seed context with timeouts
-	r, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(b))
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}

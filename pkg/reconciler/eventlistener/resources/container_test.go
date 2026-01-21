@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/ptr"
 )
 
@@ -484,6 +485,73 @@ func TestContainer(t *testing.T) {
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
+			},
+		},
+	}, {
+		name: "passing securityContext from EL",
+		el: makeEL(func(el *v1beta1.EventListener) {
+			el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+				WithPodSpec: duckv1.WithPodSpec{
+					Template: duckv1.PodSpecable{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								SecurityContext: &corev1.SecurityContext{
+									RunAsNonRoot: ptr.Bool(true),
+								},
+							}},
+						},
+					},
+				},
+			}
+			el.Annotations = map[string]string{
+				triggers.PayloadValidationAnnotation: "false",
+			}
+		}),
+		want: corev1.Container{
+			Name:  "event-listener",
+			Image: DefaultImage,
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: int32(eventListenerContainerPort),
+				Protocol:      corev1.ProtocolTCP,
+			}},
+			Args: []string{
+				"--el-name=" + eventListenerName,
+				"--el-namespace=" + namespace,
+				"--port=" + strconv.Itoa(eventListenerContainerPort),
+				"--readtimeout=" + strconv.FormatInt(DefaultReadTimeout, 10),
+				"--writetimeout=" + strconv.FormatInt(DefaultWriteTimeout, 10),
+				"--idletimeout=" + strconv.FormatInt(DefaultIdleTimeout, 10),
+				"--timeouthandler=" + strconv.FormatInt(DefaultTimeOutHandler, 10),
+				"--httpclient-readtimeout=" + strconv.FormatInt(DefaultHTTPClientReadTimeOut, 10),
+				"--httpclient-keep-alive=" + strconv.FormatInt(DefaultHTTPClientKeepAlive, 10),
+				"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(DefaultHTTPClientTLSHandshakeTimeout, 10),
+				"--httpclient-responseheadertimeout=" + strconv.FormatInt(DefaultHTTPClientResponseHeaderTimeout, 10),
+				"--httpclient-expectcontinuetimeout=" + strconv.FormatInt(DefaultHTTPClientExpectContinueTimeout, 10),
+				"--is-multi-ns=" + strconv.FormatBool(false),
+				"--payload-validation=" + strconv.FormatBool(false),
+				"--cloudevent-uri=",
+			},
+			Env: []corev1.EnvVar{{
+				Name: "K_LOGGING_CONFIG",
+			}, {
+				Name: "K_METRICS_CONFIG",
+			}, {
+				Name: "K_TRACING_CONFIG",
+			}, {
+				Name:  "NAMESPACE",
+				Value: namespace,
+			}, {
+				Name:  "NAME",
+				Value: eventListenerName,
+			}, {
+				Name:  "EL_EVENT",
+				Value: "disable",
+			}, {
+				Name:  "K_SINK_TIMEOUT",
+				Value: strconv.FormatInt(DefaultTimeOutHandler, 10),
+			}},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: ptr.Bool(true),
 			},
 		},
 	}}

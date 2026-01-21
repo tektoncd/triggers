@@ -272,6 +272,7 @@ Tolerations
 Containers
 Affinity
 TopologySpreadConstraints
+SecurityContext
 ```
 
 Legal values for the `Containers` sub-field for `kubernetesResource` and `CustomResource` are:
@@ -283,12 +284,14 @@ Env
 LivenessProbe
 ReadinessProbe
 StartupProbe
+SecurityContext
 ```
 
 **CustomResource:**
 ```
 Resources
 Env
+SecurityContext
 ```
 
 ### Specifying a `kubernetesResource` object
@@ -310,6 +313,8 @@ spec:
               key: "value"
           spec:
             serviceAccountName: tekton-triggers-github-sa
+            securityContext:
+              runAsNonRoot: true
             nodeSelector:
               app: test
             tolerations:
@@ -317,6 +322,9 @@ spec:
               value: value
               operator: Equal
               effect: NoSchedule
+            containers:
+            - securityContext:
+                readOnlyRootFilesystem: true
 ```
 
 #### Specifying `Service` configuration

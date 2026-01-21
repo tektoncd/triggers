@@ -126,7 +126,6 @@ func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
 			if !res.Continue {
 				t.Fatalf("Interceptor.Process() expected res.Continue to be : true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
 			}
-
 		})
 	}
 }

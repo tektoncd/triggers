@@ -58,7 +58,7 @@ func TestFromContextOrDefaults(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		in   context.Context
+		in   context.Context //nolint:containedctx
 		want *config.Config
 	}{{
 		name: "sets to default when context has no config",

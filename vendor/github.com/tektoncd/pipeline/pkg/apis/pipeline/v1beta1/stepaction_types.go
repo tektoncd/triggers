@@ -14,6 +14,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ import (
 // The Step can only reference it from the cluster or using remote resolution.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type StepAction struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -63,6 +65,28 @@ func (*StepAction) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("StepAction")
 }
 
+// Checksum computes the sha256 checksum of the stepaction object.
+// Prior to computing the checksum, it performs some preprocessing on the
+// metadata of the object where it removes system provided annotations.
+// Only the name, namespace, generateName, user-provided labels and annotations
+// and the taskSpec are included for the checksum computation.
+func (s *StepAction) Checksum() ([]byte, error) {
+	objectMeta := checksum.PrepareObjectMeta(s)
+	preprocessedStepaction := StepAction{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "StepAction",
+		},
+		ObjectMeta: objectMeta,
+		Spec:       s.Spec,
+	}
+	sha256Checksum, err := checksum.ComputeSha256Checksum(preprocessedStepaction)
+	if err != nil {
+		return nil, err
+	}
+	return sha256Checksum, nil
+}
+
 // StepActionList contains a list of StepActions
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type StepActionList struct {
@@ -71,6 +95,9 @@ type StepActionList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []StepAction `json:"items"`
 }
+
+// +listType=atomic
+type Args []string
 
 // StepActionSpec contains the actionable components of a step.
 type StepActionSpec struct {
@@ -102,8 +129,7 @@ type StepActionSpec struct {
 	// of whether the variable exists or not. Cannot be updated.
 	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 	// +optional
-	// +listType=atomic
-	Args []string `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
+	Args Args `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
 	// List of environment variables to set in the container.
 	// Cannot be updated.
 	// +optional
@@ -125,7 +151,6 @@ type StepActionSpec struct {
 	// Params is a list of input parameters required to run the stepAction.
 	// Params must be supplied as inputs in Steps unless they declare a defaultvalue.
 	// +optional
-	// +listType=atomic
 	Params v1.ParamSpecs `json:"params,omitempty"`
 	// Results are values that this StepAction can output
 	// +optional

@@ -12,3 +12,10 @@
 .venv
 
 **/.bin
+**/.DS_Store
+
+# Release
+**/source.tar.gz
+tekton/**/.ko.yaml
+tekton/**/vendor/
+.release-*/

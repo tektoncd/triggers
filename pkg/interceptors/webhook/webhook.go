@@ -36,7 +36,7 @@ const (
 	// Timeout for outgoing requests to interceptor services
 	interceptorTimeout = 5 * time.Second
 	// the incoming request URL is passed through to the webhook in this header.
-	webhookURLHeader = "EventListener-Request-URL"
+	webhookURLHeader = "Eventlistener-Request-Url"
 )
 
 type Interceptor struct {

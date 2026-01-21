@@ -83,7 +83,7 @@ func main() {
 	server.CreateAndValidateCerts(ctx, kubeclient.Get(ctx).CoreV1(), logger, service, tc.TriggersV1alpha1())
 
 	// watch for caCert existence in clusterInterceptor, update with new caCert if its missing in clusterInterceptor
-	server.UpdateCACertToClusterInterceptorCRD(ctx, service, tc.TriggersV1alpha1(), logger, time.Minute)
+	_ = server.UpdateCACertToClusterInterceptorCRD(ctx, service, tc.TriggersV1alpha1(), logger, time.Minute)
 
 	if err := startServer(ctx, ctx.Done(), mux, logger); err != nil {
 		logger.Fatal(err)
@@ -97,7 +97,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, logger *zap.SugaredLogger) error {
-
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
 		BaseContext: func(listener net.Listener) context.Context {

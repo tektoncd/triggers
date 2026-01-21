@@ -359,7 +359,7 @@ func TestHandleEvent(t *testing.T) {
 
 	// tenGitCloneTriggers is a slice to ten triggers named git-clone-$i
 	tenGitCloneTriggers := []*triggersv1beta1.Trigger{}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		tenGitCloneTriggers = append(tenGitCloneTriggers, &triggersv1beta1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("git-clone-trigger-%d", i),
@@ -379,7 +379,7 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	tenGitCloneTaskRuns := []pipelinev1.TaskRun{}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		tr := gitCloneTaskRun.DeepCopy()
 		tr.Name = fmt.Sprintf("git-clone-run-%d", i)
 		tr.Labels["triggers.tekton.dev/trigger"] = fmt.Sprintf("git-clone-trigger-%d", i)
@@ -732,8 +732,8 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		headers: map[string][]string{
-			"X-GitHub-Event":  {"pull_request"},
-			"X-Hub-Signature": {test.HMACHeader(t, "secret", eventBody, "sha1")},
+			"X-GitHub-Event":      {"pull_request"},
+			"X-Hub-Signature-256": {test.HMACHeader(t, "secret", eventBody, "sha256")},
 		},
 		want: []pipelinev1.TaskRun{gitCloneTaskRun},
 	}, {
@@ -1173,6 +1173,142 @@ func TestHandleEvent(t *testing.T) {
 		},
 		eventBody: eventBody,
 		want:      []pipelinev1.TaskRun{gitCloneTaskRun},
+	}, {
+		name: "with TriggerGroups and CEL interceptors - multiple triggers with extensions (data race test)",
+		resources: test.Resources{
+			Triggers: []*triggersv1beta1.Trigger{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "trigger-1",
+					Namespace: namespace,
+					Labels:    map[string]string{"group": "race-test"},
+				},
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name: "overlays",
+							Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+								Key:        "extensions.trigger1_ext",
+								Expression: "'value1'",
+							}}),
+						}},
+					}},
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{
+						{Name: "url", Value: ptr.String("$(body.repository.url)")},
+						{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
+						{Name: "name", Value: ptr.String("git-clone-run-trigger1")},
+						{Name: "app", Value: ptr.String("$(body.foo)")},
+						{Name: "type", Value: ptr.String("$(header.Content-Type)")}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "trigger-2",
+					Namespace: namespace,
+					Labels:    map[string]string{"group": "race-test"},
+				},
+				Spec: triggersv1beta1.TriggerSpec{
+					Interceptors: []*triggersv1beta1.EventInterceptor{{
+						Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+						Params: []triggersv1beta1.InterceptorParams{{
+							Name: "overlays",
+							Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+								Key:        "extensions.trigger2_ext",
+								Expression: "'value2'",
+							}}),
+						}},
+					}},
+					Bindings: []*triggersv1beta1.TriggerSpecBinding{
+						{Name: "url", Value: ptr.String("$(body.repository.url)")},
+						{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
+						{Name: "name", Value: ptr.String("git-clone-run-trigger2")},
+						{Name: "app", Value: ptr.String("$(body.foo)")},
+						{Name: "type", Value: ptr.String("$(header.Content-Type)")}},
+					Template: triggersv1beta1.TriggerSpecTemplate{Ref: ptr.String("git-clone")},
+				},
+			}},
+			EventListeners: []*triggersv1beta1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      eventListenerName,
+					Namespace: namespace,
+					UID:       types.UID(elUID),
+				},
+				Spec: triggersv1beta1.EventListenerSpec{
+					TriggerGroups: []triggersv1beta1.EventListenerTriggerGroup{{
+						Name: "race-test-group",
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{{
+							Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: triggersv1beta1.ClusterInterceptorKind},
+							Params: []triggersv1beta1.InterceptorParams{
+								{Name: "filter", Value: test.ToV1JSON(t, "has(body.head_commit)")},
+								{Name: "overlays", Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+									Key:        "extensions.group_ext",
+									Expression: "'group_value'",
+								}})},
+							},
+						}},
+						TriggerSelector: triggersv1beta1.EventListenerTriggerSelector{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"group": "race-test"},
+							},
+						},
+					}},
+				},
+			}},
+			TriggerBindings:     []*triggersv1beta1.TriggerBinding{gitCloneTB},
+			TriggerTemplates:    []*triggersv1beta1.TriggerTemplate{gitCloneTT},
+			ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
+		},
+		eventBody: eventBody,
+		want: []pipelinev1.TaskRun{
+			{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-run-trigger1",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app":                                  "bar\t\r\nbaz昨",
+						"type":                                 "application/json",
+						"triggers.tekton.dev/eventlistener":    eventListenerName,
+						"triggers.tekton.dev/trigger":          "trigger-1",
+						"triggers.tekton.dev/triggers-eventid": "12345",
+					},
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					Params: []pipelinev1.Param{
+						{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"}},
+						{Name: "git-revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"}},
+					},
+					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+				},
+			},
+			{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1",
+					Kind:       "TaskRun",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "git-clone-run-trigger2",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app":                                  "bar\t\r\nbaz昨",
+						"type":                                 "application/json",
+						"triggers.tekton.dev/eventlistener":    eventListenerName,
+						"triggers.tekton.dev/trigger":          "trigger-2",
+						"triggers.tekton.dev/triggers-eventid": "12345",
+					},
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					Params: []pipelinev1.Param{
+						{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testurl"}},
+						{Name: "git-revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "testrevision"}},
+					},
+					TaskRef: &pipelinev1.TaskRef{Name: "git-clone"},
+				},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1808,4 +1944,73 @@ func makeGitCloneTTSpec(t *testing.T, name string) *triggersv1beta1.TriggerTempl
 			RawExtension: trResourceTemplate(t),
 		}},
 	}
+}
+
+// TestExecuteInterceptors_ConcurrentMapWrite tests for a race condition that can occur when multiple triggers are
+// processed in parallel that use extensions.
+func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
+	logger := zaptest.NewLogger(t)
+	ctx, _ := test.SetupFakeContext(t)
+	clients := test.SeedResources(t, ctx, test.Resources{ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel}})
+
+	r := Sink{
+		HTTPClient:               setupInterceptors(t, clients.Kube, logger.Sugar(), &sequentialInterceptor{}),
+		Logger:                   logger.Sugar(),
+		ClusterInterceptorLister: clusterinterceptorinformer.Get(ctx).Lister(),
+	}
+
+	// Create interceptors that will add extensions
+	interceptors := []*triggersv1beta1.TriggerInterceptor{
+		{
+			Ref: triggersv1beta1.InterceptorRef{
+				Name: "cel",
+				Kind: triggersv1beta1.ClusterInterceptorKind,
+			},
+			Params: []triggersv1beta1.InterceptorParams{
+				{
+					Name: "overlays",
+					Value: test.ToV1JSON(t, []celinterceptor.Overlay{{
+						Key:        "test_key",
+						Expression: "\"test_value\"",
+					}}),
+				},
+			},
+		},
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, "http://example.com", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Shared extensions map - this is the source of the race condition
+	// This is passed from processTriggerGroups to multiple goroutines running processTrigger
+	extensions := make(map[string]interface{})
+
+	// Run many goroutines that will execute interceptors concurrently. An extreme number of goroutines is used to force
+	// the race condition to occur. Alternatively, concurrency can be set to 2 and go test -race can be used.
+	concurrency := 100
+	var wg sync.WaitGroup
+	for i := range concurrency {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			_, _, _, err := r.ExecuteInterceptors(
+				interceptors,
+				req.Clone(req.Context()),
+				[]byte(`{}`),
+				logger.Sugar(),
+				"test-event-id",
+				"test-trigger-id",
+				"default",
+				extensions,
+			)
+
+			if err != nil {
+				t.Logf("Goroutine %d error: %v", id, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	t.Log("Test completed without panic")
 }

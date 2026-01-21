@@ -46,6 +46,26 @@ spec:
         # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
         version: "devel"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: controller
+                  app.kubernetes.io/component: controller
+                  app.kubernetes.io/instance: default
+                  app.kubernetes.io/part-of: tekton-triggers
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       serviceAccountName: tekton-triggers-controller
       containers:
         - name: tekton-triggers-controller
@@ -103,6 +123,8 @@ spec:
               value: "9000"
             - name: CONFIG_LEADERELECTION_NAME
               value: config-leader-election-triggers-controllers
+            - name: KUBERNETES_MIN_VERSION
+              value: "v1.28.0"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

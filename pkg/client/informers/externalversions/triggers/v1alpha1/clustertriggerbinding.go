@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	apistriggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/triggers/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ClusterTriggerBindings.
 type ClusterTriggerBindingInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ClusterTriggerBindingLister
+	Lister() triggersv1alpha1.ClusterTriggerBindingLister
 }
 
 type clusterTriggerBindingInformer struct {
@@ -70,7 +70,7 @@ func NewFilteredClusterTriggerBindingInformer(client versioned.Interface, resync
 				return client.TriggersV1alpha1().ClusterTriggerBindings().Watch(context.TODO(), options)
 			},
 		},
-		&triggersv1alpha1.ClusterTriggerBinding{},
+		&apistriggersv1alpha1.ClusterTriggerBinding{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +81,9 @@ func (f *clusterTriggerBindingInformer) defaultInformer(client versioned.Interfa
 }
 
 func (f *clusterTriggerBindingInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&triggersv1alpha1.ClusterTriggerBinding{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistriggersv1alpha1.ClusterTriggerBinding{}, f.defaultInformer)
 }
 
-func (f *clusterTriggerBindingInformer) Lister() v1alpha1.ClusterTriggerBindingLister {
-	return v1alpha1.NewClusterTriggerBindingLister(f.Informer().GetIndexer())
+func (f *clusterTriggerBindingInformer) Lister() triggersv1alpha1.ClusterTriggerBindingLister {
+	return triggersv1alpha1.NewClusterTriggerBindingLister(f.Informer().GetIndexer())
 }

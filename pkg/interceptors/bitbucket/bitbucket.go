@@ -90,7 +90,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 
 		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, err.Error())
+			return interceptors.Failf(codes.FailedPrecondition, "error validating signature: %s", err.Error())
 		}
 	}
 

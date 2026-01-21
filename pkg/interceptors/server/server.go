@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,7 +34,7 @@ import (
 )
 
 const (
-	Decade                  = 100 * 365 * 24 * time.Hour
+	Century                 = 100 * 365 * 24 * time.Hour
 	interceptorTLSSecretKey = "INTERCEPTOR_TLS_SECRET_NAME"
 	interceptorTLSSvcKey    = "INTERCEPTOR_TLS_SVC_NAME"
 )
@@ -80,13 +81,16 @@ func NewWithCoreInterceptors(sg interceptors.SecretGetter, logger *zap.SugaredLo
 func (is *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := is.ExecuteInterceptor(r)
 	if err != nil {
-		switch e := err.(type) {
-		case Error:
-			is.Logger.Infof("HTTP %d - %s", e.Status(), e)
-			http.Error(w, e.Error(), e.Status())
-		default:
-			is.Logger.Errorf("Non Status Error: %s", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		{
+			var e Error
+			switch {
+			case errors.As(err, &e):
+				is.Logger.Infof("HTTP %d - %s", e.Status(), e)
+				http.Error(w, e.Error(), e.Status())
+			default:
+				is.Logger.Errorf("Non Status Error: %s", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
 		}
 	}
 	w.Header().Add("Content-Type", "application/json")
@@ -132,7 +136,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 	// Find correct interceptor
 	ii, ok := is.interceptors[strings.TrimPrefix(strings.ToLower(r.URL.Path), "/")]
 	if !ok {
-		return nil, badRequest(fmt.Errorf("path did not match any interceptors"))
+		return nil, badRequest(errors.New("path did not match any interceptors"))
 	}
 
 	// Create a context
@@ -159,7 +163,7 @@ func (is *Server) ExecuteInterceptor(r *http.Request) ([]byte, error) {
 }
 
 func CreateAndValidateCerts(ctx context.Context, coreV1Interface corev1.CoreV1Interface, logger *zap.SugaredLogger, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface) {
-	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, false)
+	serverCert, caCert, err := createCerts(ctx, coreV1Interface, time.Now().Add(Century), logger, false)
 	if err != nil {
 		return
 	}
@@ -278,7 +282,7 @@ func (is *Server) checkCertValidity(ctx context.Context, serverCert, caCert []by
 			if _, err := cert.Verify(opts); err != nil {
 				logger.Errorf("failed to verify certificate: %v", err.Error())
 
-				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Decade), logger, true)
+				serverCertNew, caCertNew, err := createCerts(ctx, coreV1Interface, time.Now().Add(Century), logger, true)
 				if err != nil {
 					logger.Errorf("failed to create certs %v", err)
 				}
@@ -313,36 +317,47 @@ func GetTLSData(ctx context.Context, logger *zap.SugaredLogger) (*tls.Certificat
 	serverKey, ok := secret.Data[certresources.ServerKey]
 	if !ok {
 		logger.Warn("server key missing")
-		return nil, fmt.Errorf("server key missing")
+		return nil, errors.New("server key missing")
 	}
 	serverCert, ok := secret.Data[certresources.ServerCert]
 	if !ok {
 		logger.Warn("server cert missing")
-		return nil, fmt.Errorf("server cert missing")
+		return nil, errors.New("server cert missing")
 	}
 	cert, err := tls.X509KeyPair(serverCert, serverKey)
 	return &cert, err
 }
 
-func UpdateCACertToClusterInterceptorCRD(ctx context.Context, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface, logger *zap.SugaredLogger, timer time.Duration) {
+func UpdateCACertToClusterInterceptorCRD(ctx context.Context, service *Server, tc triggersv1alpha1.TriggersV1alpha1Interface, logger *zap.SugaredLogger, timer time.Duration) func() {
 	interceptorSecretName := os.Getenv(interceptorTLSSecretKey)
 	ticker := time.NewTicker(timer)
+	done := make(chan bool)
+
 	go func() {
+		defer ticker.Stop()
 		for {
-			<-ticker.C
-			secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
-			if err != nil {
-				logger.Errorf("failed to fetch secret %v", err)
+			select {
+			case <-done:
 				return
-			}
-			caCert, ok := secret.Data[certresources.CACert]
-			if !ok {
-				logger.Warn("CACert key missing")
-				return
-			}
-			if err := service.listAndUpdateClusterInterceptorCRD(ctx, tc, caCert); err != nil {
-				return
+			case <-ticker.C:
+				secret, err := secretInformer.Get(ctx).Lister().Secrets(system.Namespace()).Get(interceptorSecretName)
+				if err != nil {
+					logger.Errorf("failed to fetch secret %v", err)
+					return
+				}
+				caCert, ok := secret.Data[certresources.CACert]
+				if !ok {
+					logger.Warn("CACert key missing")
+					return
+				}
+				if err := service.listAndUpdateClusterInterceptorCRD(ctx, tc, caCert); err != nil {
+					return
+				}
 			}
 		}
 	}()
+
+	return func() {
+		close(done)
+	}
 }

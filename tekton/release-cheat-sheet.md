@@ -8,15 +8,8 @@ the triggers repo, a terminal window and a text editor.
 
 1. `cd` to root of Triggers git checkout.
 
-1. Make sure the release `Task` and `Pipeline` are up-to-date on the
-   cluster.
+1. Make sure the release `Pipeline` is up-to-date on the cluster.
 
-   - [publish-triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/publish.yaml)
-
-     This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
-     ```shell script
-     kubectl apply -f tekton/publish.yaml
-     ```
    - [triggers-release](https://github.com/tektoncd/triggers/blob/main/tekton/release-pipeline.yaml)
      ```shell script
      kubectl apply -f tekton/release-pipeline.yaml
@@ -58,11 +51,19 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     tkn --context dogfooding pipeline start triggers-release \
-      --param=gitRevision="${TRIGGERS_RELEASE_GIT_SHA}" \
-      --param=versionTag="${VERSION_TAG}" \
-      --param=serviceAccountPath=release.json \
-      --param=releaseBucket=gs://tekton-releases/triggers \
-      --workspace name=release-secret,secret=release-secret \
+      --param package=github.com/tektoncd/triggers \
+      --param repoName=triggers \
+      --param imageRegistry=ghcr.io \
+      --param imageRegistryPath=tektoncd/triggers \
+      --param imageRegistryRegions="" \
+      --param imageRegistryUser=tekton-robot \
+      --param gitRevision="${TRIGGERS_RELEASE_GIT_SHA}" \
+      --param versionTag="${VERSION_TAG}" \
+      --param serviceAccountImagesPath=credentials \
+      --param releaseBucket=tekton-releases \
+      --param koExtraArgs="" \
+      --workspace name=release-secret,secret=oci-release-secret \
+      --workspace name=release-images-secret,secret=ghcr-creds \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
     ```
 
@@ -78,10 +79,10 @@ the triggers repo, a terminal window and a text editor.
 
    NAME                    VALUE
    commit-sha                 6ea31d92a97420d4b7af94745c45b02447ceaa19
-   release-file               https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/release.yaml
-   release-file-no-tag        https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/release.notag.yaml
-   interceptors-file          https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/interceptors.yaml
-   interceptors-file-no-tag   https://storage.googleapis.com/tekton-releases/triggers/previous/v0.13.0/interceptors.notag.yaml
+   release-file               https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/release.yaml
+   release-file-no-tag        https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/release.notag.yaml
+   interceptors-file          https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/interceptors.yaml
+   interceptors-file-no-tag   https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/interceptors.notag.yaml
 
    (...)
    ```
@@ -101,8 +102,8 @@ the triggers repo, a terminal window and a text editor.
     1. Find the Rekor UUID for the release
 
     ```bash
-    RELEASE_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
-    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | sed -n 's/"//g;s/.*gcr\.io.*controller.*@//p;')
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
     REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
@@ -112,15 +113,19 @@ the triggers repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start \
         --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-        --workspace name=credentials,secret=release-secret \
+        --workspace name=credentials,secret=oci-release-secret \
         -p package="${TEKTON_PACKAGE}" \
         -p git-revision="${TRIGGERS_RELEASE_GIT_SHA}" \
         -p release-tag="${VERSION_TAG}" \
         -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
         -p release-name="Tekton Triggers" \
-        -p bucket="gs://tekton-releases/triggers" \
+        -p bucket="tekton-releases/triggers" \
         -p rekor-uuid="$REKOR_UUID" \
         release-draft
+    ```
+    ```bash
+    NOTE: `release-draft` pipeline is for GCS we need to replace this with the OCI pipeline once its present on the Oracle cluster
+    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note       
     ```
 
     1. Watch logs of create-draft-release
@@ -132,12 +137,12 @@ the triggers repo, a terminal window and a text editor.
          from the release branch. Refer to previous releases to confirm the expected format.
       1. In the section **Installation one-liner**, add the install instruction for interceptors also. 
          ```bash
-            kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
+            kubectl apply -f https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
          ```
       1. In the section **Attestation**, modify it for inteceptors.yaml also.
          ```bash
-         RELEASE_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
-         INTERCEPTORS_FILE=https://storage.googleapis.com/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
+         RELEASE_FILE=https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+         INTERCEPTORS_FILE=https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
          REKOR_UUID=$REKOR_UUID
 
          # Obtains the list of images with sha from the attestation
@@ -167,15 +172,15 @@ the triggers repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/triggers/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/triggers/latest/interceptors.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/triggers/previous/v0.12.1/release.yaml
     # NOTE: Some older releases might not have a separate interceptors.yaml as they used to be bundled in release.yaml
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/triggers/previous/v0.12.1/interceptors.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/triggers/previous/v0.12.1/interceptors.yaml
     ```
 
 1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/triggers.yaml)
@@ -191,14 +196,19 @@ Congratulations, you're done!
    [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
     ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
     ```
 
 1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config current-context
+   ```
+   get the context name and replace with current_context_name
+
+   ```bash
+   kubectl config rename-context <current_context_name> dogfooding
    ```
 
 ## Important: Switch `kubectl` back to your own cluster by default.

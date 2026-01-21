@@ -39,7 +39,7 @@ import (
 func findAPIResource(apiVersion, kind string, c discoveryclient.ServerResourcesInterface) (*metav1.APIResource, error) {
 	resourceList, err := c.ServerResourcesForGroupVersion(apiVersion)
 	if err != nil {
-		return nil, fmt.Errorf("error getting kubernetes server resources for apiVersion %s: %s", apiVersion, err)
+		return nil, fmt.Errorf("error getting kubernetes server resources for apiVersion %s: %w", apiVersion, err)
 	}
 	for i := range resourceList.APIResources {
 		r := &resourceList.APIResources[i]
@@ -51,7 +51,7 @@ func findAPIResource(apiVersion, kind string, c discoveryclient.ServerResourcesI
 		if r.Version == "" || r.Group == "" {
 			gv, err := schema.ParseGroupVersion(resourceList.GroupVersion)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing parsing GroupVersion: %v", err)
+				return nil, fmt.Errorf("error parsing GroupVersion: %w", err)
 			}
 			r.Group = gv.Group
 			r.Version = gv.Version
@@ -67,7 +67,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(rt); err != nil {
-		return fmt.Errorf("couldn't unmarshal json from the TriggerTemplate: %v", err)
+		return fmt.Errorf("couldn't unmarshal json from the TriggerTemplate: %w", err)
 	}
 
 	data, err := addLabels(data, map[string]string{
@@ -88,7 +88,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	// Resolve resource kind to the underlying API Resource type.
 	apiResource, err := findAPIResource(data.GetAPIVersion(), data.GetKind(), c)
 	if err != nil {
-		return fmt.Errorf("couldn't find API resource for json: %v", err)
+		return fmt.Errorf("couldn't find API resource for json: %w", err)
 	}
 
 	name := data.GetName()
@@ -109,7 +109,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 		if kerrors.IsUnauthorized(err) || kerrors.IsForbidden(err) {
 			return err
 		}
-		return fmt.Errorf("couldn't create resource with group version kind %q: %v", gvr, err)
+		return fmt.Errorf("couldn't create resource with group version kind %q: %w", gvr, err)
 	}
 	return nil
 }

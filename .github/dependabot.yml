@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    - dependency-name: "knative.dev/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"

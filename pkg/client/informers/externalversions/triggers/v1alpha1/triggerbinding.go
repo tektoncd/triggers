@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	apistriggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/triggers/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // TriggerBindings.
 type TriggerBindingInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TriggerBindingLister
+	Lister() triggersv1alpha1.TriggerBindingLister
 }
 
 type triggerBindingInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredTriggerBindingInformer(client versioned.Interface, namespace str
 				return client.TriggersV1alpha1().TriggerBindings(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&triggersv1alpha1.TriggerBinding{},
+		&apistriggersv1alpha1.TriggerBinding{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *triggerBindingInformer) defaultInformer(client versioned.Interface, res
 }
 
 func (f *triggerBindingInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&triggersv1alpha1.TriggerBinding{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistriggersv1alpha1.TriggerBinding{}, f.defaultInformer)
 }
 
-func (f *triggerBindingInformer) Lister() v1alpha1.TriggerBindingLister {
-	return v1alpha1.NewTriggerBindingLister(f.Informer().GetIndexer())
+func (f *triggerBindingInformer) Lister() triggersv1alpha1.TriggerBindingLister {
+	return triggersv1alpha1.NewTriggerBindingLister(f.Informer().GetIndexer())
 }

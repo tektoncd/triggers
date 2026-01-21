@@ -51,5 +51,5 @@ func main() {
 		}
 	})
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", 8080), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", 8080), nil)) //nolint:gosec
 }

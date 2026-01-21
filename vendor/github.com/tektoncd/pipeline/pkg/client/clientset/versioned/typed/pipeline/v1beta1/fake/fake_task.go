@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTasks implements TaskInterface
-type FakeTasks struct {
+// fakeTasks implements TaskInterface
+type fakeTasks struct {
+	*gentype.FakeClientWithList[*v1beta1.Task, *v1beta1.TaskList]
 	Fake *FakeTektonV1beta1
-	ns   string
 }
 
-var tasksResource = v1beta1.SchemeGroupVersion.WithResource("tasks")
-
-var tasksKind = v1beta1.SchemeGroupVersion.WithKind("Task")
-
-// Get takes name of the task, and returns the corresponding task object, and an error if there is any.
-func (c *FakeTasks) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.Task, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(tasksResource, c.ns, name), &v1beta1.Task{})
-
-	if obj == nil {
-		return nil, err
+func newFakeTasks(fake *FakeTektonV1beta1, namespace string) pipelinev1beta1.TaskInterface {
+	return &fakeTasks{
+		gentype.NewFakeClientWithList[*v1beta1.Task, *v1beta1.TaskList](
+			fake.Fake,
+			namespace,
+			v1beta1.SchemeGroupVersion.WithResource("tasks"),
+			v1beta1.SchemeGroupVersion.WithKind("Task"),
+			func() *v1beta1.Task { return &v1beta1.Task{} },
+			func() *v1beta1.TaskList { return &v1beta1.TaskList{} },
+			func(dst, src *v1beta1.TaskList) { dst.ListMeta = src.ListMeta },
+			func(list *v1beta1.TaskList) []*v1beta1.Task { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1beta1.TaskList, items []*v1beta1.Task) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1beta1.Task), err
-}
-
-// List takes label and field selectors, and returns the list of Tasks that match those selectors.
-func (c *FakeTasks) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.TaskList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(tasksResource, tasksKind, c.ns, opts), &v1beta1.TaskList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1beta1.TaskList{ListMeta: obj.(*v1beta1.TaskList).ListMeta}
-	for _, item := range obj.(*v1beta1.TaskList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested tasks.
-func (c *FakeTasks) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(tasksResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a task and creates it.  Returns the server's representation of the task, and an error, if there is any.
-func (c *FakeTasks) Create(ctx context.Context, task *v1beta1.Task, opts v1.CreateOptions) (result *v1beta1.Task, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(tasksResource, c.ns, task), &v1beta1.Task{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1beta1.Task), err
-}
-
-// Update takes the representation of a task and updates it. Returns the server's representation of the task, and an error, if there is any.
-func (c *FakeTasks) Update(ctx context.Context, task *v1beta1.Task, opts v1.UpdateOptions) (result *v1beta1.Task, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(tasksResource, c.ns, task), &v1beta1.Task{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1beta1.Task), err
-}
-
-// Delete takes name of the task and deletes it. Returns an error if one occurs.
-func (c *FakeTasks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(tasksResource, c.ns, name, opts), &v1beta1.Task{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTasks) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(tasksResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1beta1.TaskList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched task.
-func (c *FakeTasks) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.Task, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(tasksResource, c.ns, name, pt, data, subresources...), &v1beta1.Task{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1beta1.Task), err
 }

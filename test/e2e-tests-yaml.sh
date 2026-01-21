@@ -4,6 +4,8 @@ set -x
 set -o errexit
 set -o pipefail
 
+SKIP_SECURITY_CTX=${SKIP_SECURITY_CTX:="false"}
+
 current_example=""
 current_example_version=""
 
@@ -47,7 +49,11 @@ main() {
   kubectl create namespace getting-started
   for op in apply delete;do
     for file in $(find ${REPO_ROOT_DIR}/docs/getting-started -name *.yaml | sort); do
-        kubectl ${op} -f ${file}
+           if [ "${SKIP_SECURITY_CTX}" == "true" ]; then
+             yq 'del(.spec.spec.containers[]?.securityContext.runAsUser, .spec.spec.containers[]?.securityContext.runAsGroup)' ${file} |  kubectl ${op} -f -
+           else
+               kubectl ${op} -f ${file}
+           fi
     done
   done
   kubectl delete namespace getting-started

@@ -148,3 +148,14 @@ spec:
   containers:
   - image: gcr.io/knative-releases/github.com/knative/eventing-sources/cmd/event_display
     name: web
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      capabilities:
+        drop:
+          - "ALL"
+      seccompProfile:
+        type: RuntimeDefault

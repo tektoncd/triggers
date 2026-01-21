@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	apistriggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	versioned "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/triggers/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Interceptors.
 type InterceptorInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.InterceptorLister
+	Lister() triggersv1alpha1.InterceptorLister
 }
 
 type interceptorInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredInterceptorInformer(client versioned.Interface, namespace string
 				return client.TriggersV1alpha1().Interceptors(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&triggersv1alpha1.Interceptor{},
+		&apistriggersv1alpha1.Interceptor{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *interceptorInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *interceptorInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&triggersv1alpha1.Interceptor{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistriggersv1alpha1.Interceptor{}, f.defaultInformer)
 }
 
-func (f *interceptorInformer) Lister() v1alpha1.InterceptorLister {
-	return v1alpha1.NewInterceptorLister(f.Informer().GetIndexer())
+func (f *interceptorInformer) Lister() triggersv1alpha1.InterceptorLister {
+	return triggersv1alpha1.NewInterceptorLister(f.Informer().GetIndexer())
 }

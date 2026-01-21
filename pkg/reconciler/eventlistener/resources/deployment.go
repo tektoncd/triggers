@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	baseSecurityPolicy = corev1.PodSecurityContext{
+	baseSecurityPolicy = &corev1.PodSecurityContext{
 		RunAsNonRoot: ptr.Bool(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
@@ -45,7 +45,7 @@ var (
 	}
 )
 
-func getStrongerSecurityPolicy(cfg *config.Config) corev1.PodSecurityContext {
+func getStrongerSecurityPolicy(cfg *config.Config) *corev1.PodSecurityContext {
 	securityContext := baseSecurityPolicy
 	if !cfg.Defaults.IsDefaultRunAsUserEmpty {
 		securityContext.RunAsUser = ptr.Int64(cfg.Defaults.DefaultRunAsUser)
@@ -80,6 +80,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		nodeSelector, annotations map[string]string
 		affinity                  *corev1.Affinity
 		topologySpreadConstraints []corev1.TopologySpreadConstraint
+		imagePullSecrets          []corev1.LocalObjectReference
 	)
 
 	for _, v := range container.Env {
@@ -96,6 +97,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		}
 	}
 
+	var securityContext *corev1.PodSecurityContext
 	if el.Spec.Resources.KubernetesResource != nil {
 		if el.Spec.Resources.KubernetesResource.Replicas != nil {
 			replicas = el.Spec.Resources.KubernetesResource.Replicas
@@ -105,6 +107,9 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		}
 		if len(el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector) != 0 {
 			nodeSelector = el.Spec.Resources.KubernetesResource.Template.Spec.NodeSelector
+		}
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.ImagePullSecrets) != 0 {
+			imagePullSecrets = el.Spec.Resources.KubernetesResource.Template.Spec.ImagePullSecrets
 		}
 		if el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName != "" {
 			serviceAccountName = el.Spec.Resources.KubernetesResource.Template.Spec.ServiceAccountName
@@ -117,10 +122,12 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		}
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
 		podlabels = kmeta.UnionMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
+		if *c.SetSecurityContext {
+			securityContext = el.Spec.Resources.KubernetesResource.Template.Spec.SecurityContext
+		}
 	}
 
-	var securityContext corev1.PodSecurityContext
-	if *c.SetSecurityContext {
+	if *c.SetSecurityContext && securityContext == nil {
 		securityContext = getStrongerSecurityPolicy(cfg)
 	}
 
@@ -137,12 +144,13 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:          imagePullSecrets,
 					Tolerations:               tolerations,
 					NodeSelector:              nodeSelector,
 					ServiceAccountName:        serviceAccountName,
 					Containers:                []corev1.Container{container},
 					Volumes:                   vol,
-					SecurityContext:           &securityContext,
+					SecurityContext:           securityContext,
 					Affinity:                  affinity,
 					TopologySpreadConstraints: topologySpreadConstraints,
 				},
@@ -156,7 +164,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, error) {
 	// METRICS_PROMETHEUS_PORT defines the port exposed by the EventListener metrics endpoint
 	// env METRICS_PROMETHEUS_PORT set by controller
-	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 64)
+	metricsPort, err := strconv.ParseInt(os.Getenv("METRICS_PROMETHEUS_PORT"), 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -171,9 +179,8 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 				container.StartupProbe = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].StartupProbe
 			}
 		}
-
 		container.Ports = append(container.Ports, corev1.ContainerPort{
-			ContainerPort: int32(metricsPort),
+			ContainerPort: int32(metricsPort), //nolint: gosec
 			Protocol:      corev1.ProtocolTCP,
 		})
 
@@ -189,6 +196,10 @@ func addDeploymentBits(el *v1beta1.EventListener, c Config) (ContainerOption, er
 			// env METRICS_PROMETHEUS_PORT set by controller
 			Name:  "METRICS_PROMETHEUS_PORT",
 			Value: os.Getenv("METRICS_PROMETHEUS_PORT"),
+		}, corev1.EnvVar{
+			// KUBERNETES_MIN_VERSION overrides the min k8s version required to run EL.
+			Name:  "KUBERNETES_MIN_VERSION",
+			Value: os.Getenv("KUBERNETES_MIN_VERSION"),
 		})
 	}, nil
 }
@@ -231,8 +242,8 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
-				FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),    //nolint: gosec
+				FailureThreshold: int32(*c.FailureThreshold), //nolint: gosec
 			}
 		}
 		if container.ReadinessProbe == nil {
@@ -244,8 +255,8 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
 				},
-				PeriodSeconds:    int32(*c.PeriodSeconds),
-				FailureThreshold: int32(*c.FailureThreshold),
+				PeriodSeconds:    int32(*c.PeriodSeconds),    //nolint: gosec
+				FailureThreshold: int32(*c.FailureThreshold), //nolint: gosec
 			}
 		}
 		container.Args = append(container.Args, "--tls-cert="+elCert, "--tls-key="+elKey)

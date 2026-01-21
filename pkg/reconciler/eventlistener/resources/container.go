@@ -50,9 +50,16 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 
 	ev := configAcc.ToEnvVars()
 
-	containerSecurityContext := corev1.SecurityContext{}
-	if *c.SetSecurityContext {
-		containerSecurityContext = corev1.SecurityContext{
+	var containerSecurityContext *corev1.SecurityContext
+	if el.Spec.Resources.KubernetesResource != nil {
+		if len(el.Spec.Resources.KubernetesResource.Template.Spec.Containers) != 0 {
+			if *c.SetSecurityContext {
+				containerSecurityContext = el.Spec.Resources.KubernetesResource.Template.Spec.Containers[0].SecurityContext
+			}
+		}
+	}
+	if *c.SetSecurityContext && containerSecurityContext == nil {
+		containerSecurityContext = &corev1.SecurityContext{
 			AllowPrivilegeEscalation: ptr.Bool(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
@@ -111,7 +118,7 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			Name:  "K_SINK_TIMEOUT",
 			Value: strconv.FormatInt(*c.TimeOutHandler, 10),
 		}}...),
-		SecurityContext: &containerSecurityContext,
+		SecurityContext: containerSecurityContext,
 	}
 
 	for _, opt := range opts {
