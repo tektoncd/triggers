@@ -44,6 +44,10 @@ func (c *FakeTriggersV1alpha1) Interceptors(namespace string) v1alpha1.Intercept
 	return newFakeInterceptors(c, namespace)
 }
 
+func (c *FakeTriggersV1alpha1) ScheduledTemplates(namespace string) v1alpha1.ScheduledTemplateInterface {
+	return newFakeScheduledTemplates(c, namespace)
+}
+
 func (c *FakeTriggersV1alpha1) Triggers(namespace string) v1alpha1.TriggerInterface {
 	return newFakeTriggers(c, namespace)
 }
