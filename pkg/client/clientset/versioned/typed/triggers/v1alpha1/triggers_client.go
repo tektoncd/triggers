@@ -32,6 +32,7 @@ type TriggersV1alpha1Interface interface {
 	ClusterTriggerBindingsGetter
 	EventListenersGetter
 	InterceptorsGetter
+	ScheduledTemplatesGetter
 	TriggersGetter
 	TriggerBindingsGetter
 	TriggerTemplatesGetter
@@ -56,6 +57,10 @@ func (c *TriggersV1alpha1Client) EventListeners(namespace string) EventListenerI
 
 func (c *TriggersV1alpha1Client) Interceptors(namespace string) InterceptorInterface {
 	return newInterceptors(c, namespace)
+}
+
+func (c *TriggersV1alpha1Client) ScheduledTemplates(namespace string) ScheduledTemplateInterface {
+	return newScheduledTemplates(c, namespace)
 }
 
 func (c *TriggersV1alpha1Client) Triggers(namespace string) TriggerInterface {
