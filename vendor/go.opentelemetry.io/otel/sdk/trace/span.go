@@ -151,12 +151,15 @@ type recordingSpan struct {
 
 	// tracer is the SDK tracer that created this span.
 	tracer *tracer
+<<<<<<< HEAD
 
 	// origCtx is the context used when starting this span that has the
 	// recordingSpan instance set as the active span. If not nil, it is used
 	// when ending the span to ensure any metrics are recorded with a context
 	// containing this span without requiring an additional allocation.
 	origCtx context.Context
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 }
 
 var (
@@ -164,10 +167,13 @@ var (
 	_ runtimeTracer = (*recordingSpan)(nil)
 )
 
+<<<<<<< HEAD
 func (s *recordingSpan) setOrigCtx(ctx context.Context) {
 	s.origCtx = ctx
 }
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 // SpanContext returns the SpanContext of this span.
 func (s *recordingSpan) SpanContext() trace.SpanContext {
 	if s == nil {
@@ -506,6 +512,7 @@ func (s *recordingSpan) End(options ...trace.SpanEndOption) {
 	}
 	s.mu.Unlock()
 
+<<<<<<< HEAD
 	if s.tracer.inst.Enabled() {
 		ctx := s.origCtx
 		if ctx == nil {
@@ -515,6 +522,16 @@ func (s *recordingSpan) End(options ...trace.SpanEndOption) {
 			ctx = trace.ContextWithSpan(context.Background(), s)
 		}
 		defer s.tracer.inst.SpanEnded(ctx, s)
+=======
+	if s.tracer.selfObservabilityEnabled {
+		defer func() {
+			// Add the span to the context to ensure the metric is recorded
+			// with the correct span context.
+			ctx := trace.ContextWithSpan(context.Background(), s)
+			set := spanLiveSet(s.spanContext.IsSampled())
+			s.tracer.spanLiveMetric.AddSet(ctx, -1, set)
+		}()
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 
 	sps := s.tracer.provider.getSpanProcessors()

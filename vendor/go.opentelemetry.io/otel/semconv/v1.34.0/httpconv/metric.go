@@ -1,8 +1,11 @@
 // Code generated from semantic convention specification. DO NOT EDIT.
 
+<<<<<<< HEAD
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 // Package httpconv provides types and functionality for OpenTelemetry semantic
 // conventions in the "http" namespace.
 package httpconv
@@ -109,7 +112,11 @@ func NewClientActiveRequests(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientActiveRequests{noop.Int64UpDownCounter{}}, err
+=======
+	    return ClientActiveRequests{noop.Int64UpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientActiveRequests{i}, nil
 }
@@ -222,7 +229,11 @@ func NewClientConnectionDuration(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientConnectionDuration{noop.Float64Histogram{}}, err
+=======
+	    return ClientConnectionDuration{noop.Float64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientConnectionDuration{i}, nil
 }
@@ -334,7 +345,11 @@ func NewClientOpenConnections(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientOpenConnections{noop.Int64UpDownCounter{}}, err
+=======
+	    return ClientOpenConnections{noop.Int64UpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientOpenConnections{i}, nil
 }
@@ -450,7 +465,11 @@ func NewClientRequestBodySize(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientRequestBodySize{noop.Int64Histogram{}}, err
+=======
+	    return ClientRequestBodySize{noop.Int64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientRequestBodySize{i}, nil
 }
@@ -600,7 +619,11 @@ func NewClientRequestDuration(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientRequestDuration{noop.Float64Histogram{}}, err
+=======
+	    return ClientRequestDuration{noop.Float64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientRequestDuration{i}, nil
 }
@@ -743,7 +766,11 @@ func NewClientResponseBodySize(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ClientResponseBodySize{noop.Int64Histogram{}}, err
+=======
+	    return ClientResponseBodySize{noop.Int64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ClientResponseBodySize{i}, nil
 }
@@ -893,7 +920,11 @@ func NewServerActiveRequests(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ServerActiveRequests{noop.Int64UpDownCounter{}}, err
+=======
+	    return ServerActiveRequests{noop.Int64UpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ServerActiveRequests{i}, nil
 }
@@ -993,7 +1024,11 @@ func NewServerRequestBodySize(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ServerRequestBodySize{noop.Int64Histogram{}}, err
+=======
+	    return ServerRequestBodySize{noop.Int64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ServerRequestBodySize{i}, nil
 }
@@ -1146,7 +1181,11 @@ func NewServerRequestDuration(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ServerRequestDuration{noop.Float64Histogram{}}, err
+=======
+	    return ServerRequestDuration{noop.Float64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ServerRequestDuration{i}, nil
 }
@@ -1292,7 +1331,11 @@ func NewServerResponseBodySize(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ServerResponseBodySize{noop.Int64Histogram{}}, err
+=======
+	    return ServerResponseBodySize{noop.Int64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ServerResponseBodySize{i}, nil
 }
@@ -1418,4 +1461,8 @@ func (ServerResponseBodySize) AttrServerPort(val int) attribute.KeyValue {
 // the category of synthetic traffic, such as tests or bots.
 func (ServerResponseBodySize) AttrUserAgentSyntheticType(val UserAgentSyntheticTypeAttr) attribute.KeyValue {
 	return attribute.String("user_agent.synthetic.type", string(val))
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)

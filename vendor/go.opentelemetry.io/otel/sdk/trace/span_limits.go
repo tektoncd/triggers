@@ -3,7 +3,11 @@
 
 package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
+<<<<<<< HEAD
 import "go.opentelemetry.io/otel/sdk/trace/internal/env"
+=======
+import "go.opentelemetry.io/otel/sdk/internal/env"
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 
 const (
 	// DefaultAttributeValueLengthLimit is the default maximum allowed

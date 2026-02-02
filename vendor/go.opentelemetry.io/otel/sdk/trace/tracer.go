@@ -7,8 +7,14 @@ import (
 	"context"
 	"time"
 
+<<<<<<< HEAD
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/trace/internal/observ"
+=======
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/semconv/v1.37.0/otelconv"
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/embedded"
 )
@@ -19,7 +25,13 @@ type tracer struct {
 	provider             *TracerProvider
 	instrumentationScope instrumentation.Scope
 
+<<<<<<< HEAD
 	inst observ.Tracer
+=======
+	selfObservabilityEnabled bool
+	spanLiveMetric           otelconv.SDKSpanLive
+	spanStartedMetric        otelconv.SDKSpanStarted
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 }
 
 var _ trace.Tracer = &tracer{}
@@ -50,6 +62,7 @@ func (tr *tracer) Start(
 
 	s := tr.newSpan(ctx, name, &config)
 	newCtx := trace.ContextWithSpan(ctx, s)
+<<<<<<< HEAD
 	if tr.inst.Enabled() {
 		if o, ok := s.(interface{ setOrigCtx(context.Context) }); ok {
 			// If this is a recording span, store the original context.
@@ -61,6 +74,12 @@ func (tr *tracer) Start(
 		}
 		psc := trace.SpanContextFromContext(ctx)
 		tr.inst.SpanStarted(newCtx, psc, s)
+=======
+	if tr.selfObservabilityEnabled {
+		psc := trace.SpanContextFromContext(ctx)
+		set := spanStartedSet(psc, s)
+		tr.spanStartedMetric.AddSet(newCtx, 1, set)
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 
 	if rw, ok := s.(ReadWriteSpan); ok && s.IsRecording() {
@@ -172,11 +191,20 @@ func (tr *tracer) newRecordingSpan(
 	s.SetAttributes(sr.Attributes...)
 	s.SetAttributes(config.Attributes()...)
 
+<<<<<<< HEAD
 	if tr.inst.Enabled() {
 		// Propagate any existing values from the context with the new span to
 		// the measurement context.
 		ctx = trace.ContextWithSpan(ctx, s)
 		tr.inst.SpanLive(ctx, s)
+=======
+	if tr.selfObservabilityEnabled {
+		// Propagate any existing values from the context with the new span to
+		// the measurement context.
+		ctx = trace.ContextWithSpan(ctx, s)
+		set := spanLiveSet(s.spanContext.IsSampled())
+		tr.spanLiveMetric.AddSet(ctx, 1, set)
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 
 	return s
@@ -186,3 +214,115 @@ func (tr *tracer) newRecordingSpan(
 func (tr *tracer) newNonRecordingSpan(sc trace.SpanContext) nonRecordingSpan {
 	return nonRecordingSpan{tracer: tr, sc: sc}
 }
+<<<<<<< HEAD
+=======
+
+type parentState int
+
+const (
+	parentStateNoParent parentState = iota
+	parentStateLocalParent
+	parentStateRemoteParent
+)
+
+type samplingState int
+
+const (
+	samplingStateDrop samplingState = iota
+	samplingStateRecordOnly
+	samplingStateRecordAndSample
+)
+
+type spanStartedSetKey struct {
+	parent   parentState
+	sampling samplingState
+}
+
+var spanStartedSetCache = map[spanStartedSetKey]attribute.Set{
+	{parentStateNoParent, samplingStateDrop}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginNone),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultDrop),
+	),
+	{parentStateLocalParent, samplingStateDrop}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginLocal),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultDrop),
+	),
+	{parentStateRemoteParent, samplingStateDrop}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginRemote),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultDrop),
+	),
+
+	{parentStateNoParent, samplingStateRecordOnly}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginNone),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordOnly),
+	),
+	{parentStateLocalParent, samplingStateRecordOnly}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginLocal),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordOnly),
+	),
+	{parentStateRemoteParent, samplingStateRecordOnly}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginRemote),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordOnly),
+	),
+
+	{parentStateNoParent, samplingStateRecordAndSample}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginNone),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordAndSample),
+	),
+	{parentStateLocalParent, samplingStateRecordAndSample}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginLocal),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordAndSample),
+	),
+	{parentStateRemoteParent, samplingStateRecordAndSample}: attribute.NewSet(
+		otelconv.SDKSpanStarted{}.AttrSpanParentOrigin(otelconv.SpanParentOriginRemote),
+		otelconv.SDKSpanStarted{}.AttrSpanSamplingResult(otelconv.SpanSamplingResultRecordAndSample),
+	),
+}
+
+func spanStartedSet(psc trace.SpanContext, span trace.Span) attribute.Set {
+	key := spanStartedSetKey{
+		parent:   parentStateNoParent,
+		sampling: samplingStateDrop,
+	}
+
+	if psc.IsValid() {
+		if psc.IsRemote() {
+			key.parent = parentStateRemoteParent
+		} else {
+			key.parent = parentStateLocalParent
+		}
+	}
+
+	if span.IsRecording() {
+		if span.SpanContext().IsSampled() {
+			key.sampling = samplingStateRecordAndSample
+		} else {
+			key.sampling = samplingStateRecordOnly
+		}
+	}
+
+	return spanStartedSetCache[key]
+}
+
+type spanLiveSetKey struct {
+	sampled bool
+}
+
+var spanLiveSetCache = map[spanLiveSetKey]attribute.Set{
+	{true}: attribute.NewSet(
+		otelconv.SDKSpanLive{}.AttrSpanSamplingResult(
+			otelconv.SpanSamplingResultRecordAndSample,
+		),
+	),
+	{false}: attribute.NewSet(
+		otelconv.SDKSpanLive{}.AttrSpanSamplingResult(
+			otelconv.SpanSamplingResultRecordOnly,
+		),
+	),
+}
+
+func spanLiveSet(sampled bool) attribute.Set {
+	key := spanLiveSetKey{sampled: sampled}
+	return spanLiveSetCache[key]
+}
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)

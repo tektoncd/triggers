@@ -5,21 +5,42 @@ package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
 	"context"
+<<<<<<< HEAD
+=======
+	"errors"
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	"fmt"
 	"sync"
 	"sync/atomic"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/internal/global"
+<<<<<<< HEAD
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace/internal/observ"
+=======
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace/internal/x"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	"go.opentelemetry.io/otel/semconv/v1.37.0/otelconv"
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/embedded"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
+<<<<<<< HEAD
 const defaultTracerName = "go.opentelemetry.io/otel/sdk/tracer"
+=======
+const (
+	defaultTracerName = "go.opentelemetry.io/otel/sdk/tracer"
+	selfObsScopeName  = "go.opentelemetry.io/otel/sdk/trace"
+)
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 
 // tracerProviderConfig.
 type tracerProviderConfig struct {
@@ -155,6 +176,7 @@ func (p *TracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.T
 		t, ok := p.namedTracer[is]
 		if !ok {
 			t = &tracer{
+<<<<<<< HEAD
 				provider:             p,
 				instrumentationScope: is,
 			}
@@ -165,6 +187,21 @@ func (p *TracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.T
 				otel.Handle(err)
 			}
 
+=======
+				provider:                 p,
+				instrumentationScope:     is,
+				selfObservabilityEnabled: x.SelfObservability.Enabled(),
+			}
+			if t.selfObservabilityEnabled {
+				var err error
+				t.spanLiveMetric, t.spanStartedMetric, err = newInst()
+				if err != nil {
+					msg := "failed to create self-observability metrics for tracer: %w"
+					err := fmt.Errorf(msg, err)
+					otel.Handle(err)
+				}
+			}
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 			p.namedTracer[is] = t
 		}
 		return t, ok
@@ -190,6 +227,26 @@ func (p *TracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.T
 	return t
 }
 
+<<<<<<< HEAD
+=======
+func newInst() (otelconv.SDKSpanLive, otelconv.SDKSpanStarted, error) {
+	m := otel.GetMeterProvider().Meter(
+		selfObsScopeName,
+		metric.WithInstrumentationVersion(sdk.Version()),
+		metric.WithSchemaURL(semconv.SchemaURL),
+	)
+
+	var err error
+	spanLiveMetric, e := otelconv.NewSDKSpanLive(m)
+	err = errors.Join(err, e)
+
+	spanStartedMetric, e := otelconv.NewSDKSpanStarted(m)
+	err = errors.Join(err, e)
+
+	return spanLiveMetric, spanStartedMetric, err
+}
+
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 // RegisterSpanProcessor adds the given SpanProcessor to the list of SpanProcessors.
 func (p *TracerProvider) RegisterSpanProcessor(sp SpanProcessor) {
 	// This check prevents calls during a shutdown.

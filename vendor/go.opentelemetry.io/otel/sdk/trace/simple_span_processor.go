@@ -6,12 +6,18 @@ package trace // import "go.opentelemetry.io/otel/sdk/trace"
 import (
 	"context"
 	"sync"
+<<<<<<< HEAD
 	"sync/atomic"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/sdk/trace/internal/observ"
 	"go.opentelemetry.io/otel/trace"
+=======
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/internal/global"
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 )
 
 // simpleSpanProcessor is a SpanProcessor that synchronously sends all
@@ -20,8 +26,11 @@ type simpleSpanProcessor struct {
 	exporterMu sync.Mutex
 	exporter   SpanExporter
 	stopOnce   sync.Once
+<<<<<<< HEAD
 
 	inst *observ.SSP
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 }
 
 var _ SpanProcessor = (*simpleSpanProcessor)(nil)
@@ -38,6 +47,7 @@ func NewSimpleSpanProcessor(exporter SpanExporter) SpanProcessor {
 	ssp := &simpleSpanProcessor{
 		exporter: exporter,
 	}
+<<<<<<< HEAD
 
 	var err error
 	ssp.inst, err = observ.NewSSP(nextSimpleProcessorID())
@@ -45,11 +55,14 @@ func NewSimpleSpanProcessor(exporter SpanExporter) SpanProcessor {
 		otel.Handle(err)
 	}
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	global.Warn("SimpleSpanProcessor is not recommended for production use, consider using BatchSpanProcessor instead.")
 
 	return ssp
 }
 
+<<<<<<< HEAD
 var simpleProcessorIDCounter atomic.Int64
 
 // nextSimpleProcessorID returns an identifier for this simple span processor,
@@ -58,6 +71,8 @@ func nextSimpleProcessorID() int64 {
 	return simpleProcessorIDCounter.Add(1) - 1
 }
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 // OnStart does nothing.
 func (*simpleSpanProcessor) OnStart(context.Context, ReadWriteSpan) {}
 
@@ -66,6 +81,7 @@ func (ssp *simpleSpanProcessor) OnEnd(s ReadOnlySpan) {
 	ssp.exporterMu.Lock()
 	defer ssp.exporterMu.Unlock()
 
+<<<<<<< HEAD
 	var err error
 	if ssp.exporter != nil && s.SpanContext().TraceFlags().IsSampled() {
 		err = ssp.exporter.ExportSpans(context.Background(), []ReadOnlySpan{s})
@@ -80,6 +96,13 @@ func (ssp *simpleSpanProcessor) OnEnd(s ReadOnlySpan) {
 		ctx := trace.ContextWithSpanContext(context.Background(), s.SpanContext())
 		ssp.inst.SpanProcessed(ctx, err)
 	}
+=======
+	if ssp.exporter != nil && s.SpanContext().TraceFlags().IsSampled() {
+		if err := ssp.exporter.ExportSpans(context.Background(), []ReadOnlySpan{s}); err != nil {
+			otel.Handle(err)
+		}
+	}
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 }
 
 // Shutdown shuts down the exporter this SimpleSpanProcessor exports to.

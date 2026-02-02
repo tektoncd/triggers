@@ -1,9 +1,13 @@
 // Code generated from semantic convention specification. DO NOT EDIT.
 
+<<<<<<< HEAD
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package goconv provides types and functionality for OpenTelemetry semantic
+=======
+// Package httpconv provides types and functionality for OpenTelemetry semantic
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 // conventions in the "go" namespace.
 package goconv
 
@@ -59,7 +63,11 @@ func NewConfigGogc(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ConfigGogc{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return ConfigGogc{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ConfigGogc{i}, nil
 }
@@ -109,7 +117,11 @@ func NewGoroutineCount(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return GoroutineCount{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return GoroutineCount{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return GoroutineCount{i}, nil
 }
@@ -159,7 +171,11 @@ func NewMemoryAllocated(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return MemoryAllocated{noop.Int64ObservableCounter{}}, err
+=======
+	    return MemoryAllocated{noop.Int64ObservableCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return MemoryAllocated{i}, nil
 }
@@ -209,7 +225,11 @@ func NewMemoryAllocations(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return MemoryAllocations{noop.Int64ObservableCounter{}}, err
+=======
+	    return MemoryAllocations{noop.Int64ObservableCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return MemoryAllocations{i}, nil
 }
@@ -259,7 +279,11 @@ func NewMemoryGCGoal(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return MemoryGCGoal{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return MemoryGCGoal{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return MemoryGCGoal{i}, nil
 }
@@ -309,7 +333,11 @@ func NewMemoryLimit(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return MemoryLimit{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return MemoryLimit{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return MemoryLimit{i}, nil
 }
@@ -359,7 +387,11 @@ func NewMemoryUsed(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return MemoryUsed{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return MemoryUsed{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return MemoryUsed{i}, nil
 }
@@ -415,7 +447,11 @@ func NewProcessorLimit(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ProcessorLimit{noop.Int64ObservableUpDownCounter{}}, err
+=======
+	    return ProcessorLimit{noop.Int64ObservableUpDownCounter{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ProcessorLimit{i}, nil
 }
@@ -466,7 +502,11 @@ func NewScheduleDuration(
 		}, opt...)...,
 	)
 	if err != nil {
+<<<<<<< HEAD
 		return ScheduleDuration{noop.Float64Histogram{}}, err
+=======
+	    return ScheduleDuration{noop.Float64Histogram{}}, err
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 	}
 	return ScheduleDuration{i}, nil
 }
@@ -508,4 +548,8 @@ func (m ScheduleDuration) Record(ctx context.Context, val float64, attrs ...attr
 
 	*o = append(*o, metric.WithAttributes(attrs...))
 	m.Float64Histogram.Record(ctx, val, *o...)
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)

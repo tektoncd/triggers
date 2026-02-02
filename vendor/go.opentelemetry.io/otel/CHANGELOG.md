@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 <!-- Released section -->
 <!-- Don't change this section unless doing release -->
 
+<<<<<<< HEAD
 ## [1.40.0/0.62.0/0.16.0] 2026-02-02
 
 ### Added
@@ -116,6 +117,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   All `Processor` implementations must now implement the `Enabled` method.
   Custom processors that do not filter records can implement `Enabled` to return `true`. (#7639)
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 ## [1.38.0/0.60.0/0.14.0/0.0.13] 2025-08-29
 
 This release is the last to support [Go 1.23].
@@ -3535,11 +3538,14 @@ It contains api and sdk for trace and meter.
 - CircleCI build CI manifest files.
 - CODEOWNERS file to track owners of this project.
 
+<<<<<<< HEAD
 [Unreleased]: https://github.com/open-telemetry/opentelemetry-go/compare/v1.40.0...HEAD
 [1.40.0/0.62.0/0.16.0]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.40.0
 [1.39.0/0.61.0/0.15.0/0.0.14]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.39.0
+=======
+[Unreleased]: https://github.com/open-telemetry/opentelemetry-go/compare/v1.38.0...HEAD
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 [1.38.0/0.60.0/0.14.0/0.0.13]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.38.0
-[0.59.1]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/exporters/prometheus/v0.59.1
 [1.37.0/0.59.0/0.13.0]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.37.0
 [0.12.2]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/log/v0.12.2
 [0.12.1]: https://github.com/open-telemetry/opentelemetry-go/releases/tag/log/v0.12.1
