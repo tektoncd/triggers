@@ -62,13 +62,25 @@ func NewFilteredInterceptorInformer(client versioned.Interface, namespace string
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().Interceptors(namespace).List(context.TODO(), options)
+				return client.TriggersV1alpha1().Interceptors(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().Interceptors(namespace).Watch(context.TODO(), options)
+				return client.TriggersV1alpha1().Interceptors(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1alpha1().Interceptors(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1alpha1().Interceptors(namespace).Watch(ctx, options)
 			},
 		},
 		&apistriggersv1alpha1.Interceptor{},
