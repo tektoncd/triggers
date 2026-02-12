@@ -108,24 +108,33 @@ the triggers repo, a terminal window and a text editor.
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
+    1. Create a pod template file to ensure correct permissions for OCI CLI:
+
+    ```bash
+    cat <<EOF > pod-template.yaml
+    securityContext:
+      fsGroup: 65532
+      runAsNonRoot: true
+      runAsUser: 65532
+    EOF
+    ```
+
     1. Execute the Draft Release task.
 
     ```bash
     tkn --context dogfooding pipeline start \
         --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
         --workspace name=credentials,secret=oci-release-secret \
+        --pod-template pod-template.yaml \
         -p package="${TEKTON_PACKAGE}" \
+        -p repo-name="triggers" \
         -p git-revision="${TRIGGERS_RELEASE_GIT_SHA}" \
         -p release-tag="${VERSION_TAG}" \
         -p previous-release-tag="${TRIGGERS_OLD_VERSION}" \
         -p release-name="Tekton Triggers" \
-        -p bucket="tekton-releases/triggers" \
+        -p bucket="tekton-releases" \
         -p rekor-uuid="$REKOR_UUID" \
-        release-draft
-    ```
-    ```bash
-    NOTE: `release-draft` pipeline is for GCS we need to replace this with the OCI pipeline once its present on the Oracle cluster
-    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note       
+        release-draft-oci
     ```
 
     1. Watch logs of create-draft-release
