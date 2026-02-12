@@ -3,7 +3,11 @@
 
 module-sets:
   stable-v1:
+<<<<<<< HEAD
     version: v1.40.0
+=======
+    version: v1.38.0
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
     modules:
       - go.opentelemetry.io/otel
       - go.opentelemetry.io/otel/bridge/opencensus
@@ -22,11 +26,19 @@ module-sets:
       - go.opentelemetry.io/otel/sdk/metric
       - go.opentelemetry.io/otel/trace
   experimental-metrics:
+<<<<<<< HEAD
     version: v0.62.0
     modules:
       - go.opentelemetry.io/otel/exporters/prometheus
   experimental-logs:
     version: v0.16.0
+=======
+    version: v0.60.0
+    modules:
+      - go.opentelemetry.io/otel/exporters/prometheus
+  experimental-logs:
+    version: v0.14.0
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
     modules:
       - go.opentelemetry.io/otel/log
       - go.opentelemetry.io/otel/log/logtest
@@ -36,12 +48,13 @@ module-sets:
       - go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp
       - go.opentelemetry.io/otel/exporters/stdout/stdoutlog
   experimental-schema:
-    version: v0.0.14
+    version: v0.0.13
     modules:
       - go.opentelemetry.io/otel/schema
 excluded-modules:
   - go.opentelemetry.io/otel/internal/tools
   - go.opentelemetry.io/otel/trace/internal/telemetry/test
+<<<<<<< HEAD
 modules:
   go.opentelemetry.io/otel/exporters/stdout/stdouttrace:
     version-refs:
@@ -64,3 +77,5 @@ modules:
   go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp:
     version-refs:
       - ./internal/version.go
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)

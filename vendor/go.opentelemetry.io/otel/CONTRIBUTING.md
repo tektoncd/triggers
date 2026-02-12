@@ -54,8 +54,8 @@ go get -d go.opentelemetry.io/otel
 (This may print some warning about "build constraints exclude all Go
 files", just ignore it.)
 
-This will put the project in `${GOPATH}/src/go.opentelemetry.io/otel`.
-Alternatively, you can use `git` directly with:
+This will put the project in `${GOPATH}/src/go.opentelemetry.io/otel`. You
+can alternatively use `git` directly with:
 
 ```sh
 git clone https://github.com/open-telemetry/opentelemetry-go
@@ -65,7 +65,8 @@ git clone https://github.com/open-telemetry/opentelemetry-go
 that name is a kind of a redirector to GitHub that `go get` can
 understand, but `git` does not.)
 
-This will add the project as `opentelemetry-go` within the current directory.
+This would put the project in the `opentelemetry-go` directory in
+current working directory.
 
 Enter the newly created directory and add your fork as a new remote:
 
@@ -108,7 +109,7 @@ A PR is considered **ready to merge** when:
 
   This is not enforced through automation, but needs to be validated by the
   maintainer merging.
-  * At least one of the qualified approvals needs to be from an
+  * At least one of the qualified approvals need to be from an
     [Approver]/[Maintainer] affiliated with a different company than the author
     of the PR.
   * PRs introducing changes that have already been discussed and consensus
@@ -165,11 +166,11 @@ guidelines](https://opentelemetry.io/docs/specs/otel/library-guidelines).
 ### Focus on Capabilities, Not Structure Compliance
 
 OpenTelemetry is an evolving specification, one where the desires and
-use cases are clear, but the methods to satisfy those use cases are
+use cases are clear, but the method to satisfy those uses cases are
 not.
 
 As such, Contributions should provide functionality and behavior that
-conforms to the specification, but the interface and structure are
+conforms to the specification, but the interface and structure is
 flexible.
 
 It is preferable to have contributions follow the idioms of the
@@ -216,7 +217,7 @@ about dependency compatibility.
 This project does not partition dependencies based on the environment (i.e.
 `development`, `staging`, `production`).
 
-Only the dependencies explicitly included in the released modules have been
+Only the dependencies explicitly included in the released modules have be
 tested and verified to work with the released code. No other guarantee is made
 about the compatibility of other dependencies.
 
@@ -634,8 +635,8 @@ is not in their root name.
 
 The use of internal packages should be scoped to a single module. A sub-module
 should never import from a parent internal package. This creates a coupling
-between the two modules where a user can upgrade the parent without the child,
-and if the internal package API has changed, it will fail to upgrade[^3].
+between the two modules where a user can upgrade the parent without the child
+and if the internal package API has changed it will fail to upgrade[^3].
 
 There are two known exceptions to this rule:
 
@@ -656,7 +657,7 @@ this.
 
 ### Ignoring context cancellation
 
-OpenTelemetry API implementations need to ignore the cancellation of the context that is
+OpenTelemetry API implementations need to ignore the cancellation of the context that are
 passed when recording a value (e.g. starting a span, recording a measurement, emitting a log).
 Recording methods should not return an error describing the cancellation state of the context
 when they complete, nor should they abort any work.
@@ -674,6 +675,7 @@ force flushing telemetry, shutting down a signal provider) the context cancellat
 should be honored. This means all work done on behalf of the user provided context
 should be canceled.
 
+<<<<<<< HEAD
 ### Observability
 
 OpenTelemetry Go SDK components should be instrumented to enable users observability for the health and performance of the telemetry pipeline itself.
@@ -1109,6 +1111,8 @@ func TestObservability(t *testing.T) {
 Test order should not affect results.
 Ensure that any global state (e.g. component ID counters) is reset between tests.
 
+=======
+>>>>>>> 77e58354 (vendor deps for opencensus to opentelemetry migration)
 ## Approvers and Maintainers
 
 ### Maintainers
@@ -1130,6 +1134,7 @@ For more information about the approver role, see the [community repository](htt
 ### Triagers
 
 - [Alex Kats](https://github.com/akats7), Capital One
+- [Cheng-Zhen Yang](https://github.com/scorpionknifes), Independent
 
 For more information about the triager role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#triager).
 
@@ -1137,7 +1142,6 @@ For more information about the triager role, see the [community repository](http
 
 - [Aaron Clawson](https://github.com/MadVikingGod)
 - [Anthony Mirabella](https://github.com/Aneurysm9)
-- [Cheng-Zhen Yang](https://github.com/scorpionknifes)
 - [Chester Cheung](https://github.com/hanyuancheung)
 - [Evan Torrie](https://github.com/evantorrie)
 - [Gustavo Silva Paiva](https://github.com/paivagustavo)

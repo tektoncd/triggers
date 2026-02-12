@@ -62,13 +62,25 @@ func NewFilteredEventListenerInformer(client versioned.Interface, namespace stri
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1beta1().EventListeners(namespace).List(context.TODO(), options)
+				return client.TriggersV1beta1().EventListeners(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1beta1().EventListeners(namespace).Watch(context.TODO(), options)
+				return client.TriggersV1beta1().EventListeners(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1beta1().EventListeners(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1beta1().EventListeners(namespace).Watch(ctx, options)
 			},
 		},
 		&apistriggersv1beta1.EventListener{},
