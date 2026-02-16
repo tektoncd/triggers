@@ -7,29 +7,52 @@ import (
 	"net/http"
 	"time"
 
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"knative.dev/pkg/metrics"
 )
 
 var (
-	elDuration = stats.Float64(
-		"http_duration_seconds",
-		"The eventlistener HTTP request duration",
-		stats.UnitDimensionless)
-	elDistribution = view.Distribution(metrics.BucketsNBy10(0.001, 5)...)
-	eventRcdCount  = stats.Float64("event_received_count",
-		"number of events received by sink",
-		stats.UnitDimensionless)
-	triggeredResources = stats.Int64("triggered_resources", "Count of the number of triggered eventlistener resources", stats.UnitDimensionless)
+	meter = otel.Meter("github.com/tektoncd/triggers/pkg/sink")
+
+	elDuration         metric.Float64Histogram
+	eventRcdCount      metric.Int64Counter
+	triggeredResources metric.Int64Counter
 )
 
 const (
 	failTag    = "failed"
 	successTag = "succeeded"
 )
+
+func init() {
+	var err error
+	elDuration, err = meter.Float64Histogram(
+		"http_duration_seconds",
+		metric.WithDescription("The eventlistener HTTP request duration"),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		log.Fatalf("failed to create elDuration histogram: %v", err)
+	}
+
+	eventRcdCount, err = meter.Int64Counter(
+		"event_received_count",
+		metric.WithDescription("number of events received by sink"),
+	)
+	if err != nil {
+		log.Fatalf("failed to create eventRcdCount counter: %v", err)
+	}
+
+	triggeredResources, err = meter.Int64Counter(
+		"triggered_resources",
+		metric.WithDescription("Count of the number of triggered eventlistener resources"),
+	)
+	if err != nil {
+		log.Fatalf("failed to create triggeredResources counter: %v", err)
+	}
+}
 
 // NewRecorder creates a new metrics recorder instance
 // to log the TaskRun related metrics
@@ -41,39 +64,6 @@ func NewRecorder() (*Recorder, error) {
 		ReportingPeriod: 30 * time.Second,
 	}
 
-	status, err := tag.NewKey("status")
-	if err != nil {
-		return nil, err
-	}
-	r.status = status
-	kind, err := tag.NewKey("kind")
-	if err != nil {
-		return nil, err
-	}
-	r.kind = kind
-
-	err = view.Register(
-		&view.View{
-			Description: elDuration.Description(),
-			Measure:     elDuration,
-			Aggregation: elDistribution,
-		},
-		&view.View{
-			Description: triggeredResources.Description(),
-			Measure:     triggeredResources,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.kind},
-		},
-		&view.View{
-			Description: eventRcdCount.Description(),
-			Measure:     eventRcdCount,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.status},
-		},
-	)
-	if err != nil {
-		log.Fatalf("unable to register eventlistener metrics: %s", err)
-	}
 	return r, nil
 }
 
@@ -97,31 +87,14 @@ func (s *Sink) NewMetricsRecorderInterceptor() MetricsInterceptor {
 func (s *Sink) recordDurationMetrics(w *StatusRecorder, elapsed time.Duration) {
 	duration := elapsed.Seconds()
 	s.Logger.Debugw("event listener request completed", "status", w.Status, "duration", duration)
-	ctx, err := tag.New(
-		context.Background(),
-	)
 
-	if err != nil {
-		s.Logger.Warnf("failed to create tag for http metric request: %w", err)
-		return
-	}
-
-	metrics.Record(ctx, elDuration.M(duration))
+	elDuration.Record(context.Background(), duration)
 }
 
 func (s *Sink) recordCountMetrics(status string) {
 	s.Logger.Debugw("event listener request", "status", status)
-	ctx, err := tag.New(
-		context.Background(),
-		tag.Insert(s.Recorder.status, status),
-	)
 
-	if err != nil {
-		s.Logger.Warnf("failed to create tag for metric event_received_count: %w", err)
-		return
-	}
-
-	metrics.Record(ctx, eventRcdCount.M(1))
+	eventRcdCount.Add(context.Background(), 1, metric.WithAttributes(attribute.String("status", status)))
 }
 
 func (s *Sink) recordResourceCreation(resources []json.RawMessage) {
@@ -132,21 +105,13 @@ func (s *Sink) recordResourceCreation(resources []json.RawMessage) {
 			s.Logger.Warnf("couldn't unmarshal json from the TriggerTemplate: %v", err)
 			continue
 		}
-		ctx, err := tag.New(context.Background(), tag.Insert(s.Recorder.kind, data.GetKind()))
-		if err != nil {
-			s.Logger.Warnf("failed to create tag for resource creation: %w", err)
-			continue
-		}
 
-		metrics.Record(ctx, triggeredResources.M(1))
+		triggeredResources.Add(context.Background(), 1, metric.WithAttributes(attribute.String("kind", data.GetKind())))
 	}
 }
 
 type Recorder struct {
 	initialized bool
-
-	status tag.Key
-	kind   tag.Key
 
 	ReportingPeriod time.Duration
 }
