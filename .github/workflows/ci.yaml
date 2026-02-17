@@ -1,0 +1,192 @@
+name: ci
+
+on: [pull_request] # yamllint disable-line rule:truthy
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  checks: write # Used to annotate code in the PR
+
+jobs:
+  changes:
+    name: categorize changes
+    runs-on: ubuntu-latest
+    outputs:
+      non-docs: ${{ steps.detect.outputs.non-docs }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+    - name: Get base depth
+      id: base-depth
+      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+    - name: detect
+      id: detect
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | tr ' ' '\n')
+
+        echo -e "Changed files:\n${CHANGED_FILES}"
+
+        if [[ -n "${CHANGED_FILES}" ]]; then
+          NON_DOCS='false'
+          YAML='false'
+
+          while read -r file; do
+            if [[ "$file" != *.md ]]; then
+              NON_DOCS='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
+          while read -r file; do
+            if [[ "$file" == *.yaml || "$file" == *.yml ]]; then
+              YAML='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
+          echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
+          echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+        fi
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: build
+      run: |
+        go build -v ./...
+  linting:
+    name: lint
+    runs-on: ubuntu-latest
+    needs: [changes]
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: gofmt
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      run: |
+        gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
+        if [[ -n "$gofmt_out" ]]; then
+            failed=1
+        fi
+        echo "$gofmt_out"
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      with:
+        version: v2.1.6
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
+    - name: yamllint
+      if: ${{ needs.changes.outputs.yaml == 'true' }}
+      run: |
+        sudo apt-get update && sudo apt-get install -y yamllint
+        make yamllint
+    - name: check-license
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      run: |
+        go install github.com/google/go-licenses@v1.0.0
+        go-licenses check ./...
+  tests:
+    needs: [build]
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: unit-test
+      run: |
+        make test-unit-verbose-and-race
+  generated:
+    needs: [build]
+    name: Check generated code
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: generated
+      run: |
+        ./hack/verify-codegen.sh
+  multi-arch-build:
+    needs: [build]
+    name: Multi-arch build
+    runs-on: ubuntu-latest
+    env:
+      KOCACHE: /tmp/ko-cache
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: Cache ko build cache
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
+      with:
+        path: /tmp/ko-cache
+        key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-ko-
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - name: ko-resolve
+      run: |
+          KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -R -f config 1>/dev/null
+          KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config/interceptors 1>/dev/null
+  e2e-tests:
+    needs: [build]
+    uses: ./.github/workflows/e2e-matrix.yml
+
+  ci-summary:
+    name: CI summary
+    needs: [build, linting, tests, generated, multi-arch-build, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Check CI results
+      run: |
+        results=(
+          "build=${{ needs.build.result }}"
+          "linting=${{ needs.linting.result }}"
+          "tests=${{ needs.tests.result }}"
+          "generated=${{ needs.generated.result }}"
+          "multi-arch-build=${{ needs.multi-arch-build.result }}"
+          "e2e-tests=${{ needs.e2e-tests.result }}"
+        )
+        failed=0
+        for r in "${results[@]}"; do
+          name="${r%%=*}"
+          result="${r#*=}"
+          echo "${name}: ${result}"
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            failed=1
+          fi
+        done
+        if [ "$failed" -eq 1 ]; then
+          echo ""
+          echo "Some CI jobs failed or were cancelled"
+          exit 1
+        fi
+        echo ""
+        echo "All CI checks passed"
