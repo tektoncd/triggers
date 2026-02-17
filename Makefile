@@ -81,9 +81,10 @@ vendor:
 	$Q ./hack/update-deps.sh
 
 ## Tests
-TEST_UNIT_TARGETS := test-unit-verbose test-unit-race
-test-unit-verbose: ARGS=-v
-test-unit-race:    ARGS=-race
+TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-verbose-and-race
+test-unit-verbose:          ARGS=-v
+test-unit-race:             ARGS=-race
+test-unit-verbose-and-race: ARGS=-v -race
 $(TEST_UNIT_TARGETS): test-unit
 .PHONY: $(TEST_UNIT_TARGETS) test-unit
 test-unit: ## Run unit tests
@@ -164,7 +165,7 @@ errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
 
 GOLANGCILINT = $(BIN)/golangci-lint
 $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-        cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
+	cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
@@ -176,6 +177,12 @@ $(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
 .PHONY: goimports
 goimports: | $(GOIMPORTS) ; $(info $(M) running goimports…) ## Run goimports
 	$Q $(GOIMPORTS) -l -e -w pkg cmd test
+
+YAMLLINT := $(shell find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print)
+
+.PHONY: yamllint
+yamllint: | $(BIN) ; $(info $(M) running yamllint…)
+	yamllint -c .yamllint $(YAMLLINT)
 
 .PHONY: fmt
 fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
