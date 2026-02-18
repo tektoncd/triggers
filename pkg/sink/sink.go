@@ -333,7 +333,13 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 		}
 	}
 
-	trItems, err := r.selectTriggers(g.TriggerSelector.NamespaceSelector, g.TriggerSelector.LabelSelector)
+	triggerSelector, err := template.ResolveTriggerSelector(&g.TriggerSelector, payload, header, extensions, template.NewTriggerContext(eventID))
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	trItems, err := r.selectTriggers(triggerSelector.NamespaceSelector, triggerSelector.LabelSelector)
 	if err != nil {
 		return
 	}
