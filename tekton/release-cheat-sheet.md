@@ -80,9 +80,9 @@ the triggers repo, a terminal window and a text editor.
    NAME                    VALUE
    commit-sha                 6ea31d92a97420d4b7af94745c45b02447ceaa19
    release-file               https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/release.yaml
-   release-file-no-tag        https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/release.notag.yaml
+   release-file-no-tag        https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/release.notags.yaml
    interceptors-file          https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/interceptors.yaml
-   interceptors-file-no-tag   https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/interceptors.notag.yaml
+   interceptors-file-no-tag   https://infra.tekton.dev/tekton-releases/triggers/previous/v0.13.0/interceptors.notags.yaml
 
    (...)
    ```
@@ -125,7 +125,7 @@ the triggers repo, a terminal window and a text editor.
     ```
     ```bash
     NOTE: `release-draft` pipeline is for GCS we need to replace this with the OCI pipeline once its present on the Oracle cluster
-    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note       
+    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note
     ```
 
     1. Watch logs of create-draft-release
@@ -135,7 +135,7 @@ the triggers repo, a terminal window and a text editor.
       1. Double-check that the list of commits here matches your expectations
          for the release. You might need to remove incorrect commits or copy/paste commits
          from the release branch. Refer to previous releases to confirm the expected format.
-      1. In the section **Installation one-liner**, add the install instruction for interceptors also. 
+      1. In the section **Installation one-liner**, add the install instruction for interceptors also.
          ```bash
             kubectl apply -f https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/interceptors.yaml
          ```
