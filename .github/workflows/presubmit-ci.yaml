@@ -192,3 +192,29 @@ jobs:
       - name: Run Build Tests
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/triggers
         run: ./test/presubmit-tests.sh --build-tests
+
+  ci-summary:
+    # This job serves as a single required check for branch protection rules.
+    # It fans in all CI jobs and reports an overall pass/fail status, treating
+    # both "success" and "skipped" as passing (e.g. when tests are skipped for
+    # non-members without /ok-to-test).
+    name: CI summary
+    if: always()
+    needs:
+      - prepare-pr-check
+      - unit-tests
+      - integration-tests
+      - build-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          results="${{ needs.prepare-pr-check.result }} ${{ needs.unit-tests.result }} ${{ needs.integration-tests.result }} ${{ needs.build-tests.result }}"
+          echo "Job results: $results"
+          for r in $results; do
+            if [[ "$r" != "success" && "$r" != "skipped" ]]; then
+              echo "One or more jobs failed or were cancelled."
+              exit 1
+            fi
+          done
+          echo "All jobs passed or were skipped."
