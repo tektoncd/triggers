@@ -27,11 +27,11 @@ require (
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.32.12
-	k8s.io/apiextensions-apiserver v0.32.12
-	k8s.io/apimachinery v0.33.8
-	k8s.io/client-go v0.32.12
-	k8s.io/code-generator v0.32.12
+	k8s.io/api v0.32.13
+	k8s.io/apiextensions-apiserver v0.32.13
+	k8s.io/apimachinery v0.33.9
+	k8s.io/client-go v0.32.13
+	k8s.io/code-generator v0.32.13
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
 	knative.dev/eventing v0.30.3
