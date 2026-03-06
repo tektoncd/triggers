@@ -1,9 +1,6 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- bobcatfish
-- dibyom
-- iancoffey
 - khrm
 - savitaashture
 
@@ -12,3 +9,5 @@ emeritus_approvers:
 - vtereso
 - ncskier
 - dlorenc
+- bobcatfish
+- iancoffey
