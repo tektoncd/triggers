@@ -50,6 +50,8 @@ jobs:
           echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
       - name: Run Integration tests
+        env:
+          GOTOOLCHAIN: auto
         run: |
           ./test/setup-kind.sh \
             --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
