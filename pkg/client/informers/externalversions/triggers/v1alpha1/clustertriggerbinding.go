@@ -56,20 +56,32 @@ func NewClusterTriggerBindingInformer(client versioned.Interface, resyncPeriod t
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredClusterTriggerBindingInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().ClusterTriggerBindings().List(context.TODO(), options)
+				return client.TriggersV1alpha1().ClusterTriggerBindings().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TriggersV1alpha1().ClusterTriggerBindings().Watch(context.TODO(), options)
+				return client.TriggersV1alpha1().ClusterTriggerBindings().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1alpha1().ClusterTriggerBindings().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TriggersV1alpha1().ClusterTriggerBindings().Watch(ctx, options)
+			},
+		}, client),
 		&apistriggersv1alpha1.ClusterTriggerBinding{},
 		resyncPeriod,
 		indexers,

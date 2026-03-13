@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package feature
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -34,15 +35,72 @@ const (
 	// Allowed neither explicitly disables or enables a behavior.
 	// eg. allow a client to control behavior with an annotation or allow a new value through validation.
 	Allowed Flag = "Allowed"
+	// Strict is only applicable to the TransportEncryption feature.
+	// The following applies:
+	// - Addressables must not accept events to non-HTTPS endpoints
+	// - Addressables must only advertise HTTPS endpoints
+	Strict Flag = "Strict"
+	// Permissive is only applicable to the TransportEncryption feature.
+	// The following applies:
+	// - Addressables should accept events at both HTTP and HTTPS endpoints
+	// - Addressables should advertise both HTTP and HTTPS endpoints
+	// - Producers should prefer to send events to HTTPS endpoints, if available
+	Permissive Flag = "Permissive"
+
+	// AuthorizationAllowAll is a value for AuthorizationDefaultMode that indicates to allow all
+	// OIDC subjects by default.
+	// This configuration is applied when there is no EventPolicy with a "to" referencing a given
+	// resource.
+	AuthorizationAllowAll Flag = "Allow-All"
+
+	// AuthorizationDenyAll is a value for AuthorizationDefaultMode that indicates to deny all
+	// OIDC subjects by default.
+	// This configuration is applied when there is no EventPolicy with a "to" referencing a given
+	// resource.
+	AuthorizationDenyAll Flag = "Deny-All"
+
+	// AuthorizationAllowSameNamespace is a value for AuthorizationDefaultMode that indicates to allow
+	// OIDC subjects with the same namespace as a given resource.
+	// This configuration is applied when there is no EventPolicy with a "to" referencing a given
+	// resource.
+	AuthorizationAllowSameNamespace Flag = "Allow-Same-Namespace"
+
+	// DefaultOIDCDiscoveryURL is the default OIDC Discovery URL used in most Kubernetes clusters.
+	DefaultOIDCDiscoveryBaseURL Flag = "https://kubernetes.default.svc"
+
+	// DefaultRequestReplyTimeout is a value for RequestReplyDefaultTimeout that indicates to timeout
+	// a RequestReply resource after 30 seconds by default.
+	DefaultRequestReplyTimeout Flag = "PT30S"
 )
 
 // Flags is a map containing all the enabled/disabled flags for the experimental features.
 // Missing entry in the map means feature is equal to feature not enabled.
 type Flags map[string]Flag
 
+func newDefaults() Flags {
+	return map[string]Flag{
+		KReferenceGroup:            Disabled,
+		DeliveryRetryAfter:         Disabled,
+		DeliveryTimeout:            Enabled,
+		KReferenceMapping:          Disabled,
+		TransportEncryption:        Disabled,
+		OIDCAuthentication:         Disabled,
+		EvenTypeAutoCreate:         Disabled,
+		NewAPIServerFilters:        Disabled,
+		AuthorizationDefaultMode:   AuthorizationAllowSameNamespace,
+		OIDCDiscoveryBaseURL:       DefaultOIDCDiscoveryBaseURL,
+		RequestReplyDefaultTimeout: DefaultRequestReplyTimeout,
+	}
+}
+
 // IsEnabled returns true if the feature is enabled
 func (e Flags) IsEnabled(featureName string) bool {
 	return e != nil && e[featureName] == Enabled
+}
+
+// IsDisabled returns true if the feature is disabled
+func (e Flags) IsDisabled(featureName string) bool {
+	return e != nil && e[featureName] == Disabled
 }
 
 // IsAllowed returns true if the feature is enabled or allowed
@@ -50,9 +108,94 @@ func (e Flags) IsAllowed(featureName string) bool {
 	return e.IsEnabled(featureName) || (e != nil && e[featureName] == Allowed)
 }
 
+// IsPermissiveTransportEncryption returns true if the TransportEncryption feature is in Permissive mode.
+func (e Flags) IsPermissiveTransportEncryption() bool {
+	return e != nil && e[TransportEncryption] == Permissive
+}
+
+// IsStrictTransportEncryption returns true if the TransportEncryption feature is in Strict mode.
+func (e Flags) IsStrictTransportEncryption() bool {
+	return e != nil && e[TransportEncryption] == Strict
+}
+
+// IsDisabledTransportEncryption returns true if the TransportEncryption feature is in Disabled mode.
+func (e Flags) IsDisabledTransportEncryption() bool {
+	return e != nil && e[TransportEncryption] == Disabled
+}
+
+func (e Flags) IsOIDCAuthentication() bool {
+	return e != nil && e[OIDCAuthentication] == Enabled
+}
+
+func (e Flags) IsCrossNamespaceEventLinks() bool {
+	return e != nil && e[CrossNamespaceEventLinks] == Enabled
+}
+
+func (e Flags) IsAuthorizationDefaultModeAllowAll() bool {
+	return e != nil && e[AuthorizationDefaultMode] == AuthorizationAllowAll
+}
+
+func (e Flags) IsAuthorizationDefaultModeDenyAll() bool {
+	return e != nil && e[AuthorizationDefaultMode] == AuthorizationDenyAll
+}
+
+func (e Flags) IsAuthorizationDefaultModeSameNamespace() bool {
+	return e != nil && e[AuthorizationDefaultMode] == AuthorizationAllowSameNamespace
+}
+
+func (e Flags) OIDCDiscoveryBaseURL() string {
+	if e == nil {
+		return string(DefaultOIDCDiscoveryBaseURL)
+	}
+
+	//nolint:staticcheck
+	discoveryUrl, ok := e[OIDCDiscoveryBaseURL]
+	if !ok {
+		return string(DefaultOIDCDiscoveryBaseURL)
+	}
+
+	return string(discoveryUrl)
+}
+
+func (e Flags) RequestReplyDefaultTimeout() string {
+	if e == nil {
+		return string(DefaultRequestReplyTimeout)
+	}
+
+	timeout, ok := e[RequestReplyDefaultTimeout]
+	if !ok {
+		return string(DefaultRequestReplyTimeout)
+	}
+
+	return string(timeout)
+}
+
+func (e Flags) String() string {
+	return fmt.Sprintf("%+v", map[string]Flag(e))
+}
+
+func (e Flags) NodeSelector() map[string]string {
+	// Check if NodeSelector is not nil
+	if e == nil {
+		return map[string]string{}
+	}
+
+	nodeSelectorMap := make(map[string]string)
+
+	for k, v := range e {
+		if strings.Contains(k, NodeSelectorLabel) {
+			key := strings.TrimPrefix(k, NodeSelectorLabel)
+			value := strings.TrimSpace(string(v))
+			nodeSelectorMap[key] = value
+		}
+	}
+
+	return nodeSelectorMap
+}
+
 // NewFlagsConfigFromMap creates a Flags from the supplied Map
 func NewFlagsConfigFromMap(data map[string]string) (Flags, error) {
-	flags := Flags{}
+	flags := newDefaults()
 
 	for k, v := range data {
 		if strings.HasPrefix(k, "_") {
@@ -66,8 +209,21 @@ func NewFlagsConfigFromMap(data map[string]string) (Flags, error) {
 			flags[sanitizedKey] = Disabled
 		} else if strings.EqualFold(v, string(Enabled)) {
 			flags[sanitizedKey] = Enabled
+		} else if sanitizedKey == TransportEncryption && strings.EqualFold(v, string(Permissive)) {
+			flags[sanitizedKey] = Permissive
+		} else if sanitizedKey == TransportEncryption && strings.EqualFold(v, string(Strict)) {
+			flags[sanitizedKey] = Strict
+		} else if sanitizedKey == AuthorizationDefaultMode && strings.EqualFold(v, string(AuthorizationAllowAll)) {
+			flags[sanitizedKey] = AuthorizationAllowAll
+		} else if sanitizedKey == AuthorizationDefaultMode && strings.EqualFold(v, string(AuthorizationDenyAll)) {
+			flags[sanitizedKey] = AuthorizationDenyAll
+		} else if sanitizedKey == AuthorizationDefaultMode && strings.EqualFold(v, string(AuthorizationAllowSameNamespace)) {
+			flags[sanitizedKey] = AuthorizationAllowSameNamespace
+		} else if strings.Contains(k, NodeSelectorLabel) || sanitizedKey == OIDCDiscoveryBaseURL {
+			flags[sanitizedKey] = Flag(v)
 		} else {
-			return Flags{}, fmt.Errorf("cannot parse the boolean flag '%s' = '%s'. Allowed values: [true, false]", k, v)
+			flags[k] = Flag(v)
+			log.Printf("Warning: unknown feature flag value %q=%q\n", k, v)
 		}
 	}
 

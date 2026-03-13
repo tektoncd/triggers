@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/protocol"
@@ -29,6 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/eventing/pkg/observability"
+	o11yconfigmap "knative.dev/eventing/pkg/observability/configmap"
 )
 
 type crStatusEvent struct {
@@ -40,26 +43,42 @@ type crStatusEvent struct {
 }
 type CRStatusEventClient struct {
 	isEnabledVar bool
+	m            sync.RWMutex
 }
 
 func GetDefaultClient() *CRStatusEventClient {
 	return &CRStatusEventClient{}
 }
 
-func NewCRStatusEventClient(metricMap map[string]string) *CRStatusEventClient {
-	if metricMap == nil {
-		return nil
-	}
-
+func NewCRStatusEventClient(cfg *observability.Config) *CRStatusEventClient {
 	ret := &CRStatusEventClient{}
-	if "true" == metricMap["sink-event-error-reporting.enable"] {
+	// default to returning a client, but with reporting disabled
+	if cfg != nil && cfg.EnableSinkEventErrorReporting {
 		ret.isEnabledVar = true
 	}
 	return ret
 
 }
 
-var contextkey struct{}
+// UpdateFromConfigMap returns an updater function to be used
+// with ConfigWatcher, that given an observability ConfigMap
+// updates the client's Event Recorder configuration.
+func UpdateFromConfigMap(client *CRStatusEventClient) func(configMap *corev1.ConfigMap) {
+	return func(cm *corev1.ConfigMap) {
+		cfg, err := o11yconfigmap.Parse(cm)
+		if err != nil {
+			return
+		}
+
+		client.m.Lock()
+		defer client.m.Unlock()
+		client.isEnabledVar = cfg.EnableSinkEventErrorReporting
+	}
+}
+
+type contextkeytype struct{}
+
+var contextkey contextkeytype
 
 func ContextWithCRStatus(ctx context.Context, kubeEventSink *record.EventSink, component string, source runtime.Object, logf func(format string, args ...interface{})) context.Context {
 
@@ -77,6 +96,9 @@ func fromContext(ctx context.Context) (*crStatusEvent, bool) {
 }
 
 func (c *CRStatusEventClient) ReportCRStatusEvent(ctx context.Context, result protocol.Result) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
 	if !c.isEnabledVar {
 		return
 	}
@@ -126,7 +148,7 @@ func (a *crStatusEvent) createEvent(ctx context.Context, result protocol.Result)
 		reason = strconv.Itoa(res.StatusCode)
 		if res.Format != "" && res.Format != "%w" { // returns '"%w" but this does not format
 			msg += " " + fmt.Sprintf(res.Format, res.Args...)
-		} else if res.Args != nil && len(res.Args) > 0 {
+		} else if len(res.Args) > 0 {
 			if m, ok := res.Args[0].(*protocol.Receipt); ok {
 				if m.Err != nil {
 					msg += " " + m.Err.Error() // add any error message if it's there.

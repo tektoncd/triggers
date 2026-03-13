@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -67,11 +67,9 @@ type ChannelableStatus struct {
 	// resolved delivery options.
 	// +optional
 	DeliveryStatus `json:",inline"`
-	// DeadLetterChannel is a KReference and is set by the channel when it supports native error handling via a channel
-	// Failed messages are delivered here.
-	// Deprecated in favor of DeliveryStatus, to be removed September 2022.
+	// AppliedEventPoliciesStatus contains the list of EventPolicies which apply to this Channel
 	// +optional
-	DeadLetterChannel *duckv1.KReference `json:"deadLetterChannel,omitempty"`
+	AppliedEventPoliciesStatus `json:",inline"`
 }
 
 var (
@@ -140,7 +138,7 @@ func (c *Channelable) Populate() {
 }
 
 // GetFullType implements duck.Implementable
-func (s *Channelable) GetFullType() duck.Populatable {
+func (c *Channelable) GetFullType() duck.Populatable {
 	return &Channelable{}
 }
 
