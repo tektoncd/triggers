@@ -208,7 +208,7 @@ version:
 
 .PHONY: deploy_tekton
 deploy_tekton: clean_tekton | ; $(info $(M) deploying tekton on local cluster …) @ ## Deploying tekton on local clustert
-	-kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+	-kubectl apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
 	-ko apply -f config;
 	-ko apply -f config/interceptors;
 

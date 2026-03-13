@@ -85,7 +85,7 @@ jobs:
 
           export KUBECONFIG=$HOME/.kube/config
 
-          curl https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml | yq 'del(.spec.template.spec.containers[]?.securityContext.runAsUser, .spec.template.spec.containers[]?.securityContext.runAsGroup)' > release
+          curl https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml | yq 'del(.spec.template.spec.containers[]?.securityContext.runAsUser, .spec.template.spec.containers[]?.securityContext.runAsGroup)' > release
           export RELEASE_YAML=$(realpath release)
 
           ${{ github.workspace }}/src/github.com/tektoncd/triggers/test/gh-e2e-tests.sh
