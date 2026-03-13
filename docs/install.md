@@ -28,27 +28,27 @@ This document shows you how to install and set up Tekton Triggers.
 
         ```bash
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/latest/release.yaml
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/latest/interceptors.yaml
         ```
 
     -   **Nightly release**
 
         ```bash
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases-nightly/triggers/latest/release.yaml
+        https://infra.tekton.dev/tekton-releases-nightly/triggers/latest/release.yaml
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases-nightly/triggers/latest/interceptors.yaml
+        https://infra.tekton.dev/tekton-releases-nightly/triggers/latest/interceptors.yaml
         ```
 
     -   **Specific Release**
 
         ```bash
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/previous/VERSION_NUMBER/release.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/previous/VERSION_NUMBER/release.yaml
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/previous/VERSION_NUMBER/interceptors.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/previous/VERSION_NUMBER/interceptors.yaml
         ```
 
         Replace `VERSION_NUMBER` with the numbered version you want to install.
@@ -61,9 +61,9 @@ This document shows you how to install and set up Tekton Triggers.
 
         ```bash
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/latest/release.notags.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/latest/release.notags.yaml
         kubectl apply --filename \
-        https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.notags.yaml
+        https://infra.tekton.dev/tekton-releases/triggers/latest/interceptors.notags.yaml
         ```
 
 1.  To monitor the installation, run:
