@@ -214,8 +214,8 @@ func (i *Installer) isPipelinesInstalled(ctx context.Context) bool {
 }
 
 func (i *Installer) downloadAndApplyTriggers(ctx context.Context) error {
-	triggersURL := "https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml"
-	interceptorsURL := "https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml"
+	triggersURL := "https://infra.tekton.dev/tekton-releases/triggers/latest/release.yaml"
+	interceptorsURL := "https://infra.tekton.dev/tekton-releases/triggers/latest/interceptors.yaml"
 
 	if err := i.downloadAndApplyManifest(ctx, triggersURL); err != nil {
 		return fmt.Errorf("failed to apply triggers manifest: %w", err)
@@ -229,7 +229,7 @@ func (i *Installer) downloadAndApplyTriggers(ctx context.Context) error {
 }
 
 func (i *Installer) downloadAndApplyPipelines(ctx context.Context) error {
-	pipelinesURL := "https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml"
+	pipelinesURL := "https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml"
 
 	if err := i.downloadAndApplyManifest(ctx, pipelinesURL); err != nil {
 		return fmt.Errorf("failed to apply pipelines manifest: %w", err)
