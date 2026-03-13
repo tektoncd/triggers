@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck"
+
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 // +genduck
@@ -33,6 +35,9 @@ var _ duck.Implementable = (*Subscribable)(nil)
 //
 // At least one of SubscriberURI and ReplyURI must be present
 type SubscriberSpec struct {
+	// Name is used to identify the original subscription object.
+	// +optional
+	Name *string `json:"name,omitempty"`
 	// UID is used to understand the origin of the subscriber.
 	// +optional
 	UID types.UID `json:"uid,omitempty"`
@@ -42,13 +47,32 @@ type SubscriberSpec struct {
 	// SubscriberURI is the endpoint for the subscriber
 	// +optional
 	SubscriberURI *apis.URL `json:"subscriberUri,omitempty"`
+	// SubscriberCACerts is the Certification Authority (CA) certificates in PEM
+	// format according to https://www.rfc-editor.org/rfc/rfc7468 for the
+	// subscriberUri
+	// +optional
+	SubscriberCACerts *string `json:"subscriberCACerts,omitempty"`
+	// SubscriberAudience is the OIDC audience for the subscriberUri.
+	// +optional
+	SubscriberAudience *string `json:"subscriberAudience,omitempty"`
 	// ReplyURI is the endpoint for the reply
 	// +optional
 	ReplyURI *apis.URL `json:"replyUri,omitempty"`
+	// ReplyCACerts is the Certification Authority (CA) certificates in PEM
+	// format according to https://www.rfc-editor.org/rfc/rfc7468 for the
+	// replyUri.
+	// +optional
+	ReplyCACerts *string `json:"replyCACerts,omitempty"`
+	// ReplyAudience is the OIDC audience for the replyUri.
+	// +optional
+	ReplyAudience *string `json:"replyAudience,omitempty"`
 	// +optional
 	// DeliverySpec contains options controlling the event delivery
 	// +optional
 	Delivery *DeliverySpec `json:"delivery,omitempty"`
+	// Auth contains the service account name for the subscription
+	// +optional
+	Auth *duckv1.AuthStatus `json:"auth,omitempty"`
 }
 
 // SubscriberStatus defines the status of a single subscriber to a Channel.
@@ -64,6 +88,9 @@ type SubscriberStatus struct {
 	// A human readable message indicating details of Ready status.
 	// +optional
 	Message string `json:"message,omitempty"`
+	// Auth provides the relevant information for OIDC authentication.
+	// +optional
+	Auth *duckv1.AuthStatus `json:"auth,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

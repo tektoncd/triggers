@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package adapter
 
 import (
 	"context"
+
+	"knative.dev/pkg/configmap"
 )
 
 type haEnabledKey struct{}
@@ -62,4 +64,74 @@ func ControllerFromContext(ctx context.Context) ControllerConstructor {
 		return nil
 	}
 	return value.(ControllerConstructor)
+}
+
+type namespaceKey struct{}
+
+// WithNamespace defines the working namespace for the adapter.
+func WithNamespace(ctx context.Context, namespace string) context.Context {
+	return context.WithValue(ctx, namespaceKey{}, namespace)
+}
+
+// NamespaceFromContext gets the working namespace from the context
+func NamespaceFromContext(ctx context.Context) string {
+	value := ctx.Value(namespaceKey{})
+	if value == nil {
+		return ""
+	}
+	return value.(string)
+}
+
+type withConfigWatcherKey struct{}
+
+// WithConfigWatcher adds a ConfigMap Watcher informer to the context.
+func WithConfigWatcher(ctx context.Context, cmw configmap.Watcher) context.Context {
+	return context.WithValue(ctx, withConfigWatcherKey{}, cmw)
+}
+
+// ConfigWatcherFromContext retrieves a ConfigMap Watcher from the context.
+func ConfigWatcherFromContext(ctx context.Context) configmap.Watcher {
+	if v := ctx.Value(withConfigWatcherKey{}); v != nil {
+		return v.(configmap.Watcher)
+	}
+	return nil
+}
+
+type withConfigWatcherEnabledKey struct{}
+
+// WithConfigWatcherEnabled flags the ConfigMapWatcher to be configured.
+func WithConfigWatcherEnabled(ctx context.Context) context.Context {
+	return context.WithValue(ctx, withConfigWatcherEnabledKey{}, struct{}{})
+}
+
+// IsConfigWatcherEnabled indicates whether the ConfigMapWatcher is required or not.
+func IsConfigWatcherEnabled(ctx context.Context) bool {
+	return ctx.Value(withConfigWatcherEnabledKey{}) != nil
+}
+
+type withConfiguratorOptions struct{}
+
+// WithConfiguratorOptions sets custom options on the adapter configurator.
+func WithConfiguratorOptions(ctx context.Context, opts []ConfiguratorOption) context.Context {
+	return context.WithValue(ctx, withConfiguratorOptions{}, opts)
+}
+
+// ConfiguratorOptionsFromContext retrieves adapter configurator options.
+func ConfiguratorOptionsFromContext(ctx context.Context) []ConfiguratorOption {
+	value := ctx.Value(withConfiguratorOptions{})
+	if value == nil {
+		return nil
+	}
+	return value.([]ConfiguratorOption)
+}
+
+type healthProbesDisabledKey struct{}
+
+// WithHealthProbesDisabled signals to MainWithContext that it should disable default probes (readiness and liveness).
+func WithHealthProbesDisabled(ctx context.Context) context.Context {
+	return context.WithValue(ctx, healthProbesDisabledKey{}, struct{}{})
+}
+
+func HealthProbesDisabled(ctx context.Context) bool {
+	return ctx.Value(healthProbesDisabledKey{}) != nil
 }
