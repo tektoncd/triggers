@@ -80,5 +80,9 @@ func main() {
 		CEClient:        ceClient,
 	}
 
+	// The event-listener sink runs its own HTTP server on port 8080, so
+	// disable the adapter framework's built-in health probe server which
+	// would otherwise conflict on the same port.
+	ctx = evadapter.WithHealthProbesDisabled(ctx)
 	evadapter.MainWithContext(ctx, EventListenerLogKey, adapter.NewEnvConfig, adapter.New(sinkArgs, sinkClients, recorder))
 }
