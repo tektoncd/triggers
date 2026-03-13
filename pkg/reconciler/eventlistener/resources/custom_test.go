@@ -36,7 +36,6 @@ func TestCustomObject(t *testing.T) {
 
 	config := *MakeConfig()
 	metadata := map[string]interface{}{
-		"creationTimestamp": nil,
 		"labels": map[string]interface{}{
 			"app.kubernetes.io/managed-by": "EventListener",
 			"app.kubernetes.io/part-of":    "Triggers",
@@ -77,10 +76,7 @@ func TestCustomObject(t *testing.T) {
 			"name": "K_LOGGING_CONFIG",
 		},
 		map[string]interface{}{
-			"name": "K_METRICS_CONFIG",
-		},
-		map[string]interface{}{
-			"name": "K_TRACING_CONFIG",
+			"name": "K_OBSERVABILITY_CONFIG",
 		},
 		map[string]interface{}{
 			"name":  "NAMESPACE",
@@ -140,9 +136,7 @@ func TestCustomObject(t *testing.T) {
 				"metadata":   metadata,
 				"spec": map[string]interface{}{
 					"template": map[string]interface{}{
-						"metadata": map[string]interface{}{
-							"creationTimestamp": nil,
-						},
+						"metadata": map[string]interface{}{},
 						"spec": map[string]interface{}{
 							"containers": []interface{}{
 								map[string]interface{}{
@@ -213,9 +207,7 @@ func TestCustomObject(t *testing.T) {
 				"metadata":   metadata,
 				"spec": map[string]interface{}{
 					"template": map[string]interface{}{
-						"metadata": map[string]interface{}{
-							"creationTimestamp": nil,
-						},
+						"metadata": map[string]interface{}{},
 						"spec": map[string]interface{}{
 							"containers": []interface{}{
 								map[string]interface{}{
@@ -290,9 +282,7 @@ func TestCustomObject(t *testing.T) {
 				"metadata":   metadata,
 				"spec": map[string]interface{}{
 					"template": map[string]interface{}{
-						"metadata": map[string]interface{}{
-							"creationTimestamp": nil,
-						},
+						"metadata": map[string]interface{}{},
 						"spec": map[string]interface{}{
 							"containers": []interface{}{
 								map[string]interface{}{
@@ -384,9 +374,7 @@ func TestCustomObject(t *testing.T) {
 				"metadata":   metadata,
 				"spec": map[string]interface{}{
 					"template": map[string]interface{}{
-						"metadata": map[string]interface{}{
-							"creationTimestamp": nil,
-						},
+						"metadata": map[string]interface{}{},
 						"spec": map[string]interface{}{
 							"affinity": map[string]interface{}{
 								"nodeAffinity": map[string]interface{}{
@@ -692,7 +680,7 @@ func TestUpdateCustomObject(t *testing.T) {
 									},
 									"env": []interface{}{
 										map[string]interface{}{
-											"name": "K_METRICS_CONFIG",
+											"name": "K_OBSERVABILITY_CONFIG",
 										},
 									},
 									"ports": []interface{}{
