@@ -18,50 +18,82 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
 	"github.com/tektoncd/triggers/pkg/client/listers/triggers/v1beta1"
 
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/metrics"
 )
 
 var (
-	elMetricsName = "eventlistener_count"
-	elCount       = stats.Float64(elMetricsName,
-		"number of eventlistener",
-		stats.UnitDimensionless)
-	elCountView *view.View
+	elMetricsName = "controller_eventlistener_count"
+	elCount       metric.Float64Gauge
 
-	tbMetricsName = "triggerbinding_count"
-	tbCount       = stats.Float64(tbMetricsName,
-		"number of triggerbinding",
-		stats.UnitDimensionless)
-	tbCountView *view.View
+	tbMetricsName = "controller_triggerbinding_count"
+	tbCount       metric.Float64Gauge
 
-	ctbMetricsName = "clustertriggerbinding_count"
-	ctbCount       = stats.Float64(ctbMetricsName,
-		"number of clustertriggerbinding",
-		stats.UnitDimensionless)
-	ctbCountView *view.View
+	ctbMetricsName = "controller_clustertriggerbinding_count"
+	ctbCount       metric.Float64Gauge
 
-	ttMetricsName = "triggertemplate_count"
-	ttCount       = stats.Float64(ttMetricsName,
-		"number of triggertemplate",
-		stats.UnitDimensionless)
-	ttCountView *view.View
+	ttMetricsName = "controller_triggertemplate_count"
+	ttCount       metric.Float64Gauge
 
-	ciMetricsName = "clusterinterceptor_count"
-	ciCount       = stats.Float64(ciMetricsName,
-		"number of clusterinterceptor",
-		stats.UnitDimensionless)
-	ciCountView *view.View
+	ciMetricsName = "controller_clusterinterceptor_count"
+	ciCount       metric.Float64Gauge
 )
+
+func initMetrics() error {
+	meter := otel.Meter("github.com/tektoncd/triggers/pkg/reconciler/metrics")
+
+	var err error
+	elCount, err = meter.Float64Gauge(
+		elMetricsName,
+		metric.WithDescription("number of eventlistener"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create elCount gauge: %w", err)
+	}
+
+	tbCount, err = meter.Float64Gauge(
+		tbMetricsName,
+		metric.WithDescription("number of triggerbinding"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create tbCount gauge: %w", err)
+	}
+
+	ctbCount, err = meter.Float64Gauge(
+		ctbMetricsName,
+		metric.WithDescription("number of clustertriggerbinding"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ctbCount gauge: %w", err)
+	}
+
+	ttCount, err = meter.Float64Gauge(
+		ttMetricsName,
+		metric.WithDescription("number of triggertemplate"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ttCount gauge: %w", err)
+	}
+
+	ciCount, err = meter.Float64Gauge(
+		ciMetricsName,
+		metric.WithDescription("number of clusterinterceptor"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ciCount gauge: %w", err)
+	}
+
+	return nil
+}
 
 type listers struct {
 	el  v1beta1.EventListenerLister
@@ -81,71 +113,27 @@ type Recorder struct {
 // initializes this singleton and returns the same recorder across any
 // subsequent invocations.
 var (
-	once        sync.Once
-	r           *Recorder
-	recorderErr error //nolint:errname
+	once           sync.Once
+	r              *Recorder
+	errInitMetrics error
 )
 
 // revive:disable:unused-parameter
 
 // NewRecorder creates a new metrics recorder instance
-// to log the PipelineRun related metrics
 func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
-		r = &Recorder{
-			initialized: true,
-			// Default to reporting metrics every 60s.
-			ReportingPeriod: 60 * time.Second,
-		}
-
-		recorderErr = viewRegister()
-		if recorderErr != nil {
-			r.initialized = false
+		errInitMetrics = initMetrics()
+		if errInitMetrics != nil {
 			return
+		}
+		r = &Recorder{
+			initialized:     true,
+			ReportingPeriod: 60 * time.Second,
 		}
 	})
 
-	return r, recorderErr
-}
-
-func viewRegister() error {
-	elCountView = &view.View{
-		Description: elCount.Description(),
-		Measure:     elCount,
-		Aggregation: view.LastValue(),
-	}
-
-	tbCountView = &view.View{
-		Description: tbCount.Description(),
-		Measure:     tbCount,
-		Aggregation: view.LastValue(),
-	}
-
-	ctbCountView = &view.View{
-		Description: ctbCount.Description(),
-		Measure:     ctbCount,
-		Aggregation: view.LastValue(),
-	}
-
-	ttCountView = &view.View{
-		Description: ttCount.Description(),
-		Measure:     ttCount,
-		Aggregation: view.LastValue(),
-	}
-
-	ciCountView = &view.View{
-		Description: ciCount.Description(),
-		Measure:     ciCount,
-		Aggregation: view.LastValue(),
-	}
-
-	return view.Register(
-		elCountView,
-		tbCountView,
-		ctbCountView,
-		ttCountView,
-		ciCountView,
-	)
+	return r, errInitMetrics
 }
 
 func (r *Recorder) ReportCountMetrics(ctx context.Context, li listers) {
@@ -169,44 +157,45 @@ func (r *Recorder) CountMetrics(ctx context.Context, li listers) {
 		logger.Errorf("error reporting trigger metrics for eventlisteners: %v", err)
 	} else {
 		count := len(el)
-		r.countMetrics(ctx, float64(count), elCount)
+		r.recordGaugeMetrics(ctx, float64(count), elCount)
 	}
 	ci, err := li.ci.List(labels.Everything())
 	if err != nil {
 		logger.Errorf("error reporting trigger metrics for clusterinterceptor: %v", err)
 	} else {
 		count := len(ci)
-		r.countMetrics(ctx, float64(count), ciCount)
+		r.recordGaugeMetrics(ctx, float64(count), ciCount)
 	}
 	tb, err := li.tb.List(labels.Everything())
 	if err != nil {
 		logger.Errorf("error reporting trigger metrics for triggerbindings : %v", err)
 	} else {
 		count := len(tb)
-		r.countMetrics(ctx, float64(count), tbCount)
+		r.recordGaugeMetrics(ctx, float64(count), tbCount)
 	}
 	ctb, err := li.ctb.List(labels.Everything())
 	if err != nil {
 		logger.Errorf("error reporting trigger metrics for clustertriggerbindings: %v", err)
 	} else {
 		count := len(ctb)
-		r.countMetrics(ctx, float64(count), ctbCount)
+		r.recordGaugeMetrics(ctx, float64(count), ctbCount)
 	}
 	tt, err := li.tt.List(labels.Everything())
 	if err != nil {
 		logger.Errorf("error reporting trigger metrics for triggertemplates: %v", err)
 	} else {
 		count := len(tt)
-		r.countMetrics(ctx, float64(count), ttCount)
+		r.recordGaugeMetrics(ctx, float64(count), ttCount)
 	}
 }
 
-func (r *Recorder) countMetrics(ctx context.Context, count float64, measure *stats.Float64Measure) {
+func (r *Recorder) recordGaugeMetrics(ctx context.Context, count float64, gauge metric.Float64Gauge) {
 	logger := logging.FromContext(ctx)
 
 	if !r.initialized {
-		logger.Errorf("ignoring the metrics recording for %s, failed to initialize the metrics recorder", measure.Description())
+		logger.Errorf("ignoring the metrics recording, failed to initialize the metrics recorder")
+		return
 	}
 
-	metrics.Record(ctx, measure.M(count))
+	gauge.Record(ctx, count)
 }
