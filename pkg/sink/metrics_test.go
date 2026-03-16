@@ -7,13 +7,54 @@ import (
 	"testing"
 	"time"
 
-	"go.opencensus.io/stats/view"
+	"github.com/google/go-cmp/cmp"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.uber.org/zap/zaptest"
-	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/metrics/metricstest"
 )
 
+func resetSinkMetrics() {
+	once = sync.Once{}
+	errInitMetrics = nil
+	elDuration = nil
+	eventRcdCount = nil
+	triggeredResources = nil
+}
+
+func setupTestProvider(t *testing.T) *sdkmetric.ManualReader {
+	t.Helper()
+	resetSinkMetrics()
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+	t.Cleanup(func() { provider.Shutdown(context.Background()) })
+	return reader
+}
+
+func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) metricdata.ResourceMetrics {
+	t.Helper()
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+	return rm
+}
+
+func findMetric(rm metricdata.ResourceMetrics, name string) (metricdata.Metrics, bool) {
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == name {
+				return m, true
+			}
+		}
+	}
+	return metricdata.Metrics{}, false
+}
+
 func TestRecorderMetricsRegistered(t *testing.T) {
+	reader := setupTestProvider(t)
+
 	r, err := NewRecorder()
 	if err != nil {
 		t.Fatal(err)
@@ -21,151 +62,173 @@ func TestRecorderMetricsRegistered(t *testing.T) {
 	if !r.initialized {
 		t.Fatal("Failed to initialize recorder")
 	}
-	v := view.Find("http_duration_seconds")
-	if v == nil {
-		t.Fatal("Unable to find http_duration_seconds metric")
+	if elDuration == nil {
+		t.Fatal("elDuration metric not initialized")
 	}
-	v = view.Find("triggered_resources")
-	if v == nil {
-		t.Fatal("Unable to find triggered_resources metric")
+	if triggeredResources == nil {
+		t.Fatal("triggeredResources metric not initialized")
+	}
+	if eventRcdCount == nil {
+		t.Fatal("eventRcdCount metric not initialized")
+	}
+
+	_ = reader
+}
+
+func TestRecordCountMetrics(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		status         string
+		expectedStatus string
+		expectedValue  int64
+	}{{
+		name:           "succeeded event",
+		status:         successTag,
+		expectedStatus: "succeeded",
+		expectedValue:  1,
+	}, {
+		name:           "failed event",
+		status:         failTag,
+		expectedStatus: "failed",
+		expectedValue:  1,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := setupTestProvider(t)
+
+			_, err := NewRecorder()
+			if err != nil {
+				t.Fatal(err)
+			}
+			logger := zaptest.NewLogger(t).Sugar()
+			s := &Sink{
+				Recorder: &Recorder{initialized: true},
+				Logger:   logger,
+			}
+
+			s.recordCountMetrics(tc.status)
+
+			rm := collectMetrics(t, reader)
+			m, found := findMetric(rm, "eventlistener_event_received_total")
+			if !found {
+				t.Fatal("eventlistener_event_received_total metric not found")
+			}
+			sum, ok := m.Data.(metricdata.Sum[int64])
+			if !ok {
+				t.Fatalf("expected Sum[int64], got %T", m.Data)
+			}
+			if len(sum.DataPoints) != 1 {
+				t.Fatalf("expected 1 data point, got %d", len(sum.DataPoints))
+			}
+			dp := sum.DataPoints[0]
+			if dp.Value != tc.expectedValue {
+				t.Errorf("expected count %d, got %d", tc.expectedValue, dp.Value)
+			}
+
+			gotAttrs := make(map[string]string)
+			for _, kv := range dp.Attributes.ToSlice() {
+				gotAttrs[string(kv.Key)] = kv.Value.AsString()
+			}
+			wantAttrs := map[string]string{"status": tc.expectedStatus}
+			if d := cmp.Diff(wantAttrs, gotAttrs); d != "" {
+				t.Errorf("attributes diff (-want, +got): %s", d)
+			}
+		})
+	}
+}
+
+func TestRecordDurationMetrics(t *testing.T) {
+	reader := setupTestProvider(t)
+
+	_, err := NewRecorder()
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger := zaptest.NewLogger(t).Sugar()
+	s := &Sink{
+		Recorder: &Recorder{initialized: true},
+		Logger:   logger,
+	}
+
+	s.recordDurationMetrics(&StatusRecorder{Status: 200}, 7*time.Second)
+
+	rm := collectMetrics(t, reader)
+	m, found := findMetric(rm, "eventlistener_http_duration_seconds")
+	if !found {
+		t.Fatal("eventlistener_http_duration_seconds metric not found")
+	}
+	hist, ok := m.Data.(metricdata.Histogram[float64])
+	if !ok {
+		t.Fatalf("expected Histogram[float64], got %T", m.Data)
+	}
+	if len(hist.DataPoints) != 1 {
+		t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+	}
+	dp := hist.DataPoints[0]
+	if dp.Sum != 7.0 {
+		t.Errorf("expected duration sum 7.0, got %v", dp.Sum)
+	}
+	if dp.Count != 1 {
+		t.Errorf("expected count 1, got %d", dp.Count)
 	}
 }
 
 func TestRecordResourceCreation(t *testing.T) {
-	tests := []struct {
-		name           string
-		resources      []json.RawMessage
-		resourceCounts map[string]int64
+	for _, tc := range []struct {
+		name          string
+		resources     []json.RawMessage
+		expectedKinds map[string]int64
 	}{{
 		name: "single pipelinerun",
 		resources: []json.RawMessage{
-			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "pr-1"}}`),
 		},
-		resourceCounts: map[string]int64{
-			"PipelineRun": 1,
-		},
+		expectedKinds: map[string]int64{"PipelineRun": 1},
 	}, {
-		name: "pipelinerun and taskrun",
+		name: "mixed resources",
 		resources: []json.RawMessage{
-			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-lddt9"}}`),
-			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "simple-pipeline-run-asdf1"}}`),
-			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "TaskRun","metadata": {"name": "simple-pipeline-run-lkjs9"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "pr-1"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "PipelineRun","metadata": {"name": "pr-2"}}`),
+			[]byte(`{"apiVersion": "tekton.dev/v1","kind": "TaskRun","metadata": {"name": "tr-1"}}`),
 		},
-		resourceCounts: map[string]int64{
-			"PipelineRun": 2,
-			"TaskRun":     1,
-		},
-	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			logger := zaptest.NewLogger(t).Sugar()
-			metrics.FlushExporter()
-			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
-				Domain:    "tekton.dev/triggers",
-				Component: "triggers",
-				ConfigMap: map[string]string{},
-			}, logger)
+		expectedKinds: map[string]int64{"PipelineRun": 2, "TaskRun": 1},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := setupTestProvider(t)
+
+			_, err := NewRecorder()
 			if err != nil {
 				t.Fatal(err)
 			}
-			r, _ := NewRecorder()
+			logger := zaptest.NewLogger(t).Sugar()
 			s := &Sink{
-				Recorder:          r,
+				Recorder:          &Recorder{initialized: true},
+				Logger:            logger,
 				WGProcessTriggers: &sync.WaitGroup{},
 			}
-			s.recordResourceCreation(test.resources)
-			rows, err := view.RetrieveData("triggered_resources")
-			if err != nil {
-				t.Fatal(err)
+
+			s.recordResourceCreation(tc.resources)
+
+			rm := collectMetrics(t, reader)
+			m, found := findMetric(rm, "eventlistener_triggered_resources_total")
+			if !found {
+				t.Fatal("eventlistener_triggered_resources_total metric not found")
 			}
-			for k, v := range test.resourceCounts {
-				found := false
-				for _, row := range rows {
-					if row.Tags[0].Value == k {
-						found = true
-						if row.Data.(*view.CountData).Value != v {
-							t.Fatalf("Expected %d resources of kind %s, found %d", v, k, row.Data.(*view.CountData).Value)
-						}
-						break
+			sum, ok := m.Data.(metricdata.Sum[int64])
+			if !ok {
+				t.Fatalf("expected Sum[int64], got %T", m.Data)
+			}
+
+			gotKinds := make(map[string]int64)
+			for _, dp := range sum.DataPoints {
+				for _, kv := range dp.Attributes.ToSlice() {
+					if string(kv.Key) == "kind" {
+						gotKinds[kv.Value.AsString()] = dp.Value
 					}
 				}
-				if !found {
-					t.Fatalf("Expected resources recorded of kind %s, received none", k)
-				}
 			}
-			v := view.Find("triggered_resources")
-			// need to unregister the view so the counts reset
-			view.Unregister(v)
-		})
-	}
-}
-
-func TestRecordRecordDurationMetrics(t *testing.T) {
-	tests := []struct {
-		name             string
-		duration         time.Duration
-		expectedDuration float64
-	}{{
-		name:             "Record Metrics",
-		duration:         7,
-		expectedDuration: 7e-09,
-	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			defer metricstest.Unregister("event_received_count", "http_duration_seconds")
-			logger := zaptest.NewLogger(t).Sugar()
-			metrics.FlushExporter()
-			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
-				Domain:    "tekton.dev/triggers",
-				Component: "triggers",
-				ConfigMap: map[string]string{},
-			}, logger)
-			if err != nil {
-				t.Fatal(err)
+			if d := cmp.Diff(tc.expectedKinds, gotKinds); d != "" {
+				t.Errorf("eventlistener_triggered_resources_total diff (-want, +got): %s", d)
 			}
-			r, _ := NewRecorder()
-			s := &Sink{
-				Recorder: r,
-				Logger:   logger,
-			}
-			s.recordDurationMetrics(&StatusRecorder{Status: 200}, test.duration)
-			metricstest.CheckDistributionData(t, "http_duration_seconds", nil, 1, test.expectedDuration, test.expectedDuration)
-		})
-	}
-}
-
-func TestRecordRecordCountMetrics(t *testing.T) {
-	tests := []struct {
-		name          string
-		expectedTags  map[string]string
-		expectedCount int64
-	}{{
-		name: "Record Metrics",
-		expectedTags: map[string]string{
-			"status": failTag,
-		},
-		expectedCount: 1,
-	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			defer metricstest.Unregister("event_received_count", "http_duration_seconds")
-			logger := zaptest.NewLogger(t).Sugar()
-			metrics.FlushExporter()
-			err := metrics.UpdateExporter(context.TODO(), metrics.ExporterOptions{
-				Domain:    "tekton.dev/triggers",
-				Component: "triggers",
-				ConfigMap: map[string]string{},
-			}, logger)
-			if err != nil {
-				t.Fatal(err)
-			}
-			r, _ := NewRecorder()
-			s := &Sink{
-				Recorder: r,
-				Logger:   logger,
-			}
-			s.recordCountMetrics(failTag)
-			metricstest.CheckCountData(t, "event_received_count", test.expectedTags, test.expectedCount)
 		})
 	}
 }

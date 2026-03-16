@@ -246,11 +246,8 @@ func makeDeployment(ops ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
 						}, {
-							Name:  "K_METRICS_CONFIG",
-							Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
-						}, {
-							Name:  "K_TRACING_CONFIG",
-							Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+							Name:  "K_OBSERVABILITY_CONFIG",
+							Value: `{"tracing":{},"metrics":{},"runtime":{},"enableSinkEventErrorReporting":false}`,
 						}, {
 							Name:  "NAMESPACE",
 							Value: namespace,
@@ -422,11 +419,8 @@ func makeWithPod(ops ...func(d *duckv1.WithPod)) *duckv1.WithPod {
 						Env: []corev1.EnvVar{{
 							Name: "K_LOGGING_CONFIG",
 						}, {
-							Name:  "K_METRICS_CONFIG",
-							Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
-						}, {
-							Name:  "K_TRACING_CONFIG",
-							Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+							Name:  "K_OBSERVABILITY_CONFIG",
+							Value: `{"tracing":{},"metrics":{},"runtime":{},"enableSinkEventErrorReporting":false}`,
 						}, {
 							Name:  "NAMESPACE",
 							Value: namespace,
@@ -968,11 +962,8 @@ func TestReconcile(t *testing.T) {
 		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
 			Name: "K_LOGGING_CONFIG",
 		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
-		}, {
-			Name:  "K_TRACING_CONFIG",
-			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+			Name:  "K_OBSERVABILITY_CONFIG",
+			Value: `{"tracing":{},"metrics":{},"runtime":{},"enableSinkEventErrorReporting":false}`,
 		}, {
 			Name:  "NAMESPACE",
 			Value: namespace,
@@ -1046,11 +1037,8 @@ func TestReconcile(t *testing.T) {
 		data.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{{
 			Name: "K_LOGGING_CONFIG",
 		}, {
-			Name:  "K_METRICS_CONFIG",
-			Value: `{"Domain":"","Component":"","PrometheusPort":0,"PrometheusHost":"","ConfigMap":null}`,
-		}, {
-			Name:  "K_TRACING_CONFIG",
-			Value: `{"backend":"","debug":"false","sample-rate":"0"}`,
+			Name:  "K_OBSERVABILITY_CONFIG",
+			Value: `{"tracing":{},"metrics":{},"runtime":{},"enableSinkEventErrorReporting":false}`,
 		}, {
 			Name:  "NAMESPACE",
 			Value: namespace,

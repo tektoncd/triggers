@@ -38,6 +38,11 @@ func ToUnstructured(t *testing.T, in interface{}) *unstructured.Unstructured {
 	if err := out.UnmarshalJSON(b); err != nil {
 		t.Fatalf("error encoding to unstructured: %v", err)
 	}
+	if m, ok := out.Object["metadata"].(map[string]interface{}); ok {
+		if _, exists := m["creationTimestamp"]; !exists {
+			m["creationTimestamp"] = nil
+		}
+	}
 	return out
 }
 

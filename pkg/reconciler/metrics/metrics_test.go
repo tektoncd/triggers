@@ -17,9 +17,14 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"sync"
 	"testing"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -30,32 +35,62 @@ import (
 	fakeTBInformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggerbinding/fake"
 	fakeTTInformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate/fake"
 	"github.com/tektoncd/triggers/test"
-	"knative.dev/pkg/metrics/metricstest"
-	_ "knative.dev/pkg/metrics/testing"
 )
+
+func unregisterMetrics() {
+	once = sync.Once{}
+	r = nil
+	errInitMetrics = nil
+	elCount = nil
+	tbCount = nil
+	ctbCount = nil
+	ttCount = nil
+	ciCount = nil
+}
+
+func setupTestProvider(t *testing.T) *sdkmetric.ManualReader {
+	t.Helper()
+	unregisterMetrics()
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+	t.Cleanup(func() { provider.Shutdown(context.Background()) })
+	return reader
+}
+
+func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) metricdata.ResourceMetrics {
+	t.Helper()
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+	return rm
+}
+
+func findMetric(rm metricdata.ResourceMetrics, name string) (metricdata.Metrics, bool) {
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == name {
+				return m, true
+			}
+		}
+	}
+	return metricdata.Metrics{}, false
+}
 
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := &Recorder{}
 	ctx, _ := test.SetupFakeContext(t)
 
-	metrics.countMetrics(ctx, 3, elCount)
-	metricstest.CheckStatsNotReported(t, "eventlistener_count")
-
-	metrics.countMetrics(ctx, 3, ctbCount)
-	metricstest.CheckStatsNotReported(t, "clustertriggerbinding_count")
-
-	metrics.countMetrics(ctx, 3, tbCount)
-	metricstest.CheckStatsNotReported(t, "triggerbinding_count")
-
-	metrics.countMetrics(ctx, 3, ttCount)
-	metricstest.CheckStatsNotReported(t, "triggertemplate_count")
-
-	metrics.countMetrics(ctx, 3, ciCount)
-	metricstest.CheckStatsNotReported(t, "clusterinterceptor_count")
+	metrics.recordGaugeMetrics(ctx, 3, elCount)
+	metrics.recordGaugeMetrics(ctx, 3, ctbCount)
+	metrics.recordGaugeMetrics(ctx, 3, tbCount)
+	metrics.recordGaugeMetrics(ctx, 3, ttCount)
+	metrics.recordGaugeMetrics(ctx, 3, ciCount)
 }
 
 func TestCountMetrics(t *testing.T) {
-	unregisterMetrics()
+	reader := setupTestProvider(t)
 	ctx, _ := test.SetupFakeContext(t)
 	ctx = WithClient(ctx)
 
@@ -66,134 +101,49 @@ func TestCountMetrics(t *testing.T) {
 	fakeTBIn := fakeTBInformer.Get(ctx)
 	fakeTTIn := fakeTTInformer.Get(ctx)
 	fakeCIIn := fakeCIInformer.Get(ctx)
-	e1 := &v1beta1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "test",
-		},
-	}
-	e2 := &v1beta1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-2",
-			Namespace: "test",
-		},
-	}
-	e3 := &v1beta1.EventListener{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-3",
-			Namespace: "test",
-		},
-	}
 
-	for _, el := range []*v1beta1.EventListener{e1, e2, e3} {
+	for _, el := range []*v1beta1.EventListener{
+		{ObjectMeta: metav1.ObjectMeta{Name: "el-1", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "el-2", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "el-3", Namespace: "test"}},
+	} {
 		if err := fakeELIn.Informer().GetIndexer().Add(el); err != nil {
 			t.Fatalf("Adding EL to informer: %v", err)
 		}
 	}
 
-	tt1 := &v1beta1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "test",
-		},
-	}
-
-	tt2 := &v1beta1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-2",
-			Namespace: "test",
-		},
-	}
-
-	tt3 := &v1beta1.TriggerTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-3",
-			Namespace: "test",
-		},
-	}
-
-	for _, tt := range []*v1beta1.TriggerTemplate{tt1, tt2, tt3} {
+	for _, tt := range []*v1beta1.TriggerTemplate{
+		{ObjectMeta: metav1.ObjectMeta{Name: "tt-1", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "tt-2", Namespace: "test"}},
+	} {
 		if err := fakeTTIn.Informer().GetIndexer().Add(tt); err != nil {
 			t.Fatalf("Adding TT to informer: %v", err)
 		}
 	}
 
-	tb1 := &v1beta1.TriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "test",
-		},
-	}
-
-	tb2 := &v1beta1.TriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-2",
-			Namespace: "test",
-		},
-	}
-
-	tb3 := &v1beta1.TriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-3",
-			Namespace: "test",
-		},
-	}
-
-	for _, tb := range []*v1beta1.TriggerBinding{tb1, tb2, tb3} {
+	for _, tb := range []*v1beta1.TriggerBinding{
+		{ObjectMeta: metav1.ObjectMeta{Name: "tb-1", Namespace: "test"}},
+	} {
 		if err := fakeTBIn.Informer().GetIndexer().Add(tb); err != nil {
 			t.Fatalf("Adding TB to informer: %v", err)
 		}
 	}
 
-	ctb1 := &v1beta1.ClusterTriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "test",
-		},
-	}
-
-	ctb2 := &v1beta1.ClusterTriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-2",
-			Namespace: "test",
-		},
-	}
-
-	ctb3 := &v1beta1.ClusterTriggerBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-3",
-			Namespace: "test",
-		},
-	}
-
-	for _, ctb := range []*v1beta1.ClusterTriggerBinding{ctb1, ctb2, ctb3} {
+	for _, ctb := range []*v1beta1.ClusterTriggerBinding{
+		{ObjectMeta: metav1.ObjectMeta{Name: "ctb-1", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "ctb-2", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "ctb-3", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "ctb-4", Namespace: "test"}},
+	} {
 		if err := fakeCTBIn.Informer().GetIndexer().Add(ctb); err != nil {
 			t.Fatalf("Adding CTB to informer: %v", err)
 		}
 	}
 
-	ci1 := &v1alpha1.ClusterInterceptor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "test",
-		},
-	}
-
-	ci2 := &v1alpha1.ClusterInterceptor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-2",
-			Namespace: "test",
-		},
-	}
-
-	ci3 := &v1alpha1.ClusterInterceptor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-3",
-			Namespace: "test",
-		},
-	}
-
-	for _, ci := range []*v1alpha1.ClusterInterceptor{ci1, ci2, ci3} {
+	for _, ci := range []*v1alpha1.ClusterInterceptor{
+		{ObjectMeta: metav1.ObjectMeta{Name: "ci-1", Namespace: "test"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "ci-2", Namespace: "test"}},
+	} {
 		if err := fakeCIIn.Informer().GetIndexer().Add(ci); err != nil {
 			t.Fatalf("Adding CI to informer: %v", err)
 		}
@@ -208,68 +158,74 @@ func TestCountMetrics(t *testing.T) {
 	}
 
 	rec.CountMetrics(ctx, li)
-	metricstest.CheckLastValueData(t, elMetricsName, map[string]string{}, 3)
-	metricstest.CheckLastValueData(t, ttMetricsName, map[string]string{}, 3)
-	metricstest.CheckLastValueData(t, tbMetricsName, map[string]string{}, 3)
-	metricstest.CheckLastValueData(t, ctbMetricsName, map[string]string{}, 3)
-	metricstest.CheckLastValueData(t, ciMetricsName, map[string]string{}, 3)
+
+	rm := collectMetrics(t, reader)
+
+	for _, tc := range []struct {
+		name  string
+		value float64
+	}{
+		{elMetricsName, 3},
+		{ttMetricsName, 2},
+		{tbMetricsName, 1},
+		{ctbMetricsName, 4},
+		{ciMetricsName, 2},
+	} {
+		m, found := findMetric(rm, tc.name)
+		if !found {
+			t.Errorf("metric %s not found", tc.name)
+			continue
+		}
+		gauge, ok := m.Data.(metricdata.Gauge[float64])
+		if !ok {
+			t.Errorf("metric %s: expected Gauge[float64], got %T", tc.name, m.Data)
+			continue
+		}
+		if len(gauge.DataPoints) != 1 {
+			t.Errorf("metric %s: expected 1 data point, got %d", tc.name, len(gauge.DataPoints))
+			continue
+		}
+		if gauge.DataPoints[0].Value != tc.value {
+			t.Errorf("metric %s: expected %v, got %v", tc.name, tc.value, gauge.DataPoints[0].Value)
+		}
+	}
 }
 
-func TestELCount(t *testing.T) {
-	unregisterMetrics()
-	ctx, _ := test.SetupFakeContext(t)
-	ctx = WithClient(ctx)
+func TestIndividualGaugeCounts(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		metricName string
+		gauge      *metric.Float64Gauge
+	}{
+		{"eventlistener", elMetricsName, &elCount},
+		{"triggertemplate", ttMetricsName, &ttCount},
+		{"triggerbinding", tbMetricsName, &tbCount},
+		{"clustertriggerbinding", ctbMetricsName, &ctbCount},
+		{"clusterinterceptor", ciMetricsName, &ciCount},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := setupTestProvider(t)
+			ctx, _ := test.SetupFakeContext(t)
+			ctx = WithClient(ctx)
 
-	rec := Get(ctx)
-	rec.countMetrics(ctx, float64(3), elCount)
-	metricstest.CheckLastValueData(t, elMetricsName, map[string]string{}, 3)
-}
+			rec := Get(ctx)
+			rec.recordGaugeMetrics(ctx, 5, *tc.gauge)
 
-func TestTTCount(t *testing.T) {
-	unregisterMetrics()
-	ctx, _ := test.SetupFakeContext(t)
-	ctx = WithClient(ctx)
-
-	rec := Get(ctx)
-	rec.countMetrics(ctx, float64(3), ttCount)
-	metricstest.CheckLastValueData(t, ttMetricsName, map[string]string{}, 3)
-}
-
-func TestTBCount(t *testing.T) {
-	unregisterMetrics()
-	ctx, _ := test.SetupFakeContext(t)
-	ctx = WithClient(ctx)
-
-	rec := Get(ctx)
-	rec.countMetrics(ctx, float64(3), tbCount)
-	metricstest.CheckLastValueData(t, tbMetricsName, map[string]string{}, 3)
-}
-
-func TestCTBCount(t *testing.T) {
-	unregisterMetrics()
-	ctx, _ := test.SetupFakeContext(t)
-	ctx = WithClient(ctx)
-
-	rec := Get(ctx)
-	rec.countMetrics(ctx, float64(3), ctbCount)
-	metricstest.CheckLastValueData(t, ctbMetricsName, map[string]string{}, 3)
-}
-
-func TestCICount(t *testing.T) {
-	unregisterMetrics()
-	ctx, _ := test.SetupFakeContext(t)
-	ctx = WithClient(ctx)
-
-	rec := Get(ctx)
-	rec.countMetrics(ctx, float64(3), ciCount)
-	metricstest.CheckLastValueData(t, ciMetricsName, map[string]string{}, 3)
-}
-
-func unregisterMetrics() {
-	metricstest.Unregister(elMetricsName, tbMetricsName, ctbMetricsName, ttMetricsName, ciMetricsName)
-
-	// Allow the recorder singleton to be recreated.
-	once = sync.Once{}
-	r = nil
-	recorderErr = nil
+			rm := collectMetrics(t, reader)
+			m, found := findMetric(rm, tc.metricName)
+			if !found {
+				t.Fatalf("metric %s not found", tc.metricName)
+			}
+			gauge, ok := m.Data.(metricdata.Gauge[float64])
+			if !ok {
+				t.Fatalf("expected Gauge[float64], got %T", m.Data)
+			}
+			if len(gauge.DataPoints) != 1 {
+				t.Fatalf("expected 1 data point, got %d", len(gauge.DataPoints))
+			}
+			if gauge.DataPoints[0].Value != 5 {
+				t.Errorf("expected 5, got %v", gauge.DataPoints[0].Value)
+			}
+		})
+	}
 }

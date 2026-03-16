@@ -71,9 +71,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -146,9 +144,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -263,9 +259,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -327,9 +321,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -391,9 +383,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -456,9 +446,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
@@ -534,9 +522,7 @@ func TestContainer(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "K_LOGGING_CONFIG",
 			}, {
-				Name: "K_METRICS_CONFIG",
-			}, {
-				Name: "K_TRACING_CONFIG",
+				Name: "K_OBSERVABILITY_CONFIG",
 			}, {
 				Name:  "NAMESPACE",
 				Value: namespace,
