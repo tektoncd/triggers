@@ -718,8 +718,8 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
 golang.org/x/net/websocket
-# golang.org/x/oauth2 v0.35.0
-## explicit; go 1.24.0
+# golang.org/x/oauth2 v0.36.0
+## explicit; go 1.25.0
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
 golang.org/x/oauth2/google
@@ -837,7 +837,7 @@ google.golang.org/genproto/googleapis/api/monitoredres
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.79.2
+# google.golang.org/grpc v1.79.3
 ## explicit; go 1.24.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1051,7 +1051,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/api v0.35.2
+# k8s.io/api v0.35.3
 ## explicit; go 1.25.0
 k8s.io/api/admission/v1
 k8s.io/api/admissionregistration/v1
@@ -1112,11 +1112,11 @@ k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 k8s.io/api/storagemigration/v1beta1
-# k8s.io/apiextensions-apiserver v0.35.2
+# k8s.io/apiextensions-apiserver v0.35.3
 ## explicit; go 1.25.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-# k8s.io/apimachinery v0.35.2
+# k8s.io/apimachinery v0.35.3
 ## explicit; go 1.25.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -1185,7 +1185,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/client-go v0.35.2
+# k8s.io/client-go v0.35.3
 ## explicit; go 1.25.0
 k8s.io/client-go/applyconfigurations
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
@@ -1529,7 +1529,7 @@ k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/watchlist
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.35.2
+# k8s.io/code-generator v0.35.3
 ## explicit; go 1.25.0
 k8s.io/code-generator/cmd/client-gen
 k8s.io/code-generator/cmd/client-gen/args
