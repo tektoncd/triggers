@@ -38,7 +38,8 @@ var (
 )
 
 const (
-	docCommentForceIncludes = "// +gencrdrefdocs:force"
+	docCommentForceIncludes           = "+gencrdrefdocs:force"
+	docCommentIncludeUnversionedTypes = "+gencrdrefdocs:unversionedTypes"
 )
 
 type generatorConfig struct {
@@ -130,7 +131,7 @@ func main() {
 	}
 
 	klog.Infof("parsing go packages in directory %s", *flAPIDir)
-	pkgs, err := parseAPIPackages(*flAPIDir)
+	pkgs, unversionedPkgs, err := parseAPIPackages(*flAPIDir)
 	if err != nil {
 		klog.Fatal(err)
 	}
@@ -138,14 +139,23 @@ func main() {
 		klog.Fatalf("no API packages found in %s", *flAPIDir)
 	}
 
-	apiPackages, err := combineAPIPackages(pkgs)
+	var unversionedPkgNames []string
+	for _, uvp := range unversionedPkgs {
+		unversionedPkgNames = append(unversionedPkgNames, uvp.Path)
+	}
+	apiPackages, err := combineAPIPackages(pkgs, unversionedPkgNames)
+	if err != nil {
+		klog.Fatal(err)
+	}
+
+	unversionedAPIPackages, err := combineAPIPackages(unversionedPkgs, unversionedPkgNames)
 	if err != nil {
 		klog.Fatal(err)
 	}
 
 	mkOutput := func() (string, error) {
 		var b bytes.Buffer
-		err := render(&b, apiPackages, config)
+		err := render(&b, apiPackages, unversionedAPIPackages, config)
 		if err != nil {
 			return "", errors.Wrap(err, "failed to render the result")
 		}
@@ -200,16 +210,17 @@ func groupName(pkg *types.Package) string {
 	return ""
 }
 
-func parseAPIPackages(dir string) ([]*types.Package, error) {
+func parseAPIPackages(dir string) ([]*types.Package, []*types.Package, error) {
 	b := parser.New()
 	// the following will silently fail (turn on -v=4 to see logs)
 	if err := b.AddDirRecursive(*flAPIDir); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	scan, err := b.FindTypes()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse pkgs and types")
+		return nil, nil, errors.Wrap(err, "failed to parse pkgs and types")
 	}
+	var unversionedPkgs []*types.Package
 	var pkgNames []string
 	for p := range scan {
 		pkg := scan[p]
@@ -223,7 +234,10 @@ func parseAPIPackages(dir string) ([]*types.Package, error) {
 			continue
 		}
 
-		if groupName(pkg) != "" && len(pkg.Types) > 0 || containsString(pkg.DocComments, docCommentForceIncludes) {
+		if len(pkg.Types) > 0 && containsString(pkg.DocComments, docCommentIncludeUnversionedTypes) {
+			klog.Infof("including package=%s as an additional unversioned include", p)
+			unversionedPkgs = append(unversionedPkgs, pkg)
+		} else if groupName(pkg) != "" && len(pkg.Types) > 0 || containsString(pkg.DocComments, docCommentForceIncludes) {
 			klog.V(3).Infof("package=%v has groupName and has types", p)
 			pkgNames = append(pkgNames, p)
 		}
@@ -234,7 +248,7 @@ func parseAPIPackages(dir string) ([]*types.Package, error) {
 		klog.Infof("using package=%s", p)
 		pkgs = append(pkgs, scan[p])
 	}
-	return pkgs, nil
+	return pkgs, unversionedPkgs, nil
 }
 
 func containsString(sl []string, str string) bool {
@@ -248,7 +262,7 @@ func containsString(sl []string, str string) bool {
 
 // combineAPIPackages groups the Go packages by the <apiGroup+apiVersion> they
 // offer, and combines the types in them.
-func combineAPIPackages(pkgs []*types.Package) ([]*apiPackage, error) {
+func combineAPIPackages(pkgs []*types.Package, unversionedPkgNames []string) ([]*apiPackage, error) {
 	pkgMap := make(map[string]*apiPackage)
 	var pkgIds []string
 
@@ -263,7 +277,7 @@ func combineAPIPackages(pkgs []*types.Package) ([]*apiPackage, error) {
 	}
 
 	for _, pkg := range pkgs {
-		apiGroup, apiVersion, err := apiVersionForPackage(pkg)
+		apiGroup, apiVersion, err := apiVersionForPackage(pkg, unversionedPkgNames)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not get apiVersion for package %s", pkg.Path)
 		}
@@ -484,7 +498,8 @@ func typeDisplayName(t *types.Type, c generatorConfig, typePkgMap map[*types.Typ
 		types.Alias,
 		types.Pointer,
 		types.Slice,
-		types.Builtin:
+		types.Builtin,
+		types.Unsupported: // Go type aliases (type X = Y) are parsed as Unsupported by gengo
 		// noop
 	case types.Map:
 		// return original name
@@ -597,8 +612,13 @@ func isOptionalMember(m types.Member) bool {
 	return ok
 }
 
-func apiVersionForPackage(pkg *types.Package) (string, string, error) {
+func apiVersionForPackage(pkg *types.Package, unversionedPkgNames []string) (string, string, error) {
 	group := groupName(pkg)
+	for _, upn := range unversionedPkgNames {
+		if upn == pkg.Path {
+			return group, "unversioned", nil
+		}
+	}
 	version := pkg.Name // assumes basename (i.e. "v1" in "core/v1") is apiVersion
 	r := `^v\d+((alpha|beta)[a-z0-9]+)?$`
 	if !regexp.MustCompile(r).MatchString(version) {
@@ -648,9 +668,9 @@ func constantsOfType(t *types.Type, pkg *apiPackage) []*types.Type {
 	return sortTypes(constants)
 }
 
-func render(w io.Writer, pkgs []*apiPackage, config generatorConfig) error {
-	references := findTypeReferences(pkgs)
-	typePkgMap := extractTypeToPackageMap(pkgs)
+func render(w io.Writer, pkgs []*apiPackage, unversionedPkgs []*apiPackage, config generatorConfig) error {
+	references := findTypeReferences(append(pkgs, unversionedPkgs...))
+	typePkgMap := extractTypeToPackageMap(append(pkgs, unversionedPkgs...))
 
 	t, err := template.New("").Funcs(map[string]interface{}{
 		"isExportedType":     isExportedType,
