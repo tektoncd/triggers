@@ -20,14 +20,20 @@ on:
   schedule:
     - cron: '30 20 * * 2'
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
-      actions: read
+      actions: read # Required by CodeQL to read workflow information
       contents: read
-      security-events: write
+      security-events: write # Required to upload CodeQL SARIF results
 
     strategy:
       fail-fast: false
@@ -39,6 +45,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
