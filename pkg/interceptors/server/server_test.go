@@ -416,7 +416,7 @@ func Test_UpdateCACertToClusterInterceptorCRD(t *testing.T) {
 		t.Error(err)
 	}
 
-	stopFunc := UpdateCACertToClusterInterceptorCRD(ctx, server, faketriggersclient.Get(ctx).TriggersV1alpha1(), logger.Sugar(), time.Second)
+	stopFunc := UpdateCACertToClusterInterceptorCRD(ctx, server, faketriggersclient.Get(ctx).TriggersV1alpha1(), zap.NewNop().Sugar(), time.Second)
 	defer stopFunc()
 
 	time.Sleep(10 * time.Second)
