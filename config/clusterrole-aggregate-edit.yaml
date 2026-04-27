@@ -32,6 +32,7 @@ rules:
   - triggers
   - triggerbindings
   - triggertemplates
+  - scheduledtemplates
   verbs:
   - create
   - delete
