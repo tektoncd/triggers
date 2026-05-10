@@ -134,15 +134,7 @@ the triggers repo, a terminal window and a text editor.
         -p release-name="Tekton Triggers" \
         -p bucket="tekton-releases" \
         -p rekor-uuid="$REKOR_UUID" \
-<<<<<<< HEAD
         release-draft-oci
-=======
-        release-draft
-    ```
-    ```bash
-    NOTE: `release-draft` pipeline is for GCS we need to replace this with the OCI pipeline once its present on the Oracle cluster
-    TODO #savita will change this as soon as Pipeline is available and update the readme and remove this note
->>>>>>> c0600bdf (fix: doc typos)
     ```
 
     1. Watch logs of create-draft-release
