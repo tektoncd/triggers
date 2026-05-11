@@ -28,6 +28,7 @@ import (
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
+	"github.com/tektoncd/triggers/pkg/interceptors/server/tlsconfig"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -97,6 +98,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, logger *zap.SugaredLogger) error {
+	tlsConfig, err := tlsconfig.LoadFromEnv().ToTLSConfig()
+	if err != nil {
+		return fmt.Errorf("failed to parse TLS configuration from env: %w", err)
+	}
+	tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return server.GetTLSData(ctx, logger)
+	}
+	logger.Infof("TLS config: MinVersion=%s, CipherSuites=[%s], CurvePreferences=[%s]",
+		tlsconfig.GetTLSVersionName(tlsConfig.MinVersion),
+		tlsconfig.FormatCipherSuites(tlsConfig.CipherSuites),
+		tlsconfig.FormatCurvePreferences(tlsConfig.CurvePreferences))
+
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", HTTPSPort),
 		BaseContext: func(listener net.Listener) context.Context {
@@ -107,12 +120,7 @@ func startServer(ctx context.Context, stop <-chan struct{}, mux *http.ServeMux, 
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 		Handler:           mux,
-		TLSConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				return server.GetTLSData(ctx, logger)
-			},
-		},
+		TLSConfig:         tlsConfig,
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
