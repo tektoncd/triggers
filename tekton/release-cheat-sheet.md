@@ -114,8 +114,6 @@ the triggers repo, a terminal window and a text editor.
     cat <<EOF > pod-template.yaml
     securityContext:
       fsGroup: 65532
-      runAsNonRoot: true
-      runAsUser: 65532
     EOF
     ```
 
