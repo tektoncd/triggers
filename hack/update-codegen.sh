@@ -56,4 +56,5 @@ ${REPO_ROOT_DIR}/hack/update-deps.sh
 ${REPO_ROOT_DIR}/hack/update-openapigen.sh
 
 # Make sure the API reference docs are up-to-date
-${REPO_ROOT_DIR}/hack/update-reference-docs.sh
+# Disabled: gen-crd-api-reference-docs is not vendored and not actively maintained
+# ${REPO_ROOT_DIR}/hack/update-reference-docs.sh

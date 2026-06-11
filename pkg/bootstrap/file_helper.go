@@ -67,7 +67,7 @@ func applyFileFromGitHub(filePath string) error {
 
 	// Apply with kubectl
 	// #nosec G204 -- kubectl is a known binary, tmpFile.Name() is a controlled temp file path
-	cmd := exec.Command("kubectl", "apply", "-f", tmpFile.Name(), "-n", "getting-started")
+	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", tmpFile.Name(), "-n", "getting-started")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("kubectl apply failed for %s: %w\nOutput: %s", filePath, err, string(output))

@@ -89,9 +89,11 @@ type Sink struct {
 // Response defines the HTTP body that the Sink responds to events with.
 type Response struct {
 	// EventListener is the name of the eventListener.
+	//
 	// Deprecated: use EventListenerUID instead.
 	EventListener string `json:"eventListener"`
 	// Namespace is the namespace that the eventListener is running in.
+	//
 	// Deprecated: use EventListenerUID instead.
 	Namespace string `json:"namespace,omitempty"`
 	// EventListenerUID is the UID of the EventListener
