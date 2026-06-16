@@ -38,7 +38,7 @@ Further documentation available:
 - [Installing Tekton][tekton-installation]
 - Standard for [release notes][release-notes-standards]
 
-## Releases
+## Release
 
 ### v0.35 (LTS)
 
@@ -61,12 +61,12 @@ Further documentation available:
 - **End of Life**: 2026-08-11
 - **Patch Releases**: [v0.33.0][v0-33-0]
 
-### v0.32 (LTS)
+### v0.27 (LTS)
 
-- **Latest Release**: [v0.32.0][v0-32-0] (2025-05-07) ([docs][v0-32-0-docs], [examples][v0-32-0-examples])
-- **Initial Release**: [v0.32.0][v0-32-0] (2025-05-07)
-- **End of Life**: 2026-05-07
-- **Patch Releases**: [v0.32.0][v0-32-0]
+- **Latest Release**: [v0.27.0][v0-27-0] (2024-01-15) ([docs][v0-27-0-docs], [examples][v0-27-0-examples])
+- **Initial Release**: [v0.27.0][v0-27-0] (2024-01-15)
+- **End of Life**: 2025-01-15
+- **Patch Releases**: [v0.27.0][v0-27-0]
 
 ### Required Kubernetes Version
 
@@ -77,6 +77,13 @@ Further documentation available:
 ## End of Life Releases
 
 Older releases are EOL and available on [GitHub][tekton-triggers-releases].
+
+### v0.32 (LTS)
+
+- **Latest Release**: [v0.32.0][v0-32-0] (2025-05-07) ([docs][v0-32-0-docs], [examples][v0-32-0-examples])
+- **Initial Release**: [v0.32.0][v0-32-0] (2025-05-07)
+- **End of Life**: 2026-05-07
+- **Patch Releases**: [v0.32.0][v0-32-0]
 
 
 [release-policy]: https://github.com/tektoncd/community/blob/main/releases.md
@@ -89,6 +96,9 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
+[v0-27-0]: https://github.com/tektoncd/triggers/releases/tag/v0.27.0
+[v0-27-0-docs]: https://github.com/tektoncd/triggers/tree/v0.27.0/docs#tekton-triggers
+[v0-27-0-examples]: https://github.com/tektoncd/triggers/tree/v0.27.0/examples#examples
 [v0-32-0]: https://github.com/tektoncd/triggers/releases/tag/v0.32.0
 [v0-32-0-docs]: https://github.com/tektoncd/triggers/tree/v0.32.0/docs#tekton-triggers
 [v0-32-0-examples]: https://github.com/tektoncd/triggers/tree/v0.32.0/examples#examples
