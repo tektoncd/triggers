@@ -1,0 +1,70 @@
+name: Triggers Integration
+
+on: [workflow_call]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tests:
+    concurrency:
+      group: ${{ github.workflow }}-e2e-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    name: e2e tests
+    runs-on: ubuntu-latest
+    env:
+      KO_DOCKER_REPO: registry.local:5000/tekton
+      CLUSTER_DOMAIN: c${{ github.run_id }}.local
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+      KOCACHE: /tmp/ko-cache
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: "go.mod"
+      - name: Cache ko build cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: /tmp/ko-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-ko-
+      - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+
+      - name: Install Dependencies
+        working-directory: ./
+        run: |
+          echo '::group:: install go-junit-report'
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          echo '::endgroup::'
+
+          echo '::group::create required folders'
+          mkdir -p "${ARTIFACTS}"
+          echo '::endgroup::'
+
+          echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+      - name: Run Integration tests
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          ./test/setup-kind.sh \
+            --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+            --cluster-suffix "${CLUSTER_DOMAIN}" \
+            --nodes 3 \
+            --k8s-version v1.29.x \
+            --e2e-script ./test/gh-e2e-tests.sh \
+            --e2e-env ./test/e2e-tests-kind-prow.env
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          path: ${{ env.ARTIFACTS }}
