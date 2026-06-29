@@ -60,6 +60,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TriggerTemplateList{},
 		&Trigger{},
 		&TriggerList{},
+		&ScheduledTemplate{},
+		&ScheduledTemplateList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
