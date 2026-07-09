@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	gh "github.com/google/go-github/v31/github"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"golang.org/x/oauth2"
@@ -175,6 +176,16 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		return interceptors.Fail(codes.FailedPrecondition, err.Error())
 	}
 
+	enterpriseUrl := headers.Get("X-Github-Enterprise-Host")
+	if enterpriseUrl != "" {
+		if cfg := config.FromContext(ctx); cfg != nil && cfg.FeatureFlags != nil && cfg.CoreInterceptors != nil &&
+			cfg.FeatureFlags.InterceptorsGitHubUseEnterpriseHostAllowlist {
+			if !cfg.CoreInterceptors.HostInEnterpriseHostAllowList(enterpriseUrl) {
+				return interceptors.Failf(codes.FailedPrecondition,
+					"enterprise host %q is not in the allowed list", enterpriseUrl)
+			}
+		}
+	}
 
 	if p.AddChangedFiles.Enabled {
 		shouldAddChangedFiles := false

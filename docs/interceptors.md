@@ -149,9 +149,29 @@ To use a GitHub `Interceptor` as a GitHub webhook validator, do the following:
 3. Create a Kubernetes secret containing your secret value.
 4. Pass the Kubernetes secret as a reference to your GitHub `Interceptor`.
 
+If `secretRef` is omitted, the `Interceptor` returns `continue: true` immediately
+without validating the webhook signature or performing any further processing
+(such as `addChangedFiles` or `githubOwners`). This is useful for triggers that
+do not require webhook verification.
+
 To use a GitHub `Interceptor` as a filter for event data, specify the event types
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
 accepts data event types listed in [Event types and payloads](https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads).
+
+#### Securing the GitHub Interceptor
+
+When using GitHub Enterprise, incoming webhooks include an `X-GitHub-Enterprise-Host`
+header. To restrict which enterprise hosts the interceptor will accept, enable
+the feature flag `interceptors.github.use-enterprise-host-allowlist` in the
+`feature-flags-triggers` ConfigMap and list allowed hostnames in the
+`github.enterprise-host-allowlist` key of the `config-triggers-core-interceptors`
+ConfigMap (comma-separated). Requests with an enterprise host not in the list
+are rejected. Webhooks from GitHub.com do not include the `x-GitHub-Enterprise-Host`
+header and are always allowed. This setting **will be enabled by default
+in a later release** and eventually removed. It is strongly encouraged
+to enable this feature whether or not you use GitHub Enterprise.
+
+#### Example
 
 Below is an example GitHub `Interceptor` reference:
 
