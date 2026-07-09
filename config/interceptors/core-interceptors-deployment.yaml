@@ -74,6 +74,8 @@ spec:
           value: tekton-triggers-core-interceptors-certs
         - name: KUBERNETES_MIN_VERSION
           value: "v1.28.0"
+        - name: CONFIG_CORE_INTERCEPTORS_NAME
+          value: config-triggers-core-interceptors
         readinessProbe:
           httpGet:
             path: /ready

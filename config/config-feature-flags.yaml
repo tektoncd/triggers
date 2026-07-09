@@ -27,3 +27,8 @@ data:
   # Setting this field with valid regex pattern matching the pattern will exclude labels from
   # getting added to resources created by the EventListener such as the deployment
   labels-exclusion-pattern: ""
+  # When "true", requests with an X-GitHub-Enterprise-Host header not in the
+  # allowlist are rejected. Defaults to "false"
+  # It is strongly encouraged to be set to "true" for security, and the setting will be removed
+  # and always enforced in a later version
+  interceptors.github.use-enterprise-host-allowlist: "false"

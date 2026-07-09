@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/interceptors/server"
@@ -32,9 +33,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
+	"knative.dev/pkg/system"
 )
 
 const (
@@ -65,12 +68,20 @@ func main() {
 		}
 	}()
 
-	service, err := server.NewWithCoreInterceptors(interceptors.DefaultSecretGetter(kubeclient.Get(ctx).CoreV1()), logger)
+	cmw := cminformer.NewInformedWatcher(kubeclient.Get(ctx), system.Namespace())
+	configStore := config.NewStore(logger.Named("config-store"))
+	configStore.WatchConfigs(cmw)
+
+	service, err := server.NewWithCoreInterceptors(interceptors.DefaultSecretGetter(kubeclient.Get(ctx).CoreV1()), logger, configStore)
 	if err != nil {
 		logger.Errorf("failed to initialize core interceptors: %s", err)
 		return
 	}
 	startInformer()
+
+	if err := cmw.Start(ctx.Done()); err != nil {
+		logger.Fatalf("failed to start configmap watcher: %v", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", service)

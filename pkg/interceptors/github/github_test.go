@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
@@ -2205,6 +2206,121 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				t.Logf("Interceptor.Process() = %v, want %v", res.Status.Message, tt.want)
 			} else if !res.Continue && (tt.wantErr != true) {
 				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
+	}
+}
+
+func TestInterceptor_EnterpriseHostAllowlist(t *testing.T) {
+	var (
+		emptyJSONBody = json.RawMessage(`{}`)
+		webhookSecret = "webhook-secret"
+	)
+	hmac := test.HMACHeader(t, webhookSecret, emptyJSONBody, "sha256")
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "mysecret", Namespace: metav1.NamespaceDefault},
+		Data:       map[string][]byte{"token": []byte(webhookSecret)},
+	}
+
+	baseReq := func(enterpriseHost string) *triggersv1.InterceptorRequest {
+		h := http.Header{
+			"Content-Type":        {"application/json"},
+			"X-Hub-Signature-256": {hmac},
+		}
+		if enterpriseHost != "" {
+			h["X-Github-Enterprise-Host"] = []string{enterpriseHost}
+		}
+		return &triggersv1.InterceptorRequest{
+			Body:   string(emptyJSONBody),
+			Header: h,
+			InterceptorParams: map[string]interface{}{
+				"secretRef": &triggersv1.SecretRef{
+					SecretName: "mysecret",
+					SecretKey:  "token",
+				},
+			},
+			Context: &triggersv1.TriggerContext{
+				EventURL:  "https://testing.example.com",
+				EventID:   "abcde",
+				TriggerID: "namespaces/default/triggers/example-trigger",
+			},
+		}
+	}
+
+	tests := []struct {
+		name            string
+		host            string
+		enableAllowlist bool
+		allowList       []string
+		wantContinue    bool
+		wantMessage     string
+	}{
+		{
+			name:            "allowlist enabled, host in list",
+			host:            "github.mycompany.com",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    true,
+		},
+		{
+			name:            "allowlist enabled, host NOT in list",
+			host:            "evil.attacker.com",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    false,
+			wantMessage:     `enterprise host "evil.attacker.com" is not in the allowed list`,
+		},
+		{
+			name:            "allowlist enabled, empty list rejects enterprise host",
+			host:            "github.mycompany.com",
+			enableAllowlist: true,
+			wantContinue:    false,
+			wantMessage:     `enterprise host "github.mycompany.com" is not in the allowed list`,
+		},
+		{
+			name:            "no enterprise host header, allowlist enabled",
+			host:            "",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    true,
+		},
+		{
+			name:            "allowlist disabled, enterprise host allowed",
+			host:            "anything.example.com",
+			enableAllowlist: false,
+			wantContinue:    true,
+		},
+		{
+			name:         "nil config, enterprise host allowed",
+			host:         "anything.example.com",
+			wantContinue: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, _ := test.SetupFakeContext(t)
+			ctx, clientset := fakekubeclient.With(ctx, secret)
+
+			ctx = config.ToContext(
+				ctx,
+				&config.Config{
+					CoreInterceptors: &config.CoreInterceptorsConfig{EnterpriseHostAllowlist: tt.allowList},
+					FeatureFlags:     &config.FeatureFlags{InterceptorsGitHubUseEnterpriseHostAllowlist: tt.enableAllowlist},
+				},
+			)
+
+			w := &InterceptorImpl{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, baseReq(tt.host))
+
+			if res.Continue != tt.wantContinue {
+				t.Fatalf("Continue = %t, want %t. Status: %v", res.Continue, tt.wantContinue, res.Status.Err())
+			}
+			if tt.wantMessage != "" && res.Status.Message != tt.wantMessage {
+				t.Fatalf("Status.Message = %q, want %q", res.Status.Message, tt.wantMessage)
 			}
 		})
 	}
