@@ -438,7 +438,7 @@ func TestExecute(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar(), nil)
 			if err != nil {
 				t.Fatalf("failed to initialize core interceptors: %v", err)
 			}
@@ -475,7 +475,7 @@ func TestExecute_Error(t *testing.T) {
 			"filter": `header.match("Content-Type", "application/json")`,
 		},
 	}
-	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar())
+	coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar(), nil)
 	if err != nil {
 		t.Fatalf("failed to initialize core interceptors: %v", err)
 	}

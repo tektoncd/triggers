@@ -97,7 +97,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar(), nil)
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -155,7 +155,7 @@ func TestServer_ServeHTTP_Error(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			ctx, _ := test.SetupFakeContext(t)
 
-			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+			server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar(), nil)
 			if err != nil {
 				t.Fatalf("error initializing core interceptors: %v", err)
 			}
@@ -443,7 +443,7 @@ func getCerts(ctx context.Context, t *testing.T) ([]byte, []byte, []byte, string
 }
 
 func registerAndGetCI(ctx context.Context, t *testing.T, ciName string, logger *zap.Logger) (*Server, v1alpha1.ClusterInterceptor) {
-	server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar())
+	server, err := NewWithCoreInterceptors(interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()), logger.Sugar(), nil)
 	if err != nil {
 		t.Fatalf("error initializing core interceptors: %v", err)
 	}

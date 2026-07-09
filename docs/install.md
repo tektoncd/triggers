@@ -89,6 +89,14 @@ in the `config/feature-flags-triggers.yaml` file.
   resources created by the EventListener. By default this field is empty, so all
   labels added to the EventListener are propagated down.
 
++ Enterprise host allowlist. Set `interceptors.github.use-enterprise-host-allowlist:`
+  to `"true"` to reject GitHub interceptor requests whose `X-GitHub-Enterprise-Host`
+  header is not in the allowlist. Configure the allowed hosts in the
+  `config-triggers-core-interceptors` ConfigMap via the
+  `github.enterprise-host-allowlist` key (comma-separated hostnames).
+  This setting will default to `"true"` in a later release and eventually
+  be removed entirely as always on.
+
 ## Further reading
 
 + [Get started with Tekton Triggers][get-started]
