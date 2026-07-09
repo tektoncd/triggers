@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2026 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: feature-flags-triggers
+  name: config-triggers-core-interceptors
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
 data:
-  enable-api-fields: "alpha"
-  labels-exclusion-pattern: "^abc-"
-  interceptors.github.use-enterprise-host-allowlist: "true"
+  # Comma-separated list of allowed GitHub Enterprise hostnames.
+  # When the feature flag interceptors.github.use-enterprise-host-allowlist is
+  # enabled in feature-flags-triggers, requests with an X-GitHub-Enterprise-Host
+  # header not matching an entry here are rejected.
+  github.enterprise-host-allowlist: ""
