@@ -21,6 +21,9 @@ jobs:
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
       ARTIFACTS: ${{ github.workspace }}/artifacts
       KOCACHE: /tmp/ko-cache
+      # registry.local:5000 is a plain-HTTP KinD registry; tell ko to skip TLS
+      # so that both image pushes and SBOM writes (ko >=v0.19) use plain HTTP.
+      KO_FLAGS: --insecure-registry
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
