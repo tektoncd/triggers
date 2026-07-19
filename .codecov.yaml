@@ -1,0 +1,32 @@
+coverage:
+  # Commit status https://docs.codecov.io/docs/commit-status are used
+  # to block PR based on coverage threshold.
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+    patch:
+      # Disable the coverage threshold of the patch, so that PRs are
+      # only failing because of overall project coverage threshold.
+      # See https://docs.codecov.io/docs/commit-status#disabling-a-status.
+      default: false
+
+ignore:
+  # Auto-generated client code.
+  - "pkg/client/clientset/**"
+  - "pkg/client/informers/**"
+  - "pkg/client/listers/**"
+  - "pkg/client/injection/**"
+  # Auto-generated deepcopy/openapi code.
+  - "pkg/apis/config/zz_generated.deepcopy.go"
+  - "pkg/apis/triggers/v1alpha1/zz_generated.deepcopy.go"
+  - "pkg/apis/triggers/v1beta1/zz_generated.deepcopy.go"
+  - "pkg/apis/triggers/v1beta1/openapi_generated.go"
+  - "examples/**"
+  - "hack/**"
+  - "test/**"
+  - "config/**"
+  - "tekton/**"
+  - "docs/**"
+  - "vendor/**"
