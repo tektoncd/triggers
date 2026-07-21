@@ -32,9 +32,14 @@ Manifests are published to cloud object-storage as well as
 verified through the [public key][chains-public-key] hosted by the Tekton Chains
 project.
 
+Releases are automated using [Pipelines-as-Code][pac]. The release PipelineRuns
+are defined in the [`.tekton/`][tekton-dir] directory and triggered automatically
+on release branch creation (initial releases) or via a weekly cron /
+manual `workflow_dispatch` (patch releases).
+
 Further documentation available:
 
-- The Tekton Triggers [release process][tekton-releases-docs]
+- The Tekton Triggers [release cheat sheet][tekton-releases-docs]
 - [Installing Tekton][tekton-installation]
 - Standard for [release notes][release-notes-standards]
 
@@ -83,10 +88,12 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [tekton-chains]: https://github.com/tektoncd/chains
 [tekton-triggers-releases]: https://github.com/tektoncd/triggers/releases
 [chains-public-key]: https://github.com/tektoncd/chains/blob/main/tekton.pub
-[tekton-releases-docs]: tekton/README.md
+[tekton-releases-docs]: tekton/release-cheat-sheet.md
 [tekton-installation]: docs/install.md
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
+[pac]: https://pipelinesascode.com
+[tekton-dir]: .tekton/
 
 [v0-34-0]: https://github.com/tektoncd/triggers/releases/tag/v0.34.0
 [v0-34-0-docs]: https://github.com/tektoncd/triggers/tree/v0.34.0/docs#tekton-triggers
