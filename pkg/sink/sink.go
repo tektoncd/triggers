@@ -483,15 +483,18 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 	parsedQuery, _ := net.ParseQuery(request.Body)
 
 	// parse form-data payload
-	// Skip this when the chain starts with a deprecated webhook interceptor: that
-	// interceptor forwards the request body verbatim to an external URL, so it
-	// must receive the original body rather than a pre-parsed JSON representation.
+	// Skip this when the chain starts with a deprecated webhook interceptor and there
+	// are no extensions to merge into the body: that interceptor forwards the request
+	// body verbatim to an external URL, so it must receive the original body rather
+	// than a pre-parsed JSON representation. If extensions are present, they still
+	// need to be merged in below via extendBodyWithExtensions, which requires a JSON
+	// body, so the conversion must happen.
 	if v := in.Header.Get("Content-Type"); v == "application/x-www-form-urlencoded" && len(parsedQuery) > 1 &&
-		(len(trInt) == 0 || trInt[0].Webhook == nil) {
+		(trInt[0].Webhook == nil || len(request.Extensions) > 0) {
 		// Convert the map into a JSON string
 		jsonString, err := json.Marshal(parsedQuery)
 		if err != nil {
-			log.Errorf("Error converting map to JSON:", err)
+			log.Errorf("Error converting map to JSON: %v", err)
 			return nil, nil, nil, err
 		}
 		request.Body = string(jsonString)

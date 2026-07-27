@@ -1790,6 +1790,63 @@ func TestExecuteInterceptor_WebhookFirstGetsRawURLEncodedBody(t *testing.T) {
 	}
 }
 
+// TestExecuteInterceptor_WebhookFirstWithExtensionsGetsJSONBody tests that when
+// extensions (e.g. from a preceding TriggerGroup interceptor) are present, the
+// url-encoded body is still converted to JSON before being sent to a webhook-first
+// interceptor, since merging extensions into the body requires a JSON body.
+func TestExecuteInterceptor_WebhookFirstWithExtensionsGetsJSONBody(t *testing.T) {
+	webhookInterceptorName := "foo"
+	rawServer := &rawBodyInterceptor{}
+	s, _ := getSinkAssets(t, test.Resources{}, "", rawServer)
+
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
+				Webhook: &triggersv1beta1.WebhookInterceptor{
+					ObjectRef: &corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       webhookInterceptorName,
+					},
+				},
+			}},
+		},
+	}
+
+	rawBody := "token=abc&user_id=123&text=hello+world"
+	req, err := http.NewRequest(http.MethodPost, "/", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	extensions := map[string]interface{}{"added_field": "val1"}
+	if _, _, _, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(rawBody), s.Logger, eventID, extensions); err != nil {
+		t.Fatalf("executeInterceptors: %v", err)
+	}
+
+	var gotBody map[string]interface{}
+	if err := json.Unmarshal(rawServer.body, &gotBody); err != nil {
+		t.Fatalf("expected webhook interceptor to receive JSON body when extensions are present, got %q: %v", rawServer.body, err)
+	}
+
+	// The original form fields must survive the JSON conversion: sjson.SetRawBytes
+	// silently builds a fresh JSON object from a non-JSON base, so a naive fix that
+	// skips the conversion (but still calls extendBodyWithExtensions) would lose them
+	// rather than error out.
+	wantBody := map[string]interface{}{
+		"token":   []interface{}{"abc"},
+		"user_id": []interface{}{"123"},
+		"text":    []interface{}{"hello world"},
+		"extensions": map[string]interface{}{
+			"added_field": "val1",
+		},
+	}
+	if diff := cmp.Diff(wantBody, gotBody); diff != "" {
+		t.Errorf("body: -want +got: %s", diff)
+	}
+}
+
 func TestExtendBodyWithExtensions(t *testing.T) {
 	tests := []struct {
 		name       string
