@@ -483,7 +483,11 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 	parsedQuery, _ := net.ParseQuery(request.Body)
 
 	// parse form-data payload
-	if v := in.Header.Get("Content-Type"); v == "application/x-www-form-urlencoded" && len(parsedQuery) > 1 {
+	// Skip this when the chain starts with a deprecated webhook interceptor: that
+	// interceptor forwards the request body verbatim to an external URL, so it
+	// must receive the original body rather than a pre-parsed JSON representation.
+	if v := in.Header.Get("Content-Type"); v == "application/x-www-form-urlencoded" && len(parsedQuery) > 1 &&
+		(len(trInt) == 0 || trInt[0].Webhook == nil) {
 		// Convert the map into a JSON string
 		jsonString, err := json.Marshal(parsedQuery)
 		if err != nil {
