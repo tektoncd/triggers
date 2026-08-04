@@ -160,9 +160,21 @@ func readHTTP(path string) (*http.Request, []byte, error) {
 		bodyPart = ""
 	}
 
-	// Auto compute and fill the content length field if it is not present
-	if len(bodyPart) > 0 && !strings.Contains(headerPart, "Content-Length:") {
-		headerPart += fmt.Sprintf("\nContent-Length: %d", len(bodyPart))
+	// Recompute the Content-Length from the actual body instead of trusting
+	// whatever value is in the file: a stale or hand-edited Content-Length
+	// (e.g. from a captured webhook payload that was later modified) makes
+	// http.ReadRequest silently truncate the body, which then fails to
+	// parse as JSON even though the body itself is valid.
+	if len(bodyPart) > 0 {
+		lines := strings.Split(headerPart, "\n")
+		kept := lines[:0]
+		for _, line := range lines {
+			if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "content-length:") {
+				continue
+			}
+			kept = append(kept, line)
+		}
+		headerPart = strings.Join(kept, "\n") + fmt.Sprintf("\nContent-Length: %d", len(bodyPart))
 	}
 
 	// Reconstruct the HTTP request with the Content-Length header
