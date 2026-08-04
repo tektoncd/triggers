@@ -1626,6 +1626,28 @@ func TestExecuteInterceptor_NotContinue(t *testing.T) {
 	}
 }
 
+func TestExecuteInterceptor_UnsupportedKind(t *testing.T) {
+	resources := test.Resources{
+		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{cel},
+	}
+	s, _ := getSinkAssets(t, resources, "el-name", nil)
+	trigger := triggersv1beta1.Trigger{
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
+				Ref: triggersv1beta1.InterceptorRef{Name: "cel", Kind: "UnknownInterceptorKind"},
+				Params: []triggersv1beta1.InterceptorParams{{
+					Name:  "filter",
+					Value: test.ToV1JSON(t, `body.head == "abcde"`),
+				}},
+			}}},
+	}
+	url, _ := url.Parse("http://example.com")
+	_, _, _, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
+	if err == nil {
+		t.Fatalf("ExecuteInterceptor() expected an error for an unsupported interceptor kind, got none")
+	}
+}
+
 // echoInterceptor stores and returns the body back
 type echoInterceptor struct {
 	body map[string]interface{}
