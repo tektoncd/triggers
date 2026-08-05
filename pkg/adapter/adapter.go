@@ -170,7 +170,7 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 			}
 		}
 
-		if httpsCILen == 0 || httpsCILen != count {
+		if httpsCILen != count {
 			return false, errors.New("empty caBundle in clusterInterceptor spec")
 		}
 
