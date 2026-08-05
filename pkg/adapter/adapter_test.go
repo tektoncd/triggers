@@ -32,7 +32,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func TestGetHTTPClientEmptyCaBundle(t *testing.T) {
+func TestGetHTTPClientNoClusterInterceptors(t *testing.T) {
 	recorder, err := sink.NewRecorder()
 	if err != nil {
 		log.Fatal(err.Error())
@@ -50,14 +50,11 @@ func TestGetHTTPClientEmptyCaBundle(t *testing.T) {
 	}
 
 	c, err := s.getHTTPClient()
-	if err != nil && !strings.Contains(err.Error(), "empty caBundle in clusterInterceptor spec") {
-		t.Fatal(err)
+	if err != nil {
+		t.Fatalf("getHTTPClient() should not fail when no ClusterInterceptors exist, got error: %v", err)
 	}
-	if err == nil {
-		t.Fatalf("test should fail as clusterinterceptor spec cabundle is empty")
-	}
-	if diff := cmp.Diff(c, &http.Client{}); diff != "" {
-		t.Errorf("Diff: -want +got: %s", cmp.Diff(c, &http.Client{}))
+	if c == nil {
+		t.Fatal("expected a non-nil http.Client")
 	}
 }
 
@@ -109,5 +106,76 @@ func TestGetHTTPClient(t *testing.T) {
 	}
 	if diff := cmp.Diff(c, &http.Client{}); diff != "" {
 		t.Errorf("Diff: -want +got: %s", cmp.Diff(c, http.Client{}))
+	}
+}
+
+func TestGetHTTPClientPartialCaBundleMismatch(t *testing.T) {
+	recorder, err := sink.NewRecorder()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	ctx, _ := pkgtesting.SetupFakeContext(t)
+	s := sinker{
+		Logger:    logging.FromContext(ctx),
+		Namespace: "",
+		Args:      sink.Args{},
+		Clients: sink.Clients{
+			TriggersClient: faketriggersclient.Get(ctx),
+		},
+		Recorder: recorder,
+		injCtx:   ctx,
+	}
+
+	icInformer := fakeClusterInterceptorinformer.Get(ctx)
+
+	withBundle := &v1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "github",
+			Labels: map[string]string{"server/type": "https"},
+		},
+		Spec: v1alpha1.ClusterInterceptorSpec{ClientConfig: v1alpha1.ClientConfig{
+			CaBundle: []byte(`-----BEGIN CERTIFICATE-----
+MIIC9zCCAp2gAwIBAgIRAKP/YbJQxCc9craVPO2Hk+EwCgYIKoZIzj0EAwIwVzEU
+MBIGA1UEChMLa25hdGl2ZS5kZXYxPzA9BgNVBAMTNnRla3Rvbi10cmlnZ2Vycy1j
+b3JlLWludGVyY2VwdG9ycy50ZWt0b24tcGlwZWxpbmVzLnN2YzAgFw0yMjA2MjIx
+NjExMTVaGA8yMTIyMDUyOTE2MTExNVowVzEUMBIGA1UEChMLa25hdGl2ZS5kZXYx
+PzA9BgNVBAMTNnRla3Rvbi10cmlnZ2Vycy1jb3JlLWludGVyY2VwdG9ycy50ZWt0
+b24tcGlwZWxpbmVzLnN2YzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABDuUpM+D
+UneJ3cQbx74pJGLh2Mi1DG5eNa6dmHnLxxaBvWMLN9zwcgKwbv4uIWHl+djoiZUh
+4QQhIFPO/KCmRrajggFGMIIBQjAOBgNVHQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYI
+KwYBBQUHAwEGCCsGAQUFBwMCMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFJW+
+7Q9RbfZ7P1AcIWtB6rCS9kgxMIHgBgNVHREEgdgwgdWCIXRla3Rvbi10cmlnZ2Vy
+cy1jb3JlLWludGVyY2VwdG9yc4IydGVrdG9uLXRyaWdnZXJzLWNvcmUtaW50ZXJj
+ZXB0b3JzLnRla3Rvbi1waXBlbGluZXOCNnRla3Rvbi10cmlnZ2Vycy1jb3JlLWlu
+dGVyY2VwdG9ycy50ZWt0b24tcGlwZWxpbmVzLnN2Y4JEdGVrdG9uLXRyaWdnZXJz
+LWNvcmUtaW50ZXJjZXB0b3JzLnRla3Rvbi1waXBlbGluZXMuc3ZjLmNsdXN0ZXIu
+bG9jYWwwCgYIKoZIzj0EAwIDSAAwRQIhAN8NR10IKHxaKWkJ4pUuwyc4Zfdn+57z
+ze7tgKNtoxVDAiAdaBV/2TCy+gWkcPTxpz7hOu0vzlffx8sWFwZNWvUXPA==
+-----END CERTIFICATE-----
+`),
+		}},
+	}
+	withoutBundle := &v1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "gitlab",
+			Labels: map[string]string{"server/type": "https"},
+		},
+	}
+	if err := icInformer.Informer().GetIndexer().Add(withBundle); err != nil {
+		t.Fatal(err)
+	}
+	if err := icInformer.Informer().GetIndexer().Add(withoutBundle); err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := s.getHTTPClient()
+	if err == nil {
+		t.Fatal("test should fail as one https ClusterInterceptor has an empty caBundle")
+	}
+	if !strings.Contains(err.Error(), "empty caBundle in clusterInterceptor spec") {
+		t.Fatalf("expected 'empty caBundle in clusterInterceptor spec' error, got: %v", err)
+	}
+	if diff := cmp.Diff(c, &http.Client{}); diff != "" {
+		t.Errorf("Diff: -want +got: %s", diff)
 	}
 }
