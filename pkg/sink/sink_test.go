@@ -1642,9 +1642,9 @@ func TestExecuteInterceptor_UnsupportedKind(t *testing.T) {
 			}}},
 	}
 	url, _ := url.Parse("http://example.com")
-	_, _, _, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
+	resp, _, _, err := s.ExecuteTriggerInterceptors(trigger, &http.Request{URL: url}, json.RawMessage(`{"head": "blah"}`), s.Logger, "eventID", map[string]interface{}{})
 	if err == nil {
-		t.Fatalf("ExecuteInterceptor() expected an error for an unsupported interceptor kind, got none")
+		t.Fatalf("ExecuteInterceptor() expected an error for an unsupported interceptor kind, got none: %+v", resp)
 	}
 }
 
