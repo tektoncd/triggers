@@ -13,20 +13,19 @@ coverage:
       default: false
 
 ignore:
+  # Entry-point binaries — not unit-testable.
+  - "cmd"
   # Auto-generated client code.
-  - "pkg/client/clientset/**"
-  - "pkg/client/informers/**"
-  - "pkg/client/listers/**"
-  - "pkg/client/injection/**"
+  - "pkg/client/"
+  # CLI bootstrap utility — not unit-testable.
+  - "pkg/bootstrap/"
   # Auto-generated deepcopy/openapi code.
-  - "pkg/apis/config/zz_generated.deepcopy.go"
-  - "pkg/apis/triggers/v1alpha1/zz_generated.deepcopy.go"
-  - "pkg/apis/triggers/v1beta1/zz_generated.deepcopy.go"
-  - "pkg/apis/triggers/v1beta1/openapi_generated.go"
-  - "examples/**"
-  - "hack/**"
-  - "test/**"
-  - "config/**"
-  - "tekton/**"
-  - "docs/**"
-  - "vendor/**"
+  - "**/zz_generated.deepcopy.go"
+  - "**/openapi_generated.go"
+  - "examples"
+  - "hack"
+  - "test"
+  - "config"
+  - "tekton"
+  - "docs"
+  - "vendor"
