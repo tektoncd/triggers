@@ -1646,6 +1646,9 @@ func TestExecuteInterceptor_UnsupportedKind(t *testing.T) {
 	if err == nil {
 		t.Fatalf("ExecuteInterceptor() expected an error for an unsupported interceptor kind, got none: %+v", resp)
 	}
+	if !strings.Contains(err.Error(), "unsupported interceptor kind") {
+		t.Fatalf("ExecuteInterceptor() expected error to contain %q, got: %v", "unsupported interceptor kind", err)
+	}
 }
 
 // echoInterceptor stores and returns the body back
