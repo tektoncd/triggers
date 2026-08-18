@@ -74,6 +74,21 @@ func ResolveResources(template *triggersv1.TriggerTemplate, params []triggersv1.
 	return resources
 }
 
+// ResolveTriggerSelector resolves a templated trigger selector by replacing params with their values.
+func ResolveTriggerSelector(selector *triggersv1.EventListenerTriggerSelector, body []byte, header http.Header, extensions map[string]interface{}, triggerContext TriggerContext) (*triggersv1.EventListenerTriggerSelector, error) {
+	triggerSelector := selector.DeepCopy()
+	if triggerSelector == nil {
+		return nil, nil
+	}
+
+	err := applyEventValuesToTriggerSelector(triggerSelector, body, header, extensions, triggerContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ApplyEventValuesToTriggerSelector: %w", err)
+	}
+
+	return triggerSelector, nil
+}
+
 // event represents a HTTP event that Triggers processes
 type event struct {
 	Header     map[string]string      `json:"header"`
@@ -142,4 +157,64 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 		allParamsMap[p.Name] = pValue
 	}
 	return convertParamMapToArray(allParamsMap), nil
+}
+
+// applyEventValuesToTriggerSelector returns triggerSelector with the JSONPath variables replaced
+// with values from the event body, headers, and extensions.
+func applyEventValuesToTriggerSelector(selector *triggersv1.EventListenerTriggerSelector, body []byte, header http.Header, extensions map[string]interface{}, triggerContext TriggerContext) error {
+	event, err := newEvent(body, header, extensions, triggerContext)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	// Apply event values to namespace selector
+	for _, matchName := range selector.NamespaceSelector.MatchNames {
+		if isTektonExpr(matchName) {
+			expressions, originals := findTektonExpressions(matchName)
+			for i, expr := range expressions {
+				val, err := parseJSONPath(event, expr)
+				if err != nil {
+					return fmt.Errorf("failed to replace JSONPath value for match names %s: %w", matchName, err)
+				}
+				matchName = strings.ReplaceAll(matchName, originals[i], val)
+			}
+		}
+	}
+
+	// Apply event values to label selector
+	if selector.LabelSelector != nil {
+		// Apply event values to match labels
+		for name, value := range selector.LabelSelector.MatchLabels {
+			if isTektonExpr(value) {
+				expressions, originals := findTektonExpressions(value)
+				for i, expr := range expressions {
+					val, err := parseJSONPath(event, expr)
+					if err != nil {
+						return fmt.Errorf("failed to replace JSONPath value for match labels %s: %s: %w", name, value, err)
+					}
+					value = strings.ReplaceAll(value, originals[i], val)
+				}
+				selector.LabelSelector.MatchLabels[name] = value
+			}
+		}
+
+		// Apply event values to match expressions
+		for _, matchExpr := range selector.LabelSelector.MatchExpressions {
+			for i, value := range matchExpr.Values {
+				if isTektonExpr(value) {
+					expressions, originals := findTektonExpressions(value)
+					for j, expr := range expressions {
+						val, err := parseJSONPath(event, expr)
+						if err != nil {
+							return fmt.Errorf("failed to replace JSONPath value for match expressions %s: %s: %w", matchExpr.Key, value, err)
+						}
+						value = strings.ReplaceAll(value, originals[j], val)
+					}
+					matchExpr.Values[i] = value
+				}
+			}
+		}
+	}
+
+	return nil
 }
