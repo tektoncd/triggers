@@ -319,9 +319,12 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 	}
 
 	var prNum int
-	_, ok := jsonMap["number"]
-	if ok {
-		prNum = int(jsonMap["number"].(float64))
+	if rawNum, ok := jsonMap["number"]; ok {
+		num, ok := rawNum.(float64)
+		if !ok {
+			return results, errors.New("payload body field 'number' is not a number")
+		}
+		prNum = int(num)
 	} else {
 		if eventType == pullRequest {
 			return results, errors.New("pull_request body missing 'number' field")
@@ -344,17 +347,22 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 	commitsSection, ok := jsonMap["commits"].([]interface{})
 	if ok {
 		for _, commit := range commitsSection {
-			addedFiles, ok := commit.(map[string]interface{})["added"].([]interface{})
+			commitMap, ok := commit.(map[string]interface{})
+			if !ok {
+				return results, errors.New("payload body 'commits' element is not an object")
+			}
+
+			addedFiles, ok := commitMap["added"].([]interface{})
 			if !ok {
 				return results, errors.New("payload body missing 'commits.*.added' field")
 			}
 
-			modifiedFiles, ok := commit.(map[string]interface{})["modified"].([]interface{})
+			modifiedFiles, ok := commitMap["modified"].([]interface{})
 			if !ok {
 				return results, errors.New("payload body missing 'commits.*.modified' field")
 			}
 
-			removedFiles, ok := commit.(map[string]interface{})["removed"].([]interface{})
+			removedFiles, ok := commitMap["removed"].([]interface{})
 			if !ok {
 				return results, errors.New("payload body missing 'commits.*.removed' field")
 			}
@@ -595,11 +603,15 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 
 	var prNum int
 	if eventType == pullRequest {
-		_, ok := jsonMap["number"]
+		rawNum, ok := jsonMap["number"]
 		if !ok {
 			return results, errors.New("pull_request body missing 'number' field")
 		}
-		prNum = int(jsonMap["number"].(float64))
+		num, ok := rawNum.(float64)
+		if !ok {
+			return results, errors.New("pull_request body field 'number' is not a number")
+		}
+		prNum = int(num)
 	} else {
 		prNum = -1
 	}
@@ -610,21 +622,28 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 		if !ok {
 			return results, errors.New("issue_comment body missing 'issue' section")
 		}
-		_, ok = issueSection["number"]
+		rawNum, ok := issueSection["number"]
 		if !ok {
 			return results, errors.New("'number' field missing in the issue section of issue_comment body")
 		}
-		prNum = int(issueSection["number"].(float64))
+		num, ok := rawNum.(float64)
+		if !ok {
+			return results, errors.New("'number' field in the issue section of issue_comment body is not a number")
+		}
+		prNum = int(num)
 
 		issueCommentBodySection, ok := jsonMap["comment"].(map[string]interface{})
 		if !ok {
 			return results, errors.New("issue_comment body missing 'comment' section")
 		}
-		_, ok = issueCommentBodySection["body"]
+		rawBody, ok := issueCommentBodySection["body"]
 		if !ok {
 			return results, errors.New("'body' field missing in the comment section of issue_comment body")
 		}
-		issueCommentBody = issueCommentBodySection["body"].(string)
+		issueCommentBody, ok = rawBody.(string)
+		if !ok {
+			return results, errors.New("'body' field in the comment section of issue_comment body is not a string")
+		}
 	} else {
 		issueCommentBody = ""
 	}

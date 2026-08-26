@@ -1964,12 +1964,84 @@ func TestInterceptor_ExecuteTrigger_owners_parseBodyForOwners(t *testing.T) {
 			allowed: true,
 			wantErr: false,
 		},
+		{
+			name:      "PR number is not a JSON number",
+			eventType: "pull_request",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"number": "123", "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "pull_request body field 'number' is not a number",
+		},
+		{
+			name:      "Issue number is not a JSON number",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": "1"}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "'number' field in the issue section of issue_comment body is not a number",
+		},
+		{
+			name:      "Comment body is not a JSON string",
+			eventType: "issue_comment",
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action": "created", "issue": {"number": 1}, "comment": {"body": 123}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+			},
+			allowed: false,
+			wantErr: true,
+			want:    "'body' field in the comment section of issue_comment body is not a string",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := parseBodyForOwners(tt.interceptorRequest.Body, tt.eventType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Interceptor.parseBodyForOwners() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.want != "" && (err == nil || err.Error() != tt.want) {
+				t.Errorf("Interceptor.parseBodyForOwners() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseBodyForChangedFiles_typeValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventType string
+		body      string
+		wantErr   bool
+		want      string
+	}{
+		{
+			name:      "PR number is not a JSON number",
+			eventType: "pull_request",
+			body:      `{"number": "123", "repository": {"full_name": "org/repo"}}`,
+			wantErr:   true,
+			want:      "payload body field 'number' is not a number",
+		},
+		{
+			name:      "commits element is not a JSON object",
+			eventType: "push",
+			body:      `{"commits": ["not-a-map"], "repository": {"full_name": "org/repo"}}`,
+			wantErr:   true,
+			want:      "payload body 'commits' element is not an object",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseBodyForChangedFiles(tt.body, tt.eventType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseBodyForChangedFiles() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.want != "" && (err == nil || err.Error() != tt.want) {
+				t.Errorf("parseBodyForChangedFiles() error = %v, want %q", err, tt.want)
 			}
 		})
 	}
