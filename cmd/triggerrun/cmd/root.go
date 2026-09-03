@@ -229,7 +229,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
-	params, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
+	params, _, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
 	if err != nil {
 		log.Error("Failed to resolve parameters", err)
 		return nil, err

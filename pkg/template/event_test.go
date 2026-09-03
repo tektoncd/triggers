@@ -130,7 +130,7 @@ func TestApplyEventValuesMergeInDefaultParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs, context)
+			got, _, err := applyEventValuesToParams(tt.args.params, nil, nil, nil, tt.args.paramSpecs, context)
 			if err != nil {
 				t.Errorf("applyEventValuesToParams(): unexpected error: %s", err.Error())
 			}
@@ -306,7 +306,7 @@ func TestApplyEventValuesToParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
+			got, _, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -350,7 +350,7 @@ func TestApplyEventValuesToParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
+			got, _, err := applyEventValuesToParams(tt.params, tt.body, tt.header, tt.extensions, nil, context)
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", got)
 			}
@@ -477,7 +477,7 @@ func TestResolveParams(t *testing.T) {
 				TriggerTemplate: tt.template,
 			}
 
-			params, err := ResolveParams(rt, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
+			params, _, err := ResolveParams(rt, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
 			if err != nil {
 				t.Fatalf("ResolveParams() returned unexpected error: %s", err)
 			}
@@ -511,11 +511,40 @@ func TestResolveParams_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
+			params, _, err := ResolveParams(ResolvedTrigger{BindingParams: tt.bindingParams}, tt.body, map[string][]string{}, tt.extensions, NewTriggerContext(eventID))
 			if err == nil {
 				t.Errorf("did not get expected error - got: %v", params)
 			}
 		})
+	}
+}
+
+func TestResolveParams_Unresolved(t *testing.T) {
+	rt := ResolvedTrigger{
+		BindingParams: []triggersv1.Param{
+			// "message" (lower-case) does not match declared "MESSAGE".
+			{Name: "message", Value: "hi"},
+			// "revision" exactly matches a declared param with no default.
+			{Name: "revision", Value: "abc123"},
+		},
+		TriggerTemplate: &triggersv1.TriggerTemplate{
+			Spec: triggersv1.TriggerTemplateSpec{
+				Params: []triggersv1.ParamSpec{
+					{Name: "MESSAGE"},
+					{Name: "gitrevision"},
+					{Name: "revision"},
+					{Name: "withDefault", Default: ptr.String("d")},
+				},
+			},
+		},
+	}
+	_, unresolved, err := ResolveParams(rt, nil, map[string][]string{}, nil, NewTriggerContext("1"))
+	if err != nil {
+		t.Fatalf("ResolveParams() returned unexpected error: %s", err)
+	}
+	want := []string{"MESSAGE", "gitrevision"}
+	if diff := cmp.Diff(want, unresolved); diff != "" {
+		t.Errorf("unresolved params -want +got: %s", diff)
 	}
 }
 
