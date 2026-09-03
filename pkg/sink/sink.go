@@ -566,6 +566,8 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("could not resolve nameSpacedinterceptor URL: %w", err)
 			}
+		} else {
+			return nil, nil, nil, fmt.Errorf("unsupported interceptor kind %q for interceptor %s", i.Ref.Kind, i.GetName())
 		}
 
 		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
