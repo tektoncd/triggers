@@ -1434,6 +1434,80 @@ func TestHandleEvent_Error(t *testing.T) {
 	}
 }
 
+// TestHandleEvent_UnresolvedParamsWarning verifies the sink logs a warning when a
+// TriggerTemplate declares a param with no binding value and no default, and stays
+// silent when every declared param is resolved.
+func TestHandleEvent_UnresolvedParamsWarning(t *testing.T) {
+	eventBody := []byte(`{"head_commit": {"id": "testrevision"}, "repository": {"url": "testurl"}, "foo": "bar"}`)
+	const elName = "test-el"
+	bindings := []*triggersv1beta1.EventListenerBinding{
+		{Name: "url", Value: ptr.String("$(body.repository.url)")},
+		{Name: "revision", Value: ptr.String("$(body.head_commit.id)")},
+		{Name: "name", Value: ptr.String("git-clone-run")},
+		{Name: "app", Value: ptr.String("$(body.foo)")},
+		{Name: "type", Value: ptr.String("$(header.Content-Type)")},
+	}
+	resolvedTTSpec := makeGitCloneTTSpec(t, "git-clone-run")
+	unresolvedTTSpec := makeGitCloneTTSpec(t, "git-clone-run")
+	// MESSAGE has no default and no matching binding -> unresolved.
+	unresolvedTTSpec.Params = append(unresolvedTTSpec.Params, triggersv1beta1.ParamSpec{Name: "MESSAGE"})
+
+	const warnMsg = "has TriggerTemplate params with no value or default"
+	for _, tc := range []struct {
+		name     string
+		ttSpec   *triggersv1beta1.TriggerTemplateSpec
+		wantWarn bool
+	}{
+		{name: "unresolved param logs warning", ttSpec: unresolvedTTSpec, wantWarn: true},
+		{name: "resolved params log no warning", ttSpec: resolvedTTSpec, wantWarn: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res := test.Resources{
+				EventListeners: []*triggersv1beta1.EventListener{{
+					ObjectMeta: metav1.ObjectMeta{Name: elName, Namespace: namespace, UID: types.UID(elUID)},
+					Spec: triggersv1beta1.EventListenerSpec{
+						Triggers: []triggersv1beta1.EventListenerTrigger{{
+							Name:     "git-clone-trigger",
+							Bindings: bindings,
+							Template: &triggersv1beta1.EventListenerTemplate{Spec: tc.ttSpec},
+						}},
+					},
+				}},
+			}
+			sink, _ := getSinkAssets(t, res, elName, nil)
+
+			core, logs := observer.New(zapcore.DebugLevel)
+			sink.Logger = zaptest.NewLogger(t, zaptest.WrapOptions(zap.WrapCore(func(zapcore.Core) zapcore.Core { return core }))).Sugar()
+
+			for _, el := range res.EventListeners {
+				el.Status.SetCondition(&apis.Condition{Type: apis.ConditionReady, Status: corev1.ConditionTrue, Message: "EventListener is Ready"})
+			}
+
+			ts := httptest.NewServer(http.HandlerFunc(sink.HandleEvent))
+			defer ts.Close()
+			req, err := http.NewRequest(http.MethodPost, ts.URL, bytes.NewReader(eventBody))
+			if err != nil {
+				t.Fatalf("error creating request: %s", err)
+			}
+			req.Header.Add("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("error sending request: %s", err)
+			}
+			resp.Body.Close()
+			sink.WGProcessTriggers.Wait()
+
+			matches := logs.FilterMessageSnippet(warnMsg)
+			switch {
+			case tc.wantWarn && matches.Len() == 0:
+				t.Errorf("expected a warning containing %q, got logs: %v", warnMsg, logs.All())
+			case !tc.wantWarn && matches.Len() > 0:
+				t.Errorf("expected no unresolved-param warning, got: %v", matches.All())
+			}
+		})
+	}
+}
+
 // sequentialInterceptor is a HTTP server that will return sequential responses.
 // It expects a request of the form `{"i": n}`.
 // The response body will always return with the next value set, whereas the

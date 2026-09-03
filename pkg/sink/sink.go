@@ -432,10 +432,13 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 	if iresp != nil && iresp.Extensions != nil {
 		extensions = iresp.Extensions
 	}
-	params, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
+	params, unresolved, err := template.ResolveParams(rt, finalPayload, header, extensions, template.NewTriggerContext(eventID))
 	if err != nil {
 		log.Error(err)
 		return
+	}
+	if len(unresolved) > 0 {
+		log.Warnf("Trigger %q has TriggerTemplate params with no value or default: %v; rendered resources may retain literal $(tt.params.<name>) references and be rejected", t.Name, unresolved)
 	}
 
 	log.Infof("ResolvedParams : %+v", params)
