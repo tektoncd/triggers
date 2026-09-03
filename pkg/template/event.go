@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,18 +47,20 @@ func NewTriggerContext(eventID string) TriggerContext {
 
 // ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
-func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}, triggerContext TriggerContext) ([]triggersv1.Param, error) {
+// The returned string slice lists declared params that got no value (no binding
+// value and no default), leaving literal $(tt.params.<name>) refs.
+func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header, extensions map[string]interface{}, triggerContext TriggerContext) ([]triggersv1.Param, []string, error) {
 	var ttParams []triggersv1.ParamSpec
 	if rt.TriggerTemplate != nil {
 		ttParams = rt.TriggerTemplate.Spec.Params
 	}
 
-	out, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams, triggerContext)
+	out, unresolved, err := applyEventValuesToParams(rt.BindingParams, body, header, extensions, ttParams, triggerContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
+		return nil, nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
 
-	return out, nil
+	return out, unresolved, nil
 }
 
 // ResolveResources resolves a templated resource by replacing params with their values.
@@ -107,16 +110,19 @@ func newEvent(body []byte, headers http.Header, extensions map[string]interface{
 // with values from the event body, headers, and extensions.
 func applyEventValuesToParams(params []triggersv1.Param, body []byte, header http.Header, extensions map[string]interface{},
 	defaults []triggersv1.ParamSpec,
-	triggerContext TriggerContext) ([]triggersv1.Param, error) {
+	triggerContext TriggerContext) ([]triggersv1.Param, []string, error) {
 	event, err := newEvent(body, header, extensions, triggerContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal event: %w", err)
+		return nil, nil, fmt.Errorf("failed to marshal event: %w", err)
 	}
 
 	allParamsMap := map[string]string{}
+	unresolved := map[string]struct{}{}
 	for _, paramSpec := range defaults {
 		if paramSpec.Default != nil {
 			allParamsMap[paramSpec.Name] = *paramSpec.Default
+		} else {
+			unresolved[paramSpec.Name] = struct{}{}
 		}
 	}
 
@@ -135,11 +141,18 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 				}
 			}
 			if err != nil {
-				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
+				return nil, nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}
 			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
 		allParamsMap[p.Name] = pValue
+		delete(unresolved, p.Name)
 	}
-	return convertParamMapToArray(allParamsMap), nil
+
+	names := make([]string, 0, len(unresolved))
+	for n := range unresolved {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return convertParamMapToArray(allParamsMap), names, nil
 }
