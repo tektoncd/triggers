@@ -1,3 +1,5 @@
+# Re-generate the signature after changing the payload:
+#   echo -n '<payload>' | openssl dgst -sha256 -hmac "$(kubectl get secret github-secret -o jsonpath='{.data.secretToken}' | base64 -d)"
 curl -v \
 -H 'X-GitHub-Event: pull_request' \
 -H 'X-Hub-Signature-256: sha256=4564812b3882ca1531a3ecc4f481ee98a52a434141456455f25d92839d0d9572' \
