@@ -2,29 +2,27 @@
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
-  name: github-add-changed-files-push-cel-listener
+  name: github-add-changed-files-pr-listener
 spec:
   triggers:
-    - name: github-add-changed-files-push-cel-listener
+    - name: github-add-changed-files-pr-listener
       interceptors:
         - ref:
             name: "github"
           params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secretToken
             - name: "eventTypes"
               value: ["pull_request", "push"]
             - name: "addChangedFiles"
               value:
                 enabled: true
-        - ref:
-            name: cel
-          params:
-          - name: filter
-            # execute only when a file within the controllers directory has changed
-            value: extensions.changed_files.matches('controllers/')
       bindings:
-        - ref: github-add-changed-files-push-cel-pr-binding
+        - ref: github-add-changed-files-pr-pr-binding
       template:
-        ref: github-add-changed-files-push-cel-template
+        ref: github-add-changed-files-pr-template
   resources:
     kubernetesResource:
       spec:
@@ -43,7 +41,7 @@ spec:
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
-  name: github-add-changed-files-push-cel-pr-binding
+  name: github-add-changed-files-pr-pr-binding
 spec:
   params:
     - name: changedfiles
@@ -53,7 +51,7 @@ spec:
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
-  name: github-add-changed-files-push-cel-template
+  name: github-add-changed-files-pr-template
 spec:
   params:
     - name: changedfiles
@@ -61,11 +59,11 @@ spec:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
       metadata:
-        generateName: github-add-changed-files-push-cel-run-
+        generateName: github-add-changed-files-pr-run-
       spec:
         taskSpec:
           steps:
             - image: ubuntu
               script: |
                 #! /bin/bash
-                echo "Changed Files: /n$(tt.params.changedfiles)"
+                echo "Changed Files: $(tt.params.changedfiles)"
