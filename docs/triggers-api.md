@@ -25,6 +25,8 @@ Resource Types:
 </li><li>
 <a href="#triggers.tekton.dev/v1alpha1.EventListener">EventListener</a>
 </li><li>
+<a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplate">ScheduledTemplate</a>
+</li><li>
 <a href="#triggers.tekton.dev/v1alpha1.Trigger">Trigger</a>
 </li><li>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerBinding">TriggerBinding</a>
@@ -251,6 +253,124 @@ Resources
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.EventListenerStatus">
 EventListenerStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.ScheduledTemplate">ScheduledTemplate
+</h3>
+<div>
+<p>ScheduledTemplate takes parameters and uses them to create CRDs</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+triggers.tekton.dev/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>ScheduledTemplate</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplateSpec">
+ScheduledTemplateSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the desired state of the ScheduledTemplate from the client</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>TriggerTemplateSpec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
+TriggerTemplateSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TriggerTemplateSpec</code> are embedded into this type.)
+</p>
+<p>Embed TriggerTemplateSpec to inherit Params and ResourceTemplates</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cloudEventSink</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis#URL">
+knative.dev/pkg/apis.URL
+</a>
+</em>
+</td>
+<td>
+<p>URL of the external event trigger is listening to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>schedule</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Cron job schedule for the trigger</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplateStatus">
+ScheduledTemplateStatus
 </a>
 </em>
 </td>
@@ -1939,6 +2059,72 @@ CustomResource
 </tr>
 </tbody>
 </table>
+<h3 id="triggers.tekton.dev/v1alpha1.ScheduledTemplateSpec">ScheduledTemplateSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplate">ScheduledTemplate</a>)
+</p>
+<div>
+<p>ScheduledTemplateSpec holds the desired state of ScheduledTemplate</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TriggerTemplateSpec</code><br/>
+<em>
+<a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
+TriggerTemplateSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TriggerTemplateSpec</code> are embedded into this type.)
+</p>
+<p>Embed TriggerTemplateSpec to inherit Params and ResourceTemplates</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cloudEventSink</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis#URL">
+knative.dev/pkg/apis.URL
+</a>
+</em>
+</td>
+<td>
+<p>URL of the external event trigger is listening to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>schedule</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Cron job schedule for the trigger</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triggers.tekton.dev/v1alpha1.ScheduledTemplateStatus">ScheduledTemplateStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplate">ScheduledTemplate</a>)
+</p>
+<div>
+<p>ScheduledTemplateStatus describes the desired state of ScheduledTemplate</p>
+</div>
 <h3 id="triggers.tekton.dev/v1alpha1.SecretRef">SecretRef
 </h3>
 <p>
@@ -2591,7 +2777,7 @@ TriggerTemplateSpec
 <h3 id="triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">TriggerTemplateSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate</a>, <a href="#triggers.tekton.dev/v1alpha1.TriggerSpecTemplate">TriggerSpecTemplate</a>)
+(<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.TriggerTemplate">TriggerTemplate</a>, <a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplateSpec">ScheduledTemplateSpec</a>, <a href="#triggers.tekton.dev/v1alpha1.TriggerSpecTemplate">TriggerSpecTemplate</a>)
 </p>
 <div>
 <p>TriggerTemplateSpec holds the desired state of TriggerTemplate</p>
