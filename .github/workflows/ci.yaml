@@ -20,6 +20,7 @@ jobs:
     outputs:
       non-docs: ${{ steps.detect.outputs.non-docs }}
       yaml: ${{ steps.detect.outputs.yaml }}
+      e2e: ${{ steps.detect.outputs.e2e }}
     steps:
     - name: Get base depth
       id: base-depth
@@ -61,8 +62,26 @@ jobs:
             fi
           done <<< "${CHANGED_FILES}"
 
+          E2E='false'
+          while read -r file; do
+            case "$file" in
+              *.md) ;;
+              .codecov.yaml|codecov.yml) ;;
+              .github/workflows/ci.yaml|.github/workflows/e2e-matrix.yml|.github/workflows/microshift.yaml)
+                E2E='true'
+                break
+                ;;
+              .github/workflows/*) ;;
+              *)
+                E2E='true'
+                break
+                ;;
+            esac
+          done <<< "${CHANGED_FILES}"
+
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+          echo "e2e=${E2E}" | tee -a $GITHUB_OUTPUT
         fi
 
   build:
@@ -173,7 +192,8 @@ jobs:
           KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -R -f config 1>/dev/null
           KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config/interceptors 1>/dev/null
   e2e-tests:
-    needs: [build]
+    needs: [changes, build]
+    if: ${{ needs.changes.outputs.e2e == 'true' }}
     uses: ./.github/workflows/e2e-matrix.yml
 
   ci-summary:
