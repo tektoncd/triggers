@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
+      KO_FLAGS: --insecure-registry
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
       ARTIFACTS: ${{ github.workspace }}/artifacts
       KOCACHE: /tmp/ko-cache
