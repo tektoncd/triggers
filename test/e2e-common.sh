@@ -54,7 +54,7 @@ function install_triggers_crd() {
   echo ">> Deploying Tekton Triggers"
   rel=$(mktemp)
   release=$(mktemp)
-  ko resolve -f config/ > "${rel}" || fail_test "Tekton Triggers build failed"
+  ko resolve ${KO_FLAGS:-} -f config/ > "${rel}" || fail_test "Tekton Triggers build failed"
 
   if [ "${SKIP_SECURITY_CTX}" == "true" ]; then
       yq 'del(.spec.template.spec.containers[]?.securityContext.runAsUser, .spec.template.spec.containers[]?.securityContext.runAsGroup)' "${rel}" > "${release}"
@@ -66,7 +66,7 @@ function install_triggers_crd() {
 
   # Wait for the Interceptors CRD to be available before adding the core-interceptors
   kubectl wait --for=condition=Established --timeout=30s crds/clusterinterceptors.triggers.tekton.dev
-  ko resolve -f config/interceptors > "${rel}" || fail_test "Core interceptors build failed"
+  ko resolve ${KO_FLAGS:-} -f config/interceptors > "${rel}" || fail_test "Core interceptors build failed"
 
   if [ "${SKIP_SECURITY_CTX}" == "true" ]; then
       kubectl patch configmap config-defaults-triggers -n tekton-pipelines --type='merge' -p='{"data":{"default-run-as-user":"","default-fs-group":"", "default-run-as-group":""}}'
