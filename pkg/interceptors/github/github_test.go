@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
@@ -378,8 +379,50 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	}
 }
 
+func TestInterceptor_NoSecretRef_SkipsProcessing(t *testing.T) {
+	ctx, _ := test.SetupFakeContext(t)
+	w := &InterceptorImpl{
+		SecretGetter: interceptors.DefaultSecretGetter(fakekubeclient.Get(ctx).CoreV1()),
+	}
+
+	req := &triggersv1.InterceptorRequest{
+		Body: `{"number":1,"repository":{"full_name":"o/r"}}`,
+		Header: http.Header{
+			"Content-Type":   []string{"application/json"},
+			"X-GitHub-Event": []string{"pull_request"},
+		},
+		InterceptorParams: map[string]interface{}{
+			"addChangedFiles": &AddChangedFiles{
+				Enabled: true,
+				PersonalAccessToken: &triggersv1.SecretRef{
+					SecretName: "doesnotexist",
+					SecretKey:  "key",
+				},
+			},
+		},
+		Context: &triggersv1.TriggerContext{
+			EventURL:  "https://testing.example.com",
+			EventID:   "abcde",
+			TriggerID: "namespaces/default/triggers/example-trigger",
+		},
+	}
+
+	res := w.Process(ctx, req)
+	if !res.Continue {
+		t.Fatalf("expected Continue=true when SecretRef is nil, got false: %v", res.Status.Err())
+	}
+	if res.Extensions != nil {
+		t.Fatalf("expected no extensions when SecretRef is nil, got %v", res.Extensions)
+	}
+}
+
 func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 	var secretToken = "secret"
+	const webhookSecret = "webhook-secret-value"
+	webhookSecretObj := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret"},
+		Data:       map[string][]byte{"key": []byte(webhookSecret)},
+	}
 	tests := []struct {
 		name               string
 		githubServerReply  string
@@ -402,6 +445,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -436,6 +483,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -470,6 +521,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -504,6 +559,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -538,6 +597,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -572,6 +635,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -606,6 +673,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push", "nothing"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -636,10 +707,17 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 
 			ctx = context.WithValue(ctx, testURL, ts.URL)
+			hmacSig := test.HMACHeader(t, webhookSecret, []byte(tt.interceptorRequest.Body), "sha256")
+			tt.interceptorRequest.Header["X-Hub-Signature-256"] = []string{hmacSig}
+
 			clientset := fakekubeclient.Get(ctx)
+			webhookSecretCopy := webhookSecretObj.DeepCopy()
+			webhookSecretCopy.Namespace = metav1.NamespaceDefault
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret, webhookSecretCopy)
+			} else {
+				ctx, clientset = fakekubeclient.With(ctx, webhookSecretCopy)
 			}
 
 			w := &InterceptorImpl{
@@ -668,6 +746,11 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Pull_Request(t *testing.T) {
 
 func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 	var secretToken = "secret"
+	const webhookSecret = "webhook-secret-value"
+	webhookSecretObj := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret"},
+		Data:       map[string][]byte{"key": []byte(webhookSecret)},
+	}
 	tests := []struct {
 		name               string
 		githubServerReply  string
@@ -690,6 +773,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -724,6 +811,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -758,6 +849,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -792,6 +887,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -871,9 +970,9 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 					"token": []byte(secretToken),
 				},
 			},
-			wantResContinue:   false,
+			wantResContinue:   true,
 			want:              "",
-			wantStatusMessage: "no request context passed",
+			wantStatusMessage: "",
 		},
 		{
 			name:              "invalid secret",
@@ -888,6 +987,10 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 				},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"addChangedFiles": &AddChangedFiles{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -918,10 +1021,17 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 			ctx, _ := test.SetupFakeContext(t)
 
 			ctx = context.WithValue(ctx, testURL, ts.URL)
+			hmacSig := test.HMACHeader(t, webhookSecret, []byte(tt.interceptorRequest.Body), "sha256")
+			tt.interceptorRequest.Header["X-Hub-Signature-256"] = []string{hmacSig}
+
 			clientset := fakekubeclient.Get(ctx)
+			webhookSecretCopy := webhookSecretObj.DeepCopy()
+			webhookSecretCopy.Namespace = metav1.NamespaceDefault
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret, webhookSecretCopy)
+			} else {
+				ctx, clientset = fakekubeclient.With(ctx, webhookSecretCopy)
 			}
 
 			w := &InterceptorImpl{
@@ -1260,6 +1370,11 @@ func Test_getPersonalAccessTokenSecret(t *testing.T) {
 
 func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 	secretToken := "secret"
+	const webhookSecret = "webhook-secret-value"
+	webhookSecretObj := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret"},
+		Data:       map[string][]byte{"key": []byte(webhookSecret)},
+	}
 	tests := []struct {
 		name                  string
 		issueCommentReply     string
@@ -1280,6 +1395,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1315,6 +1434,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "repoMembers",
@@ -1347,6 +1470,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1382,6 +1509,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1416,6 +1547,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
@@ -1448,6 +1583,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
@@ -1479,6 +1618,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
@@ -1511,6 +1654,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled:   true,
 						CheckType: "none",
@@ -1543,6 +1690,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1578,6 +1729,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1614,6 +1769,10 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
 				InterceptorParams: map[string]interface{}{
 					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
 					"githubOwners": &Owners{
 						Enabled: true,
 						PersonalAccessToken: &triggersv1.SecretRef{
@@ -1660,10 +1819,17 @@ func TestInterceptor_ExecuteTrigger_owners(t *testing.T) {
 			}))
 			ctx, _ := test.SetupFakeContext(t)
 			ctx = context.WithValue(ctx, testURL, ts.URL)
+			hmacSig := test.HMACHeader(t, webhookSecret, []byte(tt.interceptorRequest.Body), "sha256")
+			tt.interceptorRequest.Header["X-Hub-Signature-256"] = []string{hmacSig}
+
 			clientset := fakekubeclient.Get(ctx)
+			webhookSecretCopy := webhookSecretObj.DeepCopy()
+			webhookSecretCopy.Namespace = metav1.NamespaceDefault
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret, webhookSecretCopy)
+			} else {
+				ctx, clientset = fakekubeclient.With(ctx, webhookSecretCopy)
 			}
 
 			w := &InterceptorImpl{
@@ -1811,6 +1977,11 @@ func TestInterceptor_ExecuteTrigger_owners_parseBodyForOwners(t *testing.T) {
 
 func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 	secretToken := "secret"
+	const webhookSecret = "webhook-secret-value"
+	webhookSecretObj := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret"},
+		Data:       map[string][]byte{"key": []byte(webhookSecret)},
+	}
 	tests := []struct {
 		name                    string
 		issueCommentReply       string
@@ -1986,9 +2157,9 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 					"token": []byte(secretToken),
 				},
 			},
-			allowed: false,
-			wantErr: true,
-			want:    "error getting github token: no request context passed",
+			allowed: true,
+			wantErr: false,
+			want:    "",
 		},
 	}
 	for _, tt := range tests {
@@ -2013,10 +2184,17 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 			}))
 			ctx, _ := test.SetupFakeContext(t)
 			ctx = context.WithValue(ctx, testURL, ts.URL)
+			hmacSig := test.HMACHeader(t, webhookSecret, []byte(tt.interceptorRequest.Body), "sha256")
+			tt.interceptorRequest.Header["X-Hub-Signature-256"] = []string{hmacSig}
+
 			clientset := fakekubeclient.Get(ctx)
+			webhookSecretCopy := webhookSecretObj.DeepCopy()
+			webhookSecretCopy.Namespace = metav1.NamespaceDefault
 			if tt.secret != nil {
 				tt.secret.Namespace = metav1.NamespaceDefault
-				ctx, clientset = fakekubeclient.With(ctx, tt.secret)
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret, webhookSecretCopy)
+			} else {
+				ctx, clientset = fakekubeclient.With(ctx, webhookSecretCopy)
 			}
 
 			w := &InterceptorImpl{
@@ -2028,6 +2206,121 @@ func TestInterceptor_ExecuteTrigger_owners_data_validation(t *testing.T) {
 				t.Logf("Interceptor.Process() = %v, want %v", res.Status.Message, tt.want)
 			} else if !res.Continue && (tt.wantErr != true) {
 				t.Fatalf("Interceptor.Process() expected res.Continue to be true but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+			}
+		})
+	}
+}
+
+func TestInterceptor_EnterpriseHostAllowlist(t *testing.T) {
+	var (
+		emptyJSONBody = json.RawMessage(`{}`)
+		webhookSecret = "webhook-secret"
+	)
+	hmac := test.HMACHeader(t, webhookSecret, emptyJSONBody, "sha256")
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "mysecret", Namespace: metav1.NamespaceDefault},
+		Data:       map[string][]byte{"token": []byte(webhookSecret)},
+	}
+
+	baseReq := func(enterpriseHost string) *triggersv1.InterceptorRequest {
+		h := http.Header{
+			"Content-Type":        {"application/json"},
+			"X-Hub-Signature-256": {hmac},
+		}
+		if enterpriseHost != "" {
+			h["X-Github-Enterprise-Host"] = []string{enterpriseHost}
+		}
+		return &triggersv1.InterceptorRequest{
+			Body:   string(emptyJSONBody),
+			Header: h,
+			InterceptorParams: map[string]interface{}{
+				"secretRef": &triggersv1.SecretRef{
+					SecretName: "mysecret",
+					SecretKey:  "token",
+				},
+			},
+			Context: &triggersv1.TriggerContext{
+				EventURL:  "https://testing.example.com",
+				EventID:   "abcde",
+				TriggerID: "namespaces/default/triggers/example-trigger",
+			},
+		}
+	}
+
+	tests := []struct {
+		name            string
+		host            string
+		enableAllowlist bool
+		allowList       []string
+		wantContinue    bool
+		wantMessage     string
+	}{
+		{
+			name:            "allowlist enabled, host in list",
+			host:            "github.mycompany.com",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    true,
+		},
+		{
+			name:            "allowlist enabled, host NOT in list",
+			host:            "evil.attacker.com",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    false,
+			wantMessage:     `enterprise host "evil.attacker.com" is not in the allowed list`,
+		},
+		{
+			name:            "allowlist enabled, empty list rejects enterprise host",
+			host:            "github.mycompany.com",
+			enableAllowlist: true,
+			wantContinue:    false,
+			wantMessage:     `enterprise host "github.mycompany.com" is not in the allowed list`,
+		},
+		{
+			name:            "no enterprise host header, allowlist enabled",
+			host:            "",
+			enableAllowlist: true,
+			allowList:       []string{"github.mycompany.com"},
+			wantContinue:    true,
+		},
+		{
+			name:            "allowlist disabled, enterprise host allowed",
+			host:            "anything.example.com",
+			enableAllowlist: false,
+			wantContinue:    true,
+		},
+		{
+			name:         "nil config, enterprise host allowed",
+			host:         "anything.example.com",
+			wantContinue: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, _ := test.SetupFakeContext(t)
+			ctx, clientset := fakekubeclient.With(ctx, secret)
+
+			ctx = config.ToContext(
+				ctx,
+				&config.Config{
+					CoreInterceptors: &config.CoreInterceptorsConfig{EnterpriseHostAllowlist: tt.allowList},
+					FeatureFlags:     &config.FeatureFlags{InterceptorsGitHubUseEnterpriseHostAllowlist: tt.enableAllowlist},
+				},
+			)
+
+			w := &InterceptorImpl{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, baseReq(tt.host))
+
+			if res.Continue != tt.wantContinue {
+				t.Fatalf("Continue = %t, want %t. Status: %v", res.Continue, tt.wantContinue, res.Status.Err())
+			}
+			if tt.wantMessage != "" && res.Status.Message != tt.wantMessage {
+				t.Fatalf("Status.Message = %q, want %q", res.Status.Message, tt.wantMessage)
 			}
 		})
 	}

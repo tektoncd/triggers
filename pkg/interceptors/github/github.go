@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	gh "github.com/google/go-github/v31/github"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"golang.org/x/oauth2"
@@ -145,29 +146,44 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 	}
 
-	// Next validate secrets
-	if p.SecretRef != nil {
-		// Check the secret to see if it is empty
-		if p.SecretRef.SecretKey == "" {
-			return interceptors.Fail(codes.FailedPrecondition, "github interceptor secretRef.secretKey is empty")
+	// SecretRef is required — without it we cannot verify the webhook signature,
+	// so skip all processing that would read secrets or call external APIs.
+	if p.SecretRef == nil {
+		return &triggersv1.InterceptorResponse{
+			Continue: true,
 		}
-		header := headers.Get("X-Hub-Signature-256")
-		if header == "" {
-			return interceptors.Fail(codes.FailedPrecondition, "no X-Hub-Signature-256 header set")
-		}
+	}
 
-		if r.Context == nil {
-			return interceptors.Failf(codes.InvalidArgument, "no request context passed")
-		}
+	if p.SecretRef.SecretKey == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "github interceptor secretRef.secretKey is empty")
+	}
+	header := headers.Get("X-Hub-Signature-256")
+	if header == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "no X-Hub-Signature-256 header set")
+	}
 
-		ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
-		secretToken, err := w.SecretGetter.Get(ctx, ns, p.SecretRef)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
-		}
+	if r.Context == nil {
+		return interceptors.Failf(codes.InvalidArgument, "no request context passed")
+	}
 
-		if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
-			return interceptors.Fail(codes.FailedPrecondition, err.Error())
+	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+	secretToken, err := w.SecretGetter.Get(ctx, ns, p.SecretRef)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
+	}
+
+	if err := gh.ValidateSignature(header, []byte(r.Body), secretToken); err != nil {
+		return interceptors.Fail(codes.FailedPrecondition, err.Error())
+	}
+
+	enterpriseUrl := headers.Get("X-Github-Enterprise-Host")
+	if enterpriseUrl != "" {
+		if cfg := config.FromContext(ctx); cfg != nil && cfg.FeatureFlags != nil && cfg.CoreInterceptors != nil &&
+			cfg.FeatureFlags.InterceptorsGitHubUseEnterpriseHostAllowlist {
+			if !cfg.CoreInterceptors.HostInEnterpriseHostAllowList(enterpriseUrl) {
+				return interceptors.Failf(codes.FailedPrecondition,
+					"enterprise host %q is not in the allowed list", enterpriseUrl)
+			}
 		}
 	}
 
