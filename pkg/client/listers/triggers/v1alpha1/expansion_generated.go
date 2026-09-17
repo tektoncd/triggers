@@ -42,6 +42,14 @@ type InterceptorListerExpansion interface{}
 // InterceptorNamespaceLister.
 type InterceptorNamespaceListerExpansion interface{}
 
+// ScheduledTemplateListerExpansion allows custom methods to be added to
+// ScheduledTemplateLister.
+type ScheduledTemplateListerExpansion interface{}
+
+// ScheduledTemplateNamespaceListerExpansion allows custom methods to be added to
+// ScheduledTemplateNamespaceLister.
+type ScheduledTemplateNamespaceListerExpansion interface{}
+
 // TriggerListerExpansion allows custom methods to be added to
 // TriggerLister.
 type TriggerListerExpansion interface{}
