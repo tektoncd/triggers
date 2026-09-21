@@ -96,6 +96,7 @@ func MakeContainer(el *v1beta1.EventListener, configAcc reconcilersource.ConfigA
 			"--writetimeout=" + strconv.FormatInt(*c.WriteTimeOut, 10),
 			"--idletimeout=" + strconv.FormatInt(*c.IdleTimeOut, 10),
 			"--timeouthandler=" + strconv.FormatInt(*c.TimeOutHandler, 10),
+			"--max-body-size=" + strconv.FormatInt(*c.MaxBodySize, 10),
 			"--httpclient-readtimeout=" + strconv.FormatInt(*c.HTTPClientReadTimeOut, 10),
 			"--httpclient-keep-alive=" + strconv.FormatInt(*c.HTTPClientKeepAlive, 10),
 			"--httpclient-tlshandshaketimeout=" + strconv.FormatInt(*c.HTTPClientTLSHandshakeTimeout, 10),

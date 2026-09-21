@@ -19,6 +19,7 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,9 +27,29 @@ import (
 
 func (r Sink) IsValidPayload(eventHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if r.MaxBodySize > 0 {
+			request.Body = http.MaxBytesReader(response, request.Body, r.MaxBodySize)
+		}
 		payload, err := io.ReadAll(request.Body)
 		request.Body = io.NopCloser(bytes.NewBuffer(payload))
 		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				errMsg := fmt.Sprintf("Event body exceeds the maximum accepted size of %d bytes", maxBytesErr.Limit)
+				r.recordCountMetrics(failTag)
+				r.Logger.Error(errMsg)
+				response.Header().Set("Content-Type", "application/json")
+				response.WriteHeader(http.StatusRequestEntityTooLarge)
+				body := Response{
+					EventListener: r.EventListenerName,
+					Namespace:     r.EventListenerNamespace,
+					ErrorMessage:  errMsg,
+				}
+				if err := json.NewEncoder(response).Encode(body); err != nil {
+					r.Logger.Errorf("failed to write back sink response: %v", err)
+				}
+				return
+			}
 			r.recordCountMetrics(failTag)
 			r.Logger.Errorf("Error reading event body: %s", err)
 			response.WriteHeader(http.StatusInternalServerError)

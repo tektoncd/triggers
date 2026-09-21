@@ -71,6 +71,8 @@ var (
 		"The filename for the TLS key.")
 	payloadValidation = flag.Bool("payload-validation", true,
 		"Whether to disable payload validation or not.")
+	elMaxBodySize = flag.Int64("max-body-size", 3*1024*1024,
+		"The maximum accepted request body size in bytes for EventListener Server. Zero or less disables the limit.")
 	cloudEventURI = flag.String("cloudevent-uri", "", "uri for cloudevent")
 )
 
@@ -108,6 +110,8 @@ type Args struct {
 	Cert string
 	// PayloadValidation defines whether to validate payload or not
 	PayloadValidation bool
+	// ELMaxBodySize defines the maximum accepted request body size in bytes for EventListener Server
+	ELMaxBodySize int64
 	// CloudEventURI refers to the location where cloudevent data need to be send
 	CloudEventURI string
 }
@@ -140,6 +144,7 @@ func GetArgs() (Args, error) {
 		Port:                              *portFlag,
 		IsMultiNS:                         *isMultiNSFlag,
 		PayloadValidation:                 *payloadValidation,
+		ELMaxBodySize:                     *elMaxBodySize,
 		ELReadTimeOut:                     time.Duration(*elReadTimeOut),
 		ELWriteTimeOut:                    time.Duration(*elWriteTimeOut),
 		ELIdleTimeOut:                     time.Duration(*elIdleTimeOut),
