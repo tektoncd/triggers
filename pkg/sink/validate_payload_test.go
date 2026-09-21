@@ -19,8 +19,10 @@ package sink
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
@@ -36,6 +38,7 @@ func TestSink_IsValidPayload(t *testing.T) {
 		name           string
 		testResources  test.Resources
 		eventBody      []byte
+		maxBodySize    int64
 		wantStatusCode int
 	}{{
 		name: "event with Json Body",
@@ -71,6 +74,61 @@ func TestSink_IsValidPayload(t *testing.T) {
 		},
 		eventBody:      []byte(`<test>xml</test>`),
 		wantStatusCode: http.StatusBadRequest,
+	}, {
+		name: "event body within the size limit",
+		testResources: test.Resources{
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      defaultELName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					Triggers: []triggersv1.EventListenerTrigger{{
+						TriggerRef: "test",
+					}},
+				},
+			}},
+		},
+		eventBody:      json.RawMessage(`{"head_commit": {"id": "testrevision"}}`),
+		maxBodySize:    1024,
+		wantStatusCode: http.StatusAccepted,
+	}, {
+		name: "event body over the size limit",
+		testResources: test.Resources{
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      defaultELName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					Triggers: []triggersv1.EventListenerTrigger{{
+						TriggerRef: "test",
+					}},
+				},
+			}},
+		},
+		eventBody:      json.RawMessage(fmt.Sprintf(`{"head_commit": {"id": %q}}`, strings.Repeat("a", 512))),
+		maxBodySize:    64,
+		wantStatusCode: http.StatusRequestEntityTooLarge,
+	}, {
+		name: "size limit disabled with zero",
+		testResources: test.Resources{
+			EventListeners: []*triggersv1.EventListener{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      defaultELName,
+					Namespace: namespace,
+				},
+				Spec: triggersv1.EventListenerSpec{
+					Triggers: []triggersv1.EventListenerTrigger{{
+						TriggerRef: "test",
+					}},
+				},
+			}},
+		},
+		// Same body the 64-byte limit rejects above; zero must disable the limit.
+		eventBody:      json.RawMessage(fmt.Sprintf(`{"head_commit": {"id": %q}}`, strings.Repeat("a", 512))),
+		maxBodySize:    0,
+		wantStatusCode: http.StatusAccepted,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			elName := defaultELName
@@ -78,6 +136,7 @@ func TestSink_IsValidPayload(t *testing.T) {
 				elName = tc.testResources.EventListeners[0].Name
 			}
 			sink, _ := getSinkAssets(t, tc.testResources, elName, nil)
+			sink.MaxBodySize = tc.maxBodySize
 
 			for _, el := range tc.testResources.EventListeners {
 				el.Status.SetCondition(&apis.Condition{
@@ -95,7 +154,7 @@ func TestSink_IsValidPayload(t *testing.T) {
 				t.Fatalf("error making request to eventListener: %s", err)
 			}
 			if resp.StatusCode != tc.wantStatusCode {
-				t.Fatalf("Status code mismatch: got %d, want %d", resp.StatusCode, http.StatusInternalServerError)
+				t.Fatalf("Status code mismatch: got %d, want %d", resp.StatusCode, tc.wantStatusCode)
 			}
 		})
 	}

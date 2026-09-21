@@ -91,6 +91,8 @@ spec:
               "120",
               "-el-timeouthandler",
               "30",
+              "-el-max-body-size",
+              "3145728",
               "-el-httpclient-readtimeout",
               "30",
               "-el-httpclient-keep-alive",

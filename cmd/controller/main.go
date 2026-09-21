@@ -48,6 +48,7 @@ var (
 	writeTimeOut              = flag.Int64("el-writetimeout", elresources.DefaultWriteTimeout, "The write timeout for EventListener Server.")
 	idleTimeOut               = flag.Int64("el-idletimeout", elresources.DefaultIdleTimeout, "The idle timeout for EventListener Server.")
 	timeOutHandler            = flag.Int64("el-timeouthandler", elresources.DefaultTimeOutHandler, "The timeout for Timeout Handler of EventListener Server.")
+	maxBodySize               = flag.Int64("el-max-body-size", elresources.DefaultMaxBodySize, "The maximum accepted request body size, in bytes, for EventListener Server. Zero or less disables the limit.")
 	httpClientReadTimeOut     = flag.Int64("el-httpclient-readtimeout", elresources.DefaultHTTPClientReadTimeOut,
 		"The HTTP Client read timeout for EventListener Server.")
 	httpClientKeepAlive = flag.Int64("el-httpclient-keep-alive", elresources.DefaultHTTPClientKeepAlive,
@@ -78,6 +79,7 @@ func main() {
 		WriteTimeOut:                    writeTimeOut,
 		IdleTimeOut:                     idleTimeOut,
 		TimeOutHandler:                  timeOutHandler,
+		MaxBodySize:                     maxBodySize,
 		HTTPClientReadTimeOut:           httpClientReadTimeOut,
 		HTTPClientKeepAlive:             httpClientKeepAlive,
 		HTTPClientTLSHandshakeTimeout:   httpClientTLSHandshakeTimeout,

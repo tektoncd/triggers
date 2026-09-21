@@ -70,6 +70,7 @@ type Sink struct {
 	Recorder               *Recorder
 	Auth                   AuthOverride
 	PayloadValidation      bool
+	MaxBodySize            int64
 	CloudEventURI          string
 	// WGProcessTriggers keeps track of triggers or triggerGroups currently being processed
 	// Currently only used in tests to wait for all triggers to finish processing

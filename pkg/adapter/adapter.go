@@ -224,6 +224,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		EventListenerName:      s.Args.ElName,
 		EventListenerNamespace: s.Args.ElNamespace,
 		PayloadValidation:      s.Args.PayloadValidation,
+		MaxBodySize:            s.Args.ELMaxBodySize,
 		Logger:                 s.Logger,
 		Recorder:               s.Recorder,
 		CloudEventURI:          s.Args.CloudEventURI,

@@ -478,6 +478,9 @@ An `EventListener` times out if it cannot process an event request within a time
 - `-el-idletimeout`: Idle timeout; default is 120 seconds.
 - `-el-timeouthandler`: Server route handler timeout; default is 30 seconds.
 
+An `EventListener` also rejects event requests whose body is larger than a limit specified in [controller.yaml](../config/controller.yaml):
+- `-el-max-body-size`: Maximum accepted request body size in bytes; default is 3145728 (3 MiB). Oversized requests are rejected with `413 Request Entity Too Large`. Set it to `0` to disable the limit.
+
 ## Disabling Payload Validation
 
 To disable incoming payload validation for an EventListener, you can define an annotation `tekton.dev/payload-validation: false`

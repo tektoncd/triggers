@@ -35,6 +35,8 @@ var (
 	DefaultIdleTimeout = int64(30)
 	// DefaultTimeOutHandler is the TimeOutHandler timeout used by default.
 	DefaultTimeOutHandler = int64(5)
+	// DefaultMaxBodySize is the maximum accepted request body size, in bytes, used by default.
+	DefaultMaxBodySize = int64(3 * 1024 * 1024)
 	// DefaultPeriodSeconds is the PeriodSeconds used by default.
 	DefaultPeriodSeconds = 10
 	// DefaultFailureThreshold is the FailureThreshold used by default.
@@ -77,6 +79,8 @@ type Config struct {
 	IdleTimeOut *int64
 	// TimeOutHandler defines the timeout for Timeout Handler of EventListener Server.
 	TimeOutHandler *int64
+	// MaxBodySize defines the maximum accepted request body size, in bytes, for EventListener Server.
+	MaxBodySize *int64
 	// HTTPClientReadTimeOut defines the Read timeout for HTTP Client
 	HTTPClientReadTimeOut *int64
 	// HTTPClientKeepAlive defines the Keep Alive for HTTP Client
@@ -112,6 +116,7 @@ func MakeConfig(ops ...ConfigOption) *Config {
 		WriteTimeOut:                    &DefaultWriteTimeout,
 		IdleTimeOut:                     &DefaultIdleTimeout,
 		TimeOutHandler:                  &DefaultTimeOutHandler,
+		MaxBodySize:                     &DefaultMaxBodySize,
 		HTTPClientReadTimeOut:           &DefaultHTTPClientReadTimeOut,
 		HTTPClientKeepAlive:             &DefaultHTTPClientKeepAlive,
 		HTTPClientTLSHandshakeTimeout:   &DefaultHTTPClientTLSHandshakeTimeout,
