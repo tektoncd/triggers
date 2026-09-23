@@ -223,14 +223,13 @@ func computeSignature(key []byte, messageID, timestamp, body string) string {
 }
 
 func matchSignature(expected, header string) bool {
-	matched := false
 	for _, sig := range strings.Split(header, " ") {
 		if !strings.HasPrefix(sig, "v1,") {
 			continue
 		}
 		if hmac.Equal([]byte(expected), []byte(sig)) {
-			matched = true
+			return true
 		}
 	}
-	return matched
+	return false
 }
