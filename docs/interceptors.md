@@ -333,18 +333,53 @@ It can validate the webhook's origin as described in [Webhooks](https://docs.git
 as well as filter incoming events by the criteria you specify. The GitLab `Interceptor`
 always preserves the payload data (both header and body) in its responses.
 
-To use a GitLab `Interceptor` as a GitLab webhook validator, do the following:
+GitLab 19.0+ recommends a **signing token** (Standard Webhooks HMAC-SHA256) instead of a
+secret token. Secret tokens are sent as plaintext in `X-Gitlab-Token` and are not
+recommended for new webhooks.
+
+To validate a GitLab signing token:
+
+1. Generate a signing token in the GitLab webhook settings (it is shown once, as `whsec_…`).
+2. Store that full token string in a Kubernetes secret.
+3. Pass the secret as `signingSecretRef` on the GitLab `Interceptor`.
+
+When `signingSecretRef` is set, the interceptor requires `webhook-id`,
+`webhook-timestamp`, and `webhook-signature`, verifies HMAC-SHA256 over
+`{webhook-id}.{webhook-timestamp}.{raw body}`, and rejects timestamps older or newer
+than five minutes.
+
+To validate a GitLab secret token (legacy):
 
 1. Create a secret string value.
 2. Configure the GitLab webhook with that value.
 3. Create a Kubernetes secret containing your secret value.
-4. Pass the Kubernetes secret as a reference to your GitLab `Interceptor`.
+4. Pass the Kubernetes secret as `secretRef` on your GitLab `Interceptor`.
+
+You can set both `signingSecretRef` and `secretRef` at the same time. GitLab can send
+both a signing token and a secret token on one webhook so you can migrate without
+downtime. When both refs are set, the interceptor continues if **either** the HMAC
+signature or the secret token is valid. A request with neither credential is rejected.
 
 To use a GitLab `Interceptor` as a filter for event data, specify the event types
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
 accepts data event types listed in [Events](https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html).
 
-Below is an example GitLab `Interceptor` reference:
+Below is an example GitLab `Interceptor` reference using a signing token:
+
+```yaml
+interceptors:
+- ref:
+    name: "gitlab"
+  params:
+  - name: "signingSecretRef"
+    value:
+      secretName: foo
+      secretKey: signingToken
+  - name: "eventTypes"
+    value: ["Push Hook"]
+```
+
+A secret-token-only example:
 
 ```yaml
 interceptors:
@@ -358,6 +393,7 @@ interceptors:
   - name: "eventTypes"
     value: ["Push Hook"]
 ```
+
 
 For reference, below is an example legacy GitLab `Interceptor` definition:
 
