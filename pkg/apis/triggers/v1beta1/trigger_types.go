@@ -28,9 +28,13 @@ import (
 // and TriggerSpecTemplate; TriggerSpecBinding provides extracted values for
 // TriggerSpecTemplate to then create resources from.
 type TriggerSpec struct {
+	// Bindings provides parameters for the TriggerTemplate.
+	// +optional
 	// +listType=atomic
 	Bindings []*TriggerSpecBinding `json:"bindings"`
-	Template TriggerSpecTemplate   `json:"template"`
+	// Template contains the TriggerTemplate reference or inline specification.
+	// +kubebuilder:validation:Required
+	Template TriggerSpecTemplate `json:"template"`
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +listType=atomic
@@ -75,6 +79,9 @@ type TriggerSpecBinding struct {
 // to extract information from events to be passed to TriggerTemplates within a
 // Trigger.
 // +k8s:openapi-gen=true
+// +kubebuilder:resource
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type Trigger struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -89,6 +96,7 @@ type TriggerInterceptor struct {
 	// Optional name to identify the current interceptor configuration
 	Name *string `json:"name,omitempty"`
 	// Ref refers to the Interceptor to use
+	// +optional
 	Ref InterceptorRef `json:"ref"`
 	// Params are the params to send to the interceptor
 	// +listType=atomic
@@ -100,7 +108,12 @@ type TriggerInterceptor struct {
 
 // InterceptorParams defines a key-value pair that can be passed on an interceptor
 type InterceptorParams struct {
-	Name  string               `json:"name"`
+	// Name is the parameter name.
+	// +optional
+	Name string `json:"name"`
+	// Value is the JSON value passed to the interceptor.
+	// +optional
+	// +nullable
 	Value apiextensionsv1.JSON `json:"value"`
 }
 
