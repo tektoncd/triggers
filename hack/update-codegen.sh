@@ -57,3 +57,6 @@ ${REPO_ROOT_DIR}/hack/update-openapigen.sh
 
 # Make sure the API reference docs are up-to-date
 ${REPO_ROOT_DIR}/hack/update-reference-docs.sh
+
+# Make sure the CRD schemas are up-to-date
+${REPO_ROOT_DIR}/hack/update-schemas.sh
