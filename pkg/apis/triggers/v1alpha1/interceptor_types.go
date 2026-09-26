@@ -20,6 +20,9 @@ var _ apis.Defaultable = (*Interceptor)(nil)
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
+// +kubebuilder:resource
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // Interceptor describes a pluggable interceptor including configuration
 // such as the fields it accepts and its deployment address. The type is based on
 // the Validating/MutatingWebhookConfiguration types for configuring AdmissionWebhooks
@@ -28,6 +31,7 @@ type Interceptor struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// +optional
 	Spec InterceptorSpec `json:"spec"`
 	// +optional
 	Status InterceptorStatus `json:"status"`
@@ -35,6 +39,7 @@ type Interceptor struct {
 
 // InterceptorSpec describes the Spec for an Interceptor
 type InterceptorSpec struct {
+	// +optional
 	ClientConfig ClientConfig `json:"clientConfig"`
 }
 

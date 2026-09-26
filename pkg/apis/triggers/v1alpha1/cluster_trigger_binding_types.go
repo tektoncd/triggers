@@ -33,6 +33,8 @@ var _ apis.Defaultable = (*ClusterTriggerBinding)(nil)
 // ClusterTriggerBinding is a TriggerBinding with a cluster scope.
 // ClusterTriggerBindings are used to represent TriggerBindings that
 // should be publicly addressable from any namespace in the cluster.
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type ClusterTriggerBinding struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
