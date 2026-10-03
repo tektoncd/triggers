@@ -761,3 +761,55 @@ func TestUpdateCustomObject(t *testing.T) {
 		})
 	}
 }
+
+func TestCustomObjectPriorityClassName(t *testing.T) {
+	t.Setenv("METRICS_PROMETHEUS_PORT", "9000")
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+	t.Setenv("KUBERNETES_MIN_VERSION", "v1.28.0")
+
+	got, err := MakeCustomObject(context.Background(), makeEL(func(el *v1beta1.EventListener) {
+		el.Spec.Resources.CustomResource = &v1beta1.CustomResource{
+			RawExtension: runtime.RawExtension{
+				Raw: []byte(`{
+					"apiVersion": "serving.knative.dev/v1",
+					"kind": "Service",
+					"spec": {"template": {"spec": {"priorityClassName": "high-priority"}}}
+				}`),
+			},
+		}
+	}), &reconcilersource.EmptyVarsGenerator{}, *MakeConfig(), cfg.FromContextOrDefaults(context.Background()))
+	if err != nil {
+		t.Fatalf("MakeCustomObject() = %v", err)
+	}
+	pc, _, _ := unstructured.NestedString(got.Object, "spec", "template", "spec", "priorityClassName")
+	if pc != "high-priority" {
+		t.Errorf("MakeCustomObject() priorityClassName = %q, want %q", pc, "high-priority")
+	}
+
+	withPriorityClass := func(name string) *unstructured.Unstructured {
+		return &unstructured.Unstructured{Object: map[string]interface{}{
+			"apiVersion": "serving.knative.dev/v1",
+			"kind":       "Service",
+			"spec": map[string]interface{}{
+				"template": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"priorityClassName": name,
+						"containers": []interface{}{
+							map[string]interface{}{"name": "event-listener"},
+						},
+					},
+				},
+			},
+		}}
+	}
+	updated, obj, err := UpdateCustomObject(withPriorityClass("high-priority"), withPriorityClass("low-priority"))
+	if err != nil {
+		t.Fatalf("UpdateCustomObject() = %v", err)
+	}
+	if !updated {
+		t.Error("UpdateCustomObject() did not report a priorityClassName change")
+	}
+	if obj.Spec.Template.Spec.PriorityClassName != "high-priority" {
+		t.Errorf("UpdateCustomObject() priorityClassName = %q, want %q", obj.Spec.Template.Spec.PriorityClassName, "high-priority")
+	}
+}
