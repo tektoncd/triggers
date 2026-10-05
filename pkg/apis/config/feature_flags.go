@@ -35,6 +35,9 @@ const (
 
 	interceptorsGitHubUseEnterpriseHostAllowlistKey     = "interceptors.github.use-enterprise-host-allowlist"
 	defaultInterceptorsGitHubUseEnterpriseHostAllowlist = false
+
+	interceptorsBlockPrivateInterceptorURLsKey     = "interceptors.block-private-interceptor-urls"
+	defaultInterceptorsBlockPrivateInterceptorURLs = false
 )
 
 // FeatureFlags holds the features configurations
@@ -52,6 +55,15 @@ type FeatureFlags struct {
 	// It is strongly encouraged to be enabled for security, and will be removed
 	// and always enforced in a later version
 	InterceptorsGitHubUseEnterpriseHostAllowlist bool
+	// InterceptorsBlockPrivateInterceptorURLs determines whether the sink
+	// rejects interceptor URLs that resolve to loopback, link-local, private,
+	// or unspecified addresses before dispatching the request. This guards
+	// against SSRF toward cloud metadata endpoints (for example
+	// 169.254.169.254) and internal services. It is off by default to preserve
+	// backwards compatibility and can be paired with the
+	// `github.enterprise-host-allowlist` escape hatch for hosts that must be
+	// reachable on those ranges.
+	InterceptorsBlockPrivateInterceptorURLs bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -79,6 +91,12 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = strings.EqualFold(v, "true")
 	} else {
 		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = defaultInterceptorsGitHubUseEnterpriseHostAllowlist
+	}
+
+	if v, ok := cfgMap[interceptorsBlockPrivateInterceptorURLsKey]; ok {
+		ff.InterceptorsBlockPrivateInterceptorURLs = strings.EqualFold(v, "true")
+	} else {
+		ff.InterceptorsBlockPrivateInterceptorURLs = defaultInterceptorsBlockPrivateInterceptorURLs
 	}
 
 	return &ff, nil
