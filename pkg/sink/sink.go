@@ -26,12 +26,14 @@ import (
 	"net/http"
 	net "net/url"
 	"os"
+	"strings"
 	"sync"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/binding"
 	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
+	triggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	listersv1alpha1 "github.com/tektoncd/triggers/pkg/client/listers/triggers/v1alpha1"
@@ -458,6 +460,31 @@ func (r Sink) ExecuteTriggerInterceptors(t triggersv1.Trigger, in *http.Request,
 	return r.ExecuteInterceptors(t.Spec.Interceptors, in, event, log, eventID, fmt.Sprintf("namespaces/%s/triggers/%s", t.Namespace, t.Name), t.Namespace, extensions)
 }
 
+// stripSensitiveHeaders removes sensitive credential headers that should not be
+// forwarded to external interceptor URLs. Service-based (in-cluster) interceptors
+// may need these headers for signature validation, but external URL-based interceptors
+// should not receive them to prevent credential exfiltration.
+func stripSensitiveHeaders(header http.Header) http.Header {
+	stripped := header.Clone()
+
+	stripped.Del("Authorization")
+	stripped.Del("X-Hub-Signature")
+	stripped.Del("X-Hub-Signature-256")
+	stripped.Del("X-Gitlab-Token")
+	stripped.Del("X-Gitlab-Event")
+
+	for key := range stripped {
+		if strings.HasPrefix(key, "X-Bitbucket-") {
+			stripped.Del(key)
+		}
+	}
+
+	stripped.Del("X-Slack-Signature")
+	stripped.Del("X-Slack-Request-Timestamp")
+
+	return stripped
+}
+
 // ExecuteInterceptor executes all interceptors for the Trigger and returns back the body, header, and InterceptorResponse to use.
 // When TEP-0022 is fully implemented, this function will only return the InterceptorResponse and error.
 func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *http.Request, event []byte, log *zap.SugaredLogger, eventID string, triggerID string, namespace string, extensions map[string]interface{}) ([]byte, http.Header, *triggersv1.InterceptorResponse, error) {
@@ -538,18 +565,17 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 		request.InterceptorParams = interceptors.GetInterceptorParams(i)
 
 		var url *apis.URL
+		var clientConfig triggersv1alpha1.ClientConfig
 		if i.Ref.Kind == triggersv1.ClusterInterceptorKind {
 			ic, err := r.ClusterInterceptorLister.Get(i.GetName())
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
 			}
+			clientConfig = ic.Spec.ClientConfig
 			if ic.Status.Address != nil && ic.Status.Address.URL != nil {
 				url = ic.Status.Address.URL
 			} else if url, err = ic.ResolveAddress(); err != nil {
 				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
-			}
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("could not resolve clusterinterceptor URL: %w", err)
 			}
 		} else if i.Ref.Kind == triggersv1.NamespacedInterceptorKind {
 			if r.InterceptorLister == nil {
@@ -559,17 +585,26 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
 			}
+			clientConfig = ic.Spec.ClientConfig
 			if addr := ic.Status.Address; addr != nil && addr.URL != nil {
 				url = addr.URL
 			} else if url, err = ic.ResolveAddress(); err != nil {
 				return nil, nil, nil, fmt.Errorf("url resolution failed for interceptor %s with: %w", i.GetName(), err)
 			}
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("could not resolve nameSpacedinterceptor URL: %w", err)
-			}
 		}
 
-		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
+		isExternalURL := clientConfig.Service == nil
+
+		// Strip sensitive headers for external URL-based interceptors to prevent credential exfiltration.
+		// Service-based interceptors need these headers for signature validation.
+		requestToSend := &request
+		if isExternalURL {
+			requestCopy := request
+			requestCopy.Header = stripSensitiveHeaders(request.Header)
+			requestToSend = &requestCopy
+		}
+
+		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, requestToSend, url.String())
 		if err != nil {
 			return nil, nil, nil, err
 		}
