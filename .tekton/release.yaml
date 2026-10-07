@@ -88,3 +88,7 @@ spec:
     - name: release-images-secret
       secret:
         secretName: ghcr-creds
+    # Enables automatic draft GitHub release creation.
+    - name: github-secret
+      secret:
+        secretName: github-token
