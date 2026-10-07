@@ -47,6 +47,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind("TriggerBinding"):        &v1alpha1.TriggerBinding{},
 	v1alpha1.SchemeGroupVersion.WithKind("TriggerTemplate"):       &v1alpha1.TriggerTemplate{},
 	v1alpha1.SchemeGroupVersion.WithKind("Trigger"):               &v1alpha1.Trigger{},
+	v1alpha1.SchemeGroupVersion.WithKind("ScheduledTemplate"):     &v1alpha1.ScheduledTemplate{},
 
 	v1beta1.SchemeGroupVersion.WithKind("ClusterTriggerBinding"): &v1beta1.ClusterTriggerBinding{},
 	v1beta1.SchemeGroupVersion.WithKind("EventListener"):         &v1beta1.EventListener{},
