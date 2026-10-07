@@ -62,6 +62,9 @@ spec:
       value: credentials
     - name: runTests
       value: "true"
+    # Auto-detected from git tags when empty
+    - name: previousReleaseTag
+      value: ""
   timeouts:
     pipeline: 3h0m0s
   workspaces:
@@ -79,3 +82,7 @@ spec:
     - name: release-images-secret
       secret:
         secretName: ghcr-creds
+    # Enables automatic draft GitHub release creation.
+    - name: github-secret
+      secret:
+        secretName: github-token
