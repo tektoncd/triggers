@@ -490,6 +490,37 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 			},
 		},
 		want: apis.ErrMultipleOneOf("spec.ref", "spec.params", "spec.resourcetemplates"),
+	}, {
+		name: "empty ref with resourcetemplates",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule: "* * * * *",
+				Ref:      ptr.String(""),
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("spec.ref", "spec.params", "spec.resourcetemplates"),
+	}, {
+		name: "empty ref without inline template",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule: "* * * * *",
+				Ref:      ptr.String(""),
+			},
+		},
+		want: apis.ErrMissingField("spec.ref"),
 	}}
 
 	for _, tc := range tcs {
