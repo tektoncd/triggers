@@ -50,17 +50,19 @@ func (s *ScheduledTemplateSpec) validate(_ctx context.Context) (errs *apis.Field
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 
-	hasRef := s.Ref != nil && *s.Ref != ""
 	hasInline := len(s.Params) > 0 || len(s.ResourceTemplates) > 0
 
 	switch {
-	case hasRef && hasInline:
+	case s.Ref != nil && hasInline:
+		// Pointer set means ref is present, even if "".
 		errs = errs.Also(apis.ErrMultipleOneOf("ref", "params", "resourcetemplates"))
-	case !hasRef && len(s.ResourceTemplates) == 0:
+	case s.Ref == nil && len(s.ResourceTemplates) == 0:
 		// Keep requiring resourcetemplates when not using ref (same as today / TriggerTemplate).
 		errs = errs.Also(apis.ErrMissingOneOf("ref", "resourcetemplates"))
-	case hasRef:
-		// ref path: no inline template validation
+	case s.Ref != nil:
+		if *s.Ref == "" {
+			errs = errs.Also(apis.ErrMissingField("ref"))
+		}
 	default:
 		errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"))
 		errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"))
