@@ -18,7 +18,9 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
 
+	"github.com/robfig/cron/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
@@ -40,22 +42,40 @@ func (t *ScheduledTemplate) Validate(ctx context.Context) *apis.FieldError {
 func (s *ScheduledTemplateSpec) validate(_ctx context.Context) (errs *apis.FieldError) {
 	// Check if the spec is entirely empty
 	if equality.Semantic.DeepEqual(s, &ScheduledTemplateSpec{}) {
-		errs = errs.Also(apis.ErrMissingField(apis.CurrentField))
+		return apis.ErrMissingField(apis.CurrentField)
 	}
-	if len(s.ResourceTemplates) == 0 {
-		errs = errs.Also(apis.ErrMissingField("resourcetemplates"))
-	}
-	errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"))
-	errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"))
 
+	hasRef := s.Ref != nil && *s.Ref != ""
+	hasInline := len(s.Params) > 0 || len(s.ResourceTemplates) > 0
+
+	switch {
+	case hasRef && hasInline:
+		errs = errs.Also(apis.ErrMultipleOneOf("ref", "params", "resourcetemplates"))
+	case !hasRef && len(s.ResourceTemplates) == 0:
+		// Keep requiring resourcetemplates when not using ref (same as today / TriggerTemplate).
+		errs = errs.Also(apis.ErrMissingOneOf("ref", "resourcetemplates"))
+	case hasRef:
+		// ref path: no inline template validation
+	default:
+		errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"))
+		errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"))
+	}
 	//  Validate Schedule
 	if s.Schedule == "" {
 		errs = errs.Also(apis.ErrMissingField("schedule"))
+	} else if _, err := cron.ParseStandard(s.Schedule); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue(err, "schedule"))
 	}
 	// Validate CloudEventSink (if necessary)
 	if s.CloudEventSink != nil {
 		if s.CloudEventSink.Host == "" {
 			errs = errs.Also(apis.ErrMissingField("cloudEventSink.host"))
+		}
+		scheme := strings.ToLower(s.CloudEventSink.Scheme)
+		if scheme == "" {
+			errs = errs.Also(apis.ErrMissingField("cloudEventSink.scheme"))
+		} else if scheme != "http" && scheme != "https" {
+			errs = errs.Also(apis.ErrInvalidValue(s.CloudEventSink.Scheme, "cloudEventSink.scheme"))
 		}
 	}
 

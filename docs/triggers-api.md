@@ -324,6 +324,19 @@ ScheduledTemplateSpec
 <table>
 <tr>
 <td>
+<code>ref</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Ref optionally names a TriggerTemplate in the same namespace.
+Mutually exclusive with inline Params / ResourceTemplates.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>TriggerTemplateSpec</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
@@ -348,7 +361,8 @@ knative.dev/pkg/apis.URL
 </em>
 </td>
 <td>
-<p>URL of the external event trigger is listening to</p>
+<em>(Optional)</em>
+<p>CloudEventSink is an optional destination for CloudEvents related to scheduled runs.</p>
 </td>
 </tr>
 <tr>
@@ -359,7 +373,8 @@ string
 </em>
 </td>
 <td>
-<p>Cron job schedule for the trigger</p>
+<p>Schedule is a Kubernetes CronJob-style cron expression (five fields:
+minute hour day-of-month month day-of-week). Example: &ldquo;0 0 * * *&rdquo;</p>
 </td>
 </tr>
 </table>
@@ -2077,6 +2092,19 @@ CustomResource
 <tbody>
 <tr>
 <td>
+<code>ref</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Ref optionally names a TriggerTemplate in the same namespace.
+Mutually exclusive with inline Params / ResourceTemplates.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>TriggerTemplateSpec</code><br/>
 <em>
 <a href="#triggers.tekton.dev/v1alpha1.TriggerTemplateSpec">
@@ -2101,7 +2129,8 @@ knative.dev/pkg/apis.URL
 </em>
 </td>
 <td>
-<p>URL of the external event trigger is listening to</p>
+<em>(Optional)</em>
+<p>CloudEventSink is an optional destination for CloudEvents related to scheduled runs.</p>
 </td>
 </tr>
 <tr>
@@ -2112,7 +2141,8 @@ string
 </em>
 </td>
 <td>
-<p>Cron job schedule for the trigger</p>
+<p>Schedule is a Kubernetes CronJob-style cron expression (five fields:
+minute hour day-of-month month day-of-week). Example: &ldquo;0 0 * * *&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -2123,7 +2153,7 @@ string
 (<em>Appears on:</em><a href="#triggers.tekton.dev/v1alpha1.ScheduledTemplate">ScheduledTemplate</a>)
 </p>
 <div>
-<p>ScheduledTemplateStatus describes the desired state of ScheduledTemplate</p>
+<p>ScheduledTemplateStatus describes the observed state of ScheduledTemplate.</p>
 </div>
 <h3 id="triggers.tekton.dev/v1alpha1.SecretRef">SecretRef
 </h3>

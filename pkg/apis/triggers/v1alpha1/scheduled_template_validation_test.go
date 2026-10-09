@@ -166,7 +166,7 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 		},
 		want: nil,
 	}, {
-		name: "valid v1alpha1 template",
+		name: "valid template with tekton.dev/v1beta1 PipelineRun",
 		template: &v1alpha1.ScheduledTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "tt",
@@ -205,10 +205,7 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 				},
 			},
 		},
-		want: &apis.FieldError{
-			Message: "missing field(s)",
-			Paths:   []string{"spec.resourcetemplates"},
-		},
+		want: apis.ErrMissingOneOf("spec.ref", "spec.resourcetemplates"),
 	}, {
 		name: "resource template missing kind",
 		template: &v1alpha1.ScheduledTemplate{
@@ -268,7 +265,7 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 			Paths:   []string{"spec.resourcetemplates[0].apiVersion"},
 		},
 	}, {
-		name: "resource template other kind then tekton resource",
+		name: "resource template other kind than tekton resource",
 		template: &v1alpha1.ScheduledTemplate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "tt",
@@ -384,7 +381,115 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 				Namespace: "foo",
 			},
 		},
-		want: apis.ErrMissingField("spec", "spec.resourcetemplates", "spec.schedule"),
+		want: apis.ErrMissingField("spec"),
+	}, {
+		name: "invalid schedule not cron format",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule: "not-a-cron",
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: expected exactly 5 fields, found 1: [not-a-cron]",
+			Paths:   []string{"spec.schedule"},
+		},
+	}, {
+		name: "cloudEventSink missing scheme",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule:       "* * * * *",
+				CloudEventSink: &apis.URL{Host: "example.com"},
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"spec.cloudEventSink.scheme"},
+		},
+	}, {
+		name: "cloudEventSink invalid scheme",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule:       "* * * * *",
+				CloudEventSink: &apis.URL{Scheme: "ftp", Host: "example.com"},
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("ftp", "spec.cloudEventSink.scheme"),
+	}, {
+		name: "valid template with https cloudEventSink",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule:       "0 0 * * *",
+				CloudEventSink: &apis.URL{Scheme: "https", Host: "example.com"},
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: nil,
+	}, {
+		name: "valid template with triggerTemplate ref",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule: "* * * * *",
+				Ref:      ptr.String("my-trigger-template"),
+			},
+		},
+		want: nil,
+	}, {
+		name: "both ref and resourcetemplates specified",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule: "* * * * *",
+				Ref:      ptr.String("my-trigger-template"),
+				TriggerTemplateSpec: v1alpha1.TriggerTemplateSpec{
+					ResourceTemplates: []v1alpha1.TriggerResourceTemplate{{
+						RawExtension: simpleResourceScheduledTemplate(t),
+					}},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("spec.ref", "spec.params", "spec.resourcetemplates"),
 	}}
 
 	for _, tc := range tcs {
