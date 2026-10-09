@@ -1058,6 +1058,334 @@ func TestInterceptor_ExecuteTrigger_Changed_Files_Push(t *testing.T) {
 	}
 }
 
+func TestInterceptor_ExecuteTrigger_AddPRBody(t *testing.T) {
+	var secretToken = "secret"
+	const webhookSecret = "webhook-secret-value"
+	webhookSecretObj := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret"},
+		Data:       map[string][]byte{"key": []byte(webhookSecret)},
+	}
+	tests := []struct {
+		name               string
+		githubServerReply  string
+		secret             *corev1.Secret
+		interceptorRequest *triggersv1.InterceptorRequest
+		wantResContinue    bool
+		want               string
+		wantStatusMessage  string
+	}{
+		{
+			name:              "pull_request event adds pr body",
+			githubServerReply: `{"number":1,"body":"This PR fixes a bug."}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"opened","number":1,"pull_request":{"head":{"sha":"28911bbb5"}},"repository":{"full_name":"testowner/testrepo","clone_url":"https://github.com/testowner/testrepo.git"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   true,
+			want:              "This PR fixes a bug.",
+			wantStatusMessage: "",
+		},
+		{
+			name:              "issue_comment on a pull request adds pr body",
+			githubServerReply: `{"number":2,"body":"Another PR body."}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"created","issue":{"number":2,"pull_request":{"url":"https://api.github.com/repos/testowner/testrepo/pulls/2"}},"comment":{"body":"/ok-to-test"},"repository":{"full_name":"testowner/testrepo","clone_url":"https://github.com/testowner/testrepo.git"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   true,
+			want:              "Another PR body.",
+			wantStatusMessage: "",
+		},
+		{
+			name:              "issue_comment on a plain issue is a no-op",
+			githubServerReply: `{"number":3,"body":"should not be fetched"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"created","issue":{"number":3},"comment":{"body":"hello"},"repository":{"full_name":"testowner/testrepo","clone_url":"https://github.com/testowner/testrepo.git"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"issue_comment"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   true,
+			want:              "",
+			wantStatusMessage: "",
+		},
+		{
+			name:              "event type not accepted, no-op",
+			githubServerReply: `{"number":1,"body":"unused"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"opened","number":1,"repository":{"full_name":"testowner/testrepo","clone_url":"https://github.com/testowner/testrepo.git"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"push"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"push"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   true,
+			want:              "",
+			wantStatusMessage: "",
+		},
+		{
+			name:              "empty body, failure",
+			githubServerReply: `{"number":1,"body":"unused"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   "",
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   false,
+			want:              "",
+			wantStatusMessage: "error parsing body: body is empty",
+		},
+		{
+			name:              "pull request, missing 'number' json field",
+			githubServerReply: `{"number":1,"body":"unused"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"opened","pull_request":{"head":{"sha":"28911bbb5"}},"repository":{"full_name":"testowner/testrepo","clone_url":"https://github.com/testowner/testrepo.git"}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   false,
+			want:              "",
+			wantStatusMessage: "error parsing body: pull_request body missing 'number' field",
+		},
+		{
+			name:              "missing repository json field, failure",
+			githubServerReply: `{"number":1,"body":"unused"}`,
+			interceptorRequest: &triggersv1.InterceptorRequest{
+				Body:   `{"action":"opened","number":1,"pull_request":{"head":{"sha":"28911bbb5"}}}`,
+				Header: map[string][]string{"X-Hub-Signature-256": {"foo"}, "X-GitHub-Event": {"pull_request"}},
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+				InterceptorParams: map[string]interface{}{
+					"eventTypes": []string{"pull_request", "issue_comment"},
+					"secretRef": &triggersv1.SecretRef{
+						SecretName: "webhooksecret",
+						SecretKey:  "key",
+					},
+					"addPRBody": &AddPRBody{
+						Enabled: true,
+						PersonalAccessToken: &triggersv1.SecretRef{
+							SecretName: "mysecret",
+							SecretKey:  "token",
+						},
+					},
+				},
+			},
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mysecret",
+				},
+				Data: map[string][]byte{
+					"token": []byte(secretToken),
+				},
+			},
+			wantResContinue:   false,
+			want:              "",
+			wantStatusMessage: "error parsing body: payload body missing 'repository' field",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.Write([]byte(tt.githubServerReply))
+			}))
+			ctx, _ := test.SetupFakeContext(t)
+
+			ctx = context.WithValue(ctx, testURL, ts.URL)
+			hmacSig := test.HMACHeader(t, webhookSecret, []byte(tt.interceptorRequest.Body), "sha256")
+			tt.interceptorRequest.Header["X-Hub-Signature-256"] = []string{hmacSig}
+
+			clientset := fakekubeclient.Get(ctx)
+			webhookSecretCopy := webhookSecretObj.DeepCopy()
+			webhookSecretCopy.Namespace = metav1.NamespaceDefault
+			if tt.secret != nil {
+				tt.secret.Namespace = metav1.NamespaceDefault
+				ctx, clientset = fakekubeclient.With(ctx, tt.secret, webhookSecretCopy)
+			} else {
+				ctx, clientset = fakekubeclient.With(ctx, webhookSecretCopy)
+			}
+
+			w := &InterceptorImpl{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, tt.interceptorRequest)
+
+			if res.Continue != tt.wantResContinue {
+				t.Fatalf("Interceptor.Process() expected res.Continue to be %t but got %t. \nStatus.Err(): %v", tt.wantResContinue, res.Continue, res.Status.Err())
+			}
+
+			if res.Status.Message != tt.wantStatusMessage {
+				t.Fatalf("Interceptor.Process() expected res.Status.Message to be '%s' but got '%s'", tt.wantStatusMessage, res.Status.Message)
+			}
+
+			prBodyExt := res.Extensions[prBodyExtensionsKey]
+			if prBodyExt == nil {
+				prBodyExt = ""
+			}
+			if tt.want != prBodyExt {
+				t.Fatalf("Interceptor.Process() got %v '%v', want '%v'", prBodyExtensionsKey, prBodyExt, tt.want)
+			}
+		})
+	}
+}
+
 func Test_getGithubTokenSecret(t *testing.T) {
 	ctx, _ := test.SetupFakeContext(t)
 	var secretToken = "secret"

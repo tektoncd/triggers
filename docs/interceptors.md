@@ -151,7 +151,7 @@ To use a GitHub `Interceptor` as a GitHub webhook validator, do the following:
 
 If `secretRef` is omitted, the `Interceptor` returns `continue: true` immediately
 without validating the webhook signature or performing any further processing
-(such as `addChangedFiles` or `githubOwners`). This is useful for triggers that
+(such as `addChangedFiles`, `addPRBody` or `githubOwners`). This is useful for triggers that
 do not require webhook verification.
 
 To use a GitHub `Interceptor` as a filter for event data, specify the event types
@@ -277,6 +277,71 @@ For more information around adding changed files, see the following examples
 
 - [github-add-changed-files-pr](../examples/v1beta1/github-add-changed-files-pr)
 - [github-add-changed-files-push-cel](../examples/v1beta1/github-add-changed-files-push-cel)
+
+#### Adding Pull Request Body
+
+The GitHub `Interceptor` also has the ability to add the body of a pull request to the event payload for the `pull_request` event, as well as for `issue_comment` events raised on a pull request. This is useful, for example, to run CI based on updates to comments on a pull request, since a plain `issue_comment` event does not include the pull request body. The pull request body is added to the `pr_body` property of the event payload in the top-level `extensions` field.
+
+Since GitHub sends the same `issue_comment` event for comments on plain issues and for comments on pull requests, the `addPRBody` feature is a no-op (it leaves `pr_body` unset) when an `issue_comment` event is not for a pull request.
+
+Below is an example GitHub `Interceptor` that enables the `addPRBody` feature and uses the CEL `Interceptor` to filter incoming events by the contents of the pull request body
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "issue_comment"]
+          - name: "addPRBody"
+            value:
+              enabled: true
+        - ref:
+            name: cel
+          params:
+          - name: filter
+            # execute only when the pull request body requests a full test run
+            value: extensions.pr_body.matches('/test-all')
+```
+
+##### Adding Pull Request Body - Private Repository
+
+The ability to add the pull request body can also work with private repositories by supplying a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) in the `personalAccessToken` field. In the example below, the `personalAccessToken` uses the `github-pat` secret to get the GitHub personal access token used to make the API call to fetch the pull request body.
+
+```yaml
+ triggers:
+    - name: github-listener
+      interceptors:
+        - ref:
+            name: "github"
+            kind: ClusterInterceptor
+            apiVersion: triggers.tekton.dev
+          params:
+          - name: "secretRef"
+            value:
+              secretName: github-secret
+              secretKey: secretToken
+          - name: "eventTypes"
+            value: ["pull_request", "issue_comment"]
+          - name: "addPRBody"
+            value:
+              enabled: true
+              personalAccessToken:
+                secretName: github-pat
+                secretKey: token
+```
+
+For more information around adding the pull request body, see the following example
+
+- [github-add-pr-body](../examples/v1beta1/github-add-pr-body)
 
 #### Owners validation for pull requests
 
