@@ -66,6 +66,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/ptr"
@@ -89,10 +90,10 @@ var (
 		},
 		Spec: triggersv1alpha1.ClusterInterceptorSpec{
 			ClientConfig: triggersv1alpha1.ClientConfig{
-				URL: &apis.URL{
-					Scheme: "http",
-					Host:   "tekton-triggers-core-interceptors",
-					Path:   "/github",
+				Service: &triggersv1alpha1.ServiceReference{
+					Name:      "tekton-triggers-core-interceptors",
+					Namespace: "tekton-pipelines",
+					Path:      "/github",
 				},
 			},
 		},
@@ -103,10 +104,10 @@ var (
 		},
 		Spec: triggersv1alpha1.ClusterInterceptorSpec{
 			ClientConfig: triggersv1alpha1.ClientConfig{
-				URL: &apis.URL{
-					Scheme: "http",
-					Host:   "tekton-triggers-core-interceptors",
-					Path:   "/cel",
+				Service: &triggersv1alpha1.ServiceReference{
+					Name:      "tekton-triggers-core-interceptors",
+					Namespace: "tekton-pipelines",
+					Path:      "/cel",
 				},
 			},
 		},
@@ -117,10 +118,10 @@ var (
 		},
 		Spec: triggersv1alpha1.ClusterInterceptorSpec{
 			ClientConfig: triggersv1alpha1.ClientConfig{
-				URL: &apis.URL{
-					Scheme: "http",
-					Host:   "tekton-triggers-core-interceptors",
-					Path:   "/bitbucket",
+				Service: &triggersv1alpha1.ServiceReference{
+					Name:      "tekton-triggers-core-interceptors",
+					Namespace: "tekton-pipelines",
+					Path:      "/bitbucket",
 				},
 			},
 		},
@@ -132,10 +133,10 @@ var (
 		},
 		Spec: triggersv1alpha1.InterceptorSpec{
 			ClientConfig: triggersv1alpha1.ClientConfig{
-				URL: &apis.URL{
-					Scheme: "http",
-					Host:   "tekton-triggers-core-interceptors",
-					Path:   "/bitbucket",
+				Service: &triggersv1alpha1.ServiceReference{
+					Name:      "tekton-triggers-core-interceptors",
+					Namespace: "tekton-pipelines",
+					Path:      "/bitbucket",
 				},
 			},
 		},
@@ -2204,4 +2205,276 @@ func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
 	wg.Wait()
 
 	t.Log("Test completed without panic")
+}
+
+func TestStripSensitiveHeaders(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputHeaders  http.Header
+		expectRemoved []string
+		expectKept    []string
+	}{
+		{
+			name: "strip authorization header",
+			inputHeaders: http.Header{
+				"Authorization":  []string{"Bearer token123"},
+				"Content-Type":   []string{"application/json"},
+				"X-Custom-Value": []string{"keep-this"},
+			},
+			expectRemoved: []string{"Authorization"},
+			expectKept:    []string{"Content-Type", "X-Custom-Value"},
+		},
+		{
+			name: "strip GitHub signature headers",
+			inputHeaders: http.Header{
+				"X-Hub-Signature":     []string{"sha1=abc123"},
+				"X-Hub-Signature-256": []string{"sha256=def456"},
+				"X-GitHub-Event":      []string{"push"},
+			},
+			expectRemoved: []string{"X-Hub-Signature", "X-Hub-Signature-256"},
+			expectKept:    []string{"X-GitHub-Event"},
+		},
+		{
+			name: "strip GitLab token headers",
+			inputHeaders: http.Header{
+				"X-Gitlab-Token": []string{"secret-token"},
+				"X-Gitlab-Event": []string{"Push Hook"},
+			},
+			expectRemoved: []string{"X-Gitlab-Token", "X-Gitlab-Event"},
+			expectKept:    []string{},
+		},
+		{
+			name: "strip Bitbucket headers",
+			inputHeaders: http.Header{
+				"X-Bitbucket-Event":     []string{"repo:push"},
+				"X-Bitbucket-Signature": []string{"signature123"},
+				"X-Event-Key":           []string{"repo:push"},
+			},
+			expectRemoved: []string{"X-Bitbucket-Event", "X-Bitbucket-Signature"},
+			expectKept:    []string{"X-Event-Key"},
+		},
+		{
+			name: "strip Slack signature headers",
+			inputHeaders: http.Header{
+				"X-Slack-Signature":         []string{"v0=abc"},
+				"X-Slack-Request-Timestamp": []string{"1234567890"},
+				"Content-Type":              []string{"application/json"},
+			},
+			expectRemoved: []string{"X-Slack-Signature", "X-Slack-Request-Timestamp"},
+			expectKept:    []string{"Content-Type"},
+		},
+		{
+			name: "strip all sensitive headers",
+			inputHeaders: http.Header{
+				"Authorization":       []string{"Bearer token"},
+				"X-Hub-Signature":     []string{"sig1"},
+				"X-Hub-Signature-256": []string{"sig2"},
+				"X-Gitlab-Token":      []string{"token"},
+				"X-Bitbucket-Event":   []string{"event"},
+				"X-Slack-Signature":   []string{"slack-sig"},
+				"Content-Type":        []string{"application/json"},
+				"X-Forwarded-For":     []string{"1.2.3.4"},
+			},
+			expectRemoved: []string{
+				"Authorization", "X-Hub-Signature", "X-Hub-Signature-256",
+				"X-Gitlab-Token", "X-Bitbucket-Event", "X-Slack-Signature",
+			},
+			expectKept: []string{"Content-Type", "X-Forwarded-For"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stripped := stripSensitiveHeaders(tt.inputHeaders)
+
+			for _, header := range tt.expectRemoved {
+				if _, exists := stripped[header]; exists {
+					t.Errorf("Expected header %q to be removed, but it was present", header)
+				}
+			}
+
+			for _, header := range tt.expectKept {
+				if _, exists := stripped[header]; !exists {
+					t.Errorf("Expected header %q to be kept, but it was removed", header)
+				}
+			}
+
+			for _, header := range tt.expectRemoved {
+				if _, exists := tt.inputHeaders[header]; !exists {
+					t.Errorf("Original headers were modified: %q should still exist in input", header)
+				}
+			}
+		})
+	}
+}
+
+type headerCaptureInterceptor struct {
+	capturedHeaders http.Header
+	mu              sync.Mutex
+}
+
+func (h *headerCaptureInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	body, _ := io.ReadAll(r.Body)
+	var ireq triggersv1beta1.InterceptorRequest
+	if err := json.Unmarshal(body, &ireq); err == nil {
+		h.capturedHeaders = ireq.Header
+	}
+
+	resp := triggersv1beta1.InterceptorResponse{
+		Continue: true,
+	}
+	respBytes, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBytes)
+}
+
+func (h *headerCaptureInterceptor) GetCapturedHeaders() http.Header {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.capturedHeaders.Clone()
+}
+
+func TestExecuteInterceptors_StripHeadersForURLBasedInterceptors(t *testing.T) {
+	logger := zaptest.NewLogger(t)
+	ctx, _ := test.SetupFakeContext(t)
+
+	captureInterceptor := &headerCaptureInterceptor{}
+	server := httptest.NewServer(captureInterceptor)
+	defer server.Close()
+
+	serverURL, _ := url.Parse(server.URL)
+
+	urlBasedInterceptor := &triggersv1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "url-based",
+		},
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
+				URL: &apis.URL{
+					Scheme: serverURL.Scheme,
+					Host:   serverURL.Host,
+				},
+			},
+		},
+	}
+
+	serviceBasedInterceptor := &triggersv1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "service-based",
+		},
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
+				Service: &triggersv1alpha1.ServiceReference{
+					Name:      "test-service",
+					Namespace: "test-ns",
+					Path:      "/intercept",
+				},
+			},
+		},
+		Status: triggersv1alpha1.ClusterInterceptorStatus{
+			AddressStatus: duckv1.AddressStatus{
+				Address: &duckv1.Addressable{
+					URL: &apis.URL{
+						Scheme: serverURL.Scheme,
+						Host:   serverURL.Host,
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name                   string
+		interceptor            *triggersv1alpha1.ClusterInterceptor
+		expectSensitiveHeaders bool
+	}{
+		{
+			name:                   "URL-based interceptor - headers stripped",
+			interceptor:            urlBasedInterceptor,
+			expectSensitiveHeaders: false,
+		},
+		{
+			name:                   "Service-based interceptor - headers kept",
+			interceptor:            serviceBasedInterceptor,
+			expectSensitiveHeaders: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			test.SeedResources(t, ctx, test.Resources{
+				ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{tt.interceptor},
+			})
+
+			r := Sink{
+				HTTPClient:               &http.Client{},
+				Logger:                   logger.Sugar(),
+				ClusterInterceptorLister: clusterinterceptorinformer.Get(ctx).Lister(),
+			}
+
+			req, _ := http.NewRequest(http.MethodPost, "http://example.com", strings.NewReader(`{}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer secret-token")
+			req.Header.Set("X-Hub-Signature-256", "sha256=signature")
+			req.Header.Set("X-Gitlab-Token", "gitlab-secret")
+			req.Header.Set("X-Bitbucket-Event", "repo:push")
+			req.Header.Set("X-Slack-Signature", "v0=slack-sig")
+			req.Header.Set("X-Custom-Header", "custom-value")
+
+			interceptors := []*triggersv1beta1.TriggerInterceptor{
+				{
+					Ref: triggersv1beta1.InterceptorRef{
+						Name: tt.interceptor.Name,
+						Kind: triggersv1beta1.ClusterInterceptorKind,
+					},
+				},
+			}
+
+			_, _, _, err := r.ExecuteInterceptors(
+				interceptors,
+				req,
+				[]byte(`{}`),
+				logger.Sugar(),
+				"test-event-id",
+				"test-trigger-id",
+				"default",
+				make(map[string]interface{}),
+			)
+
+			if err != nil {
+				t.Fatalf("ExecuteInterceptors failed: %v", err)
+			}
+
+			captured := captureInterceptor.GetCapturedHeaders()
+
+			sensitiveHeaders := []string{
+				"Authorization",
+				"X-Hub-Signature-256",
+				"X-Gitlab-Token",
+				"X-Bitbucket-Event",
+				"X-Slack-Signature",
+			}
+
+			for _, header := range sensitiveHeaders {
+				_, exists := captured[header]
+				if tt.expectSensitiveHeaders && !exists {
+					t.Errorf("Expected sensitive header %q to be present for service-based interceptor, but it was stripped", header)
+				}
+				if !tt.expectSensitiveHeaders && exists {
+					t.Errorf("Expected sensitive header %q to be stripped for URL-based interceptor, but it was present", header)
+				}
+			}
+
+			if _, exists := captured["X-Custom-Header"]; !exists {
+				t.Error("Expected non-sensitive header X-Custom-Header to be kept, but it was removed")
+			}
+			if _, exists := captured["Content-Type"]; !exists {
+				t.Error("Expected Content-Type header to be kept, but it was removed")
+			}
+		})
+	}
 }
