@@ -532,3 +532,61 @@ func TestExecute_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestExecute_URLValidator(t *testing.T) {
+	req := &triggersv1.InterceptorRequest{
+		Header: http.Header(map[string][]string{
+			"Content-Type": {"application/json"},
+		}),
+		InterceptorParams: map[string]interface{}{
+			"filter": `header.match("Content-Type", "application/json")`,
+		},
+		Context: &triggersv1.TriggerContext{
+			EventURL:  "http://someurl.com",
+			EventID:   "abcde",
+			TriggerID: "namespaces/default/triggers/test-trigger",
+		},
+	}
+
+	for _, tc := range []struct {
+		name      string
+		url       string
+		validator *interceptors.URLValidator
+		wantErr   bool
+	}{{
+		name:      "guard disabled allows private url",
+		url:       "http://127.0.0.1/cel",
+		validator: &interceptors.URLValidator{BlockPrivate: false},
+		wantErr:   false,
+	}, {
+		name:      "guard enabled blocks loopback url before dispatch",
+		url:       "http://127.0.0.1/cel",
+		validator: &interceptors.URLValidator{BlockPrivate: true},
+		wantErr:   true,
+	}, {
+		name:      "guard enabled blocks metadata url before dispatch",
+		url:       "http://169.254.169.254/latest/meta-data/",
+		validator: &interceptors.URLValidator{BlockPrivate: true},
+		wantErr:   true,
+	}, {
+		name:      "allowlisted loopback url is dispatched",
+		url:       "http://127.0.0.1/cel",
+		validator: &interceptors.URLValidator{BlockPrivate: true, Allowlist: []string{"127.0.0.1"}},
+		wantErr:   false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			coreInterceptors, err := server.NewWithCoreInterceptors(nil, zaptest.NewLogger(t).Sugar(), nil)
+			if err != nil {
+				t.Fatalf("failed to initialize core interceptors: %v", err)
+			}
+			httpClient := testServer(t, coreInterceptors)
+			_, err = interceptors.Execute(context.Background(), httpClient, req, tc.url, tc.validator)
+			if tc.wantErr && err == nil {
+				t.Fatalf("Execute() expected an error but got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("Execute() unexpected error: %v", err)
+			}
+		})
+	}
+}
