@@ -26,6 +26,11 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const (
+	cloudEventSinkSchemeHTTP  = "http"
+	cloudEventSinkSchemeHTTPS = "https"
+)
+
 // revive:disable:unused-parameter
 
 // Validate validates a ScheduledTemplate.
@@ -74,7 +79,7 @@ func (s *ScheduledTemplateSpec) validate(_ctx context.Context) (errs *apis.Field
 		scheme := strings.ToLower(s.CloudEventSink.Scheme)
 		if scheme == "" {
 			errs = errs.Also(apis.ErrMissingField("cloudEventSink.scheme"))
-		} else if scheme != "http" && scheme != "https" {
+		} else if scheme != cloudEventSinkSchemeHTTP && scheme != cloudEventSinkSchemeHTTPS {
 			errs = errs.Also(apis.ErrInvalidValue(s.CloudEventSink.Scheme, "cloudEventSink.scheme"))
 		}
 	}
