@@ -243,6 +243,36 @@ func Test_applyParamToResourceTemplate(t *testing.T) {
 				rt: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "$(tt.params.pr-body)"}]}}`),
 			},
 			want: json.RawMessage(`{"spec": {"params": [{"name": "pr-body", "value": "name: $$(context.pipelineRun.name)"}]}}`),
+		}, {
+			name: "escape literal newline embedded in a multiline value",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "sdk_config_file",
+					Value: "test1\ntest2\n",
+				},
+				rt: json.RawMessage(`{"script": "echo $(tt.params.sdk_config_file) | tee test.txt"}`),
+			},
+			want: json.RawMessage(`{"script": "echo test1\ntest2\n | tee test.txt"}`),
+		}, {
+			name: "escape literal newline when value fills the whole quoted string",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "sdk_config_file",
+					Value: "test1\ntest2\n",
+				},
+				rt: json.RawMessage(`{"foo": "$(tt.params.sdk_config_file)"}`),
+			},
+			want: json.RawMessage(`{"foo": "test1\ntest2\n"}`),
+		}, {
+			name: "leave literal newline untouched in unquoted (raw JSON) substitution",
+			args: args{
+				param: triggersv1.Param{
+					Name:  "p1",
+					Value: "{\n  \"a\": \"b\"\n}",
+				},
+				rt: json.RawMessage(`{"foo": $(tt.params.p1)}`),
+			},
+			want: json.RawMessage("{\"foo\": {\n  \"a\": \"b\"\n}}"),
 		},
 	}
 	for _, tt := range tests {
@@ -329,6 +359,22 @@ func Test_ApplyParamsToResourceTemplate(t *testing.T) {
 				rt: rt3,
 			},
 			want: json.RawMessage(`{"actualParam": "actualValue", "invalidParam": "$(tt.params1.invalidid)", "deprecatedParam": "$(params.twoid)"`),
+		},
+		{
+			// A regression test: an earlier param whose raw (pass-through, see
+			// #823) value contains an odd number of unescaped quotes must not
+			// throw off whether a later param's control characters get
+			// escaped. Both params are substituted into quoted JSON string
+			// positions here.
+			name: "an earlier param with an unescaped quote does not corrupt a later multiline param",
+			args: args{
+				params: []triggersv1.Param{
+					{Name: "msg", Value: `5" screen`},
+					{Name: "log", Value: "line1\nline2"},
+				},
+				rt: json.RawMessage(`{"message": "$(tt.params.msg)", "log": "$(tt.params.log)"}`),
+			},
+			want: json.RawMessage(`{"message": "5" screen", "log": "line1\nline2"}`),
 		},
 	}
 	for _, tt := range tests {
