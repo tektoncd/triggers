@@ -27,16 +27,22 @@ var _ apis.Defaultable = (*ScheduledTemplate)(nil)
 
 // ScheduledTemplateSpec holds the desired state of ScheduledTemplate
 type ScheduledTemplateSpec struct {
+	// Ref optionally names a TriggerTemplate in the same namespace.
+	// Mutually exclusive with inline Params / ResourceTemplates.
+	// +optional
+	Ref *string `json:"ref,omitempty"`
 	// +listType=atomic
 	// Embed TriggerTemplateSpec to inherit Params and ResourceTemplates
 	TriggerTemplateSpec `json:",inline"`
-	// URL of the external event trigger is listening to
+	// CloudEventSink is an optional destination for CloudEvents related to scheduled runs.
+	// +optional
 	CloudEventSink *apis.URL `json:"cloudEventSink,omitempty"`
-	// Cron job schedule for the trigger
+	// Schedule is a Kubernetes CronJob-style cron expression (five fields:
+	// minute hour day-of-month month day-of-week). Example: "0 0 * * *"
 	Schedule string `json:"schedule,omitempty"`
 }
 
-// ScheduledTemplateStatus describes the desired state of ScheduledTemplate
+// ScheduledTemplateStatus describes the observed state of ScheduledTemplate.
 type ScheduledTemplateStatus struct{}
 
 // +genclient
