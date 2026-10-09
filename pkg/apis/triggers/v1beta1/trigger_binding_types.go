@@ -54,6 +54,9 @@ type TriggerBindingStatus struct{}
 // to extract information from events to be passed to TriggerTemplates within a
 // Trigger.
 // +k8s:openapi-gen=true
+// +kubebuilder:resource
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type TriggerBinding struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
