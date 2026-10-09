@@ -16,6 +16,10 @@ spec:
               value:
                 secretName: "gitlab-secret"
                 secretKey: "secretToken"
+            - name: signingSecretRef
+              value:
+                secretName: "gitlab-secret"
+                secretKey: "signingToken"
             - name: eventTypes
               value:
                 - "Push Hook"
