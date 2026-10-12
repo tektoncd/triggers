@@ -37,6 +37,7 @@ import (
 	triggertemplatesinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"go.uber.org/zap"
@@ -213,6 +214,7 @@ func (s *sinker) Start(ctx context.Context) error {
 	// Create EventListener Sink
 
 	dynamicClient := dynamicclient.Get(ctx)
+	cfg := config.FromContextOrDefaults(s.injCtx)
 
 	r := sink.Sink{
 		KubeClientSet:          kubeclient.Get(ctx),
@@ -223,14 +225,15 @@ func (s *sinker) Start(ctx context.Context) error {
 		CEClient:               s.Clients.CEClient,
 		EventListenerName:      s.Args.ElName,
 		EventListenerNamespace: s.Args.ElNamespace,
-		PayloadValidation:      s.Args.PayloadValidation,
-		MaxBodySize:            s.Args.ELMaxBodySize,
-		Logger:                 s.Logger,
-		Recorder:               s.Recorder,
-		CloudEventURI:          s.Args.CloudEventURI,
-		Auth:                   sink.DefaultAuthOverride{},
-		WGProcessTriggers:      &sync.WaitGroup{},
-		EventRecorder:          s.createRecorder(s.injCtx, "EventListener"), //nolint:contextcheck
+		PayloadValidation:            s.Args.PayloadValidation,
+		MaxBodySize:                  s.Args.ELMaxBodySize,
+		Logger:                       s.Logger,
+		Recorder:                     s.Recorder,
+		CloudEventURI:                s.Args.CloudEventURI,
+		StripSensitiveHeadersForURLs: cfg.FeatureFlags.InterceptorsStripSensitiveHeadersForURLs,
+		Auth:                         sink.DefaultAuthOverride{},
+		WGProcessTriggers:            &sync.WaitGroup{},
+		EventRecorder:                s.createRecorder(s.injCtx, "EventListener"), //nolint:contextcheck
 
 		// Register all the listers we'll need
 		EventListenerLister:         eventlistenerinformer.Get(s.injCtx).Lister(),          //nolint:contextcheck
