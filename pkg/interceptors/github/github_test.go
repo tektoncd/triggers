@@ -2033,6 +2033,33 @@ func TestParseBodyForChangedFiles_typeValidation(t *testing.T) {
 			wantErr:   true,
 			want:      "payload body 'commits' element is not an object",
 		},
+		{
+			name:      "full_name has no owner separator on push",
+			eventType: "push",
+			body:      `{"commits": [], "repository": {"full_name": "noslash"}}`,
+			wantErr:   true,
+			want:      "payload body field 'repository.full_name' is not in the form 'owner/repository'",
+		},
+		{
+			name:      "full_name has no owner separator on pull_request",
+			eventType: "pull_request",
+			body:      `{"number": 1, "repository": {"full_name": "noslash"}}`,
+			wantErr:   true,
+			want:      "payload body field 'repository.full_name' is not in the form 'owner/repository'",
+		},
+		{
+			name:      "full_name is empty",
+			eventType: "push",
+			body:      `{"commits": [], "repository": {"full_name": ""}}`,
+			wantErr:   true,
+			want:      "payload body field 'repository.full_name' is not in the form 'owner/repository'",
+		},
+		{
+			name:      "full_name with owner and repository is accepted",
+			eventType: "push",
+			body:      `{"commits": [], "repository": {"full_name": "org/repo"}}`,
+			wantErr:   false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2042,6 +2069,36 @@ func TestParseBodyForChangedFiles_typeValidation(t *testing.T) {
 			}
 			if tt.wantErr && tt.want != "" && (err == nil || err.Error() != tt.want) {
 				t.Errorf("parseBodyForChangedFiles() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseBodyForOwners_fullNameValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		body    string
+		wantErr bool
+	}{
+		{
+			name:    "full_name has no owner separator",
+			body:    `{"action":"created","issue":{"number":1},"comment":{"body":"/ok-to-test"},"repository":{"full_name":"noslash"},"sender":{"login":"u"}}`,
+			wantErr: true,
+		},
+		{
+			name:    "full_name with owner and repository is accepted",
+			body:    `{"action":"created","issue":{"number":1},"comment":{"body":"/ok-to-test"},"repository":{"full_name":"org/repo"},"sender":{"login":"u"}}`,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseBodyForOwners(tt.body, "issue_comment")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseBodyForOwners() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && err != nil && err.Error() != "payload body field 'repository.full_name' is not in the form 'owner/repository'" {
+				t.Errorf("parseBodyForOwners() unexpected error = %v", err)
 			}
 		})
 	}
