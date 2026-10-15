@@ -16,7 +16,14 @@ Creates an EventListener that listens for GitLab webhook events.
    kubectl port-forward service/el-gitlab-listener 8080
    ```
 
-1. Test by sending the sample payload.
+1. Test by sending the sample payload. This example configures both a signing
+   token and a secret token; either credential is enough:
+
+   ```bash
+   ./curl-signing.sh
+   ```
+
+   Or send only the secret token:
 
    ```bash
    curl -v \
