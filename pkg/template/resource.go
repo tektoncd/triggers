@@ -121,30 +121,119 @@ func escapeTektonVariables(value string) string {
 }
 
 // applyParamsToResourceTemplate returns the TriggerResourceTemplate with the
-// param values substituted for all matching param variables in the template
+// param values substituted for all matching param variables in the template.
+// All params are substituted in a single pass over rt, rather than one pass
+// per param: rescanning already-substituted output for the next param would
+// let a raw, unescaped quote from one param's value (e.g. from #823-preserved
+// pass-through behavior) desync the JSON-string-boundary tracking used to
+// decide whether a later param's control characters need escaping.
 func applyParamsToResourceTemplate(params []triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the params are valid
-	for _, param := range params {
-		rt = applyParamToResourceTemplate(param, rt, oldEscape)
+	return substituteParamsInResourceTemplate(params, rt, oldEscape)
+}
+
+// escapeJSONControlChars escapes literal control characters (e.g. a raw
+// newline from a multiline TriggerBinding value) so the string can be
+// embedded inside a JSON string literal without producing invalid JSON.
+// Unlike the old-escape-quotes behavior, this does not touch quote or
+// backslash characters, since a raw control character is never valid JSON
+// (regardless of context) while a bare quote or backslash may already be
+// part of an intentionally pre-escaped value. See #257 and #823.
+func escapeJSONControlChars(value string) string {
+	var b strings.Builder
+	for _, r := range value {
+		switch r {
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			if r < 0x20 {
+				fmt.Fprintf(&b, `\u%04x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
 	}
-	return rt
+	return b.String()
 }
 
 // applyParamToResourceTemplate returns the TriggerResourceTemplate with the
 // param value substituted for all matching param variables in the template
 func applyParamToResourceTemplate(param triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
 	// Assume the param is valid
-	paramVariable := fmt.Sprintf("$(tt.params.%s)", param.Name)
-	// Escape quotes so that JSON strings can be appended to regular strings.
-	// See #257 for discussion on this behavior.
-	paramValue := param.Value
-	if oldEscape {
-		paramValue = strings.ReplaceAll(paramValue, `"`, `\"`)
+	return substituteParamsInResourceTemplate([]triggersv1.Param{param}, rt, oldEscape)
+}
+
+// substituteParamsInResourceTemplate walks rt once, replacing every
+// $(tt.params.NAME) token with its matching param value. It tracks whether
+// the current scan position is inside a JSON string literal, so that control
+// characters (e.g. a literal newline from a multiline value) are only
+// escaped when they would otherwise land inside a quoted string and break
+// JSON parsing; values substituted outside of a string (e.g. a raw JSON
+// object, see #823) are left untouched. Doing this in a single pass over the
+// original rt - rather than one pass per param - ensures a raw, unescaped
+// quote in one param's value can't desync the string-boundary tracking used
+// for a different param's token later in rt.
+func substituteParamsInResourceTemplate(params []triggersv1.Param, rt json.RawMessage, oldEscape bool) json.RawMessage {
+	tokens := make([][]byte, len(params))
+	rawValues := make([][]byte, len(params))
+	quotedValues := make([][]byte, len(params))
+	for i, param := range params {
+		// Escape quotes so that JSON strings can be appended to regular strings.
+		// See #257 for discussion on this behavior.
+		paramValue := param.Value
+		if oldEscape {
+			paramValue = strings.ReplaceAll(paramValue, `"`, `\"`)
+		}
+		// Escape Tekton variable syntax to prevent validation errors
+		// when parameter values contain literal $(tasks.*) or similar patterns
+		paramValue = escapeTektonVariables(paramValue)
+
+		tokens[i] = []byte(fmt.Sprintf("$(tt.params.%s)", param.Name))
+		rawValues[i] = []byte(paramValue)
+		quotedValues[i] = []byte(escapeJSONControlChars(paramValue))
 	}
-	// Escape Tekton variable syntax to prevent validation errors
-	// when parameter values contain literal $(tasks.*) or similar patterns
-	paramValue = escapeTektonVariables(paramValue)
-	return bytes.ReplaceAll(rt, []byte(paramVariable), []byte(paramValue))
+
+	var out bytes.Buffer
+	inString, escaped := false, false
+	for i := 0; i < len(rt); {
+		matched := -1
+		for t, token := range tokens {
+			if bytes.HasPrefix(rt[i:], token) {
+				matched = t
+				break
+			}
+		}
+		if matched != -1 {
+			if inString {
+				out.Write(quotedValues[matched])
+			} else {
+				out.Write(rawValues[matched])
+			}
+			i += len(tokens[matched])
+			escaped = false
+			continue
+		}
+		c := rt[i]
+		out.WriteByte(c)
+		if inString {
+			switch {
+			case escaped:
+				escaped = false
+			case c == '\\':
+				escaped = true
+			case c == '"':
+				inString = false
+			}
+		} else if c == '"' {
+			inString = true
+		}
+		i++
+	}
+	return out.Bytes()
 }
 
 // UUID generates a Universally Unique IDentifier following RFC 4122.
