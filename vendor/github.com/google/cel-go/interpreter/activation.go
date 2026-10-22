@@ -17,7 +17,6 @@ package interpreter
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/google/cel-go/common/types/ref"
 )
@@ -111,8 +110,9 @@ func (a *mapActivation) ResolveName(name string) (any, bool) {
 // hierarchicalActivation which implements Activation and contains a parent and
 // child activation.
 type hierarchicalActivation struct {
-	parent Activation
-	child  Activation
+	parent        Activation
+	child         Activation
+	poolAllocated bool
 }
 
 // Parent implements the Activation interface method.
@@ -128,10 +128,41 @@ func (a *hierarchicalActivation) ResolveName(name string) (any, bool) {
 	return a.parent.ResolveName(name)
 }
 
+// Unwrap returns the parent activation, stripping the local child scope.
+// This allows global disambiguation to skip past locally introduced variables.
+func (a *hierarchicalActivation) Unwrap() Activation {
+	return a.parent
+}
+
+// IsLocalVariable reports whether the variable name is locally bound in the hierarchical activation.
+func (a *hierarchicalActivation) IsLocalVariable(name string) bool {
+	if holder, ok := a.child.(localVariableHolder); ok {
+		if holder.IsLocalVariable(name) {
+			return true
+		}
+	}
+	if holder, ok := a.parent.(localVariableHolder); ok {
+		return holder.IsLocalVariable(name)
+	}
+	return false
+}
+
+// AsPartialActivation checks the child first via direct type assertion (to
+// avoid recursion through the folder → frame → hierarchicalActivation cycle),
+// then walks the parent hierarchy via the free function.
+func (a *hierarchicalActivation) AsPartialActivation() (PartialActivation, bool) {
+	if pv, ok := a.child.(partialActivationConverter); ok {
+		if p, ok := pv.AsPartialActivation(); ok {
+			return p, true
+		}
+	}
+	return AsPartialActivation(a.parent)
+}
+
 // NewHierarchicalActivation takes two activations and produces a new one which prioritizes
 // resolution in the child first and parent(s) second.
 func NewHierarchicalActivation(parent Activation, child Activation) Activation {
-	return &hierarchicalActivation{parent, child}
+	return &hierarchicalActivation{parent: parent, child: child, poolAllocated: false}
 }
 
 // NewPartialActivation returns an Activation which contains a list of AttributePattern values
@@ -157,6 +188,12 @@ type PartialActivation interface {
 	UnknownAttributePatterns() []*AttributePattern
 }
 
+// partialActivationConverter indicates whether an Activation implementation supports conversion to a PartialActivation
+type partialActivationConverter interface {
+	// AsPartialActivation converts the current activation to a PartialActivation
+	AsPartialActivation() (PartialActivation, bool)
+}
+
 // partActivation is the default implementations of the PartialActivation interface.
 type partActivation struct {
 	Activation
@@ -168,34 +205,20 @@ func (a *partActivation) UnknownAttributePatterns() []*AttributePattern {
 	return a.unknowns
 }
 
-// varActivation represents a single mutable variable binding.
-//
-// This activation type should only be used within folds as the fold loop controls the object
-// life-cycle.
-type varActivation struct {
-	parent Activation
-	name   string
-	val    ref.Val
+// AsPartialActivation returns the partActivation as a PartialActivation interface.
+func (a *partActivation) AsPartialActivation() (PartialActivation, bool) {
+	return a, true
 }
 
-// Parent implements the Activation interface method.
-func (v *varActivation) Parent() Activation {
-	return v.parent
-}
-
-// ResolveName implements the Activation interface method.
-func (v *varActivation) ResolveName(name string) (any, bool) {
-	if name == v.name {
-		return v.val, true
+// AsPartialActivation walks the activation hierarchy and returns the first PartialActivation, if found.
+func AsPartialActivation(vars Activation) (PartialActivation, bool) {
+	// Only internal activation instances may implement this interface
+	if pv, ok := vars.(partialActivationConverter); ok {
+		return pv.AsPartialActivation()
 	}
-	return v.parent.ResolveName(name)
-}
-
-var (
-	// pool of var activations to reduce allocations during folds.
-	varActivationPool = &sync.Pool{
-		New: func() any {
-			return &varActivation{}
-		},
+	// Since Activations may be hierarchical, test whether a parent converts to a PartialActivation
+	if vars.Parent() != nil {
+		return AsPartialActivation(vars.Parent())
 	}
-)
+	return nil, false
+}

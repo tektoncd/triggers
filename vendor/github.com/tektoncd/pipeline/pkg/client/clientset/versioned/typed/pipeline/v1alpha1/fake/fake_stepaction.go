@@ -19,111 +19,32 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeStepActions implements StepActionInterface
-type FakeStepActions struct {
+// fakeStepActions implements StepActionInterface
+type fakeStepActions struct {
+	*gentype.FakeClientWithList[*v1alpha1.StepAction, *v1alpha1.StepActionList]
 	Fake *FakeTektonV1alpha1
-	ns   string
 }
 
-var stepactionsResource = v1alpha1.SchemeGroupVersion.WithResource("stepactions")
-
-var stepactionsKind = v1alpha1.SchemeGroupVersion.WithKind("StepAction")
-
-// Get takes name of the stepAction, and returns the corresponding stepAction object, and an error if there is any.
-func (c *FakeStepActions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.StepAction, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(stepactionsResource, c.ns, name), &v1alpha1.StepAction{})
-
-	if obj == nil {
-		return nil, err
+func newFakeStepActions(fake *FakeTektonV1alpha1, namespace string) pipelinev1alpha1.StepActionInterface {
+	return &fakeStepActions{
+		gentype.NewFakeClientWithList[*v1alpha1.StepAction, *v1alpha1.StepActionList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("stepactions"),
+			v1alpha1.SchemeGroupVersion.WithKind("StepAction"),
+			func() *v1alpha1.StepAction { return &v1alpha1.StepAction{} },
+			func() *v1alpha1.StepActionList { return &v1alpha1.StepActionList{} },
+			func(dst, src *v1alpha1.StepActionList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.StepActionList) []*v1alpha1.StepAction { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.StepActionList, items []*v1alpha1.StepAction) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.StepAction), err
-}
-
-// List takes label and field selectors, and returns the list of StepActions that match those selectors.
-func (c *FakeStepActions) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.StepActionList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(stepactionsResource, stepactionsKind, c.ns, opts), &v1alpha1.StepActionList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.StepActionList{ListMeta: obj.(*v1alpha1.StepActionList).ListMeta}
-	for _, item := range obj.(*v1alpha1.StepActionList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested stepActions.
-func (c *FakeStepActions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(stepactionsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a stepAction and creates it.  Returns the server's representation of the stepAction, and an error, if there is any.
-func (c *FakeStepActions) Create(ctx context.Context, stepAction *v1alpha1.StepAction, opts v1.CreateOptions) (result *v1alpha1.StepAction, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(stepactionsResource, c.ns, stepAction), &v1alpha1.StepAction{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.StepAction), err
-}
-
-// Update takes the representation of a stepAction and updates it. Returns the server's representation of the stepAction, and an error, if there is any.
-func (c *FakeStepActions) Update(ctx context.Context, stepAction *v1alpha1.StepAction, opts v1.UpdateOptions) (result *v1alpha1.StepAction, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(stepactionsResource, c.ns, stepAction), &v1alpha1.StepAction{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.StepAction), err
-}
-
-// Delete takes name of the stepAction and deletes it. Returns an error if one occurs.
-func (c *FakeStepActions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(stepactionsResource, c.ns, name, opts), &v1alpha1.StepAction{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeStepActions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(stepactionsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.StepActionList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched stepAction.
-func (c *FakeStepActions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.StepAction, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(stepactionsResource, c.ns, name, pt, data, subresources...), &v1alpha1.StepAction{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.StepAction), err
 }

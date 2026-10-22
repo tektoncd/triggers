@@ -1,6 +1,6 @@
 # Kubernetes Custom Resource API Reference Docs generator
 
-If you have a project that is providing Custom Resource Definitions and wanted to generate
+If you have a project that is Custom Resource Definitions and wanted to generate
 API Reference Docs [like this][ar] this tool is for you.
 
 [ar]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/
@@ -20,7 +20,6 @@ API Reference Docs [like this][ar] this tool is for you.
 - [**New Relic Alert Manager** API reference docs](https://github.com/fpetkovski/newrelic-alert-manager/tree/master/docs)
 - [**Antrea** API reference docs](https://antrea.io/docs/v1.3.0/docs/api-reference/)
 - [**kube-green** API reference docs](https://kube-green.dev/docs/apireference_v1alpha1/)
-- [**Azure Service Operator** supported resources](https://azure.github.io/azure-service-operator/reference/)
 - _[[ADD YOUR PROJECT HERE]]_
 
 ## Why

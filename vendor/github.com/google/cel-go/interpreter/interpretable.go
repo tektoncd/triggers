@@ -16,6 +16,7 @@ package interpreter
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/google/cel-go/common/functions"
 	"github.com/google/cel-go/common/operators"
@@ -25,20 +26,53 @@ import (
 	"github.com/google/cel-go/common/types/traits"
 )
 
-// Interpretable can accept a given Activation and produce a value along with
-// an accompanying EvalState which can be used to inspect whether additional
-// data might be necessary to complete the evaluation.
+// Interpretable evaluates an Activation and produces a value.
 type Interpretable interface {
 	// ID value corresponding to the expression node.
 	ID() int64
 
-	// Eval an Activation to produce an output.
+	// Eval evaluates an Activation and produces an output.
 	Eval(activation Activation) ref.Val
+}
+
+// InterpretableV2 evaluates an ExecutionFrame and produces a value.
+//
+// The ExecutionFrame should not be stored and should always be passed as the first
+// argument to any function as it behaves like Golang's context.Context.
+type InterpretableV2 interface {
+	Interpretable
+
+	// Exec evaluates the expression within the given ExecutionFrame.
+	Exec(frame *ExecutionFrame) ref.Val
+}
+
+// adaptToV2 adapts a V1 Interpretable implementation to the V2 interface.
+//
+// This adapter is used to bridge the legacy Interpretable interface to the
+// modern InterpretableV2 interface, providing a shim that allows the use of
+// both interfaces in the same system.
+func adaptToV2(i Interpretable) InterpretableV2 {
+	switch v := i.(type) {
+	case InterpretableV2:
+		return v
+	default:
+		return &v1Adapter{Interpretable: v}
+	}
+}
+
+// v1Adapter handles bridging a V1 Interpretable implementation to the V2 interface.
+type v1Adapter struct {
+	Interpretable
+}
+
+// Exec implements the InterpretableV2 interface method.
+func (a *v1Adapter) Exec(f *ExecutionFrame) ref.Val {
+	return a.Eval(f)
 }
 
 // InterpretableConst interface for tracking whether the Interpretable is a constant value.
 type InterpretableConst interface {
-	Interpretable
+	InterpretableV2
 
 	// Value returns the constant value of the instruction.
 	Value() ref.Val
@@ -46,7 +80,7 @@ type InterpretableConst interface {
 
 // InterpretableAttribute interface for tracking whether the Interpretable is an attribute.
 type InterpretableAttribute interface {
-	Interpretable
+	InterpretableV2
 
 	// Attr returns the Attribute value.
 	Attr() Attribute
@@ -80,7 +114,7 @@ type InterpretableAttribute interface {
 
 // InterpretableCall interface for inspecting Interpretable instructions related to function calls.
 type InterpretableCall interface {
-	Interpretable
+	InterpretableV2
 
 	// Function returns the function name as it appears in text or mangled operator name as it
 	// appears in the operators.go file.
@@ -93,19 +127,105 @@ type InterpretableCall interface {
 
 	// Args returns the normalized arguments to the function overload.
 	// For receiver-style functions, the receiver target is arg 0.
-	Args() []Interpretable
+	Args() []InterpretableV2
 }
 
-// InterpretableConstructor interface for inspecting  Interpretable instructions that initialize a list, map
+// InterpretableConstructor interface for inspecting Interpretable instructions that initialize a list, map
 // or struct.
 type InterpretableConstructor interface {
-	Interpretable
+	InterpretableV2
 
 	// InitVals returns all the list elements, map key and values or struct field values.
-	InitVals() []Interpretable
+	InitVals() []InterpretableV2
 
 	// Type returns the type constructed.
 	Type() ref.Type
+}
+
+// ObservableInterpretable is an Interpretable which supports stateful observation, such as tracing
+// or cost-tracking.
+type ObservableInterpretable struct {
+	InterpretableV2
+	observers []StatefulObserver
+}
+
+// ID implements the Interpretable method to get the expression id associated with the step.
+func (oi *ObservableInterpretable) ID() int64 {
+	return oi.InterpretableV2.ID()
+}
+
+// Exec implements the InterpretableV2 interface method.
+func (oi *ObservableInterpretable) Exec(frame *ExecutionFrame) ref.Val {
+	return oi.ObserveExec(frame, func(any) {})
+}
+
+// Eval proxies to the ObserveEval method while invoking a no-op callback to report the observations.
+func (oi *ObservableInterpretable) Eval(vars Activation) ref.Val {
+	return oi.ObserveExec(AsFrame(vars), func(any) {})
+}
+
+// ObserveEval evaluates an interpretable and performs per-evaluation state-tracking.
+//
+// This method is concurrency safe and the expectation is that the observer function will use
+// a switch statement to determine the type of the state which has been reported back from the call.
+func (oi *ObservableInterpretable) ObserveEval(vars Activation, observer func(any)) ref.Val {
+	return oi.ObserveExec(AsFrame(vars), observer)
+}
+
+// ObserveExec evaluates an interpretable and performs per-evaluation state-tracking.
+//
+// This method is concurrency safe and the expectation is that the observer function will use
+// a switch statement to determine the type of the state which has been reported back from the call.
+func (oi *ObservableInterpretable) ObserveExec(frame *ExecutionFrame, observer func(any)) ref.Val {
+	// Initialize the state needed for the observers to function.
+	for _, obs := range oi.observers {
+		state, err := obs.InitState(frame)
+		if err != nil {
+			return types.WrapErr(err)
+		}
+		// Provide an initial reference to the state to ensure state is available
+		// even in cases of interrupting errors generated during evaluation.
+		observer(state)
+	}
+	result := oi.InterpretableV2.Exec(frame)
+	// Get the state which needs to be reported back as having been observed.
+	for _, obs := range oi.observers {
+		observer(obs.GetState(frame))
+	}
+	return result
+}
+
+// AsFrame promotes an Activation to an ExecutionFrame.
+func AsFrame(a Activation) *ExecutionFrame {
+	if f, ok := a.(*ExecutionFrame); ok {
+		return f
+	}
+	frame := &ExecutionFrame{Activation: a}
+	// Walk the activation hierarchy to find a parent ExecutionFrame and inherit
+	// its shared context.
+	if parent := findFrame(a); parent != nil {
+		frame.ctx = parent.ctx
+	}
+	return frame
+}
+
+// findFrame walks the activation hierarchy via Unwrap and Parent to locate an
+// existing ExecutionFrame, if one exists.
+func findFrame(a Activation) *ExecutionFrame {
+	if wrapper, ok := a.(activationWrapper); ok {
+		unwrapped := wrapper.Unwrap()
+		if f, ok := unwrapped.(*ExecutionFrame); ok {
+			return f
+		}
+		return findFrame(unwrapped)
+	}
+	if p := a.Parent(); p != nil {
+		if f, ok := p.(*ExecutionFrame); ok {
+			return f
+		}
+		return findFrame(p)
+	}
+	return nil
 }
 
 // Core Interpretable implementations used during the program planning phase.
@@ -120,9 +240,9 @@ func (test *evalTestOnly) ID() int64 {
 	return test.id
 }
 
-// Eval implements the Interpretable interface method.
-func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
-	val, err := test.Resolve(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (test *evalTestOnly) Exec(frame *ExecutionFrame) ref.Val {
+	val, err := test.Resolve(frame)
 	// Return an error if the resolve step fails
 	if err != nil {
 		return types.LabelErrNode(test.id, types.WrapErr(err))
@@ -131,6 +251,11 @@ func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
 		return types.Bool(optVal.HasValue())
 	}
 	return test.Adapter().NativeToValue(val)
+}
+
+// Eval implements the Interpretable interface method.
+func (test *evalTestOnly) Eval(ctx Activation) ref.Val {
+	return test.Exec(AsFrame(ctx))
 }
 
 // AddQualifier appends a qualifier that will always and only perform a presence test.
@@ -152,11 +277,8 @@ func (q *testOnlyQualifier) Qualify(vars Activation, obj any) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if unk, isUnk := out.(types.Unknown); isUnk {
+	if unk, isUnk := out.(*types.Unknown); isUnk {
 		return unk, nil
-	}
-	if opt, isOpt := out.(types.Optional); isOpt {
-		return opt.HasValue(), nil
 	}
 	return present, nil
 }
@@ -191,6 +313,11 @@ func (cons *evalConst) ID() int64 {
 	return cons.id
 }
 
+// Exec implements the InterpretableV2 interface method.
+func (cons *evalConst) Exec(frame *ExecutionFrame) ref.Val {
+	return cons.val
+}
+
 // Eval implements the Interpretable interface method.
 func (cons *evalConst) Eval(ctx Activation) ref.Val {
 	return cons.val
@@ -203,7 +330,7 @@ func (cons *evalConst) Value() ref.Val {
 
 type evalOr struct {
 	id    int64
-	terms []Interpretable
+	terms []InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -211,12 +338,12 @@ func (or *evalOr) ID() int64 {
 	return or.id
 }
 
-// Eval implements the Interpretable interface method.
-func (or *evalOr) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (or *evalOr) Exec(frame *ExecutionFrame) ref.Val {
 	var err ref.Val = nil
 	var unk *types.Unknown
 	for _, term := range or.terms {
-		val := term.Eval(ctx)
+		val := term.Exec(frame)
 		boolVal, ok := val.(types.Bool)
 		// short-circuit on true.
 		if ok && boolVal == types.True {
@@ -244,9 +371,14 @@ func (or *evalOr) Eval(ctx Activation) ref.Val {
 	return types.False
 }
 
+// Eval implements the Interpretable interface method.
+func (or *evalOr) Eval(ctx Activation) ref.Val {
+	return or.Exec(AsFrame(ctx))
+}
+
 type evalAnd struct {
 	id    int64
-	terms []Interpretable
+	terms []InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -254,12 +386,12 @@ func (and *evalAnd) ID() int64 {
 	return and.id
 }
 
-// Eval implements the Interpretable interface method.
-func (and *evalAnd) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (and *evalAnd) Exec(frame *ExecutionFrame) ref.Val {
 	var err ref.Val = nil
 	var unk *types.Unknown
 	for _, term := range and.terms {
-		val := term.Eval(ctx)
+		val := term.Exec(frame)
 		boolVal, ok := val.(types.Bool)
 		// short-circuit on false.
 		if ok && boolVal == types.False {
@@ -287,10 +419,15 @@ func (and *evalAnd) Eval(ctx Activation) ref.Val {
 	return types.True
 }
 
+// Eval implements the Interpretable interface method.
+func (and *evalAnd) Eval(ctx Activation) ref.Val {
+	return and.Exec(AsFrame(ctx))
+}
+
 type evalEq struct {
 	id  int64
-	lhs Interpretable
-	rhs Interpretable
+	lhs InterpretableV2
+	rhs InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -298,17 +435,28 @@ func (eq *evalEq) ID() int64 {
 	return eq.id
 }
 
-// Eval implements the Interpretable interface method.
-func (eq *evalEq) Eval(ctx Activation) ref.Val {
-	lVal := eq.lhs.Eval(ctx)
-	rVal := eq.rhs.Eval(ctx)
-	if types.IsUnknownOrError(lVal) {
+// Exec implements the InterpretableV2 interface method.
+func (eq *evalEq) Exec(frame *ExecutionFrame) ref.Val {
+	lVal := eq.lhs.Exec(frame)
+	if types.IsError(lVal) {
 		return lVal
 	}
-	if types.IsUnknownOrError(rVal) {
+	rVal := eq.rhs.Exec(frame)
+	if types.IsError(rVal) {
 		return rVal
 	}
+	var unk *types.Unknown
+	unk, _ = types.MaybeMergeUnknowns(lVal, unk)
+	unk, _ = types.MaybeMergeUnknowns(rVal, unk)
+	if unk != nil {
+		return unk
+	}
 	return types.Equal(lVal, rVal)
+}
+
+// Eval implements the Interpretable interface method.
+func (eq *evalEq) Eval(ctx Activation) ref.Val {
+	return eq.Exec(AsFrame(ctx))
 }
 
 // Function implements the InterpretableCall interface method.
@@ -322,14 +470,14 @@ func (*evalEq) OverloadID() string {
 }
 
 // Args implements the InterpretableCall interface method.
-func (eq *evalEq) Args() []Interpretable {
-	return []Interpretable{eq.lhs, eq.rhs}
+func (eq *evalEq) Args() []InterpretableV2 {
+	return []InterpretableV2{eq.lhs, eq.rhs}
 }
 
 type evalNe struct {
 	id  int64
-	lhs Interpretable
-	rhs Interpretable
+	lhs InterpretableV2
+	rhs InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -337,17 +485,28 @@ func (ne *evalNe) ID() int64 {
 	return ne.id
 }
 
-// Eval implements the Interpretable interface method.
-func (ne *evalNe) Eval(ctx Activation) ref.Val {
-	lVal := ne.lhs.Eval(ctx)
-	rVal := ne.rhs.Eval(ctx)
-	if types.IsUnknownOrError(lVal) {
+// Exec implements the InterpretableV2 interface method.
+func (ne *evalNe) Exec(frame *ExecutionFrame) ref.Val {
+	lVal := ne.lhs.Exec(frame)
+	if types.IsError(lVal) {
 		return lVal
 	}
-	if types.IsUnknownOrError(rVal) {
+	rVal := ne.rhs.Exec(frame)
+	if types.IsError(rVal) {
 		return rVal
 	}
+	var unk *types.Unknown
+	unk, _ = types.MaybeMergeUnknowns(lVal, unk)
+	unk, _ = types.MaybeMergeUnknowns(rVal, unk)
+	if unk != nil {
+		return unk
+	}
 	return types.Bool(types.Equal(lVal, rVal) != types.True)
+}
+
+// Eval implements the Interpretable interface method.
+func (ne *evalNe) Eval(ctx Activation) ref.Val {
+	return ne.Exec(AsFrame(ctx))
 }
 
 // Function implements the InterpretableCall interface method.
@@ -361,8 +520,8 @@ func (*evalNe) OverloadID() string {
 }
 
 // Args implements the InterpretableCall interface method.
-func (ne *evalNe) Args() []Interpretable {
-	return []Interpretable{ne.lhs, ne.rhs}
+func (ne *evalNe) Args() []InterpretableV2 {
+	return []InterpretableV2{ne.lhs, ne.rhs}
 }
 
 type evalZeroArity struct {
@@ -377,9 +536,14 @@ func (zero *evalZeroArity) ID() int64 {
 	return zero.id
 }
 
+// Exec implements the InterpretableV2 interface method.
+func (zero *evalZeroArity) Exec(frame *ExecutionFrame) ref.Val {
+	return types.LabelErrNode(zero.id, zero.impl())
+}
+
 // Eval implements the Interpretable interface method.
 func (zero *evalZeroArity) Eval(ctx Activation) ref.Val {
-	return types.LabelErrNode(zero.id, zero.impl())
+	return zero.Exec(AsFrame(ctx))
 }
 
 // Function implements the InterpretableCall interface method.
@@ -393,15 +557,15 @@ func (zero *evalZeroArity) OverloadID() string {
 }
 
 // Args returns the argument to the unary function.
-func (zero *evalZeroArity) Args() []Interpretable {
-	return []Interpretable{}
+func (zero *evalZeroArity) Args() []InterpretableV2 {
+	return []InterpretableV2{}
 }
 
 type evalUnary struct {
 	id        int64
 	function  string
 	overload  string
-	arg       Interpretable
+	arg       InterpretableV2
 	trait     int
 	impl      functions.UnaryOp
 	nonStrict bool
@@ -412,9 +576,9 @@ func (un *evalUnary) ID() int64 {
 	return un.id
 }
 
-// Eval implements the Interpretable interface method.
-func (un *evalUnary) Eval(ctx Activation) ref.Val {
-	argVal := un.arg.Eval(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (un *evalUnary) Exec(frame *ExecutionFrame) ref.Val {
+	argVal := un.arg.Exec(frame)
 	// Early return if the argument to the function is unknown or error.
 	strict := !un.nonStrict
 	if strict && types.IsUnknownOrError(argVal) {
@@ -433,6 +597,11 @@ func (un *evalUnary) Eval(ctx Activation) ref.Val {
 	return types.NewErrWithNodeID(un.id, "no such overload: %s", un.function)
 }
 
+// Eval implements the Interpretable interface method.
+func (un *evalUnary) Eval(ctx Activation) ref.Val {
+	return un.Exec(AsFrame(ctx))
+}
+
 // Function implements the InterpretableCall interface method.
 func (un *evalUnary) Function() string {
 	return un.function
@@ -444,16 +613,16 @@ func (un *evalUnary) OverloadID() string {
 }
 
 // Args returns the argument to the unary function.
-func (un *evalUnary) Args() []Interpretable {
-	return []Interpretable{un.arg}
+func (un *evalUnary) Args() []InterpretableV2 {
+	return []InterpretableV2{un.arg}
 }
 
 type evalBinary struct {
 	id        int64
 	function  string
 	overload  string
-	lhs       Interpretable
-	rhs       Interpretable
+	lhs       InterpretableV2
+	rhs       InterpretableV2
 	trait     int
 	impl      functions.BinaryOp
 	nonStrict bool
@@ -464,18 +633,23 @@ func (bin *evalBinary) ID() int64 {
 	return bin.id
 }
 
-// Eval implements the Interpretable interface method.
-func (bin *evalBinary) Eval(ctx Activation) ref.Val {
-	lVal := bin.lhs.Eval(ctx)
-	rVal := bin.rhs.Eval(ctx)
-	// Early return if any argument to the function is unknown or error.
+// Exec implements the InterpretableV2 interface method.
+func (bin *evalBinary) Exec(frame *ExecutionFrame) ref.Val {
+	lVal := bin.lhs.Exec(frame)
 	strict := !bin.nonStrict
+	if strict && types.IsError(lVal) {
+		return lVal
+	}
+	rVal := bin.rhs.Exec(frame)
+	if strict && types.IsError(rVal) {
+		return rVal
+	}
 	if strict {
-		if types.IsUnknownOrError(lVal) {
-			return lVal
-		}
-		if types.IsUnknownOrError(rVal) {
-			return rVal
+		var unk *types.Unknown
+		unk, _ = types.MaybeMergeUnknowns(lVal, unk)
+		unk, _ = types.MaybeMergeUnknowns(rVal, unk)
+		if unk != nil {
+			return unk
 		}
 	}
 	// If the implementation is bound and the argument value has the right traits required to
@@ -491,6 +665,11 @@ func (bin *evalBinary) Eval(ctx Activation) ref.Val {
 	return types.NewErrWithNodeID(bin.id, "no such overload: %s", bin.function)
 }
 
+// Eval implements the Interpretable interface method.
+func (bin *evalBinary) Eval(ctx Activation) ref.Val {
+	return bin.Exec(AsFrame(ctx))
+}
+
 // Function implements the InterpretableCall interface method.
 func (bin *evalBinary) Function() string {
 	return bin.function
@@ -502,22 +681,22 @@ func (bin *evalBinary) OverloadID() string {
 }
 
 // Args returns the argument to the unary function.
-func (bin *evalBinary) Args() []Interpretable {
-	return []Interpretable{bin.lhs, bin.rhs}
+func (bin *evalBinary) Args() []InterpretableV2 {
+	return []InterpretableV2{bin.lhs, bin.rhs}
 }
 
 type evalVarArgs struct {
 	id        int64
 	function  string
 	overload  string
-	args      []Interpretable
+	args      []InterpretableV2
 	trait     int
 	impl      functions.FunctionOp
 	nonStrict bool
 }
 
 // NewCall creates a new call Interpretable.
-func NewCall(id int64, function, overload string, args []Interpretable, impl functions.FunctionOp) InterpretableCall {
+func NewCall(id int64, function, overload string, args []InterpretableV2, impl functions.FunctionOp) InterpretableCall {
 	return &evalVarArgs{
 		id:       id,
 		function: function,
@@ -532,16 +711,22 @@ func (fn *evalVarArgs) ID() int64 {
 	return fn.id
 }
 
-// Eval implements the Interpretable interface method.
-func (fn *evalVarArgs) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (fn *evalVarArgs) Exec(frame *ExecutionFrame) ref.Val {
 	argVals := make([]ref.Val, len(fn.args))
-	// Early return if any argument to the function is unknown or error.
 	strict := !fn.nonStrict
+	var unk *types.Unknown
 	for i, arg := range fn.args {
-		argVals[i] = arg.Eval(ctx)
-		if strict && types.IsUnknownOrError(argVals[i]) {
-			return argVals[i]
+		argVals[i] = arg.Exec(frame)
+		if strict {
+			if types.IsError(argVals[i]) {
+				return argVals[i]
+			}
+			unk, _ = types.MaybeMergeUnknowns(argVals[i], unk)
 		}
+	}
+	if strict && unk != nil {
+		return unk
 	}
 	// If the implementation is bound and the argument value has the right traits required to
 	// invoke it, then call the implementation.
@@ -557,6 +742,11 @@ func (fn *evalVarArgs) Eval(ctx Activation) ref.Val {
 	return types.NewErrWithNodeID(fn.id, "no such overload: %s %d", fn.function, fn.id)
 }
 
+// Eval implements the Interpretable interface method.
+func (fn *evalVarArgs) Eval(ctx Activation) ref.Val {
+	return fn.Exec(AsFrame(ctx))
+}
+
 // Function implements the InterpretableCall interface method.
 func (fn *evalVarArgs) Function() string {
 	return fn.function
@@ -568,13 +758,13 @@ func (fn *evalVarArgs) OverloadID() string {
 }
 
 // Args returns the argument to the unary function.
-func (fn *evalVarArgs) Args() []Interpretable {
+func (fn *evalVarArgs) Args() []InterpretableV2 {
 	return fn.args
 }
 
 type evalList struct {
 	id           int64
-	elems        []Interpretable
+	elems        []InterpretableV2
 	optionals    []bool
 	hasOptionals bool
 	adapter      types.Adapter
@@ -585,31 +775,44 @@ func (l *evalList) ID() int64 {
 	return l.id
 }
 
-// Eval implements the Interpretable interface method.
-func (l *evalList) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (l *evalList) Exec(frame *ExecutionFrame) ref.Val {
 	elemVals := make([]ref.Val, 0, len(l.elems))
-	// If any argument is unknown or error early terminate.
+	var unk *types.Unknown
 	for i, elem := range l.elems {
-		elemVal := elem.Eval(ctx)
-		if types.IsUnknownOrError(elemVal) {
+		elemVal := elem.Exec(frame)
+		if types.IsError(elemVal) {
 			return elemVal
 		}
+		unk, _ = types.MaybeMergeUnknowns(elemVal, unk)
 		if l.hasOptionals && l.optionals[i] {
-			optVal, ok := elemVal.(*types.Optional)
-			if !ok {
-				return types.LabelErrNode(l.id, invalidOptionalElementInit(elemVal))
+			if types.IsUnknown(elemVal) {
+				// skip optional checks for unknown values as they aren't fully resolved yet.
+			} else {
+				optVal, ok := elemVal.(*types.Optional)
+				if !ok {
+					return types.LabelErrNode(l.id, invalidOptionalElementInit(elemVal))
+				}
+				if !optVal.HasValue() {
+					continue
+				}
+				elemVal = optVal.GetValue()
 			}
-			if !optVal.HasValue() {
-				continue
-			}
-			elemVal = optVal.GetValue()
 		}
 		elemVals = append(elemVals, elemVal)
 	}
-	return l.adapter.NativeToValue(elemVals)
+	if unk != nil {
+		return unk
+	}
+	return types.NewRefValList(l.adapter, elemVals)
 }
 
-func (l *evalList) InitVals() []Interpretable {
+// Eval implements the Interpretable interface method.
+func (l *evalList) Eval(ctx Activation) ref.Val {
+	return l.Exec(AsFrame(ctx))
+}
+
+func (l *evalList) InitVals() []InterpretableV2 {
 	return l.elems
 }
 
@@ -619,8 +822,8 @@ func (l *evalList) Type() ref.Type {
 
 type evalMap struct {
 	id           int64
-	keys         []Interpretable
-	vals         []Interpretable
+	keys         []InterpretableV2
+	vals         []InterpretableV2
 	optionals    []bool
 	hasOptionals bool
 	adapter      types.Adapter
@@ -631,20 +834,24 @@ func (m *evalMap) ID() int64 {
 	return m.id
 }
 
-// Eval implements the Interpretable interface method.
-func (m *evalMap) Eval(ctx Activation) ref.Val {
-	entries := make(map[ref.Val]ref.Val)
-	// If any argument is unknown or error early terminate.
+// Exec implements the InterpretableV2 interface method.
+func (m *evalMap) Exec(frame *ExecutionFrame) ref.Val {
+	entries := make(map[ref.Val]ref.Val, len(m.keys))
+	var unk *types.Unknown
 	for i, key := range m.keys {
-		keyVal := key.Eval(ctx)
-		if types.IsUnknownOrError(keyVal) {
+		keyVal := key.Exec(frame)
+		if types.IsError(keyVal) {
 			return keyVal
 		}
-		valVal := m.vals[i].Eval(ctx)
-		if types.IsUnknownOrError(valVal) {
+		unk, _ = types.MaybeMergeUnknowns(keyVal, unk)
+
+		valVal := m.vals[i].Exec(frame)
+		if types.IsError(valVal) {
 			return valVal
 		}
-		if m.hasOptionals && m.optionals[i] {
+		unk, _ = types.MaybeMergeUnknowns(valVal, unk)
+
+		if m.hasOptionals && m.optionals[i] && !types.IsUnknown(valVal) {
 			optVal, ok := valVal.(*types.Optional)
 			if !ok {
 				return types.LabelErrNode(m.id, invalidOptionalEntryInit(keyVal, valVal))
@@ -657,14 +864,22 @@ func (m *evalMap) Eval(ctx Activation) ref.Val {
 		}
 		entries[keyVal] = valVal
 	}
-	return m.adapter.NativeToValue(entries)
+	if unk != nil {
+		return unk
+	}
+	return types.NewRefValMap(m.adapter, entries)
 }
 
-func (m *evalMap) InitVals() []Interpretable {
+// Eval implements the Interpretable interface method.
+func (m *evalMap) Eval(ctx Activation) ref.Val {
+	return m.Exec(AsFrame(ctx))
+}
+
+func (m *evalMap) InitVals() []InterpretableV2 {
 	if len(m.keys) != len(m.vals) {
 		return nil
 	}
-	result := make([]Interpretable, len(m.keys)+len(m.vals))
+	result := make([]InterpretableV2, len(m.keys)+len(m.vals))
 	idx := 0
 	for i, k := range m.keys {
 		v := m.vals[i]
@@ -684,7 +899,7 @@ type evalObj struct {
 	id           int64
 	typeName     string
 	fields       []string
-	vals         []Interpretable
+	vals         []InterpretableV2
 	optionals    []bool
 	hasOptionals bool
 	provider     types.Provider
@@ -695,16 +910,17 @@ func (o *evalObj) ID() int64 {
 	return o.id
 }
 
-// Eval implements the Interpretable interface method.
-func (o *evalObj) Eval(ctx Activation) ref.Val {
-	fieldVals := make(map[string]ref.Val)
-	// If any argument is unknown or error early terminate.
+// Exec implements the InterpretableV2 interface method.
+func (o *evalObj) Exec(frame *ExecutionFrame) ref.Val {
+	fieldVals := make(map[string]ref.Val, len(o.fields))
+	var unk *types.Unknown
 	for i, field := range o.fields {
-		val := o.vals[i].Eval(ctx)
-		if types.IsUnknownOrError(val) {
+		val := o.vals[i].Exec(frame)
+		if types.IsError(val) {
 			return val
 		}
-		if o.hasOptionals && o.optionals[i] {
+		unk, _ = types.MaybeMergeUnknowns(val, unk)
+		if o.hasOptionals && o.optionals[i] && !types.IsUnknown(val) {
 			optVal, ok := val.(*types.Optional)
 			if !ok {
 				return types.LabelErrNode(o.id, invalidOptionalEntryInit(field, val))
@@ -717,27 +933,42 @@ func (o *evalObj) Eval(ctx Activation) ref.Val {
 		}
 		fieldVals[field] = val
 	}
+	if unk != nil {
+		return unk
+	}
 	return types.LabelErrNode(o.id, o.provider.NewValue(o.typeName, fieldVals))
 }
 
-func (o *evalObj) InitVals() []Interpretable {
+// Eval implements the Interpretable interface method.
+func (o *evalObj) Eval(ctx Activation) ref.Val {
+	return o.Exec(AsFrame(ctx))
+}
+
+// InitVals implements the InterpretableConstructor interface method.
+func (o *evalObj) InitVals() []InterpretableV2 {
 	return o.vals
 }
 
+// Type implements the InterpretableConstructor interface method.
 func (o *evalObj) Type() ref.Type {
-	return types.NewObjectTypeValue(o.typeName)
+	return types.NewObjectType(o.typeName)
 }
 
 type evalFold struct {
-	id            int64
-	accuVar       string
-	iterVar       string
-	iterRange     Interpretable
-	accu          Interpretable
-	cond          Interpretable
-	step          Interpretable
-	result        Interpretable
-	adapter       types.Adapter
+	id        int64
+	accuVar   string
+	iterVar   string
+	iterVar2  string
+	iterRange InterpretableV2
+	accu      InterpretableV2
+	cond      InterpretableV2
+	step      InterpretableV2
+	result    InterpretableV2
+	adapter   types.Adapter
+
+	// note an exhaustive fold will ensure that all branches are evaluated
+	// when using mutable values, these branches will mutate the final result
+	// rather than make a throw-away computation.
 	exhaustive    bool
 	interruptable bool
 }
@@ -747,66 +978,40 @@ func (fold *evalFold) ID() int64 {
 	return fold.id
 }
 
-// Eval implements the Interpretable interface method.
-func (fold *evalFold) Eval(ctx Activation) ref.Val {
-	foldRange := fold.iterRange.Eval(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (fold *evalFold) Exec(frame *ExecutionFrame) ref.Val {
+	// Initialize the folder interface
+	f := newFolder(fold, frame)
+	defer releaseFolder(f)
+
+	foldRange := fold.iterRange.Exec(frame)
+	if types.IsUnknownOrError(foldRange) {
+		return foldRange
+	}
+	if fold.iterVar2 != "" {
+		var foldable traits.Foldable
+		switch r := foldRange.(type) {
+		case traits.Mapper:
+			foldable = types.ToFoldableMap(r)
+		case traits.Lister:
+			foldable = types.ToFoldableList(r)
+		default:
+			return types.NewErrWithNodeID(fold.ID(), "unsupported comprehension range type: %T", foldRange)
+		}
+		foldable.Fold(f)
+		return f.evalResult()
+	}
+
 	if !foldRange.Type().HasTrait(traits.IterableType) {
 		return types.ValOrErr(foldRange, "got '%T', expected iterable type", foldRange)
 	}
-	// Configure the fold activation with the accumulator initial value.
-	accuCtx := varActivationPool.Get().(*varActivation)
-	accuCtx.parent = ctx
-	accuCtx.name = fold.accuVar
-	accuCtx.val = fold.accu.Eval(ctx)
-	// If the accumulator starts as an empty list, then the comprehension will build a list
-	// so create a mutable list to optimize the cost of the inner loop.
-	l, ok := accuCtx.val.(traits.Lister)
-	buildingList := false
-	if !fold.exhaustive && ok && l.Size() == types.IntZero {
-		buildingList = true
-		accuCtx.val = types.NewMutableList(fold.adapter)
-	}
-	iterCtx := varActivationPool.Get().(*varActivation)
-	iterCtx.parent = accuCtx
-	iterCtx.name = fold.iterVar
+	iterable := foldRange.(traits.Iterable)
+	return f.foldIterable(iterable)
+}
 
-	interrupted := false
-	it := foldRange.(traits.Iterable).Iterator()
-	for it.HasNext() == types.True {
-		// Modify the iter var in the fold activation.
-		iterCtx.val = it.Next()
-
-		// Evaluate the condition, terminate the loop if false.
-		cond := fold.cond.Eval(iterCtx)
-		condBool, ok := cond.(types.Bool)
-		if !fold.exhaustive && ok && condBool != types.True {
-			break
-		}
-		// Evaluate the evaluation step into accu var.
-		accuCtx.val = fold.step.Eval(iterCtx)
-		if fold.interruptable {
-			if stop, found := ctx.ResolveName("#interrupted"); found && stop == true {
-				interrupted = true
-				break
-			}
-		}
-	}
-	varActivationPool.Put(iterCtx)
-	if interrupted {
-		varActivationPool.Put(accuCtx)
-		return types.NewErr("operation interrupted")
-	}
-
-	// Compute the result.
-	res := fold.result.Eval(accuCtx)
-	varActivationPool.Put(accuCtx)
-	// Convert a mutable list to an immutable one, if the comprehension has generated a list as a result.
-	if !types.IsUnknownOrError(res) && buildingList {
-		if _, ok := res.(traits.MutableLister); ok {
-			res = res.(traits.MutableLister).ToImmutableList()
-		}
-	}
-	return res
+// Eval implements the Interpretable interface method.
+func (fold *evalFold) Eval(ctx Activation) ref.Val {
+	return fold.Exec(AsFrame(ctx))
 }
 
 // Optional Interpretable implementations that specialize, subsume, or extend the core evaluation
@@ -815,8 +1020,8 @@ func (fold *evalFold) Eval(ctx Activation) ref.Val {
 // evalSetMembership is an Interpretable implementation which tests whether an input value
 // exists within the set of map keys used to model a set.
 type evalSetMembership struct {
-	inst     Interpretable
-	arg      Interpretable
+	inst     InterpretableV2
+	arg      InterpretableV2
 	valueSet map[ref.Val]ref.Val
 }
 
@@ -825,9 +1030,9 @@ func (e *evalSetMembership) ID() int64 {
 	return e.inst.ID()
 }
 
-// Eval implements the Interpretable interface method.
-func (e *evalSetMembership) Eval(ctx Activation) ref.Val {
-	val := e.arg.Eval(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (e *evalSetMembership) Exec(frame *ExecutionFrame) ref.Val {
+	val := e.arg.Exec(frame)
 	if types.IsUnknownOrError(val) {
 		return val
 	}
@@ -837,18 +1042,28 @@ func (e *evalSetMembership) Eval(ctx Activation) ref.Val {
 	return types.False
 }
 
+// Eval implements the Interpretable interface method.
+func (e *evalSetMembership) Eval(ctx Activation) ref.Val {
+	return e.Exec(AsFrame(ctx))
+}
+
 // evalWatch is an Interpretable implementation that wraps the execution of a given
 // expression so that it may observe the computed value and send it to an observer.
 type evalWatch struct {
-	Interpretable
+	InterpretableV2
 	observer EvalObserver
 }
 
-// Eval implements the Interpretable interface method.
-func (e *evalWatch) Eval(ctx Activation) ref.Val {
-	val := e.Interpretable.Eval(ctx)
-	e.observer(e.ID(), e.Interpretable, val)
+// Exec implements the InterpretableV2 interface method.
+func (e *evalWatch) Exec(frame *ExecutionFrame) ref.Val {
+	val := e.InterpretableV2.Exec(frame)
+	e.observer(frame, e.ID(), e.InterpretableV2, val)
 	return val
+}
+
+// Eval implements the Interpretable interface method.
+func (e *evalWatch) Eval(vars Activation) ref.Val {
+	return e.Exec(AsFrame(vars))
 }
 
 // evalWatchAttr describes a watcher of an InterpretableAttribute Interpretable.
@@ -903,11 +1118,16 @@ func (e *evalWatchAttr) AddQualifier(q Qualifier) (Attribute, error) {
 	return e, err
 }
 
+// Exec implements the InterpretableV2 interface method.
+func (e *evalWatchAttr) Exec(frame *ExecutionFrame) ref.Val {
+	val := e.InterpretableAttribute.Exec(frame)
+	e.observer(frame, e.ID(), e.InterpretableAttribute, val)
+	return val
+}
+
 // Eval implements the Interpretable interface method.
 func (e *evalWatchAttr) Eval(vars Activation) ref.Val {
-	val := e.InterpretableAttribute.Eval(vars)
-	e.observer(e.ID(), e.InterpretableAttribute, val)
-	return val
+	return e.Exec(AsFrame(vars))
 }
 
 // evalWatchConstQual observes the qualification of an object using a constant boolean, int,
@@ -927,7 +1147,7 @@ func (e *evalWatchConstQual) Qualify(vars Activation, obj any) (any, error) {
 	} else {
 		val = e.adapter.NativeToValue(out)
 	}
-	e.observer(e.ID(), e.ConstantQualifier, val)
+	e.observer(vars, e.ID(), e.ConstantQualifier, val)
 	return out, err
 }
 
@@ -943,7 +1163,7 @@ func (e *evalWatchConstQual) QualifyIfPresent(vars Activation, obj any, presence
 		val = types.Bool(present)
 	}
 	if present || presenceOnly {
-		e.observer(e.ID(), e.ConstantQualifier, val)
+		e.observer(vars, e.ID(), e.ConstantQualifier, val)
 	}
 	return out, present, err
 }
@@ -970,7 +1190,7 @@ func (e *evalWatchAttrQual) Qualify(vars Activation, obj any) (any, error) {
 	} else {
 		val = e.adapter.NativeToValue(out)
 	}
-	e.observer(e.ID(), e.Attribute, val)
+	e.observer(vars, e.ID(), e.Attribute, val)
 	return out, err
 }
 
@@ -986,7 +1206,7 @@ func (e *evalWatchAttrQual) QualifyIfPresent(vars Activation, obj any, presenceO
 		val = types.Bool(present)
 	}
 	if present || presenceOnly {
-		e.observer(e.ID(), e.Attribute, val)
+		e.observer(vars, e.ID(), e.Attribute, val)
 	}
 	return out, present, err
 }
@@ -1007,7 +1227,7 @@ func (e *evalWatchQual) Qualify(vars Activation, obj any) (any, error) {
 	} else {
 		val = e.adapter.NativeToValue(out)
 	}
-	e.observer(e.ID(), e.Qualifier, val)
+	e.observer(vars, e.ID(), e.Qualifier, val)
 	return out, err
 }
 
@@ -1023,7 +1243,7 @@ func (e *evalWatchQual) QualifyIfPresent(vars Activation, obj any, presenceOnly 
 		val = types.Bool(present)
 	}
 	if present || presenceOnly {
-		e.observer(e.ID(), e.Qualifier, val)
+		e.observer(vars, e.ID(), e.Qualifier, val)
 	}
 	return out, present, err
 }
@@ -1034,17 +1254,22 @@ type evalWatchConst struct {
 	observer EvalObserver
 }
 
+// Exec implements the InterpretableV2 interface method.
+func (e *evalWatchConst) Exec(frame *ExecutionFrame) ref.Val {
+	val := e.Value()
+	e.observer(frame, e.ID(), e.InterpretableConst, val)
+	return val
+}
+
 // Eval implements the Interpretable interface method.
 func (e *evalWatchConst) Eval(vars Activation) ref.Val {
-	val := e.Value()
-	e.observer(e.ID(), e.InterpretableConst, val)
-	return val
+	return e.Exec(AsFrame(vars))
 }
 
 // evalExhaustiveOr is just like evalOr, but does not short-circuit argument evaluation.
 type evalExhaustiveOr struct {
 	id    int64
-	terms []Interpretable
+	terms []InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -1052,13 +1277,13 @@ func (or *evalExhaustiveOr) ID() int64 {
 	return or.id
 }
 
-// Eval implements the Interpretable interface method.
-func (or *evalExhaustiveOr) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (or *evalExhaustiveOr) Exec(frame *ExecutionFrame) ref.Val {
 	var err ref.Val = nil
 	var unk *types.Unknown
 	isTrue := false
 	for _, term := range or.terms {
-		val := term.Eval(ctx)
+		val := term.Exec(frame)
 		boolVal, ok := val.(types.Bool)
 		// flag the result as true
 		if ok && boolVal == types.True {
@@ -1088,10 +1313,15 @@ func (or *evalExhaustiveOr) Eval(ctx Activation) ref.Val {
 	return types.False
 }
 
+// Eval implements the Interpretable interface method.
+func (or *evalExhaustiveOr) Eval(ctx Activation) ref.Val {
+	return or.Exec(AsFrame(ctx))
+}
+
 // evalExhaustiveAnd is just like evalAnd, but does not short-circuit argument evaluation.
 type evalExhaustiveAnd struct {
 	id    int64
-	terms []Interpretable
+	terms []InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -1099,13 +1329,13 @@ func (and *evalExhaustiveAnd) ID() int64 {
 	return and.id
 }
 
-// Eval implements the Interpretable interface method.
-func (and *evalExhaustiveAnd) Eval(ctx Activation) ref.Val {
+// Exec implements the InterpretableV2 interface method.
+func (and *evalExhaustiveAnd) Exec(frame *ExecutionFrame) ref.Val {
 	var err ref.Val = nil
 	var unk *types.Unknown
 	isFalse := false
 	for _, term := range and.terms {
-		val := term.Eval(ctx)
+		val := term.Exec(frame)
 		boolVal, ok := val.(types.Bool)
 		// short-circuit on false.
 		if ok && boolVal == types.False {
@@ -1135,6 +1365,11 @@ func (and *evalExhaustiveAnd) Eval(ctx Activation) ref.Val {
 	return types.True
 }
 
+// Eval implements the Interpretable interface method.
+func (and *evalExhaustiveAnd) Eval(ctx Activation) ref.Val {
+	return and.Exec(AsFrame(ctx))
+}
+
 // evalExhaustiveConditional is like evalConditional, but does not short-circuit argument
 // evaluation.
 type evalExhaustiveConditional struct {
@@ -1148,11 +1383,11 @@ func (cond *evalExhaustiveConditional) ID() int64 {
 	return cond.id
 }
 
-// Eval implements the Interpretable interface method.
-func (cond *evalExhaustiveConditional) Eval(ctx Activation) ref.Val {
-	cVal := cond.attr.expr.Eval(ctx)
-	tVal, tErr := cond.attr.truthy.Resolve(ctx)
-	fVal, fErr := cond.attr.falsy.Resolve(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (cond *evalExhaustiveConditional) Exec(frame *ExecutionFrame) ref.Val {
+	cVal := cond.attr.expr.Exec(frame)
+	tVal, tErr := cond.attr.truthy.Resolve(frame)
+	fVal, fErr := cond.attr.falsy.Resolve(frame)
 	cBool, ok := cVal.(types.Bool)
 	if !ok {
 		return types.ValOrErr(cVal, "no such overload")
@@ -1167,6 +1402,11 @@ func (cond *evalExhaustiveConditional) Eval(ctx Activation) ref.Val {
 		return types.LabelErrNode(cond.id, types.WrapErr(fErr))
 	}
 	return cond.adapter.NativeToValue(fVal)
+}
+
+// Eval implements the Interpretable interface method.
+func (cond *evalExhaustiveConditional) Eval(ctx Activation) ref.Val {
+	return cond.Exec(AsFrame(ctx))
 }
 
 // evalAttr evaluates an Attribute value.
@@ -1200,23 +1440,28 @@ func (a *evalAttr) Adapter() types.Adapter {
 	return a.adapter
 }
 
-// Eval implements the Interpretable interface method.
-func (a *evalAttr) Eval(ctx Activation) ref.Val {
-	v, err := a.attr.Resolve(ctx)
+// Exec implements the InterpretableV2 interface method.
+func (a *evalAttr) Exec(frame *ExecutionFrame) ref.Val {
+	v, err := a.attr.Resolve(frame)
 	if err != nil {
 		return types.LabelErrNode(a.ID(), types.WrapErr(err))
 	}
 	return a.adapter.NativeToValue(v)
 }
 
+// Eval implements the Interpretable interface method.
+func (a *evalAttr) Eval(ctx Activation) ref.Val {
+	return a.Exec(AsFrame(ctx))
+}
+
 // Qualify proxies to the Attribute's Qualify method.
-func (a *evalAttr) Qualify(ctx Activation, obj any) (any, error) {
-	return a.attr.Qualify(ctx, obj)
+func (a *evalAttr) Qualify(vars Activation, obj any) (any, error) {
+	return a.attr.Qualify(vars, obj)
 }
 
 // QualifyIfPresent proxies to the Attribute's QualifyIfPresent method.
-func (a *evalAttr) QualifyIfPresent(ctx Activation, obj any, presenceOnly bool) (any, bool, error) {
-	return a.attr.QualifyIfPresent(ctx, obj, presenceOnly)
+func (a *evalAttr) QualifyIfPresent(vars Activation, obj any, presenceOnly bool) (any, bool, error) {
+	return a.attr.QualifyIfPresent(vars, obj, presenceOnly)
 }
 
 func (a *evalAttr) IsOptional() bool {
@@ -1234,7 +1479,7 @@ type evalWatchConstructor struct {
 }
 
 // InitVals implements the InterpretableConstructor InitVals function.
-func (c *evalWatchConstructor) InitVals() []Interpretable {
+func (c *evalWatchConstructor) InitVals() []InterpretableV2 {
 	return c.constructor.InitVals()
 }
 
@@ -1248,11 +1493,16 @@ func (c *evalWatchConstructor) ID() int64 {
 	return c.constructor.ID()
 }
 
-// Eval implements the Interpretable Eval function.
-func (c *evalWatchConstructor) Eval(ctx Activation) ref.Val {
-	val := c.constructor.Eval(ctx)
-	c.observer(c.ID(), c.constructor, val)
+// Exec implements the InterpretableV2 interface method.
+func (c *evalWatchConstructor) Exec(frame *ExecutionFrame) ref.Val {
+	val := c.constructor.Exec(frame)
+	c.observer(frame, c.ID(), c.constructor, val)
 	return val
+}
+
+// Eval implements the Interpretable Eval function.
+func (c *evalWatchConstructor) Eval(vars Activation) ref.Val {
+	return c.Exec(AsFrame(vars))
 }
 
 func invalidOptionalEntryInit(field any, value ref.Val) ref.Val {
@@ -1262,3 +1512,232 @@ func invalidOptionalEntryInit(field any, value ref.Val) ref.Val {
 func invalidOptionalElementInit(value ref.Val) ref.Val {
 	return types.NewErr("cannot initialize optional list element from non-optional value %v", value)
 }
+
+// newFolder creates or initializes a pooled folder instance.
+func newFolder(eval *evalFold, frame *ExecutionFrame) *folder {
+	f := folderPool.Get().(*folder)
+	f.evalFold = eval
+	f.frame = frame.Push(f)
+	return f
+}
+
+// releaseFolder resets and releases a pooled folder instance.
+func releaseFolder(f *folder) {
+	f.reset()
+	folderPool.Put(f)
+}
+
+// folder tracks the state associated with folding a list or map with a comprehension v2 style macro.
+//
+// The folder embeds an interpreter.Activation and Interpretable evalFold value as well as implements
+// the traits.Folder interface methods.
+//
+// Instances of a folder are intended to be pooled to minimize allocation overhead with this temporary
+// bookkeeping object which supports lazy evaluation of the accumulator init expression which is useful
+// in preserving evaluation order semantics which might otherwise be disrupted through the use of
+// cel.bind or cel.@block.
+type folder struct {
+	*evalFold
+	frame *ExecutionFrame
+
+	// fold state objects.
+	accuVal     ref.Val
+	iterVar1Val any
+	iterVar2Val any
+
+	// bookkeeping flags to modify Activation and fold behaviors.
+	initialized   bool
+	mutableValue  bool
+	interrupted   bool
+	computeResult bool
+}
+
+func (f *folder) foldIterable(iterable traits.Iterable) ref.Val {
+	it := iterable.Iterator()
+	for it.HasNext() == types.True {
+		f.iterVar1Val = it.Next()
+
+		cond := f.cond.Exec(f.frame)
+		condBool, ok := cond.(types.Bool)
+		if f.interrupted || (!f.exhaustive && ok && condBool != types.True) {
+			return f.evalResult()
+		}
+
+		// Update the accumulation value and check for eval interuption.
+		f.accuVal = f.step.Exec(f.frame)
+		f.initialized = true
+		if f.interruptable && f.frame.CheckInterrupt() {
+			f.interrupted = true
+			return f.evalResult()
+		}
+	}
+	return f.evalResult()
+}
+
+// FoldEntry will either fold comprehension v1 style macros if iterVar2 is unset, or comprehension v2 style
+// macros if both the iterVar and iterVar2 are set to non-empty strings.
+func (f *folder) FoldEntry(key, val any) bool {
+	// Default to referencing both values.
+	f.iterVar1Val = key
+	f.iterVar2Val = val
+
+	// Terminate evaluation if evaluation is interrupted or the condition is not true and exhaustive
+	// eval is not enabled.
+	cond := f.cond.Exec(f.frame)
+	condBool, ok := cond.(types.Bool)
+	if f.interrupted || (!f.exhaustive && ok && condBool != types.True) {
+		return false
+	}
+
+	// Update the accumulation value and check for eval interuption.
+	f.accuVal = f.step.Exec(f.frame)
+	f.initialized = true
+	if f.interruptable && f.frame.CheckInterrupt() {
+		f.interrupted = true
+		return false
+	}
+	return true
+}
+
+// ResolveName overrides the default Activation lookup to perform lazy initialization of the accumulator
+// and specialized lookups of iteration values with consideration for whether the final result is being
+// computed and the iteration variables should be ignored.
+func (f *folder) ResolveName(name string) (any, bool) {
+	if name == f.accuVar {
+		if !f.initialized {
+			f.initialized = true
+			initVal := f.accu.Exec(f.frame.parent)
+			if !f.exhaustive {
+				if l, isList := initVal.(traits.Lister); isList && l.Size() == types.IntZero {
+					initVal = types.NewMutableList(f.adapter)
+					f.mutableValue = true
+				}
+				if m, isMap := initVal.(traits.Mapper); isMap && m.Size() == types.IntZero {
+					initVal = types.NewMutableMap(f.adapter, map[ref.Val]ref.Val{})
+					f.mutableValue = true
+				}
+			}
+			f.accuVal = initVal
+		}
+		return f.accuVal, true
+	}
+	if !f.computeResult {
+		if name == f.iterVar {
+			f.iterVar1Val = f.adapter.NativeToValue(f.iterVar1Val)
+			return f.iterVar1Val, true
+		}
+		if name == f.iterVar2 {
+			f.iterVar2Val = f.adapter.NativeToValue(f.iterVar2Val)
+			return f.iterVar2Val, true
+		}
+	}
+	return f.frame.parent.ResolveName(name)
+}
+
+// Parent returns the activation embedded into the folder.
+func (f *folder) Parent() Activation {
+	return f.frame.parent
+}
+
+// Unwrap returns the parent activation, thus omitting access to local state
+func (f *folder) Unwrap() Activation {
+	return f.frame.parent
+}
+
+// IsLocalVariable reports whether the variable name is locally bound by the folder scope.
+func (f *folder) IsLocalVariable(name string) bool {
+	if name == f.accuVar {
+		return true
+	}
+	if !f.computeResult && (name == f.iterVar || name == f.iterVar2) {
+		return true
+	}
+	parent := f.Parent()
+	if parent == nil {
+		return false
+	}
+	if varHolder, ok := parent.(localVariableHolder); ok {
+		if varHolder.IsLocalVariable(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// UnknownAttributePatterns implements the PartialActivation interface returning the unknown patterns
+// if they were provided to the input activation, or an empty set if the proxied activation is not partial.
+func (f *folder) UnknownAttributePatterns() []*AttributePattern {
+	if pv, ok := f.frame.parent.Activation.(partialActivationConverter); ok {
+		if partial, isPartial := pv.AsPartialActivation(); isPartial {
+			return partial.UnknownAttributePatterns()
+		}
+	}
+	return []*AttributePattern{}
+}
+
+func (f *folder) AsPartialActivation() (PartialActivation, bool) {
+	if pv, ok := f.frame.parent.Activation.(partialActivationConverter); ok {
+		if _, isPartial := pv.AsPartialActivation(); isPartial {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
+// evalResult computes the final result of the fold after all entries have been folded and accumulated.
+func (f *folder) evalResult() ref.Val {
+	f.computeResult = true
+	if f.interrupted {
+		return types.WrapErr(InterruptError{})
+	}
+	res := f.result.Exec(f.frame)
+	// Convert a mutable list or map to an immutable one if the comprehension has generated a list or
+	// map as a result.
+	if !types.IsUnknownOrError(res) && f.mutableValue {
+		if _, ok := res.(traits.MutableLister); ok {
+			res = res.(traits.MutableLister).ToImmutableList()
+		}
+		if _, ok := res.(traits.MutableMapper); ok {
+			res = res.(traits.MutableMapper).ToImmutableMap()
+		}
+	}
+	return res
+}
+
+// reset clears any state associated with folder evaluation.
+func (f *folder) reset() {
+	f.evalFold = nil
+	f.frame.Pop()
+	f.frame = nil
+	f.accuVal = nil
+	f.iterVar1Val = nil
+	f.iterVar2Val = nil
+
+	f.initialized = false
+	f.mutableValue = false
+	f.interrupted = false
+	f.computeResult = false
+}
+
+// InterruptError is a specialized error type used to signal that program evaluation should check
+// whether a context cancellation is responsible for the error.
+type InterruptError struct{}
+
+// Error returns operation interrupted.
+func (InterruptError) Error() string {
+	return "operation interrupted"
+}
+
+// Is returns whether two errors are interrupt errors.
+func (ie InterruptError) Is(target error) bool {
+	return target.Error() == ie.Error()
+}
+
+var (
+	// pool of var folders to reduce allocations during folds.
+	folderPool = &sync.Pool{
+		New: func() any {
+			return &folder{}
+		},
+	}
+)

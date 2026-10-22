@@ -15,9 +15,6 @@
 package common
 
 import (
-	"strings"
-	"unicode/utf8"
-
 	"github.com/google/cel-go/common/runes"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
@@ -77,21 +74,38 @@ func NewTextSource(text string) Source {
 	return NewStringSource(text, "<input>")
 }
 
+// NewTextSourceWithLimit creates a new Source from the input text string while
+// enforcing a maximum code point count when needed.
+func NewTextSourceWithLimit(text string, limit int) (Source, error) {
+	return NewStringSourceWithLimit(text, "<input>", limit)
+}
+
 // NewStringSource creates a new Source from the given contents and description.
 func NewStringSource(contents string, description string) Source {
 	// Compute line offsets up front as they are referred to frequently.
-	lines := strings.Split(contents, "\n")
-	offsets := make([]int32, len(lines))
-	var offset int32
-	for i, line := range lines {
-		offset = offset + int32(utf8.RuneCountInString(line)) + 1
-		offsets[int32(i)] = offset
+	buf, offs := runes.NewBufferAndLineOffsets(contents)
+	return &sourceImpl{
+		Buffer:      buf,
+		description: description,
+		lineOffsets: offs,
+	}
+}
+
+// NewStringSourceWithLimit creates a new Source from the given contents and
+// description while enforcing a maximum code point count when needed.
+func NewStringSourceWithLimit(contents string, description string, limit int) (Source, error) {
+	if limit < 0 || len(contents) <= limit {
+		return NewStringSource(contents, description), nil
+	}
+	buf, offs, err := runes.NewBufferAndLineOffsetsWithLimit(contents, limit)
+	if err != nil {
+		return nil, err
 	}
 	return &sourceImpl{
-		Buffer:      runes.NewBuffer(contents),
+		Buffer:      buf,
 		description: description,
-		lineOffsets: offsets,
-	}
+		lineOffsets: offs,
+	}, nil
 }
 
 // NewInfoSource creates a new Source from a SourceInfo.
@@ -172,9 +186,8 @@ func (s *sourceImpl) findLine(characterOffset int32) (int32, int32) {
 	for _, lineOffset := range s.lineOffsets {
 		if lineOffset > characterOffset {
 			break
-		} else {
-			line++
 		}
+		line++
 	}
 	if line == 1 {
 		return line, 0

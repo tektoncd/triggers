@@ -1,4 +1,70 @@
-# Changelog
+# Changes
+
+## [2.17.0](https://github.com/googleapis/google-cloud-go/releases/tag/v2.17.0) (2026-02-03)
+
+### Features
+
+* update Invoke to add retry count to context (#462) ([ea7096d](https://github.com/googleapis/google-cloud-go/commit/ea7096d50d665064dbfeffd7d93fa13d810ad4e4))
+
+## [2.16.0](https://github.com/googleapis/google-cloud-go/releases/tag/v2.16.0) (2025-12-17)
+
+### Features
+
+* add IsFeatureEnabled (#454) ([2700b8a](https://github.com/googleapis/google-cloud-go/commit/2700b8ab3062c6c6c5a26d0fc6ba1fc064a8fc04))
+
+## [2.15.0](https://github.com/googleapis/gax-go/compare/v2.14.2...v2.15.0) (2025-07-09)
+
+
+### Features
+
+* **apierror:** improve gRPC status code mapping for HTTP errors ([#431](https://github.com/googleapis/gax-go/issues/431)) ([c207f2a](https://github.com/googleapis/gax-go/commit/c207f2a19ab91d3baee458b57d4aa992519025c7))
+
+## [2.14.2](https://github.com/googleapis/gax-go/compare/v2.14.1...v2.14.2) (2025-05-12)
+
+
+### Documentation
+
+* **v2:** Fix Backoff doc to accurately explain Multiplier ([#423](https://github.com/googleapis/gax-go/issues/423)) ([16d1791](https://github.com/googleapis/gax-go/commit/16d17917121ea9f5d84ba52b5c7c7f2ec0f9e784)), refs [#422](https://github.com/googleapis/gax-go/issues/422)
+
+## [2.14.1](https://github.com/googleapis/gax-go/compare/v2.14.0...v2.14.1) (2024-12-19)
+
+
+### Bug Fixes
+
+* update golang.org/x/net to v0.33.0 ([#391](https://github.com/googleapis/gax-go/issues/391)) ([547a5b4](https://github.com/googleapis/gax-go/commit/547a5b43aa6f376f71242da9f18e65fbdfb342f6))
+
+
+### Documentation
+
+* fix godoc to refer to the proper envvar ([#387](https://github.com/googleapis/gax-go/issues/387)) ([dc6baf7](https://github.com/googleapis/gax-go/commit/dc6baf75c1a737233739630b5af6c9759f08abcd))
+
+## [2.14.0](https://github.com/googleapis/gax-go/compare/v2.13.0...v2.14.0) (2024-11-13)
+
+
+### Features
+
+* **internallog:** add a logging support package ([#380](https://github.com/googleapis/gax-go/issues/380)) ([c877470](https://github.com/googleapis/gax-go/commit/c87747098135631a3de5865ed03aaf2c79fd9319))
+
+## [2.13.0](https://github.com/googleapis/gax-go/compare/v2.12.5...v2.13.0) (2024-07-22)
+
+
+### Features
+
+* **iterator:** add package to help work with new iter.Seq types ([#358](https://github.com/googleapis/gax-go/issues/358)) ([6bccdaa](https://github.com/googleapis/gax-go/commit/6bccdaac011fe6fd147e4eb533a8e6520b7d4acc))
+
+## [2.12.5](https://github.com/googleapis/gax-go/compare/v2.12.4...v2.12.5) (2024-06-18)
+
+
+### Bug Fixes
+
+* **v2/apierror:** fix (*APIError).Error() for unwrapped Status ([#351](https://github.com/googleapis/gax-go/issues/351)) ([22c16e7](https://github.com/googleapis/gax-go/commit/22c16e7bff5402bdc4c25063771cdd01c650b500)), refs [#350](https://github.com/googleapis/gax-go/issues/350)
+
+## [2.12.4](https://github.com/googleapis/gax-go/compare/v2.12.3...v2.12.4) (2024-05-03)
+
+
+### Bug Fixes
+
+* provide unmarshal options for streams ([#343](https://github.com/googleapis/gax-go/issues/343)) ([ddf9a90](https://github.com/googleapis/gax-go/commit/ddf9a90bf180295d49875e15cb80b2136a49dbaf))
 
 ## [2.12.3](https://github.com/googleapis/gax-go/compare/v2.12.2...v2.12.3) (2024-03-14)
 
