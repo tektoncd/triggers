@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/reconciler/clusterinterceptor"
 	elresources "github.com/tektoncd/triggers/pkg/reconciler/eventlistener/resources"
 	"github.com/tektoncd/triggers/pkg/reconciler/interceptor"
+	"github.com/tektoncd/triggers/pkg/reconciler/scheduledtemplate"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -62,6 +63,8 @@ var (
 	periodSeconds    = flag.Int("period-seconds", elresources.DefaultPeriodSeconds, "The Period Seconds for the EventListener Liveness and Readiness Probes.")
 	failureThreshold = flag.Int("failure-threshold", elresources.DefaultFailureThreshold, "The Failure Threshold for the EventListener Liveness and Readiness Probes.")
 
+	stImage = flag.String("st-image", scheduledtemplate.DefaultImage, "The container image for the ScheduledTemplate CronJob runner Pod.")
+
 	staticResourceLabels = elresources.DefaultStaticResourceLabels
 	systemNamespace      = os.Getenv("SYSTEM_NAMESPACE")
 )
@@ -101,5 +104,6 @@ func main() {
 		eventlistener.NewController(c),
 		clusterinterceptor.NewController(),
 		interceptor.NewController(),
+		scheduledtemplate.NewController(*stImage),
 	)
 }
