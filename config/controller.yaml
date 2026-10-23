@@ -77,6 +77,8 @@ spec:
               "INFO",
               "-el-image",
               "ko://github.com/tektoncd/triggers/cmd/eventlistenersink",
+              "-st-image",
+              "ko://github.com/tektoncd/triggers/cmd/cronrunner",
               "-el-port",
               "8080",
               "-el-security-context=true",
