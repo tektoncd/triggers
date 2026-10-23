@@ -72,6 +72,10 @@ type Sink struct {
 	PayloadValidation      bool
 	MaxBodySize            int64
 	CloudEventURI          string
+	// InterceptorURLValidator optionally restricts the interceptor URLs the
+	// sink is allowed to call (an SSRF guard). A nil value disables the check
+	// and preserves the previous behaviour.
+	InterceptorURLValidator *interceptors.URLValidator
 	// WGProcessTriggers keeps track of triggers or triggerGroups currently being processed
 	// Currently only used in tests to wait for all triggers to finish processing
 	WGProcessTriggers *sync.WaitGroup
@@ -569,7 +573,7 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 			}
 		}
 
-		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String())
+		interceptorResponse, err := interceptors.Execute(context.Background(), r.HTTPClient, &request, url.String(), r.InterceptorURLValidator)
 		if err != nil {
 			return nil, nil, nil, err
 		}
