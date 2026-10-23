@@ -497,7 +497,9 @@ spec:
 
 ### Slack Interceptors
 A Slack `Interceptor` allows you to extract fields from a slack slash command [payload](https://api.slack.com/interactivity/slash-commands#app_command_handling) which are sent in the  http form-data section. 
-the `Interceptor` requests fields extracts the requested fields and appends them to the `extensions`. 
+The `Interceptor` verifies the Slack request signature before extracting the requested fields and appending them to the `extensions`. Create a Kubernetes Secret containing the Slack app signing secret and pass it through `secretRef`. The Slack interceptor rejects requests when `secretRef` is not configured, when the signature is invalid, or when `X-Slack-Request-Timestamp` is more than five minutes from the current time.
+
+> **Breaking change (action required):** Signature verification is now mandatory. Existing EventListeners that use the Slack interceptor without a `secretRef` will start failing with `"slack interceptor requires secretRef"` after upgrading. Add a `secretRef` pointing to a Kubernetes Secret that contains your Slack app's signing secret before upgrading.
 
 
 ```yaml
@@ -515,6 +517,10 @@ spec:
             name: "slack"
             kind: ClusterInterceptor
           params:
+            - name: secretRef
+              value:
+                secretName: slack-secret
+                secretKey: signingSecret
             - name: requestedFields
               value: 
                 - text   

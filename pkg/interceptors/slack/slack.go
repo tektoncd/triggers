@@ -18,7 +18,13 @@ package slack
 
 import (
 	"context"
-	"encoding/json"
+	"crypto/hmac"
+	"crypto/sha256"
+	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -27,50 +33,102 @@ import (
 
 var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
+const (
+	signingVersion = "v0"
+	maxRequestAge  = 5 * time.Minute
+)
+
 type InterceptorImpl struct {
 	SecretGetter interceptors.SecretGetter
 }
 
-// Interceptor parses all the requests fields from the slack form-data request
-// and adds them to the extension
-// revive:disable:unused-parameter
-func (*InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
+// Interceptor parses request fields from the Slack form-data request
+// and adds them to the extensions.
+func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRequest) *triggersv1.InterceptorResponse {
 	headers := interceptors.Canonical(r.Header)
 
-	// validate slack headers
+	// Validate the Content-Type header.
 	if v := headers.Get("Content-Type"); v != "application/x-www-form-urlencoded" {
 		return interceptors.Fail(codes.InvalidArgument, "missing header in payload: ContentType application/x-www-form-urlencoded")
 	}
 
-	if s := headers.Get("X-Slack-Signature"); s == "" {
-		return interceptors.Fail(codes.InvalidArgument, "missing header in payload: ContentType application/x-www-form-urlencoded")
-	}
-
-	// get requests fields
-	var payload map[string][]string
-	if err := json.Unmarshal([]byte(r.Body), &payload); err != nil {
-		return interceptors.Failf(codes.InvalidArgument, "failed to unmarshl slack payload: %v", err)
-	}
-
-	// get requests fields
 	p := InterceptorParams{}
 	if err := interceptors.UnmarshalParams(r.InterceptorParams, &p); err != nil {
 		return interceptors.Failf(codes.InvalidArgument, "failed to parse interceptor params: %v", err)
 	}
 
-	// validate RequestedFields exists
-	if p.RequestedFields == nil {
-		return interceptors.Fail(codes.NotFound, "missing requested field definition")
+	if p.SecretRef == nil {
+		return interceptors.Fail(codes.FailedPrecondition, "slack interceptor requires secretRef")
+	}
+	if p.SecretRef.SecretName == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "slack interceptor secretRef.secretName is empty")
+	}
+	if p.SecretRef.SecretKey == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "slack interceptor secretRef.secretKey is empty")
 	}
 
-	// extract required fields values
+	signature := headers.Get("X-Slack-Signature")
+	if signature == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "no X-Slack-Signature header set")
+	}
+	timestamp := headers.Get("X-Slack-Request-Timestamp")
+	if timestamp == "" {
+		return interceptors.Fail(codes.FailedPrecondition, "no X-Slack-Request-Timestamp header set")
+	}
+	timestampSeconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "invalid X-Slack-Request-Timestamp header: %v", err)
+	}
+	requestTime := time.Unix(timestampSeconds, 0)
+	now := time.Now()
+	if now.Sub(requestTime) > maxRequestAge || requestTime.Sub(now) > maxRequestAge {
+		return interceptors.Fail(codes.FailedPrecondition, "X-Slack-Request-Timestamp is outside the allowed five minute window")
+	}
+
+	if r.RawBody == "" {
+		return interceptors.Fail(codes.InvalidArgument, "RawBody is required for Slack signature verification")
+	}
+
+	if !strings.HasPrefix(signature, signingVersion+"=") {
+		return interceptors.Failf(codes.FailedPrecondition, "unrecognized Slack signature version in %q, expected %s", signature, signingVersion)
+	}
+
+	if r.Context == nil {
+		return interceptors.Fail(codes.InvalidArgument, "no request context passed")
+	}
+	namespace, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+	signingSecret, err := w.SecretGetter.Get(ctx, namespace, p.SecretRef)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
+	}
+
+	baseString := fmt.Sprintf("%s:%s:%s", signingVersion, timestamp, r.RawBody)
+	mac := hmac.New(sha256.New, signingSecret)
+	_, _ = mac.Write([]byte(baseString))
+	expectedSignature := fmt.Sprintf("%s=%x", signingVersion, mac.Sum(nil))
+	if !hmac.Equal([]byte(expectedSignature), []byte(signature)) {
+		return interceptors.Fail(codes.FailedPrecondition, "invalid Slack request signature")
+	}
+
+	// Parse the URL-encoded request body.
+	payload, err := url.ParseQuery(r.RawBody)
+	if err != nil {
+		return interceptors.Failf(codes.InvalidArgument, "failed to unmarshal slack payload: %v", err)
+	}
+
+	// Validate that RequestedFields is configured.
+	if len(p.RequestedFields) == 0 {
+		return interceptors.Fail(codes.InvalidArgument, "missing requested field definition")
+	}
+
+	// Extract required field values.
 	extensions := make(map[string]interface{})
 
 	for _, field := range p.RequestedFields {
 		if value, ok := payload[field]; ok {
 			extensions[field] = value
 		} else {
-			return interceptors.Failf(codes.NotFound, "requested field does not exists in payload %v", payload)
+			return interceptors.Failf(codes.NotFound, "requested field does not exist in payload %v", payload)
 		}
 	}
 	return &triggersv1.InterceptorResponse{
@@ -79,8 +137,6 @@ func (*InterceptorImpl) Process(ctx context.Context, r *triggersv1.InterceptorRe
 	}
 }
 
-// revive:enable:unused-parameter
-
 func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
 	return &InterceptorImpl{
 		SecretGetter: sg,
@@ -88,6 +144,8 @@ func NewInterceptor(sg interceptors.SecretGetter) *InterceptorImpl {
 }
 
 type InterceptorParams struct {
+	SecretRef *triggersv1.SecretRef `json:"secretRef,omitempty"`
+
 	// the Requested fields to be extracted from data form
 
 	// +listType=atomic

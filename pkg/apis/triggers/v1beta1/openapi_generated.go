@@ -680,7 +680,14 @@ func schema_pkg_apis_triggers_v1beta1_InterceptorRequest(ref common.ReferenceCal
 				Properties: map[string]spec.Schema{
 					"body": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Body is the incoming HTTP event body. We use a \"string\" representation of the JSON body in order to preserve the body exactly as it was sent (including spaces etc.). This is necessary for some interceptors e.g. GitHub for validating the body with a signature. While []byte can also store an exact representation of the body, `json.Marshal` will compact []byte to a base64 encoded string which means that we will lose the spaces any time we marshal this struct.",
+							Description: "Body is the processed interceptor payload. For JSON event sources (e.g. GitHub, GitLab) it matches the original request bytes. For URL-encoded sources (e.g. Slack slash commands) the sink converts the form values to a JSON object before populating this field, so Body will NOT match the bytes that were used to compute an HMAC signature. Use RawBody for signature validation whenever the Content-Type may be application/x-www-form-urlencoded. We use a \"string\" rather than []byte because json.Marshal would base64-encode []byte and lose formatting.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"raw_body": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RawBody is the exact incoming HTTP event body before any sink-side processing. It is the authoritative source for signature validation and for interceptors that require the original request bytes (e.g. Slack, which signs the URL-encoded form payload before the sink converts it to JSON). Use this field — not Body — whenever computing or verifying an HMAC.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

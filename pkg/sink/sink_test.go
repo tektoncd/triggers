@@ -19,6 +19,8 @@ package sink
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,6 +32,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	cloudeventstest "github.com/cloudevents/sdk-go/v2/client/test"
@@ -121,6 +124,20 @@ var (
 					Scheme: "http",
 					Host:   "tekton-triggers-core-interceptors",
 					Path:   "/bitbucket",
+				},
+			},
+		},
+	}
+	slack = &triggersv1alpha1.ClusterInterceptor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slack",
+		},
+		Spec: triggersv1alpha1.ClusterInterceptorSpec{
+			ClientConfig: triggersv1alpha1.ClientConfig{
+				URL: &apis.URL{
+					Scheme: "http",
+					Host:   "tekton-triggers-core-interceptors",
+					Path:   "/slack",
 				},
 			},
 		},
@@ -1861,6 +1878,53 @@ func TestExecuteInterceptor_WebhookFirstGetsRawURLEncodedBody(t *testing.T) {
 
 	if got := string(rawServer.body); got != rawBody {
 		t.Errorf("Webhook interceptor body: want %q got %q", rawBody, got)
+	}
+}
+
+func TestExecuteInterceptor_SlackVerifiesRawURLEncodedBody(t *testing.T) {
+	const signingSecret = "slack-signing-secret"
+	rawBody := "team_id=T123&text=main+2222"
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+
+	mac := hmac.New(sha256.New, []byte(signingSecret))
+	_, _ = mac.Write([]byte("v0:" + timestamp + ":" + rawBody))
+	signature := fmt.Sprintf("v0=%x", mac.Sum(nil))
+
+	resources := test.Resources{
+		Secrets: []*corev1.Secret{{
+			ObjectMeta: metav1.ObjectMeta{Name: "slack-secret", Namespace: namespace},
+			Data:       map[string][]byte{"signingSecret": []byte(signingSecret)},
+		}},
+		ClusterInterceptors: []*triggersv1alpha1.ClusterInterceptor{slack},
+	}
+	s, _ := getSinkAssets(t, resources, "", nil)
+
+	trigger := triggersv1beta1.Trigger{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace},
+		Spec: triggersv1beta1.TriggerSpec{
+			Interceptors: []*triggersv1beta1.EventInterceptor{{
+				Ref: triggersv1beta1.InterceptorRef{Name: "slack", Kind: triggersv1beta1.ClusterInterceptorKind},
+				Params: []triggersv1beta1.InterceptorParams{
+					{Name: "secretRef", Value: test.ToV1JSON(t, &triggersv1beta1.SecretRef{SecretName: "slack-secret", SecretKey: "signingSecret"})},
+					{Name: "requestedFields", Value: test.ToV1JSON(t, []string{"text"})},
+				},
+			}},
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost, "/", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Slack-Request-Timestamp", timestamp)
+	req.Header.Set("X-Slack-Signature", signature)
+
+	_, _, response, err := s.ExecuteTriggerInterceptors(trigger, req, []byte(rawBody), s.Logger, eventID, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("ExecuteTriggerInterceptors() error = %v", err)
+	}
+	if !response.Continue {
+		t.Fatalf("ExecuteTriggerInterceptors() expected response.Continue to be true, got status: %v", response.Status.Err())
 	}
 }
 
