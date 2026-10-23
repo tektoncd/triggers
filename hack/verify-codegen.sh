@@ -30,6 +30,8 @@ trap "cleanup" EXIT SIGINT
 
 cleanup
 
+"${REPO_ROOT_DIR}/hack/update-schemas.sh" --check
+
 # Save working tree state
 mkdir -p "${TMP_DIFFROOT}/pkg"
 cp -aR "${REPO_ROOT_DIR}/pkg" "${TMP_DIFFROOT}"
