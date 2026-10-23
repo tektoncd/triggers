@@ -17,15 +17,20 @@ limitations under the License.
 package gitlab
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/test"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	"knative.dev/pkg/logging"
 )
 
 func TestInterceptor_ExecuteTrigger_ShouldContinue(t *testing.T) {
@@ -305,5 +310,52 @@ func TestInterceptor_Process_InvalidParams(t *testing.T) {
 	res := w.Process(ctx, req)
 	if res.Continue {
 		t.Fatalf("Interceptor.Process() expected res.Continue to be false but got %t. \nStatus.Err(): %v", res.Continue, res.Status.Err())
+	}
+}
+
+func TestInterceptor_Process_WarnsWithoutSecretRef(t *testing.T) {
+	tests := []struct {
+		name     string
+		params   map[string]interface{}
+		wantWarn bool
+	}{{
+		name:     "no secretRef",
+		params:   map[string]interface{}{},
+		wantWarn: true,
+	}, {
+		name: "with secretRef",
+		params: map[string]interface{}{
+			"secretRef": &triggersv1.SecretRef{SecretName: "mysecret", SecretKey: "token"},
+		},
+		wantWarn: false,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			core, logs := observer.New(zapcore.WarnLevel)
+			ctx := logging.WithLogger(context.Background(), zap.New(core).Sugar())
+			ctx, clientset := fakekubeclient.With(ctx, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "mysecret", Namespace: metav1.NamespaceDefault},
+				Data:       map[string][]byte{"token": []byte("secret")},
+			})
+			req := &triggersv1.InterceptorRequest{
+				Body:              "somepayload",
+				Header:            http.Header{"X-Gitlab-Token": []string{"secret"}},
+				InterceptorParams: tt.params,
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			}
+			w := &InterceptorImpl{SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1())}
+			res := w.Process(ctx, req)
+			if !res.Continue {
+				t.Fatalf("expected res.Continue to be true, got status %v", res.Status.Err())
+			}
+			if got := logs.Len() > 0; got != tt.wantWarn {
+				t.Errorf("warning logged = %t, want %t", got, tt.wantWarn)
+			}
+		})
 	}
 }
