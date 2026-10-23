@@ -100,6 +100,7 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 		Containers:                []corev1.Container{container},
 		Affinity:                  customObjectData.Spec.Template.Spec.Affinity,
 		TopologySpreadConstraints: customObjectData.Spec.Template.Spec.TopologySpreadConstraints,
+		PriorityClassName:         customObjectData.Spec.Template.Spec.PriorityClassName,
 	}
 	marshaledData, err := json.Marshal(original)
 	if err != nil {
@@ -170,6 +171,10 @@ func UpdateCustomObject(originalData, updatedCustomObject *unstructured.Unstruct
 	}
 	if !reflect.DeepEqual(existingObject.Spec.Template.Spec.TopologySpreadConstraints, originalObject.Spec.Template.Spec.TopologySpreadConstraints) {
 		existingObject.Spec.Template.Spec.TopologySpreadConstraints = originalObject.Spec.Template.Spec.TopologySpreadConstraints
+		updated = true
+	}
+	if existingObject.Spec.Template.Spec.PriorityClassName != originalObject.Spec.Template.Spec.PriorityClassName {
+		existingObject.Spec.Template.Spec.PriorityClassName = originalObject.Spec.Template.Spec.PriorityClassName
 		updated = true
 	}
 	if len(existingObject.Spec.Template.Spec.Containers) == 0 ||

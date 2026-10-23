@@ -331,6 +331,37 @@ func TestDeployment(t *testing.T) {
 			},
 		},
 	}, {
+		name: "with PriorityClassName",
+		el:   makeEL(withPriorityClassName()),
+		want: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "",
+				Namespace:       namespace,
+				Labels:          labels,
+				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(makeEL())},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: labels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labels,
+					},
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "sa",
+						PriorityClassName:  "high-priority",
+						Containers: []corev1.Container{
+							MakeContainer(makeEL(), &reconcilersource.EmptyVarsGenerator{}, resourcesConfig,
+								cfg.FromContextOrDefaults(context.Background()), mustAddDeployBits(t, makeEL(), resourcesConfig),
+								addCertsForSecureConnection(resourcesConfig)),
+						},
+						SecurityContext: expectedSecurityContext,
+					},
+				},
+			},
+		},
+	}, {
 		name: "with container probes",
 		el:   makeEL(setProbes()),
 		want: &appsv1.Deployment{
@@ -562,6 +593,20 @@ func withAffinityAndTopologySpreadConstraints() func(*v1beta1.EventListener) {
 						TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
 							MaxSkew: 1,
 						}},
+					},
+				},
+			},
+		}
+	}
+}
+
+func withPriorityClassName() func(*v1beta1.EventListener) {
+	return func(el *v1beta1.EventListener) {
+		el.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
+			WithPodSpec: duckv1.WithPodSpec{
+				Template: duckv1.PodSpecable{
+					Spec: corev1.PodSpec{
+						PriorityClassName: "high-priority",
 					},
 				},
 			},
