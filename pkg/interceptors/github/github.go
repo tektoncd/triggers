@@ -44,12 +44,18 @@ type testURLKey string
 
 const (
 	changedFilesExtensionsKey            = "changed_files"
+	prBodyExtensionsKey                  = "pr_body"
 	testURL                   testURLKey = "TESTURL"
 	OKToTestCommentRegexp                = `(^|\n)\/ok-to-test(\r\n|\r|\n|$)`
 )
 
 // In a pull request, these are the only two events that should trigger a PipelineRun/TaskRun
 var ownersEventTypes = []string{pullRequest, "issue_comment"}
+
+// addPRBody supports the pull_request event, as well as issue_comment, since
+// GitHub fires issue_comment both for comments on plain issues and for
+// comments on pull requests.
+var prBodyEventTypes = []string{pullRequest, "issue_comment"}
 
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
@@ -73,6 +79,12 @@ type OwnersPayloadDetails struct {
 	IssueCommentBody string
 }
 
+type prBodyPayloadDetails struct {
+	PrNumber   int
+	Owner      string
+	Repository string
+}
+
 type OwnersConfig struct {
 	Approvers []string `json:"approvers,omitempty"`
 	Reviewers []string `json:"reviewers,omitempty"`
@@ -91,6 +103,7 @@ type InterceptorParams struct {
 	EventTypes      []string        `json:"eventTypes,omitempty"`
 	AddChangedFiles AddChangedFiles `json:"addChangedFiles,omitempty"`
 	GithubOwners    Owners          `json:"githubOwners,omitempty"`
+	AddPRBody       AddPRBody       `json:"addPRBody,omitempty"`
 }
 
 type CheckType string
@@ -116,6 +129,16 @@ type Owners struct {
 
 type AddChangedFiles struct {
 	Enabled             bool                  `json:"enabled,omitempty"`
+	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
+}
+
+// AddPRBody, when enabled, adds the pull request body to the
+// extensions.pr_body field of the event for pull_request events, and for
+// issue_comment events raised on a pull request.
+type AddPRBody struct {
+	Enabled bool `json:"enabled,omitempty"`
+	// This param/variable is required for private repos, and recommended for
+	// public repos to avoid GitHub's low rate limit for unauthenticated requests.
 	PersonalAccessToken *triggersv1.SecretRef `json:"personalAccessToken,omitempty"`
 }
 
@@ -233,6 +256,50 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 	}
 
+	if p.AddPRBody.Enabled {
+		shouldAddPRBody := false
+		for _, allowedEvent := range prBodyEventTypes {
+			if actualEvent == allowedEvent {
+				shouldAddPRBody = true
+				break
+			}
+		}
+		if !shouldAddPRBody {
+			return &triggersv1.InterceptorResponse{
+				Continue: true,
+			}
+		}
+
+		payload, isPR, err := parseBodyForPRBody(r.Body, actualEvent)
+		if err != nil {
+			return interceptors.Failf(codes.FailedPrecondition, "error parsing body: %v", err)
+		}
+		if !isPR {
+			// issue_comment fired for a comment on a plain issue rather than a
+			// pull request; there is no PR body to add.
+			return &triggersv1.InterceptorResponse{
+				Continue: true,
+			}
+		}
+
+		prToken, err := w.getPRBodyTokenSecret(ctx, r, p)
+		if err != nil {
+			return interceptors.Failf(codes.FailedPrecondition, "error getting secret: %v", err)
+		}
+
+		prBody, err := getPRBody(ctx, payload, headers.Get("X-Github-Enterprise-Host"), prToken)
+		if err != nil {
+			return interceptors.Failf(codes.FailedPrecondition, "error getting pull request body: %v", err)
+		}
+
+		return &triggersv1.InterceptorResponse{
+			Extensions: map[string]interface{}{
+				prBodyExtensionsKey: prBody,
+			},
+			Continue: true,
+		}
+	}
+
 	// For event types pull_request, issue_comment check github owners approval is required
 	// User can specify both event type or any one of them
 	if p.GithubOwners.Enabled {
@@ -304,6 +371,96 @@ func (w *InterceptorImpl) getGithubTokenSecret(ctx context.Context, r *triggersv
 		return "", err
 	}
 	return string(secretToken), nil
+}
+
+func (w *InterceptorImpl) getPRBodyTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p InterceptorParams) (string, error) {
+	if p.AddPRBody.PersonalAccessToken == nil {
+		return "", nil
+	}
+	if p.AddPRBody.PersonalAccessToken.SecretKey == "" {
+		return "", errors.New("github interceptor personalAccessToken.secretKey is empty")
+	}
+	ns, _ := triggersv1.ParseTriggerID(r.Context.TriggerID)
+	secretToken, err := w.SecretGetter.Get(ctx, ns, p.AddPRBody.PersonalAccessToken)
+	if err != nil {
+		return "", err
+	}
+	return string(secretToken), nil
+}
+
+// parseBodyForPRBody extracts the owner, repository and pull request number
+// needed to fetch a pull request's body. For issue_comment events, isPR
+// reports whether the comment was made on a pull request (as opposed to a
+// plain issue), since GitHub uses the same event for both.
+func parseBodyForPRBody(body string, eventType string) (prBodyPayloadDetails, bool, error) {
+	results := prBodyPayloadDetails{}
+	if body == "" {
+		return results, false, errors.New("body is empty")
+	}
+
+	var jsonMap map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &jsonMap); err != nil {
+		return results, false, err
+	}
+
+	var prNum int
+	switch eventType {
+	case pullRequest:
+		numVal, ok := jsonMap["number"]
+		if !ok {
+			return results, false, errors.New("pull_request body missing 'number' field")
+		}
+		prNum = int(numVal.(float64))
+	case "issue_comment":
+		issueSection, ok := jsonMap["issue"].(map[string]interface{})
+		if !ok {
+			return results, false, errors.New("issue_comment body missing 'issue' section")
+		}
+		if _, ok := issueSection["pull_request"]; !ok {
+			// Comment on a plain issue, not a pull request.
+			return results, false, nil
+		}
+		numVal, ok := issueSection["number"]
+		if !ok {
+			return results, false, errors.New("'number' field missing in the issue section of issue_comment body")
+		}
+		prNum = int(numVal.(float64))
+	default:
+		return results, false, fmt.Errorf("addPRBody does not support event type %q", eventType)
+	}
+
+	repoSection, ok := jsonMap["repository"].(map[string]interface{})
+	if !ok {
+		return results, false, errors.New("payload body missing 'repository' field")
+	}
+
+	fullName, ok := repoSection["full_name"].(string)
+	if !ok {
+		return results, false, errors.New("payload body missing 'repository.full_name' field")
+	}
+
+	results = prBodyPayloadDetails{
+		PrNumber:   prNum,
+		Owner:      strings.Split(fullName, "/")[0],
+		Repository: strings.Split(fullName, "/")[1],
+	}
+	return results, true, nil
+}
+
+// getPRBody fetches the current body of the pull request described by
+// payload via the GitHub API.
+func getPRBody(ctx context.Context, payload prBodyPayloadDetails, enterpriseBaseURL string, token string) (string, error) {
+	client, err := makeClient(ctx, enterpriseBaseURL, token)
+	if err != nil {
+		return "", err
+	}
+
+	pr, _, err := client.PullRequests.Get(ctx, payload.Owner, payload.Repository, payload.PrNumber)
+	if err != nil {
+		return "", err
+	}
+
+	return pr.GetBody(), nil
 }
 
 func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, error) {
