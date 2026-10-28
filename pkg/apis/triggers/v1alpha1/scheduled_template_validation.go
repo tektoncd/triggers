@@ -85,6 +85,10 @@ func (s *ScheduledTemplateSpec) validate(_ctx context.Context) (errs *apis.Field
 			errs = errs.Also(apis.ErrInvalidValue(s.CloudEventSink.Scheme, "cloudEventSink.scheme"))
 		}
 	}
+	// ServiceAccountName is optional (defaults to "default"); reject whitespace-only.
+	if s.ServiceAccountName != "" && strings.TrimSpace(s.ServiceAccountName) == "" {
+		errs = errs.Also(apis.ErrInvalidValue(s.ServiceAccountName, "serviceAccountName"))
+	}
 
 	return errs
 }

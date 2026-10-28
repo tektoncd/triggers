@@ -64,17 +64,24 @@ func findAPIResource(apiVersion, kind string, c discoveryclient.ServerResourcesI
 // Create uses the kubeClient to create the resource defined in the
 // TriggerResourceTemplate and returns any errors with this process
 func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID, elName, elNamespace string, c discoveryclient.ServerResourcesInterface, dc dynamic.Interface) error {
+	return CreateWithLabels(logger, rt, elNamespace, eventID, c, dc, map[string]string{
+		triggers.EventListenerLabelKey: elName,
+		triggers.EventIDLabelKey:       eventID,
+		triggers.TriggerLabelKey:       triggerName,
+	})
+}
+
+// CreateWithLabels creates the resource defined in rt, adding labelsToAdd (keys are
+// relative label suffixes like triggers.EventListenerLabelKey) and defaulting
+// namespace to defaultNamespace when unset on the template.
+func CreateWithLabels(logger *zap.SugaredLogger, rt json.RawMessage, defaultNamespace, executionID string, c discoveryclient.ServerResourcesInterface, dc dynamic.Interface, labelsToAdd map[string]string) error {
 	// Assume the TriggerResourceTemplate is valid (it has an apiVersion and Kind)
 	data := new(unstructured.Unstructured)
 	if err := data.UnmarshalJSON(rt); err != nil {
 		return fmt.Errorf("couldn't unmarshal json from the TriggerTemplate: %w", err)
 	}
 
-	data, err := addLabels(data, map[string]string{
-		triggers.EventListenerLabelKey: elName,
-		triggers.EventIDLabelKey:       eventID,
-		triggers.TriggerLabelKey:       triggerName,
-	})
+	data, err := addLabels(data, labelsToAdd)
 	if err != nil {
 		return err
 	}
@@ -82,7 +89,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 	namespace := data.GetNamespace()
 	// Default the resource creation to the EventListenerNamespace if not found in the resource template
 	if namespace == "" {
-		namespace = elNamespace
+		namespace = defaultNamespace
 	}
 
 	// Resolve resource kind to the underlying API Resource type.
@@ -103,7 +110,7 @@ func Create(logger *zap.SugaredLogger, rt json.RawMessage, triggerName, eventID,
 		Resource: apiResource.Name,
 	}
 
-	logger.Infof("For event ID %q creating resource %v", eventID, gvr)
+	logger.Infof("For execution ID %q creating resource %v", executionID, gvr)
 
 	if _, err := dc.Resource(gvr).Namespace(namespace).Create(context.Background(), data, metav1.CreateOptions{}); err != nil {
 		if kerrors.IsUnauthorized(err) || kerrors.IsForbidden(err) {

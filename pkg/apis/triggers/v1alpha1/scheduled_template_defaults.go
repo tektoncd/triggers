@@ -18,9 +18,20 @@ package v1alpha1
 
 import (
 	"context"
+
+	"github.com/tektoncd/triggers/pkg/apis/config"
 )
 
 // revive:disable:unused-parameter
 
 // SetDefaults initializes ScheduledTemplate with default values.
-func (st *ScheduledTemplate) SetDefaults(ctx context.Context) {}
+func (st *ScheduledTemplate) SetDefaults(ctx context.Context) {
+	st.Spec.SetDefaults(ctx)
+}
+
+// SetDefaults initializes ScheduledTemplateSpec with default values.
+func (s *ScheduledTemplateSpec) SetDefaults(_ context.Context) {
+	if s.ServiceAccountName == "" {
+		s.ServiceAccountName = config.DefaultServiceAccountValue
+	}
+}
