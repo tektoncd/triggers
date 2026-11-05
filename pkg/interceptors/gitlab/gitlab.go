@@ -213,6 +213,9 @@ func validateWebhookTimestamp(timestamp string) error {
 func decodeSigningKey(token []byte) ([]byte, error) {
 	s := strings.TrimSpace(string(token))
 	s = strings.TrimPrefix(s, signingTokenPrefix)
+	if len(s) == 0 {
+		return nil, errors.New("signing token is empty")
+	}
 	return base64.StdEncoding.DecodeString(s)
 }
 

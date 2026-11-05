@@ -568,6 +568,24 @@ func TestInterceptor_SigningToken_ShouldNotContinue(t *testing.T) {
 		secrets: []*corev1.Secret{signingSecret("whsec_not-valid-base64!!!")},
 		wantErr: "error decoding signing token",
 	}, {
+		name:    "empty token",
+		params:  map[string]interface{}{"signingSecretRef": signingRef},
+		header:  webhookHeader(key, body, frozen),
+		secrets: []*corev1.Secret{signingSecret("")},
+		wantErr: "signing token is empty",
+	}, {
+		name:    "prefix only",
+		params:  map[string]interface{}{"signingSecretRef": signingRef},
+		header:  webhookHeader(key, body, frozen),
+		secrets: []*corev1.Secret{signingSecret("whsec_")},
+		wantErr: "signing token is empty",
+	}, {
+		name:    "token is only whitespace",
+		params:  map[string]interface{}{"signingSecretRef": signingRef},
+		header:  webhookHeader(key, body, frozen),
+		secrets: []*corev1.Secret{signingSecret(" ")},
+		wantErr: "signing token is empty",
+	}, {
 		name: "dual mode no signature and no token",
 		params: map[string]interface{}{
 			"secretRef":        &triggersv1.SecretRef{SecretName: "mysecret", SecretKey: "token"},
