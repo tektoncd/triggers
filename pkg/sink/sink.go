@@ -44,6 +44,7 @@ import (
 	"github.com/tektoncd/triggers/pkg/template"
 	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -313,6 +314,20 @@ func (r Sink) merge(et []triggersv1.EventListenerTrigger, trItems []*triggersv1.
 	return triggers, nil
 }
 
+// logInterceptorStopped logs an interceptor halting trigger processing at a
+// level that reflects why it stopped. FailedPrecondition means a filter simply
+// did not match, which is routine for an EventListener with several triggers,
+// so it stays at debug. Any other code indicates a malformed request or a
+// misconfigured interceptor that an operator likely needs to act on, so it is
+// surfaced at warn to keep it visible at the default log level.
+func logInterceptorStopped(log *zap.SugaredLogger, status triggersv1.Status) {
+	if status.Code == codes.FailedPrecondition {
+		log.Debugf("interceptor stopped trigger processing: %v", status.Err())
+		return
+	}
+	log.Warnf("interceptor stopped trigger processing: %v", status.Err())
+}
+
 func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *triggersv1.EventListener, request *http.Request, event []byte, eventID string, eventLog *zap.SugaredLogger, wg *sync.WaitGroup) {
 	log := eventLog.With(zap.String(triggers.TriggerGroupLabelKey, g.Name))
 
@@ -329,7 +344,7 @@ func (r Sink) processTriggerGroups(g triggersv1.EventListenerTriggerGroup, el *t
 			}
 		}
 		if !resp.Continue {
-			eventLog.Debugf("interceptor stopped trigger processing: %v", resp.Status.Err())
+			logInterceptorStopped(log, resp.Status)
 			return
 		}
 	}
@@ -417,7 +432,7 @@ func (r Sink) processTrigger(t triggersv1.Trigger, el *triggersv1.EventListener,
 
 	if iresp != nil {
 		if !iresp.Continue {
-			log.Debugf("interceptor stopped trigger processing: %v", iresp.Status.Err())
+			logInterceptorStopped(log, iresp.Status)
 			return
 		}
 	}
