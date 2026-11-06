@@ -8,7 +8,7 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 			$(PKGS))
 BIN      = $(CURDIR)/.bin
 
-GOLANGCI_VERSION = v2.8.0
+GOLANGCI_VERSION = v2.15.0
 
 GO           = go
 TIMEOUT_UNIT = 5m
