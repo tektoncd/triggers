@@ -1,0 +1,31 @@
+# Example RBAC for the ServiceAccount used by a ScheduledTemplate CronJob runner.
+# Bind this (or equivalent) to the SA named in spec.serviceAccountName so the
+# runner can create Tekton resources from the template.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers-scheduledtemplate-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-triggers-scheduledtemplate-create-runs
+rules:
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns", "customruns"]
+    verbs: ["create"]
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["scheduledtemplates", "triggertemplates"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-triggers-scheduledtemplate-create-runs
+subjects:
+  - kind: ServiceAccount
+    name: tekton-triggers-scheduledtemplate-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-triggers-scheduledtemplate-create-runs
