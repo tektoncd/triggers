@@ -380,10 +380,15 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 		}
 	}
 
+	owner, repository, found := strings.Cut(fullName, "/")
+	if !found {
+		return results, errors.New("payload body field 'repository.full_name' is not in the form 'owner/repository'")
+	}
+
 	results = payloadDetails{
 		PrNumber:     prNum,
-		Owner:        strings.Split(fullName, "/")[0],
-		Repository:   strings.Split(fullName, "/")[1],
+		Owner:        owner,
+		Repository:   repository,
 		ChangedFiles: strings.Join(changedFiles, ","),
 	}
 	return results, nil
@@ -664,11 +669,16 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 	}
 	prSender, _ := senderSection["login"].(string)
 
+	owner, repository, found := strings.Cut(fullName, "/")
+	if !found {
+		return results, errors.New("payload body field 'repository.full_name' is not in the form 'owner/repository'")
+	}
+
 	results = OwnersPayloadDetails{
 		PrNumber:         prNum,
 		Sender:           prSender,
-		Owner:            strings.Split(fullName, "/")[0],
-		Repository:       strings.Split(fullName, "/")[1],
+		Owner:            owner,
+		Repository:       repository,
 		IssueCommentBody: issueCommentBody,
 	}
 
