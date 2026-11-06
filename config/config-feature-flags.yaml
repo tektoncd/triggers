@@ -32,3 +32,10 @@ data:
   # It is strongly encouraged to be set to "true" for security, and the setting will be removed
   # and always enforced in a later version
   interceptors.github.use-enterprise-host-allowlist: "false"
+  # When "true", sensitive headers (Authorization, X-Hub-Signature-256, X-Gitlab-Token,
+  # X-Bitbucket-*, X-Slack-Signature) are stripped before forwarding to external URL-based
+  # interceptors to prevent credential exfiltration. Service-based interceptors are unaffected.
+  # Defaults to "false" 
+  # It is strongly encouraged to be set to "true" for security, and the setting will be removed
+  # and always enforced in a later version
+  interceptors.strip-sensitive-headers-for-urls: "false"
