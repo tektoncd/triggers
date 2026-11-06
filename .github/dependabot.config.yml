@@ -39,10 +39,6 @@ ecosystems:
       - dependencies
       - release-note-none
       - kind/misc
-    groups:
-      all:
-        patterns:
-          - "*"
     ignore:
       - dependency-name: "k8s.io/*"
         update-types:
