@@ -19,12 +19,19 @@ type InterceptorInterface interface {
 // Do not generate DeepCopy(). See #827
 // +k8s:deepcopy-gen=false
 type InterceptorRequest struct {
-	// Body is the incoming HTTP event body. We use a "string" representation of the JSON body
-	// in order to preserve the body exactly as it was sent (including spaces etc.). This is necessary
-	// for some interceptors e.g. GitHub for validating the body with a signature. While []byte can also
-	// store an exact representation of the body, `json.Marshal` will compact []byte to a base64 encoded
-	// string which means that we will lose the spaces any time we marshal this struct.
+	// Body is the processed interceptor payload. For JSON event sources (e.g. GitHub, GitLab) it
+	// matches the original request bytes. For URL-encoded sources (e.g. Slack slash commands) the
+	// sink converts the form values to a JSON object before populating this field, so Body will NOT
+	// match the bytes that were used to compute an HMAC signature. Use RawBody for signature
+	// validation whenever the Content-Type may be application/x-www-form-urlencoded. We use a
+	// "string" rather than []byte because json.Marshal would base64-encode []byte and lose formatting.
 	Body string `json:"body,omitempty"`
+
+	// RawBody is the exact incoming HTTP event body before any sink-side processing. It is the
+	// authoritative source for signature validation and for interceptors that require the original
+	// request bytes (e.g. Slack, which signs the URL-encoded form payload before the sink converts
+	// it to JSON). Use this field — not Body — whenever computing or verifying an HMAC.
+	RawBody string `json:"raw_body,omitempty"`
 
 	// Header are the headers for the incoming HTTP event
 	Header map[string][]string `json:"header,omitempty"`

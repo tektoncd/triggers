@@ -467,8 +467,10 @@ func (r Sink) ExecuteInterceptors(trInt []*triggersv1.TriggerInterceptor, in *ht
 
 	// request is the request sent to the interceptors in the chain. Each interceptor can set the InterceptorParams field
 	// or add to the Extensions
+	body := string(event)
 	request := triggersv1.InterceptorRequest{
-		Body:       string(event),
+		Body:       body,
+		RawBody:    body,
 		Header:     in.Header.Clone(),
 		Extensions: make(map[string]interface{}),
 		Context: &triggersv1.TriggerContext{
