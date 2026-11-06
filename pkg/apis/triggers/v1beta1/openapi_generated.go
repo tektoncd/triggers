@@ -546,9 +546,10 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerTriggerGroup(ref common.Refer
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "Name identifies the group in logs and metrics.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"interceptors": {
@@ -558,7 +559,8 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerTriggerGroup(ref common.Refer
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Interceptors is the shared interceptor chain for the group.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -570,12 +572,13 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerTriggerGroup(ref common.Refer
 					},
 					"triggerSelector": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTriggerSelector"),
+							Description: "TriggerSelector selects the EventListener triggers processed by this group.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTriggerSelector"),
 						},
 					},
 				},
-				Required: []string{"name", "interceptors", "triggerSelector"},
+				Required: []string{"interceptors", "triggerSelector"},
 			},
 		},
 		Dependencies: []string{
@@ -618,18 +621,19 @@ func schema_pkg_apis_triggers_v1beta1_InterceptorParams(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "Name is the parameter name.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON"),
+							Description: "Value is the JSON value passed to the interceptor.",
+							Ref:         ref("k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON"),
 						},
 					},
 				},
-				Required: []string{"name", "value"},
 			},
 		},
 		Dependencies: []string{
@@ -885,20 +889,21 @@ func schema_pkg_apis_triggers_v1beta1_Param(ref common.ReferenceCallback) common
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "Name is the name of the parameter.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "Value is the parameter value.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
-				Required: []string{"name", "value"},
 			},
 		},
 	}
@@ -934,7 +939,6 @@ func schema_pkg_apis_triggers_v1beta1_ParamSpec(ref common.ReferenceCallback) co
 						},
 					},
 				},
-				Required: []string{"name"},
 			},
 		},
 	}
@@ -1300,7 +1304,6 @@ func schema_pkg_apis_triggers_v1beta1_TriggerInterceptor(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"ref"},
 			},
 		},
 		Dependencies: []string{
@@ -1382,7 +1385,8 @@ func schema_pkg_apis_triggers_v1beta1_TriggerSpec(ref common.ReferenceCallback) 
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Bindings provides parameters for the TriggerTemplate.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -1394,8 +1398,9 @@ func schema_pkg_apis_triggers_v1beta1_TriggerSpec(ref common.ReferenceCallback) 
 					},
 					"template": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerSpecTemplate"),
+							Description: "Template contains the TriggerTemplate reference or inline specification.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerSpecTemplate"),
 						},
 					},
 					"name": {
@@ -1429,7 +1434,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"bindings", "template"},
+				Required: []string{"template"},
 			},
 		},
 		Dependencies: []string{
@@ -1646,7 +1651,8 @@ func schema_pkg_apis_triggers_v1beta1_TriggerTemplateSpec(ref common.ReferenceCa
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "ResourceTemplates are the Kubernetes resources created by this template.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
