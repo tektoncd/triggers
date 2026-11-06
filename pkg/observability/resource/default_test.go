@@ -20,7 +20,18 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	knativeresource "knative.dev/pkg/observability/resource"
 )
+
+func TestKnativeDefaultSchemaCompatibility(t *testing.T) {
+	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
+
+	// Dependency updates must keep OpenTelemetry's resource schema compatible
+	// with Knative's schema so component startup does not panic.
+	if r := knativeresource.Default("startup-smoke"); r == nil {
+		t.Fatal("expected startup resource to not be nil")
+	}
+}
 
 func TestDefault(t *testing.T) {
 	r := Default("myservice")

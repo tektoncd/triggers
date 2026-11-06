@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package trace
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
 	"errors"
@@ -46,13 +46,14 @@ func (e samplerArgParseError) Unwrap() error {
 }
 
 func samplerFromEnv() (Sampler, error) {
-	sampler := strings.ToLower(strings.TrimSpace(os.Getenv(tracesSamplerKey)))
-	if sampler == "" {
+	sampler, ok := os.LookupEnv(tracesSamplerKey)
+	if !ok {
 		return nil, nil
 	}
 
-	samplerArg := strings.TrimSpace(os.Getenv(tracesSamplerArgKey))
-	hasSamplerArg := samplerArg != ""
+	sampler = strings.ToLower(strings.TrimSpace(sampler))
+	samplerArg, hasSamplerArg := os.LookupEnv(tracesSamplerArgKey)
+	samplerArg = strings.TrimSpace(samplerArg)
 
 	switch sampler {
 	case samplerAlwaysOn:

@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package codes
+package codes // import "go.opentelemetry.io/otel/codes"
 
 import (
 	"encoding/json"
@@ -32,7 +32,7 @@ const (
 	maxCode = 3
 )
 
-// Code is a 32-bit representation of a status state.
+// Code is an 32-bit representation of a status state.
 type Code uint32
 
 var codeToStr = map[Code]string{
@@ -81,7 +81,7 @@ func (c *Code) UnmarshalJSON(b []byte) error {
 	case float64:
 		if ci, err := strconv.ParseUint(string(b), 10, 32); err == nil {
 			if ci >= maxCode {
-				return fmt.Errorf("invalid code: %d", ci)
+				return fmt.Errorf("invalid code: %q", ci)
 			}
 
 			*c = Code(ci) // nolint: gosec  // Bit size of 32 check above.
