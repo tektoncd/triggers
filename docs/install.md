@@ -97,6 +97,16 @@ in the `config/feature-flags-triggers.yaml` file.
   This setting will default to `"true"` in a later release and eventually
   be removed entirely as always on.
 
++ Block private interceptor URLs. Set `interceptors.block-private-interceptor-urls:`
+  to `"true"` to reject interceptor URLs that resolve to loopback, link-local,
+  private, or unspecified addresses before the EventListener sends the request.
+  This guards against SSRF toward cloud metadata endpoints such as
+  `169.254.169.254` and other internal services. It defaults to `"false"` for
+  backwards compatibility. Hosts listed in the `github.enterprise-host-allowlist`
+  key of the `config-triggers-core-interceptors` ConfigMap are exempt, so
+  interceptors served on in-cluster private addresses stay reachable when the
+  guard is on.
+
 ## Further reading
 
 + [Get started with Tekton Triggers][get-started]

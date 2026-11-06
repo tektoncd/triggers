@@ -32,3 +32,12 @@ data:
   # It is strongly encouraged to be set to "true" for security, and the setting will be removed
   # and always enforced in a later version
   interceptors.github.use-enterprise-host-allowlist: "false"
+  # When "true", the EventListener rejects interceptor URLs that resolve to
+  # loopback, link-local, private, or unspecified addresses before sending the
+  # request. This guards against SSRF toward cloud metadata endpoints (for
+  # example 169.254.169.254) and internal services. Defaults to "false" for
+  # backwards compatibility. Hosts listed in the
+  # github.enterprise-host-allowlist key of the config-triggers-core-interceptors
+  # ConfigMap are exempt, so legitimate interceptor URLs on private ranges can
+  # still be reached.
+  interceptors.block-private-interceptor-urls: "false"
