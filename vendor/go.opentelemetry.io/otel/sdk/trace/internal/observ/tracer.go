@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package observ
+package observ // import "go.opentelemetry.io/otel/sdk/trace/internal/observ"
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk"
 	"go.opentelemetry.io/otel/sdk/internal/x"
-	"go.opentelemetry.io/otel/semconv/v1.43.0/otelconv"
+	"go.opentelemetry.io/otel/semconv/v1.41.0/otelconv"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -30,8 +30,6 @@ type Tracer struct {
 	started metric.Int64Counter
 }
 
-// NewTracer creates new instrumentation for a Tracer.
-// It returns an empty, disabled Tracer if observability is not enabled.
 func NewTracer() (Tracer, error) {
 	if !x.Observability.Enabled() {
 		return Tracer{}, nil
@@ -54,11 +52,8 @@ func NewTracer() (Tracer, error) {
 	return Tracer{enabled: true, live: l.Inst(), started: s.Inst()}, err
 }
 
-// Enabled returns whether observability is enabled for t.
 func (t Tracer) Enabled() bool { return t.enabled }
 
-// SpanStarted records the start of span, which was created with psc as its
-// parent span context.
 func (t Tracer) SpanStarted(ctx context.Context, psc trace.SpanContext, span trace.Span) {
 	if !t.started.Enabled(ctx) {
 		return
@@ -89,12 +84,10 @@ func (t Tracer) SpanStarted(ctx context.Context, psc trace.SpanContext, span tra
 	t.started.Add(ctx, 1, opts...)
 }
 
-// SpanLive records span as a live span.
 func (t Tracer) SpanLive(ctx context.Context, span trace.Span) {
 	t.spanLive(ctx, 1, span)
 }
 
-// SpanEnded records span as no longer being live.
 func (t Tracer) SpanEnded(ctx context.Context, span trace.Span) {
 	t.spanLive(ctx, -1, span)
 }
