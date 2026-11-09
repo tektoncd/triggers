@@ -50,9 +50,6 @@ updates:
                 - github/codeql-action/*
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.37.x
@@ -107,9 +104,6 @@ updates:
                 - github/codeql-action/*
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.36.x
@@ -164,9 +158,6 @@ updates:
                 - github/codeql-action/*
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.35.x
@@ -221,9 +212,6 @@ updates:
                 - github/codeql-action/*
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.34.x
@@ -278,6 +266,3 @@ updates:
                 - github/codeql-action/*
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
