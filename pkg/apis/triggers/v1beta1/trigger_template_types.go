@@ -30,6 +30,9 @@ var _ apis.Defaultable = (*TriggerTemplate)(nil)
 type TriggerTemplateSpec struct {
 	// +listType=atomic
 	Params []ParamSpec `json:"params,omitempty"`
+	// ResourceTemplates are the Kubernetes resources created by this template.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	// +listType=atomic
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
@@ -48,6 +51,9 @@ type TriggerTemplateStatus struct{}
 
 // TriggerTemplate takes parameters and uses them to create CRDs
 // +k8s:openapi-gen=true
+// +kubebuilder:resource
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type TriggerTemplate struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

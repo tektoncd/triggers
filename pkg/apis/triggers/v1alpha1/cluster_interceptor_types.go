@@ -35,6 +35,9 @@ var _ apis.Defaultable = (*ClusterInterceptor)(nil)
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // ClusterInterceptor describes a pluggable interceptor including configuration
 // such as the fields it accepts and its deployment address. The type is based on
 // the Validating/MutatingWebhookConfiguration types for configuring AdmissionWebhooks
@@ -43,6 +46,7 @@ type ClusterInterceptor struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// +optional
 	Spec ClusterInterceptorSpec `json:"spec"`
 	// +optional
 	Status ClusterInterceptorStatus `json:"status"`
@@ -50,6 +54,7 @@ type ClusterInterceptor struct {
 
 // ClusterInterceptorSpec describes the Spec for an ClusterInterceptor
 type ClusterInterceptorSpec struct {
+	// +optional
 	ClientConfig ClientConfig `json:"clientConfig"`
 }
 

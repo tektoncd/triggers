@@ -206,6 +206,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Triggers lists triggers directly, when not selecting them by namespace or labels.</p>
 </td>
 </tr>
 <tr>
@@ -467,6 +469,8 @@ TriggerSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Bindings provides parameters for the TriggerTemplate.</p>
 </td>
 </tr>
 <tr>
@@ -479,6 +483,7 @@ TriggerSpecTemplate
 </em>
 </td>
 <td>
+<p>Template contains the TriggerTemplate reference or inline specification.</p>
 </td>
 </tr>
 <tr>
@@ -698,6 +703,7 @@ TriggerTemplateSpec
 </em>
 </td>
 <td>
+<p>ResourceTemplates are the Kubernetes resources created by this template.</p>
 </td>
 </tr>
 </table>
@@ -933,6 +939,7 @@ ClusterInterceptorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <br/>
 <br/>
 <table>
@@ -946,6 +953,7 @@ ClientConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </table>
@@ -992,6 +1000,7 @@ ClientConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -1159,6 +1168,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Triggers lists triggers directly, when not selecting them by namespace or labels.</p>
 </td>
 </tr>
 <tr>
@@ -1485,6 +1496,7 @@ InterceptorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <br/>
 <br/>
 <table>
@@ -1498,6 +1510,7 @@ ClientConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </table>
@@ -1569,6 +1582,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Name is the parameter name.</p>
 </td>
 </tr>
 <tr>
@@ -1579,6 +1594,8 @@ k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Value is the JSON value passed to the interceptor.</p>
 </td>
 </tr>
 </tbody>
@@ -1790,6 +1807,7 @@ ClientConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -1964,6 +1982,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Name is the name of the parameter.</p>
 </td>
 </tr>
 <tr>
@@ -1974,6 +1994,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Value is the parameter value.</p>
 </td>
 </tr>
 </tbody>
@@ -2003,6 +2025,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Name declares the name by which a parameter is referenced.</p>
 </td>
 </tr>
@@ -2481,6 +2504,7 @@ InterceptorRef
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Ref refers to the Interceptor to use</p>
 </td>
 </tr>
@@ -2620,6 +2644,8 @@ TriggerSpecTemplate to then create resources from.</p>
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Bindings provides parameters for the TriggerTemplate.</p>
 </td>
 </tr>
 <tr>
@@ -2632,6 +2658,7 @@ TriggerSpecTemplate
 </em>
 </td>
 <td>
+<p>Template contains the TriggerTemplate reference or inline specification.</p>
 </td>
 </tr>
 <tr>
@@ -2842,6 +2869,7 @@ TriggerTemplateSpec
 </em>
 </td>
 <td>
+<p>ResourceTemplates are the Kubernetes resources created by this template.</p>
 </td>
 </tr>
 </tbody>
@@ -3256,6 +3284,8 @@ TriggerSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Bindings provides parameters for the TriggerTemplate.</p>
 </td>
 </tr>
 <tr>
@@ -3268,6 +3298,7 @@ TriggerSpecTemplate
 </em>
 </td>
 <td>
+<p>Template contains the TriggerTemplate reference or inline specification.</p>
 </td>
 </tr>
 <tr>
@@ -3487,6 +3518,7 @@ TriggerTemplateSpec
 </em>
 </td>
 <td>
+<p>ResourceTemplates are the Kubernetes resources created by this template.</p>
 </td>
 </tr>
 </table>
@@ -3874,6 +3906,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Name identifies the group in logs and metrics.</p>
 </td>
 </tr>
 <tr>
@@ -3886,6 +3920,7 @@ string
 </em>
 </td>
 <td>
+<p>Interceptors is the shared interceptor chain for the group.</p>
 </td>
 </tr>
 <tr>
@@ -3898,6 +3933,7 @@ EventListenerTriggerSelector
 </em>
 </td>
 <td>
+<p>TriggerSelector selects the EventListener triggers processed by this group.</p>
 </td>
 </tr>
 </tbody>
@@ -3995,6 +4031,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Name is the parameter name.</p>
 </td>
 </tr>
 <tr>
@@ -4005,6 +4043,8 @@ k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Value is the JSON value passed to the interceptor.</p>
 </td>
 </tr>
 </tbody>
@@ -4331,6 +4371,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Name is the name of the parameter.</p>
 </td>
 </tr>
 <tr>
@@ -4341,6 +4383,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Value is the parameter value.</p>
 </td>
 </tr>
 </tbody>
@@ -4370,6 +4414,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Name declares the name by which a parameter is referenced.</p>
 </td>
 </tr>
@@ -4700,6 +4745,7 @@ InterceptorRef
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Ref refers to the Interceptor to use</p>
 </td>
 </tr>
@@ -4790,6 +4836,8 @@ TriggerSpecTemplate to then create resources from.</p>
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Bindings provides parameters for the TriggerTemplate.</p>
 </td>
 </tr>
 <tr>
@@ -4802,6 +4850,7 @@ TriggerSpecTemplate
 </em>
 </td>
 <td>
+<p>Template contains the TriggerTemplate reference or inline specification.</p>
 </td>
 </tr>
 <tr>
@@ -5012,6 +5061,7 @@ TriggerTemplateSpec
 </em>
 </td>
 <td>
+<p>ResourceTemplates are the Kubernetes resources created by this template.</p>
 </td>
 </tr>
 </tbody>
