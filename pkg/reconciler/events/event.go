@@ -33,6 +33,11 @@ const (
 	TriggerProcessingDoneV1 = "dev.tekton.event.triggers.done.v1"
 	// EventAccepted is sent as response for CloudEvent compliant providers
 	EventAccepted = "dev.tekton.event.triggers.accepted.v1"
+
+	// ScheduledTemplateSuccessfulV1 is sent when a ScheduledTemplate cron fire creates resources successfully
+	ScheduledTemplateSuccessfulV1 = "dev.tekton.event.triggers.scheduledtemplate.successful.v1"
+	// ScheduledTemplateFailedV1 is sent when a ScheduledTemplate cron fire fails to create resources
+	ScheduledTemplateFailedV1 = "dev.tekton.event.triggers.scheduledtemplate.failed.v1"
 )
 
 // Emit emits events for object

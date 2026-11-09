@@ -27,6 +27,11 @@ Resource            |Event      |Event Type
 `EventListener`     | `Succeed` | `dev.tekton.event.triggers.successful.v1`
 `EventListener`     | `Done`    | `dev.tekton.event.triggers.done.v1`
 `EventListener`     | `Failed`  | `dev.tekton.event.triggers.failed.v1`
+`ScheduledTemplate` | `Succeed` | `dev.tekton.event.triggers.scheduledtemplate.successful.v1`
+`ScheduledTemplate` | `Failed`  | `dev.tekton.event.triggers.scheduledtemplate.failed.v1`
+
+`ScheduledTemplate` CloudEvents are sent to `spec.cloudEventSink` from the cron runner (not
+Kubernetes Events). See [ScheduledTemplates](scheduledtemplates.md).
 
 ## Note
 
