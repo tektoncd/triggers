@@ -273,6 +273,7 @@ Containers
 Affinity
 TopologySpreadConstraints
 SecurityContext
+PriorityClassName
 ```
 
 Legal values for the `Containers` sub-field for `kubernetesResource` and `CustomResource` are:

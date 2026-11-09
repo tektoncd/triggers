@@ -82,6 +82,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		affinity                  *corev1.Affinity
 		topologySpreadConstraints []corev1.TopologySpreadConstraint
 		imagePullSecrets          []corev1.LocalObjectReference
+		priorityClassName         string
 	)
 
 	for _, v := range container.Env {
@@ -121,6 +122,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 		if len(el.Spec.Resources.KubernetesResource.Template.Spec.TopologySpreadConstraints) != 0 {
 			topologySpreadConstraints = el.Spec.Resources.KubernetesResource.Template.Spec.TopologySpreadConstraints
 		}
+		priorityClassName = el.Spec.Resources.KubernetesResource.Template.Spec.PriorityClassName
 		annotations = el.Spec.Resources.KubernetesResource.Template.Annotations
 		podlabels = kmeta.UnionMaps(podlabels, el.Spec.Resources.KubernetesResource.Template.Labels)
 		if *c.SetSecurityContext {
@@ -154,6 +156,7 @@ func MakeDeployment(ctx context.Context, el *v1beta1.EventListener, configAcc re
 					SecurityContext:           securityContext,
 					Affinity:                  affinity,
 					TopologySpreadConstraints: topologySpreadConstraints,
+					PriorityClassName:         priorityClassName,
 				},
 			},
 		},
