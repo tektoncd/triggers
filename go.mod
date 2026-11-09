@@ -29,7 +29,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.10
 	k8s.io/apiextensions-apiserver v0.35.10
-	k8s.io/apimachinery v0.36.3
+	k8s.io/apimachinery v0.36.6
 	k8s.io/client-go v0.35.10
 	k8s.io/code-generator v0.35.10
 	k8s.io/klog/v2 v2.140.0
@@ -159,7 +159,7 @@ require (
 	k8s.io/gengo v0.0.0-20240404160639-a0386bf69313 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/streaming v0.36.3 // indirect
+	k8s.io/streaming v0.36.6 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	knative.dev/networking v0.0.0-20231017124814-2a7676e912b7 // indirect
 	sigs.k8s.io/gateway-api v1.1.0 // indirect
