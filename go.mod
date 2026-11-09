@@ -31,7 +31,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.35.7
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.35.7
-	k8s.io/code-generator v0.35.7
+	k8s.io/code-generator v0.35.10
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a
 	knative.dev/eventing v0.0.0-20260209140146-9e76da08faaa
