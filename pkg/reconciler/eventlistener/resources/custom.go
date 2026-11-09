@@ -74,7 +74,7 @@ func MakeCustomObject(ctx context.Context, el *v1beta1.EventListener, configAcc 
 		c.ReadinessProbe = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/live",
+					Path:   livenessProbePath,
 					Scheme: corev1.URISchemeHTTP,
 				},
 			},

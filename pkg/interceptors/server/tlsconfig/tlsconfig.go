@@ -28,6 +28,8 @@ import (
 	"sync"
 )
 
+const defaultTLSConfigName = "default"
+
 // Config holds TLS configuration that can be loaded from environment variables
 type Config struct {
 	MinTLSVersion    string
@@ -244,7 +246,7 @@ func GetTLSVersionName(version uint16) string {
 	case tls.VersionTLS13:
 		return "TLS 1.3"
 	case 0:
-		return "default"
+		return defaultTLSConfigName
 	default:
 		return fmt.Sprintf("Unknown (0x%04x)", version)
 	}
@@ -253,7 +255,7 @@ func GetTLSVersionName(version uint16) string {
 // FormatCipherSuites returns a human-readable string of cipher suite names
 func FormatCipherSuites(ciphers []uint16) string {
 	if len(ciphers) == 0 {
-		return "default"
+		return defaultTLSConfigName
 	}
 	names := make([]string, len(ciphers))
 	for i, id := range ciphers {
@@ -265,7 +267,7 @@ func FormatCipherSuites(ciphers []uint16) string {
 // FormatCurvePreferences returns a human-readable string of curve names
 func FormatCurvePreferences(curves []tls.CurveID) string {
 	if len(curves) == 0 {
-		return "default"
+		return defaultTLSConfigName
 	}
 	names := make([]string, len(curves))
 	for i, id := range curves {

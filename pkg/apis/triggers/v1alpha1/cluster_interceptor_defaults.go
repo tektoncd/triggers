@@ -30,7 +30,7 @@ func (it *ClusterInterceptor) SetDefaults(ctx context.Context) {
 	if _, ok := it.GetLabels()["server/type"]; !ok {
 		// if server type is not set its assumed that running server is http
 		it.Labels = map[string]string{
-			"server/type": "http",
+			"server/type": cloudEventSinkSchemeHTTP,
 		}
 	}
 }

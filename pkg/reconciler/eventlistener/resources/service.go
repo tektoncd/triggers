@@ -125,7 +125,7 @@ func ServicePort(el *v1beta1.EventListener, c Config) corev1.ServicePort {
 	svc := corev1.ServicePort{
 		Name:     servicePortName,
 		Protocol: corev1.ProtocolTCP,
-		Port:     int32(servicePort), //nolint: gosec
+		Port:     int32(servicePort),
 		TargetPort: intstr.IntOrString{
 			IntVal: int32(eventListenerContainerPort),
 		},

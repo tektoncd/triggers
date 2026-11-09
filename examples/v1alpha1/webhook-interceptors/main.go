@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/google/go-github/v31/github"
 )
@@ -39,15 +40,19 @@ func main() {
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		// TODO: We should probably send over the EL eventID as a X-Tekton-Event-Id header as well
 		payload, err := github.ValidatePayload(request, []byte(secretToken))
-		id := github.DeliveryID(request)
+		id := strconv.Quote(github.DeliveryID(request))
 		if err != nil {
-			log.Printf("Error handling GitHub Event with delivery ID %s : %q", id, err)
+			log.Printf("Error handling GitHub Event with delivery ID %s : %s", id, strconv.Quote(fmt.Sprint(err)))
 			http.Error(writer, fmt.Sprint(err), http.StatusBadRequest)
+			return
 		}
-		log.Printf("Handling GitHub Event with delivery ID: %s; Payload: %s", id, payload)
+		log.Printf("Handling GitHub Event with delivery ID: %s; Payload: %s", id, strconv.Quote(string(payload)))
+		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		writer.Header().Set("X-Content-Type-Options", "nosniff")
+		// #nosec G705 -- Echo bytes are served as text/plain with nosniff, never interpreted as HTML.
 		n, err := writer.Write(payload)
 		if err != nil {
-			log.Printf("Failed to write response for GitHub event ID: %s. Bytes writted: %d. Error: %q", id, n, err)
+			log.Printf("Failed to write response for GitHub event ID: %s. Bytes written: %s. Error: %s", id, strconv.Quote(strconv.Itoa(n)), strconv.Quote(fmt.Sprint(err)))
 		}
 	})
 
