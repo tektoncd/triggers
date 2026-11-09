@@ -497,8 +497,8 @@ github.com/tektoncd/pipeline/pkg/substitution
 ## explicit; go 1.23
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tidwall/gjson v1.14.2
-## explicit; go 1.12
+# github.com/tidwall/gjson v1.20.0
+## explicit; go 1.23
 github.com/tidwall/gjson
 # github.com/tidwall/match v1.1.1
 ## explicit; go 1.15
@@ -506,8 +506,8 @@ github.com/tidwall/match
 # github.com/tidwall/pretty v1.2.0
 ## explicit; go 1.16
 github.com/tidwall/pretty
-# github.com/tidwall/sjson v1.2.5
-## explicit; go 1.14
+# github.com/tidwall/sjson v1.2.7
+## explicit; go 1.23
 github.com/tidwall/sjson
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
