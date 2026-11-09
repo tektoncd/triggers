@@ -61,6 +61,7 @@ type Update struct {
 	PackageEcosystem string                   `yaml:"package-ecosystem"`
 	Directory        string                   `yaml:"directory"`
 	TargetBranch     string                   `yaml:"target-branch,omitempty"`
+	CommitMessage    map[string]string        `yaml:"commit-message,omitempty"`
 	Schedule         map[string]interface{}   `yaml:"schedule"`
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
@@ -168,6 +169,7 @@ func generateDependabotConfig(config Config) DependabotConfig {
 				PackageEcosystem: ecosystem.PackageEcosystem,
 				Directory:        ecosystem.Directory,
 				TargetBranch:     branch,
+				CommitMessage:    map[string]string{"prefix": fmt.Sprintf("[%s]", branch)},
 				Schedule:         ecosystem.Schedule,
 				Labels:           ecosystem.Labels,
 				Ignore:           ignore,
