@@ -161,11 +161,11 @@ your CEL expressions.
 
 The following extensions are available:
 
- * [Strings](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Strings).
- * [Encoders](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Encoders)
- * [Sets](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Sets)
- * [Lists](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Lists)
- * [Math](https://pkg.go.dev/github.com/google/cel-go@v0.20.1/ext#Math)
+ * [Strings](https://pkg.go.dev/cel.dev/cel-go@v0.32.0/ext#Strings).
+ * [Encoders](https://pkg.go.dev/cel.dev/cel-go@v0.32.0/ext#Encoders)
+ * [Sets](https://pkg.go.dev/cel.dev/cel-go@v0.32.0/ext#Sets)
+ * [Lists](https://pkg.go.dev/cel.dev/cel-go@v0.32.0/ext#Lists)
+ * [Math](https://pkg.go.dev/cel.dev/cel-go@v0.32.0/ext#Math)
 
 ### cel-go Bytes
 

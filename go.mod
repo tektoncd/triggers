@@ -3,11 +3,11 @@ module github.com/tektoncd/triggers
 go 1.27.3
 
 require (
+	cel.dev/cel-go v0.32.0
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20260316152250-6bbddc29119c
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/golang/protobuf v1.5.4
-	github.com/google/cel-go v0.31.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v31 v31.0.0
 	github.com/google/uuid v1.6.0
@@ -44,7 +44,6 @@ require (
 )
 
 require (
-	cel.dev/cel-go v0.32.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.23.2 // indirect
