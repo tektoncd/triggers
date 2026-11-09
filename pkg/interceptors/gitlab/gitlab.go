@@ -32,6 +32,7 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"github.com/tektoncd/triggers/pkg/interceptors"
 	"google.golang.org/grpc/codes"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -88,6 +89,9 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 
 	if resp := w.verifyWebhookAuth(ctx, r, headers, p); resp != nil {
 		return resp
+	}
+	if p.SecretRef == nil {
+		logging.FromContext(ctx).Warn("GitLab interceptor is running without signature verification. Set params.secretRef to enable webhook authentication.")
 	}
 	return &triggersv1.InterceptorResponse{
 		Continue: true,
