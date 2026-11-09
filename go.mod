@@ -1,6 +1,6 @@
 module github.com/tektoncd/triggers
 
-go 1.26.10
+go 1.27.3
 
 require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
@@ -14,7 +14,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
-	github.com/tektoncd/pipeline v1.12.3-0.20260823184836-0fb9c5b3a0b6
+	github.com/tektoncd/pipeline v1.12.3
 	github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
 	github.com/tidwall/sjson v1.2.7
 	go.opentelemetry.io/otel v1.44.0

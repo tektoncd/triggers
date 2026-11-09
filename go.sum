@@ -376,8 +376,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20260316152250-6bbddc29119c h1:zhs32gUzwxtgNvKV29nQR2n+pfNM82kKLFd3AwIGUug=
 github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20260316152250-6bbddc29119c/go.mod h1:lQON0TD5PnAUl7Q6H5FNV+/AqCSeltYf72OGIkegB/o=
-github.com/tektoncd/pipeline v1.12.3-0.20260823184836-0fb9c5b3a0b6 h1:HKI/gxDPpOBZO5bj+EPnR3hy4ynJbr56X1ack6eTMdE=
-github.com/tektoncd/pipeline v1.12.3-0.20260823184836-0fb9c5b3a0b6/go.mod h1:a0AudvQ/kezQ2NF3jiE86WQanGlrSJSVgPcH/lAEfe4=
+github.com/tektoncd/pipeline v1.12.3 h1:/+ebZXsPY7PzPSBaZAEyE0wCtb1WL3gn1v2JBcV1u44=
+github.com/tektoncd/pipeline v1.12.3/go.mod h1:n8Uw4DZ02ZMO0r2rQnctiqn/TFmu0FUTKd5QVKkFIf0=
 github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1 h1:nv7BsOAZ1ifQX9Lw1hYFo1f7e62dTDyyVPJBuljgZKw=
 github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1/go.mod h1:eDs4O8vTNkyKZ/+AEuo4nYDfpyn1AzbgIcQ1QMQaKJk=
 github.com/tidwall/gjson v1.20.0 h1:+agJ3rEzKcCXKDKo0ml26UROcpcAlnZyjq+TjbY5Fto=
