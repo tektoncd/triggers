@@ -303,7 +303,7 @@ func (i *Installer) applyManifestViaKubectl(ctx context.Context, yamlContent []b
 	// #nosec G204 -- kubectl is a known binary, tmpFile.Name() is a controlled temp file path
 	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", tmpFile.Name())
 	if kubeconfigFlag != "" {
-		// #nosec G204 -- kubectl is a known binary, tmpFile.Name() is a controlled temp file path
+		// #nosec G204 G702 -- No shell is used: HOME remains inside one --kubeconfig= argument, not executable syntax or additional flags. The manifest path comes from os.CreateTemp.
 		cmd = exec.CommandContext(ctx, "kubectl", kubeconfigFlag, "apply", "-f", tmpFile.Name())
 	}
 

@@ -315,7 +315,7 @@ func (els *EventListenerStatus) SetAddress(hostname string) {
 	}
 	if hostname != "" {
 		els.Address.URL = &apis.URL{
-			Scheme: "http",
+			Scheme: cloudEventSinkSchemeHTTP,
 			Host:   hostname,
 		}
 	} else {

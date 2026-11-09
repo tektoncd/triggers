@@ -34,6 +34,7 @@ import (
 
 const (
 	TriggersMetricsDomain = "tekton.dev/triggers"
+	livenessProbePath     = "/live"
 )
 
 var (
@@ -237,7 +238,7 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 			container.LivenessProbe = &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path:   "/live",
+						Path:   livenessProbePath,
 						Scheme: scheme,
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
@@ -250,7 +251,7 @@ func addCertsForSecureConnection(c Config) ContainerOption {
 			container.ReadinessProbe = &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path:   "/live",
+						Path:   livenessProbePath,
 						Scheme: scheme,
 						Port:   intstr.FromInt(eventListenerContainerPort),
 					},
