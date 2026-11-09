@@ -151,6 +151,47 @@ func TestNewFeatureFlagsFromMap_EnterpriseHostAllowlist(t *testing.T) {
 	}
 }
 
+func TestStripSensitiveHeadersForURLs(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data map[string]string
+		want bool
+	}{{
+		name: "key absent defaults to false",
+		data: map[string]string{},
+		want: false,
+	}, {
+		name: "explicit true",
+		data: map[string]string{
+			"interceptors.strip-sensitive-headers-for-urls": "true",
+		},
+		want: true,
+	}, {
+		name: "explicit false",
+		data: map[string]string{
+			"interceptors.strip-sensitive-headers-for-urls": "false",
+		},
+		want: false,
+	}, {
+		name: "case insensitive True",
+		data: map[string]string{
+			"interceptors.strip-sensitive-headers-for-urls": "True",
+		},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			flags, err := config.NewFeatureFlagsFromMap(tc.data)
+			if err != nil {
+				t.Fatalf("NewFeatureFlagsFromMap() error = %v", err)
+			}
+			if flags.InterceptorsStripSensitiveHeadersForURLs != tc.want {
+				t.Errorf("InterceptorsStripSensitiveHeadersForURLs = %v, want %v",
+					flags.InterceptorsStripSensitiveHeadersForURLs, tc.want)
+			}
+		})
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if flags, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {

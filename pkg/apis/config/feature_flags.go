@@ -35,6 +35,9 @@ const (
 
 	interceptorsGitHubUseEnterpriseHostAllowlistKey     = "interceptors.github.use-enterprise-host-allowlist"
 	defaultInterceptorsGitHubUseEnterpriseHostAllowlist = false
+
+	interceptorsStripSensitiveHeadersForURLsKey     = "interceptors.strip-sensitive-headers-for-urls"
+	defaultInterceptorsStripSensitiveHeadersForURLs = false
 )
 
 // FeatureFlags holds the features configurations
@@ -52,6 +55,11 @@ type FeatureFlags struct {
 	// It is strongly encouraged to be enabled for security, and will be removed
 	// and always enforced in a later version
 	InterceptorsGitHubUseEnterpriseHostAllowlist bool
+	// StripSensitiveHeadersForURLs determines if sensitive headers should be
+	// stripped before forwarding to external URL-based interceptors.
+	// It is strongly encouraged to be enabled for security, and will be removed
+	// and always enforced in a later version
+	InterceptorsStripSensitiveHeadersForURLs bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -79,6 +87,12 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = strings.EqualFold(v, "true")
 	} else {
 		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = defaultInterceptorsGitHubUseEnterpriseHostAllowlist
+	}
+
+	if v, ok := cfgMap[interceptorsStripSensitiveHeadersForURLsKey]; ok {
+		ff.InterceptorsStripSensitiveHeadersForURLs = strings.EqualFold(v, "true")
+	} else {
+		ff.InterceptorsStripSensitiveHeadersForURLs = defaultInterceptorsStripSensitiveHeadersForURLs
 	}
 
 	return &ff, nil
