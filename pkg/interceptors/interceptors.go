@@ -115,7 +115,17 @@ func ResolveToURL(getter InterceptorGetter, name string) (*apis.URL, error) {
 	return ic.ResolveAddress()
 }
 
-func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.InterceptorRequest, url string) (*triggersv1beta1.InterceptorResponse, error) {
+// Execute dispatches req to the interceptor served at url and returns its
+// response. An optional URLValidator may be supplied to reject URLs that
+// resolve to disallowed address ranges (an SSRF guard); when omitted or
+// disabled, every URL is accepted, preserving the previous behaviour.
+func Execute(ctx context.Context, client *http.Client, req *triggersv1beta1.InterceptorRequest, url string, validator ...*URLValidator) (*triggersv1beta1.InterceptorResponse, error) {
+	if len(validator) > 0 {
+		if err := validator[0].Validate(url); err != nil {
+			return nil, err
+		}
+	}
+
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, err

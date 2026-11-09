@@ -37,13 +37,18 @@ import (
 	triggertemplatesinformer "github.com/tektoncd/triggers/pkg/client/injection/informers/triggers/v1beta1/triggertemplate"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme"
+	"github.com/tektoncd/triggers/pkg/interceptors"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	kubernetes "k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/eventing/pkg/adapter/v2"
@@ -205,6 +210,49 @@ func (s *sinker) getCertFromInterceptor(certPool *x509.CertPool) error {
 	return nil
 }
 
+// interceptorURLValidator builds the SSRF guard for interceptor URLs from the
+// feature-flags and core-interceptors ConfigMaps. The guard is off unless the
+// operator sets interceptors.block-private-interceptor-urls to true, and it
+// reuses the github.enterprise-host-allowlist entries as an escape hatch so
+// legitimate interceptor hosts on private ranges remain reachable. Missing
+// ConfigMaps are treated as "feature off" rather than a startup failure.
+func interceptorURLValidator(ctx context.Context, kubeClient kubernetes.Interface, namespace string, logger *zap.SugaredLogger) *interceptors.URLValidator {
+	loadConfigMap := func(name string) map[string]string {
+		cm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if !apierrors.IsNotFound(err) && logger != nil {
+				logger.Warnf("could not read ConfigMap %q for interceptor URL validation: %v", name, err)
+			}
+			return nil
+		}
+		return cm.Data
+	}
+
+	flags, err := config.NewFeatureFlagsFromMap(loadConfigMap(config.GetFeatureFlagsConfigName()))
+	if err != nil {
+		if logger != nil {
+			logger.Warnf("could not parse feature flags for interceptor URL validation: %v", err)
+		}
+		return nil
+	}
+	if !flags.InterceptorsBlockPrivateInterceptorURLs {
+		return nil
+	}
+
+	coreInterceptors, err := config.NewCoreInterceptorsFromMap(loadConfigMap(config.GetCoreInterceptorsConfigName()))
+	if err != nil {
+		if logger != nil {
+			logger.Warnf("could not parse core interceptors config for interceptor URL validation: %v", err)
+		}
+		coreInterceptors = &config.CoreInterceptorsConfig{}
+	}
+
+	return &interceptors.URLValidator{
+		BlockPrivate: true,
+		Allowlist:    coreInterceptors.EnterpriseHostAllowlist,
+	}
+}
+
 func (s *sinker) Start(ctx context.Context) error {
 	clientObj, err := s.getHTTPClient()
 	if err != nil {
@@ -213,9 +261,12 @@ func (s *sinker) Start(ctx context.Context) error {
 	// Create EventListener Sink
 
 	dynamicClient := dynamicclient.Get(ctx)
+	kubeClient := kubeclient.Get(ctx)
+
+	urlValidator := interceptorURLValidator(ctx, kubeClient, s.Args.ElNamespace, s.Logger)
 
 	r := sink.Sink{
-		KubeClientSet:          kubeclient.Get(ctx),
+		KubeClientSet:          kubeClient,
 		DiscoveryClient:        s.Clients.DiscoveryClient,
 		DynamicClient:          dynamicClient,
 		TriggersClient:         s.Clients.TriggersClient,
@@ -240,6 +291,7 @@ func (s *sinker) Start(ctx context.Context) error {
 		TriggerTemplateLister:       triggertemplatesinformer.Get(s.injCtx).Lister(),       //nolint:contextcheck
 		ClusterInterceptorLister:    clusterinterceptorsinformer.Get(s.injCtx).Lister(),    //nolint:contextcheck
 		InterceptorLister:           interceptorsinformer.Get(s.injCtx).Lister(),           //nolint:contextcheck
+		InterceptorURLValidator:     urlValidator,
 	}
 
 	mux := http.NewServeMux()
