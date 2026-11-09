@@ -1,0 +1,69 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-add-pr-body-listener
+spec:
+  triggers:
+    - name: github-add-pr-body-listener
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secretToken
+            - name: "eventTypes"
+              value: ["pull_request", "issue_comment"]
+            - name: "addPRBody"
+              value:
+                enabled: true
+      bindings:
+        - ref: github-add-pr-body-binding
+      template:
+        ref: github-add-pr-body-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-example-sa
+            containers:
+              - resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "500m"
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-add-pr-body-binding
+spec:
+  params:
+    - name: prbody
+      value: $(extensions.pr_body)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-add-pr-body-template
+spec:
+  params:
+    - name: prbody
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: github-add-pr-body-run-
+      spec:
+        taskSpec:
+          steps:
+            - image: ubuntu
+              script: |
+                #! /bin/bash
+                echo "Pull Request Body: $(tt.params.prbody)"
