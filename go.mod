@@ -29,7 +29,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.7
 	k8s.io/apiextensions-apiserver v0.35.7
-	k8s.io/apimachinery v0.35.8
+	k8s.io/apimachinery v0.35.10
 	k8s.io/client-go v0.35.7
 	k8s.io/code-generator v0.35.7
 	k8s.io/klog/v2 v2.130.1
