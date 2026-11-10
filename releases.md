@@ -45,6 +45,13 @@ Further documentation available:
 
 ## Release
 
+### v0.38 (LTS)
+
+- **Latest Release**: [v0.38.0][v0-38-0] (2026-11-09) ([docs][v0-38-0-docs], [examples][v0-38-0-examples])
+- **Initial Release**: [v0.38.0][v0-38-0] (2026-11-09)
+- **End of Life**: 2027-11-09
+- **Patch Releases**: [v0.38.0][v0-38-0]
+
 ### v0.37 (LTS)
 
 - **Latest Release**: [v0.37.0][v0-37-0] (2026-08-06) ([docs][v0-37-0-docs], [examples][v0-37-0-examples])
@@ -65,13 +72,6 @@ Further documentation available:
 - **Initial Release**: [v0.35.0][v0-35-0] (2026-02-13)
 - **End of Life**: 2027-02-13
 - **Patch Releases**: [v0.35.0][v0-35-0]
-
-### v0.34 (LTS)
-
-- **Latest Release**: [v0.34.0][v0-34-0] (2025-09-07) ([docs][v0-34-0-docs], [examples][v0-34-0-examples])
-- **Initial Release**: [v0.34.0][v0-34-0] (2025-09-07)
-- **End of Life**: 2026-08-11
-- **Patch Releases**: [v0.34.0][v0-34-0]
 
 ### Required Kubernetes Version
 
@@ -95,9 +95,6 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [pac]: https://pipelinesascode.com
 [tekton-dir]: .tekton/
 
-[v0-34-0]: https://github.com/tektoncd/triggers/releases/tag/v0.34.0
-[v0-34-0-docs]: https://github.com/tektoncd/triggers/tree/v0.34.0/docs#tekton-triggers
-[v0-34-0-examples]: https://github.com/tektoncd/triggers/tree/v0.34.0/examples#examples
 [v0-35-0]: https://github.com/tektoncd/triggers/releases/tag/v0.35.0
 [v0-35-0-docs]: https://github.com/tektoncd/triggers/tree/v0.35.0/docs#tekton-triggers
 [v0-35-0-examples]: https://github.com/tektoncd/triggers/tree/v0.35.0/examples#examples
@@ -107,3 +104,6 @@ Older releases are EOL and available on [GitHub][tekton-triggers-releases].
 [v0-37-0]: https://github.com/tektoncd/triggers/releases/tag/v0.37.0
 [v0-37-0-docs]: https://github.com/tektoncd/triggers/tree/v0.37.0/docs#tekton-triggers
 [v0-37-0-examples]: https://github.com/tektoncd/triggers/tree/v0.37.0/examples#examples
+[v0-38-0]: https://github.com/tektoncd/triggers/releases/tag/v0.38.0
+[v0-38-0-docs]: https://github.com/tektoncd/triggers/tree/v0.38.0/docs#tekton-triggers
+[v0-38-0-examples]: https://github.com/tektoncd/triggers/tree/v0.38.0/examples#examples
