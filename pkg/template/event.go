@@ -120,14 +120,16 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 	unresolved := map[string]struct{}{}
 	for _, paramSpec := range defaults {
 		if paramSpec.Default != nil {
-			allParamsMap[paramSpec.Name] = *paramSpec.Default
+			allParamsMap[paramSpec.Name] = escapeControlChars(*paramSpec.Default)
 		} else {
 			unresolved[paramSpec.Name] = struct{}{}
 		}
 	}
 
 	for _, p := range params {
-		pValue := p.Value
+		// Values taken from the event are JSON escaped by parseJSONPath, so escape
+		// the literal text around them the same way before substituting.
+		pValue := escapeControlChars(p.Value)
 		// Find all expressions wrapped in $() from the value
 		expressions, originals := findTektonExpressions(pValue)
 		for i, expr := range expressions {
@@ -155,4 +157,30 @@ func applyEventValuesToParams(params []triggersv1.Param, body []byte, header htt
 	}
 	sort.Strings(names)
 	return convertParamMapToArray(allParamsMap), names, nil
+}
+
+// escapeControlChars JSON escapes control characters such as newlines and
+// tabs in literal param text, e.g. a multi-line binding value or a default.
+// Params are substituted into the JSON of the resource templates, where raw
+// control characters inside a string make the whole template invalid.
+func escapeControlChars(s string) string {
+	if !strings.ContainsFunc(s, func(r rune) bool { return r < 0x20 }) {
+		return s
+	}
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r < 0x20:
+			fmt.Fprintf(&b, `\u%04x`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
