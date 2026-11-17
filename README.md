@@ -3,6 +3,7 @@
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/tektoncd/triggers)
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/triggers)](https://goreportcard.com/report/github.com/tektoncd/triggers)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6527/badge)](https://bestpractices.coreinfrastructure.org/projects/6527)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftektoncd%2Ftriggers.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftektoncd%2Ftriggers?ref=badge_shield)
 
 
 <p align="center">
@@ -61,3 +62,7 @@ Hooray!
 - See [DEVELOPMENT.md](DEVELOPMENT.md) to get started.
 - Look at our [good first issues](https://github.com/tektoncd/triggers/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   and our [help wanted issues](https://github.com/tektoncd/triggers/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) to help improve Tekton Triggers.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftektoncd%2Ftriggers.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftektoncd%2Ftriggers?ref=badge_large)
