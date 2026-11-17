@@ -1,0 +1,36 @@
+# Example ScheduledTemplate that creates a PipelineRun on a cron schedule.
+# Apply rbac.yaml first (or equivalent) so the runner ServiceAccount can create runs.
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ScheduledTemplate
+metadata:
+  name: nightly-pipeline
+spec:
+  schedule: "0 0 * * *"
+  serviceAccountName: tekton-triggers-scheduledtemplate-sa
+  # Optional: receive CloudEvents on each fire (success or failure)
+  # cloudEventSink: https://example.com/events
+  params:
+    - name: git-revision
+      description: Git revision to build
+      default: main
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: nightly-pipeline-
+      spec:
+        pipelineRef:
+          name: simple-pipeline
+        params:
+          - name: git-revision
+            value: $(tt.params.git-revision)
+---
+# Equivalent using a TriggerTemplate ref instead of inline templates:
+# apiVersion: triggers.tekton.dev/v1alpha1
+# kind: ScheduledTemplate
+# metadata:
+#   name: nightly-pipeline-ref
+# spec:
+#   schedule: "0 0 * * *"
+#   serviceAccountName: tekton-triggers-scheduledtemplate-sa
+#   ref: my-trigger-template

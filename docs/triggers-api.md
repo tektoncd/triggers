@@ -377,6 +377,20 @@ string
 minute hour day-of-month month day-of-week). Example: &ldquo;0 0 * * *&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the name of the ServiceAccount to use for the
+owned CronJob pod that creates resources on schedule.
+Defaults to &ldquo;default&rdquo;.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2145,6 +2159,20 @@ string
 minute hour day-of-month month day-of-week). Example: &ldquo;0 0 * * *&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the name of the ServiceAccount to use for the
+owned CronJob pod that creates resources on schedule.
+Defaults to &ldquo;default&rdquo;.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="triggers.tekton.dev/v1alpha1.ScheduledTemplateStatus">ScheduledTemplateStatus
@@ -2155,6 +2183,98 @@ minute hour day-of-month month day-of-week). Example: &ldquo;0 0 * * *&rdquo;</p
 <div>
 <p>ScheduledTemplateStatus describes the observed state of ScheduledTemplate.</p>
 </div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cronJobName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CronJobName is the name of the CronJob owned by this ScheduledTemplate.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ObservedGeneration is the &lsquo;Generation&rsquo; of the ScheduledTemplate that
+was last processed by the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastScheduleTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastScheduleTime is the last time the schedule triggered a Job, when known.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastSuccessfulTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastSuccessfulTime is the last time a scheduled create succeeded, when known.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>active</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#objectreference-v1-core">
+[]Kubernetes core/v1.ObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Active lists currently running Jobs created for this ScheduledTemplate, when known.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="triggers.tekton.dev/v1alpha1.SecretRef">SecretRef
 </h3>
 <p>
