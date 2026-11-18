@@ -9,7 +9,7 @@ import (
 
 // Options is Pretty options
 type Options struct {
-	// Width is an max column width for single line arrays
+	// Width is an max column width for single line arrays or objects
 	// Default is 80
 	Width int
 	// Prefix is a prefix for all lines
@@ -70,13 +70,10 @@ func ugly(dst, src []byte) []byte {
 				for i = i + 1; i < len(src); i++ {
 					dst = append(dst, src[i])
 					if src[i] == '"' {
-						j := i - 1
-						for ; ; j-- {
-							if src[j] != '\\' {
-								break
-							}
+						j := len(dst) - 2
+						for ; dst[j] == '\\'; j-- {
 						}
-						if (j-i)%2 != 0 {
+						if (j-(len(dst)-1))%2 != 0 {
 							break
 						}
 					}
@@ -245,23 +242,24 @@ func parsestr(s []byte) []byte {
 	return nil
 }
 
-func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, width int, prefix, indent string, sortkeys bool, tabs, nl, max int) ([]byte, int, int, bool) {
+func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool,
+	width int, prefix, indent string, sortkeys bool, tabs, nl, max int,
+) ([]byte, int, int, bool) {
 	var ok bool
 	if width > 0 {
-		if pretty && open == '[' && max == -1 {
+		if pretty && (open == '[' || open == '{') && max == -1 {
 			// here we try to create a single line array
 			max := width - (len(buf) - nl)
 			if max > 3 {
 				s1, s2 := len(buf), i
-				buf, i, _, ok = appendPrettyObject(buf, json, i, '[', ']', false, width, prefix, "", sortkeys, 0, 0, max)
+				buf, i, _, ok = appendPrettyObject(buf, json, i, open, close,
+					false, width, prefix, "", sortkeys, 0, 0, max)
 				if ok && len(buf)-s1 <= max {
 					return buf, i, nl, true
 				}
 				buf = buf[:s1]
 				i = s2
 			}
-		} else if max != -1 && open == '{' {
-			return buf, i, nl, false
 		}
 	}
 	buf = append(buf, open)
@@ -276,10 +274,10 @@ func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, 
 			continue
 		}
 		if json[i] == close {
+			if open == '{' && sortkeys {
+				buf = sortPairs(json, buf, pairs, pretty)
+			}
 			if pretty {
-				if open == '{' && sortkeys {
-					buf = sortPairs(json, buf, pairs)
-				}
 				if n > 0 {
 					nl = len(buf)
 					if buf[nl-1] == ' ' {
@@ -291,14 +289,20 @@ func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, 
 				if buf[len(buf)-1] != open {
 					buf = appendTabs(buf, prefix, indent, tabs)
 				}
+			} else if open == '{' {
+				buf = append(buf, ' ')
 			}
 			buf = append(buf, close)
-			return buf, i + 1, nl, open != '{'
+			return buf, i + 1, nl, true
 		}
 		if open == '[' || json[i] == '"' {
 			if n > 0 {
 				buf = append(buf, ',')
-				if width != -1 && open == '[' {
+				if width != -1 {
+					buf = append(buf, ' ')
+				}
+			} else if open == '{' {
+				if width != -1 {
 					buf = append(buf, ' ')
 				}
 			}
@@ -315,6 +319,11 @@ func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, 
 					p.vstart = len(buf)
 				}
 				buf = appendTabs(buf, prefix, indent, tabs+1)
+			} else {
+				if open == '{' && sortkeys {
+					p.kstart = i
+					p.vstart = len(buf)
+				}
 			}
 			if open == '{' {
 				buf, i, nl, _ = appendPrettyString(buf, json, i, nl)
@@ -322,15 +331,14 @@ func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, 
 					p.kend = i
 				}
 				buf = append(buf, ':')
-				if pretty {
-					buf = append(buf, ' ')
-				}
+				buf = append(buf, ' ')
 			}
-			buf, i, nl, ok = appendPrettyAny(buf, json, i, pretty, width, prefix, indent, sortkeys, tabs+1, nl, max)
+			buf, i, nl, ok = appendPrettyAny(buf, json, i, pretty, width,
+				prefix, indent, sortkeys, tabs+1, nl, max)
 			if max != -1 && !ok {
 				return buf, i, nl, false
 			}
-			if pretty && open == '{' && sortkeys {
+			if open == '{' && sortkeys {
 				p.vend = len(buf)
 				if p.kstart > p.kend || p.vstart > p.vend {
 					// bad data. disable sorting
@@ -345,7 +353,7 @@ func appendPrettyObject(buf, json []byte, i int, open, close byte, pretty bool, 
 	}
 	return buf, i, nl, open != '{'
 }
-func sortPairs(json, buf []byte, pairs []pair) []byte {
+func sortPairs(json, buf []byte, pairs []pair, pretty bool) []byte {
 	if len(pairs) == 0 {
 		return buf
 	}
@@ -361,7 +369,11 @@ func sortPairs(json, buf []byte, pairs []pair) []byte {
 		nbuf = append(nbuf, buf[p.vstart:p.vend]...)
 		if i < len(pairs)-1 {
 			nbuf = append(nbuf, ',')
-			nbuf = append(nbuf, '\n')
+			if pretty {
+				nbuf = append(nbuf, '\n')
+			} else {
+				nbuf = append(nbuf, ' ')
+			}
 		}
 	}
 	return append(buf[:vstart], nbuf...)
@@ -422,6 +434,7 @@ type Style struct {
 	Key, String, Number [2]string
 	True, False, Null   [2]string
 	Escape              [2]string
+	Brackets            [2]string
 	Append              func(dst []byte, c byte) []byte
 }
 
@@ -439,13 +452,14 @@ var TerminalStyle *Style
 
 func init() {
 	TerminalStyle = &Style{
-		Key:    [2]string{"\x1B[94m", "\x1B[0m"},
-		String: [2]string{"\x1B[92m", "\x1B[0m"},
-		Number: [2]string{"\x1B[93m", "\x1B[0m"},
-		True:   [2]string{"\x1B[96m", "\x1B[0m"},
-		False:  [2]string{"\x1B[96m", "\x1B[0m"},
-		Null:   [2]string{"\x1B[91m", "\x1B[0m"},
-		Escape: [2]string{"\x1B[35m", "\x1B[0m"},
+		Key:      [2]string{"\x1B[1m\x1B[94m", "\x1B[0m"},
+		String:   [2]string{"\x1B[32m", "\x1B[0m"},
+		Number:   [2]string{"\x1B[33m", "\x1B[0m"},
+		True:     [2]string{"\x1B[36m", "\x1B[0m"},
+		False:    [2]string{"\x1B[36m", "\x1B[0m"},
+		Null:     [2]string{"\x1B[2m", "\x1B[0m"},
+		Escape:   [2]string{"\x1B[35m", "\x1B[0m"},
+		Brackets: [2]string{"\x1B[1m", "\x1B[0m"},
 		Append: func(dst []byte, c byte) []byte {
 			if c < ' ' && (c != '\r' && c != '\n' && c != '\t' && c != '\v') {
 				dst = append(dst, "\\u00"...)
@@ -485,10 +499,20 @@ func Color(src []byte, style *Style) []byte {
 				dst = append(dst, style.String[0]...)
 			}
 			dst = apnd(dst, '"')
-			esc := false
-			uesc := 0
+			esc := 0
 			for i = i + 1; i < len(src); i++ {
-				if src[i] == '\\' {
+				if esc > 0 {
+					dst = apnd(dst, src[i])
+					esc--
+					if esc == 0 {
+						dst = append(dst, style.Escape[1]...)
+						if key {
+							dst = append(dst, style.Key[0]...)
+						} else {
+							dst = append(dst, style.String[0]...)
+						}
+					}
+				} else if src[i] == '\\' {
 					if key {
 						dst = append(dst, style.Key[1]...)
 					} else {
@@ -496,24 +520,10 @@ func Color(src []byte, style *Style) []byte {
 					}
 					dst = append(dst, style.Escape[0]...)
 					dst = apnd(dst, src[i])
-					esc = true
 					if i+1 < len(src) && src[i+1] == 'u' {
-						uesc = 5
+						esc = 5
 					} else {
-						uesc = 1
-					}
-				} else if esc {
-					dst = apnd(dst, src[i])
-					if uesc == 1 {
-						esc = false
-						dst = append(dst, style.Escape[1]...)
-						if key {
-							dst = append(dst, style.Key[0]...)
-						} else {
-							dst = append(dst, style.String[0]...)
-						}
-					} else {
-						uesc--
+						esc = 1
 					}
 				} else {
 					dst = apnd(dst, src[i])
@@ -530,7 +540,7 @@ func Color(src []byte, style *Style) []byte {
 					}
 				}
 			}
-			if esc {
+			if esc > 0 {
 				dst = append(dst, style.Escape[1]...)
 			} else if key {
 				dst = append(dst, style.Key[1]...)
@@ -539,13 +549,19 @@ func Color(src []byte, style *Style) []byte {
 			}
 		} else if src[i] == '{' || src[i] == '[' {
 			stack = append(stack, stackt{src[i], src[i] == '{'})
+			dst = append(dst, style.Brackets[0]...)
 			dst = apnd(dst, src[i])
+			dst = append(dst, style.Brackets[1]...)
 		} else if (src[i] == '}' || src[i] == ']') && len(stack) > 0 {
 			stack = stack[:len(stack)-1]
+			dst = append(dst, style.Brackets[0]...)
 			dst = apnd(dst, src[i])
+			dst = append(dst, style.Brackets[1]...)
 		} else if (src[i] == ':' || src[i] == ',') && len(stack) > 0 && stack[len(stack)-1].kind == '{' {
 			stack[len(stack)-1].key = !stack[len(stack)-1].key
+			dst = append(dst, style.Brackets[0]...)
 			dst = apnd(dst, src[i])
+			dst = append(dst, style.Brackets[1]...)
 		} else {
 			var kind byte
 			if (src[i] >= '0' && src[i] <= '9') || src[i] == '-' || isNaNOrInf(src[i:]) {
