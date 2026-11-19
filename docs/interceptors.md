@@ -210,7 +210,7 @@ For more information, see our [example](../examples/v1beta1/github) of using thi
 
 #### Adding Changed Files
 
-The GitHub `Interceptor` also has the ability to add a comma delimited list of all files that have changed (added, modified or deleted) for the `push` and `pull_request` events. The list of changed files are added to the `changed_files` property of the event payload in the top-level `extensions` field
+The GitHub `Interceptor` also has the ability to add a comma delimited list of all files that have changed (added, modified or deleted) for the `push` and `pull_request` events, and for `issue_comment` events on a pull request. When `githubOwners` is also enabled, the owners check runs first and the changed files are only added once it passes. The list of changed files are added to the `changed_files` property of the event payload in the top-level `extensions` field
 
 Below is an example GitHub `Interceptor` that enables the `addChangedFiles` feature and uses the CEL `Interceptor` to filter incoming events by the files changed
 
