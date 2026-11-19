@@ -170,7 +170,7 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 	}
 
 	// Empty JSON body bytes.
-	// We use []byte instead of map[string]interface{} to allow ovewriting keys using sjson.
+	// We use []byte instead of map[string]interface{} to allow overwriting keys using sjson.
 	var extensions []byte
 	for _, u := range p.Overlays {
 		val, err := evaluate(u.Expression, env, evalContext)

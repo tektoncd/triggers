@@ -67,7 +67,7 @@ for file in ${doc_files};do
                 fenced="true"
                 continue
             fi
-            # If a non-empty line is deteced
+            # If a non-empty line is detected
             if [[ ! ${line} =~ ${EMPTY} ]];then
                 fenced="false"
             fi
