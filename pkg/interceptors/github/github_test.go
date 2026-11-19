@@ -2033,6 +2033,13 @@ func TestParseBodyForChangedFiles_typeValidation(t *testing.T) {
 			wantErr:   true,
 			want:      "payload body 'commits' element is not an object",
 		},
+		{
+			name:      "issue_comment PR number is not a JSON number",
+			eventType: "issue_comment",
+			body:      `{"issue": {"number": "1", "pull_request": {}}, "repository": {"full_name": "org/repo"}}`,
+			wantErr:   true,
+			want:      "issue_comment body field 'issue.number' is not a number",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2042,6 +2049,148 @@ func TestParseBodyForChangedFiles_typeValidation(t *testing.T) {
 			}
 			if tt.wantErr && tt.want != "" && (err == nil || err.Error() != tt.want) {
 				t.Errorf("parseBodyForChangedFiles() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseBodyForChangedFiles_issueComment(t *testing.T) {
+	tests := []struct {
+		name   string
+		body   string
+		wantPR int
+	}{{
+		name:   "comment on a pull request",
+		body:   `{"issue": {"number": 7, "pull_request": {"url": "https://api.github.com/repos/org/repo/pulls/7"}}, "repository": {"full_name": "org/repo"}}`,
+		wantPR: 7,
+	}, {
+		name:   "comment on a plain issue",
+		body:   `{"issue": {"number": 7}, "repository": {"full_name": "org/repo"}}`,
+		wantPR: -1,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseBodyForChangedFiles(tt.body, "issue_comment")
+			if err != nil {
+				t.Fatalf("parseBodyForChangedFiles() unexpected error: %v", err)
+			}
+			if got.PrNumber != tt.wantPR {
+				t.Errorf("parseBodyForChangedFiles() PrNumber = %d, want %d", got.PrNumber, tt.wantPR)
+			}
+		})
+	}
+}
+
+// Enabling addChangedFiles together with githubOwners used to return before
+// the owners check ran, and issue_comment events never got changed files.
+func TestInterceptor_ExecuteTrigger_owners_with_changed_files(t *testing.T) {
+	const webhookSecret = "webhook-secret-value"
+	// approvers:\r\n- test_owner
+	const ownersFileReply = `{"type": "file","encoding": "base64","content": "YXBwcm92ZXJzOg0KLSB0ZXN0X293bmVy"}`
+	const filesReply = `[{"filename":"controllers/a.go"},{"filename":"docs/b.md"}]`
+	params := map[string]interface{}{
+		"eventTypes": []string{"pull_request", "issue_comment"},
+		"secretRef": &triggersv1.SecretRef{
+			SecretName: "webhooksecret",
+			SecretKey:  "key",
+		},
+		"githubOwners": &Owners{
+			Enabled:   true,
+			CheckType: "none",
+		},
+		"addChangedFiles": &AddChangedFiles{
+			Enabled: true,
+		},
+	}
+	tests := []struct {
+		name             string
+		event            string
+		body             string
+		params           map[string]interface{}
+		wantContinue     bool
+		wantChangedFiles interface{}
+	}{{
+		name:             "pull_request from an owner",
+		event:            "pull_request",
+		body:             `{"action": "opened", "number": 1, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+		params:           params,
+		wantContinue:     true,
+		wantChangedFiles: "controllers/a.go,docs/b.md",
+	}, {
+		name:         "pull_request from someone not in OWNERS",
+		event:        "pull_request",
+		body:         `{"action": "opened", "number": 1, "repository": {"full_name": "owner/repo"}, "sender": {"login": "outsider"}}`,
+		params:       params,
+		wantContinue: false,
+	}, {
+		name:             "ok-to-test from an owner on a pull request",
+		event:            "issue_comment",
+		body:             `{"action": "created", "issue": {"number": 1, "pull_request": {}}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "test_owner"}}`,
+		params:           params,
+		wantContinue:     true,
+		wantChangedFiles: "controllers/a.go,docs/b.md",
+	}, {
+		name:         "ok-to-test from someone not in OWNERS",
+		event:        "issue_comment",
+		body:         `{"action": "created", "issue": {"number": 1, "pull_request": {}}, "comment": {"body": "/ok-to-test"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "outsider"}}`,
+		params:       params,
+		wantContinue: false,
+	}, {
+		name:  "comment on a plain issue adds no changed files",
+		event: "issue_comment",
+		body:  `{"action": "created", "issue": {"number": 2}, "comment": {"body": "hi"}, "repository": {"full_name": "owner/repo"}, "sender": {"login": "outsider"}}`,
+		params: map[string]interface{}{
+			"secretRef": &triggersv1.SecretRef{
+				SecretName: "webhooksecret",
+				SecretKey:  "key",
+			},
+			"addChangedFiles": &AddChangedFiles{
+				Enabled: true,
+			},
+		},
+		wantContinue: true,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				switch request.URL.Path {
+				case "/api/v3/repos/owner/repo/contents/OWNERS":
+					writer.Write([]byte(ownersFileReply))
+				case "/api/v3/repos/owner/repo/pulls/1/files":
+					writer.Write([]byte(filesReply))
+				default:
+					http.NotFound(writer, request)
+				}
+			}))
+			defer ts.Close()
+			ctx, _ := test.SetupFakeContext(t)
+			ctx = context.WithValue(ctx, testURL, ts.URL)
+			ctx, clientset := fakekubeclient.With(ctx, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "webhooksecret", Namespace: metav1.NamespaceDefault},
+				Data:       map[string][]byte{"key": []byte(webhookSecret)},
+			})
+			req := &triggersv1.InterceptorRequest{
+				Body: tt.body,
+				Header: map[string][]string{
+					"X-Hub-Signature-256": {test.HMACHeader(t, webhookSecret, []byte(tt.body), "sha256")},
+					"X-GitHub-Event":      {tt.event},
+				},
+				InterceptorParams: tt.params,
+				Context: &triggersv1.TriggerContext{
+					EventURL:  "https://testing.example.com",
+					EventID:   "abcde",
+					TriggerID: "namespaces/default/triggers/example-trigger",
+				},
+			}
+			w := &InterceptorImpl{
+				SecretGetter: interceptors.DefaultSecretGetter(clientset.CoreV1()),
+			}
+			res := w.Process(ctx, req)
+			if res.Continue != tt.wantContinue {
+				t.Fatalf("Interceptor.Process() Continue = %t, want %t, status: %v", res.Continue, tt.wantContinue, res.Status.Err())
+			}
+			if got := res.Extensions[changedFilesExtensionsKey]; got != tt.wantChangedFiles {
+				t.Errorf("Interceptor.Process() %s = %v, want %v", changedFilesExtensionsKey, got, tt.wantChangedFiles)
 			}
 		})
 	}

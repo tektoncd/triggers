@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	gh "github.com/google/go-github/v31/github"
@@ -36,9 +37,14 @@ import (
 
 var _ triggersv1.InterceptorInterface = (*InterceptorImpl)(nil)
 
-const pullRequest = "pull_request"
+const (
+	pullRequest  = "pull_request"
+	issueComment = "issue_comment"
+)
 
-var acceptedEventTypes = []string{pullRequest, "push"}
+// Events that changed files can be added for. For issue_comment the files
+// are only added when the comment is on a pull request.
+var changedFilesEventTypes = []string{pullRequest, "push", issueComment}
 
 type testURLKey string
 
@@ -49,7 +55,7 @@ const (
 )
 
 // In a pull request, these are the only two events that should trigger a PipelineRun/TaskRun
-var ownersEventTypes = []string{pullRequest, "issue_comment"}
+var ownersEventTypes = []string{pullRequest, issueComment}
 
 // ErrInvalidContentType is returned when the content-type is not a JSON body.
 var ErrInvalidContentType = errors.New("form parameter encoding not supported, please change the hook to send JSON payloads")
@@ -187,20 +193,16 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 	}
 
-	if p.AddChangedFiles.Enabled {
-		shouldAddChangedFiles := false
-		for _, allowedEvent := range acceptedEventTypes {
-			if actualEvent == allowedEvent {
-				shouldAddChangedFiles = true
-				break
-			}
+	// For event types pull_request, issue_comment check github owners approval is required
+	// User can specify both event type or any one of them.
+	// This runs before addChangedFiles so that enabling both doesn't skip the owners check.
+	if p.GithubOwners.Enabled && slices.Contains(ownersEventTypes, actualEvent) {
+		if res := w.checkOwners(ctx, r, p, headers, actualEvent); res != nil {
+			return res
 		}
-		if !shouldAddChangedFiles {
-			return &triggersv1.InterceptorResponse{
-				Continue: true,
-			}
-		}
+	}
 
+	if p.AddChangedFiles.Enabled && slices.Contains(changedFilesEventTypes, actualEvent) {
 		if r.Context == nil {
 			return interceptors.Failf(codes.InvalidArgument, "no request context passed")
 		}
@@ -216,12 +218,18 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 
 		var changedFiles string
-		if actualEvent == pullRequest {
+		switch {
+		case actualEvent == pullRequest, actualEvent == issueComment && payload.PrNumber > 0:
 			changedFiles, err = getChangedFilesFromPr(ctx, payload, headers.Get("X-Github-Enterprise-Host"), secretToken)
 			if err != nil {
 				return interceptors.Failf(codes.FailedPrecondition, "error getting changed files: %v", err)
 			}
-		} else {
+		case actualEvent == issueComment:
+			// comment on a plain issue, there are no changed files to add
+			return &triggersv1.InterceptorResponse{
+				Continue: true,
+			}
+		default:
 			changedFiles = payload.ChangedFiles
 		}
 
@@ -233,62 +241,49 @@ func (w *InterceptorImpl) Process(ctx context.Context, r *triggersv1.Interceptor
 		}
 	}
 
-	// For event types pull_request, issue_comment check github owners approval is required
-	// User can specify both event type or any one of them
-	if p.GithubOwners.Enabled {
-		ownerCheckAllowed := false
-		for _, allowedEvent := range ownersEventTypes {
-			if actualEvent == allowedEvent {
-				ownerCheckAllowed = true
-				break
-			}
-		}
-		if !ownerCheckAllowed {
-			return &triggersv1.InterceptorResponse{
-				Continue: true,
-			}
-		}
-		ghToken, err := w.getPersonalAccessTokenSecret(ctx, r, p)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error getting github token: %v", err)
-		}
-		if ghToken == "" && (p.GithubOwners.CheckType != "none") {
-			return interceptors.Fail(codes.FailedPrecondition, "checkType is set to check org or repo members but no personalAccessToken was supplied")
-		}
-		// The X-Github-Enterprise-Host header only exists when the webhook comes from a github enterprise
-		// server and is left empty for regular hosted Github
-		enterpriseBaseURL := headers.Get("X-Github-Enterprise-Host")
-		client, err := makeClient(ctx, enterpriseBaseURL, ghToken)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error making client: %v", err)
-		}
-		payload, err := parseBodyForOwners(r.Body, actualEvent)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error parsing body: %v", err)
-		}
-		allowed, err := checkOwnershipAndMembership(ctx, payload, p, client)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error checking owner verification: %v", err)
-		}
-
-		if allowed && actualEvent == pullRequest {
-			return &triggersv1.InterceptorResponse{
-				Continue: true,
-			}
-		}
-
-		commentAllowed, err := okToTestFromAnOwner(ctx, payload, p, client)
-		if err != nil {
-			return interceptors.Failf(codes.FailedPrecondition, "error checking comments for verification: %v", err)
-		}
-		if !commentAllowed {
-			return interceptors.Fail(codes.FailedPrecondition, "owners check requirements not met")
-		}
-	}
-
 	return &triggersv1.InterceptorResponse{
 		Continue: true,
 	}
+}
+
+// checkOwners returns a failed response when the sender doesn't pass the
+// githubOwners check, or nil when the event is allowed to continue.
+func (w *InterceptorImpl) checkOwners(ctx context.Context, r *triggersv1.InterceptorRequest, p InterceptorParams, headers http.Header, actualEvent string) *triggersv1.InterceptorResponse {
+	ghToken, err := w.getPersonalAccessTokenSecret(ctx, r, p)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error getting github token: %v", err)
+	}
+	if ghToken == "" && (p.GithubOwners.CheckType != "none") {
+		return interceptors.Fail(codes.FailedPrecondition, "checkType is set to check org or repo members but no personalAccessToken was supplied")
+	}
+	// The X-Github-Enterprise-Host header only exists when the webhook comes from a github enterprise
+	// server and is left empty for regular hosted Github
+	enterpriseBaseURL := headers.Get("X-Github-Enterprise-Host")
+	client, err := makeClient(ctx, enterpriseBaseURL, ghToken)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error making client: %v", err)
+	}
+	payload, err := parseBodyForOwners(r.Body, actualEvent)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error parsing body: %v", err)
+	}
+	allowed, err := checkOwnershipAndMembership(ctx, payload, p, client)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error checking owner verification: %v", err)
+	}
+
+	if allowed && actualEvent == pullRequest {
+		return nil
+	}
+
+	commentAllowed, err := okToTestFromAnOwner(ctx, payload, p, client)
+	if err != nil {
+		return interceptors.Failf(codes.FailedPrecondition, "error checking comments for verification: %v", err)
+	}
+	if !commentAllowed {
+		return interceptors.Fail(codes.FailedPrecondition, "owners check requirements not met")
+	}
+	return nil
 }
 
 func (w *InterceptorImpl) getGithubTokenSecret(ctx context.Context, r *triggersv1.InterceptorRequest, p InterceptorParams) (string, error) {
@@ -330,6 +325,20 @@ func parseBodyForChangedFiles(body string, eventType string) (payloadDetails, er
 			return results, errors.New("pull_request body missing 'number' field")
 		}
 		prNum = -1
+	}
+
+	// issue_comment events carry the pull request number in the issue
+	// section, which only has a pull_request field when it is a PR comment.
+	if eventType == issueComment {
+		if issueSection, ok := jsonMap["issue"].(map[string]interface{}); ok {
+			if _, isPR := issueSection["pull_request"]; isPR {
+				num, ok := issueSection["number"].(float64)
+				if !ok {
+					return results, errors.New("issue_comment body field 'issue.number' is not a number")
+				}
+				prNum = int(num)
+			}
+		}
 	}
 
 	repoSection, ok := jsonMap["repository"].(map[string]interface{})
@@ -617,7 +626,7 @@ func parseBodyForOwners(body string, eventType string) (OwnersPayloadDetails, er
 	}
 
 	var issueCommentBody string
-	if eventType == "issue_comment" {
+	if eventType == issueComment {
 		issueSection, ok := jsonMap["issue"].(map[string]interface{})
 		if !ok {
 			return results, errors.New("issue_comment body missing 'issue' section")
