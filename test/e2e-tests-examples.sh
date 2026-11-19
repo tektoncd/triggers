@@ -161,7 +161,7 @@ curl_knative_service() {
 
   bash ${REPO_ROOT_DIR}/examples/${current_example_version}/${current_example}/curl.sh $forwardingPort $host
 
-  # kill the process which ran eith port-forwarding
+  # kill the process which ran with port-forwarding
   ps -ef | grep $forwardingPort | grep -v grep | awk '{print $2}' | xargs kill
 }
 
