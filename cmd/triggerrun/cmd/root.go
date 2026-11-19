@@ -203,7 +203,7 @@ func processTriggerSpec(kubeClient kubernetes.Interface, client triggersclientse
 	}
 	if iresp != nil {
 		if !iresp.Continue {
-			log.Errorf("interceptor stoppped trigger processing: %w", iresp.Status.Err())
+			log.Errorf("interceptor stopped trigger processing: %w", iresp.Status.Err())
 		}
 	}
 

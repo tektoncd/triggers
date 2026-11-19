@@ -41,7 +41,7 @@ function install_pipeline_crd() {
   kubectl apply -f ${latestreleaseyaml} ||
     fail_test "Tekton pipeline installation failed"
 
-  # Make sure that eveything is cleaned up in the current namespace.
+  # Make sure that everything is cleaned up in the current namespace.
   for res in tasks pipelines taskruns pipelineruns; do
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
@@ -77,7 +77,7 @@ function install_triggers_crd() {
 
   kubectl apply -f "${release}" || fail_test "Core interceptors installation failed"
 
-  # Make sure that eveything is cleaned up in the current namespace.
+  # Make sure that everything is cleaned up in the current namespace.
   for res in eventlistener triggertemplate triggerbinding clustertriggerbinding; do
     kubectl delete --ignore-not-found=true ${res}.triggers.tekton.dev --all
   done

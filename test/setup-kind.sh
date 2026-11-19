@@ -285,7 +285,7 @@ docker run -d --restart=always \
 docker network connect "kind" "$REGISTRY_NAME"
 
 # Make the $REGISTRY_NAME -> 127.0.0.1, to tell `ko` to publish to
-# local reigstry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
+# local registry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
 echo "127.0.0.1 $REGISTRY_NAME" | sudo tee -a /etc/hosts
 
 # Create a registry-credentials secret and attach it to the list of service accounts in the namespace.

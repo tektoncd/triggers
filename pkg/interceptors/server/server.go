@@ -51,7 +51,7 @@ type Server struct {
 	interceptors map[string]triggersv1.InterceptorInterface
 }
 
-// RegisterInterceptor sets up the interceptor to be served at the specfied path
+// RegisterInterceptor sets up the interceptor to be served at the specified path
 func (is *Server) RegisterInterceptor(path string, interceptor triggersv1.InterceptorInterface) {
 	if is.interceptors == nil {
 		is.interceptors = map[string]triggersv1.InterceptorInterface{}
