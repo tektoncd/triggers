@@ -40,6 +40,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			EnableAPIFields:                              "alpha",
 			LabelsExclusionPattern:                       "^abc-",
 			InterceptorsGitHubUseEnterpriseHostAllowlist: true,
+			InterceptorsBlockPrivateInterceptorURLs:      true,
 		},
 		fileName: "feature-flags-all-flags-set",
 	}, {
@@ -146,6 +147,47 @@ func TestNewFeatureFlagsFromMap_EnterpriseHostAllowlist(t *testing.T) {
 			if flags.InterceptorsGitHubUseEnterpriseHostAllowlist != tc.want {
 				t.Errorf("InterceptorsGitHubUseEnterpriseHostAllowlist = %v, want %v",
 					flags.InterceptorsGitHubUseEnterpriseHostAllowlist, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewFeatureFlagsFromMap_BlockPrivateInterceptorURLs(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data map[string]string
+		want bool
+	}{{
+		name: "key absent defaults to false",
+		data: map[string]string{},
+		want: false,
+	}, {
+		name: "explicit true",
+		data: map[string]string{
+			"interceptors.block-private-interceptor-urls": "true",
+		},
+		want: true,
+	}, {
+		name: "explicit false",
+		data: map[string]string{
+			"interceptors.block-private-interceptor-urls": "false",
+		},
+		want: false,
+	}, {
+		name: "case insensitive True",
+		data: map[string]string{
+			"interceptors.block-private-interceptor-urls": "True",
+		},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			flags, err := config.NewFeatureFlagsFromMap(tc.data)
+			if err != nil {
+				t.Fatalf("NewFeatureFlagsFromMap() error = %v", err)
+			}
+			if flags.InterceptorsBlockPrivateInterceptorURLs != tc.want {
+				t.Errorf("InterceptorsBlockPrivateInterceptorURLs = %v, want %v",
+					flags.InterceptorsBlockPrivateInterceptorURLs, tc.want)
 			}
 		})
 	}
