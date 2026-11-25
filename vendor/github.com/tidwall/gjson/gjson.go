@@ -2816,29 +2816,36 @@ func ValidBytes(json []byte) bool {
 
 func parseUint(s string) (uint64, bool) {
 	var i int
-	if i == len(s) {
-		return 0, false
+	for len(s) == 0 || len(s) >= 20 {
+		if len(s) > 0 && s[0] == '0' {
+			if len(s) == 1 {
+				return 0, true
+			}
+			s = s[1:]
+			continue
+		}
+		if len(s) == 20 {
+			for j := range len(s) {
+				if s[j] < '0' || s[j] > '9' {
+					return 0, false
+				}
+			}
+			if s > "18446744073709551615" {
+				return 18446744073709551615, true
+			}
+		} else {
+			return 0, false
+		}
+		break
 	}
 	var n uint64
 	for ; i < len(s); i++ {
 		if s[i] < '0' || s[i] > '9' {
 			return 0, false
 		}
-		next := n*10 + uint64(s[i]-'0')
-		if next < n {
-			goto overflow
-		}
-		n = next
+		n = n*10 + uint64(s[i]-'0')
 	}
 	return n, true
-overflow:
-	// check that the remaining characters are valid
-	for ; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			return 0, false
-		}
-	}
-	return 18446744073709551615, true
 }
 
 func parseInt(s string) (int64, bool) {
