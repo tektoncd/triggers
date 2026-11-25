@@ -687,3 +687,74 @@ func TestResolveResources(t *testing.T) {
 		})
 	}
 }
+
+func TestEscapeControlChars(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{in: "plain", want: "plain"},
+		{in: "test1\ntest2\n", want: `test1\ntest2\n`},
+		{in: "a\tb\r\nc", want: `a\tb\r\nc`},
+		{in: "bell\a", want: `bell\u0007`},
+		{in: `already \n escaped`, want: `already \n escaped`},
+		{in: "unicode 烈\n", want: `unicode 烈\n`},
+	}
+	for _, tt := range tests {
+		if got := escapeControlChars(tt.in); got != tt.want {
+			t.Errorf("escapeControlChars(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestApplyEventValuesToParams_MultilineLiteral(t *testing.T) {
+	params := []triggersv1.Param{
+		{Name: "config", Value: "test1\ntest2\n"},
+		{Name: "mixed", Value: "line1\n$(body.a)"},
+	}
+	defaults := []triggersv1.ParamSpec{
+		{Name: "config"},
+		{Name: "mixed"},
+		{Name: "fromdefault", Default: ptr.String("x\ny")},
+	}
+	got, _, err := applyEventValuesToParams(params, json.RawMessage(`{"a": "v\r\nw"}`), nil, nil, defaults, TriggerContext{EventID: "1234567"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []triggersv1.Param{
+		{Name: "config", Value: `test1\ntest2\n`},
+		{Name: "mixed", Value: `line1\nv\r\nw`},
+		{Name: "fromdefault", Value: `x\ny`},
+	}
+	if diff := cmp.Diff(want, got, cmpopts.SortSlices(test.CompareParams)); diff != "" {
+		t.Errorf("-want/+got: %s", diff)
+	}
+}
+
+func TestResolveResources_MultilineBindingValue(t *testing.T) {
+	tt := &triggersv1.TriggerTemplate{
+		Spec: triggersv1.TriggerTemplateSpec{
+			Params: []triggersv1.ParamSpec{{Name: "config"}},
+			ResourceTemplates: []triggersv1.TriggerResourceTemplate{{
+				RawExtension: runtime.RawExtension{Raw: []byte(`{"kind":"ConfigMap","data":{"config":"$(tt.params.config)"}}`)},
+			}},
+		},
+	}
+	params, _, err := applyEventValuesToParams([]triggersv1.Param{{Name: "config", Value: "test1\ntest2\n"}}, nil, nil, nil, tt.Spec.Params, TriggerContext{EventID: "1234567"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	resources := ResolveResources(tt, params)
+	if len(resources) != 1 {
+		t.Fatalf("expected 1 resource, got %d", len(resources))
+	}
+	var got struct {
+		Data map[string]string `json:"data"`
+	}
+	if err := json.Unmarshal(resources[0], &got); err != nil {
+		t.Fatalf("resolved template is not valid JSON: %v\n%s", err, resources[0])
+	}
+	if got.Data["config"] != "test1\ntest2\n" {
+		t.Errorf("config = %q, want the original multi-line value", got.Data["config"])
+	}
+}
