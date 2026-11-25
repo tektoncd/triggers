@@ -57,6 +57,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 	"go.uber.org/zap/zaptest/observer"
+	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -2204,4 +2205,47 @@ func TestExecuteInterceptors_ConcurrentMapWrite(t *testing.T) {
 	wg.Wait()
 
 	t.Log("Test completed without panic")
+}
+
+// TestLogInterceptorStopped verifies that an interceptor halting trigger
+// processing is logged at a level matching its status code: a CEL filter that
+// simply did not match (FailedPrecondition) stays at debug so it does not flood
+// logs on EventListeners with many triggers, while codes signalling a malformed
+// request or misconfigured interceptor are surfaced at warn.
+func TestLogInterceptorStopped(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		status    triggersv1beta1.Status
+		wantLevel zapcore.Level
+	}{{
+		name:      "cel filter did not match is debug",
+		status:    triggersv1beta1.Status{Code: codes.FailedPrecondition, Message: "expression did not return true"},
+		wantLevel: zapcore.DebugLevel,
+	}, {
+		name:      "invalid argument is warn",
+		status:    triggersv1beta1.Status{Code: codes.InvalidArgument, Message: "form parameter encoding not supported"},
+		wantLevel: zapcore.WarnLevel,
+	}, {
+		name:      "internal error is warn",
+		status:    triggersv1beta1.Status{Code: codes.Internal, Message: "interceptor failure"},
+		wantLevel: zapcore.WarnLevel,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			core, logs := observer.New(zapcore.DebugLevel)
+			logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.WrapCore(func(zapcore.Core) zapcore.Core { return core }))).Sugar()
+
+			logInterceptorStopped(logger, tc.status)
+
+			entries := logs.FilterMessageSnippet("interceptor stopped trigger processing").All()
+			if len(entries) != 1 {
+				t.Fatalf("got %d log entries, want 1. Logs are: %v", len(entries), logs.All())
+			}
+			if entries[0].Level != tc.wantLevel {
+				t.Errorf("log level mismatch: got %v, want %v", entries[0].Level, tc.wantLevel)
+			}
+			if !strings.Contains(entries[0].Message, tc.status.Message) {
+				t.Errorf("log message %q does not contain status message %q", entries[0].Message, tc.status.Message)
+			}
+		})
+	}
 }
