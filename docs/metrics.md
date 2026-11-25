@@ -63,6 +63,15 @@ The `tracing-protocol` key controls distributed tracing:
 | `http/protobuf` | Exports traces via OTLP HTTP to `tracing-endpoint` |
 | `stdout` | Prints traces to stdout (for debugging) |
 
+### OTLP endpoints
+
+Set the corresponding `metrics-endpoint` or `tracing-endpoint` whenever
+you select `grpc` or `http/protobuf`. Use a `host:port` address for gRPC.
+For HTTP/protobuf, specify the full signal URL, including its path:
+
+- Metrics use `http://otel-collector.observability.svc.cluster.local:4318/v1/metrics`.
+- Traces use `http://otel-collector.observability.svc.cluster.local:4318/v1/traces`.
+
 ### Example: Prometheus with OTLP tracing
 
 ```yaml
