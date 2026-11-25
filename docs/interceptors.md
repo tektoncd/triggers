@@ -360,6 +360,10 @@ both a signing token and a secret token on one webhook so you can migrate withou
 downtime. When both refs are set, the interceptor continues if **either** the HMAC
 signature or the secret token is valid. A request with neither credential is rejected.
 
+**Note:** if `secretRef` is omitted, the `Interceptor` does not verify the webhook
+token and accepts every request, and it logs a warning for each request it processes.
+Always set `secretRef` unless the `EventListener` is only reachable by trusted senders.
+
 To use a GitLab `Interceptor` as a filter for event data, specify the event types
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
 accepts data event types listed in [Events](https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html).
@@ -435,6 +439,9 @@ To use a Bitbucket `Interceptor` as a Bitbucket server webhook validator, do the
 2. Configure the Bitbucket server webhook with that value.
 3. Create a Kubernetes secret containing your secret value.
 4. Pass the Kubernetes secret as a reference to your Bitbucket `Interceptor`.
+
+**Note:** if `secretRef` is omitted, the `Interceptor` does not verify the webhook
+signature and accepts every request.
 
 To use a Bitbucket `Interceptor` as a filter for event data, specify the event types
 you want the `Interceptor` to accept in the `eventTypes` field. The `Interceptor`
