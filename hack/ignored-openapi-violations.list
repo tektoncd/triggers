@@ -1,5 +1,6 @@
 API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,EventListenerConfig,GeneratedResourceName
 API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,InterceptorRequest,InterceptorParams
+API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,InterceptorRequest,RawBody
 API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,KubernetesResource,WithPodSpec
 API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,StatusError,s
 API rule violation: names_match,github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1,TriggerContext,EventID
