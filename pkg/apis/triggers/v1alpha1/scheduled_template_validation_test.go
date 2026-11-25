@@ -521,6 +521,34 @@ func TestScheduledTemplate_Validate(t *testing.T) {
 			},
 		},
 		want: apis.ErrMissingField("spec.ref"),
+	}, {
+		name: "valid template with serviceAccountName",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule:           "* * * * *",
+				ServiceAccountName: "tekton-triggers-sa",
+				Ref:                ptr.String("my-trigger-template"),
+			},
+		},
+		want: nil,
+	}, {
+		name: "whitespace-only serviceAccountName",
+		template: &v1alpha1.ScheduledTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tt",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.ScheduledTemplateSpec{
+				Schedule:           "* * * * *",
+				ServiceAccountName: "   ",
+				Ref:                ptr.String("my-trigger-template"),
+			},
+		},
+		want: apis.ErrInvalidValue("   ", "spec.serviceAccountName"),
 	}}
 
 	for _, tc := range tcs {

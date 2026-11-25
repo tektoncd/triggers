@@ -15,4 +15,7 @@ const (
 
 	// TriggerGroupLabelKey is used as a label identifier for a TriggerGroup
 	TriggerGroupLabelKey = "/triggergroup"
+
+	// ScheduledTemplateLabelKey is used as the label identifier for a ScheduledTemplate.
+	ScheduledTemplateLabelKey = "/scheduledtemplate"
 )
