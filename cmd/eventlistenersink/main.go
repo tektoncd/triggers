@@ -25,12 +25,16 @@ import (
 
 	evadapter "knative.dev/eventing/pkg/adapter/v2"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/clients/dynamicclient"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
+	"knative.dev/pkg/system"
 
 	"github.com/tektoncd/triggers/pkg/adapter"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	triggersclient "github.com/tektoncd/triggers/pkg/client/injection/client"
 	"github.com/tektoncd/triggers/pkg/sink"
 	"github.com/tektoncd/triggers/pkg/sink/cloudevent"
@@ -69,6 +73,17 @@ func main() {
 	}
 
 	kubeClient := kubeclient.Get(ctx).(*kubeclientset.Clientset)
+
+	// Set up config store to watch feature flags and other config
+	logger := logging.FromContext(ctx)
+	cmw := cminformer.NewInformedWatcher(kubeClient, system.Namespace())
+	configStore := config.NewStore(logger.Named("config-store"))
+	configStore.WatchConfigs(cmw)
+	ctx = configStore.ToContext(ctx)
+
+	if err := cmw.Start(ctx.Done()); err != nil {
+		log.Fatalf("failed to start configmap watcher: %v", err)
+	}
 	triggersClient := triggersclient.Get(ctx)
 	ceClient := cloudevent.Get(ctx)
 
