@@ -4,6 +4,7 @@ package v1alpha1
 // `Param`.
 type ParamSpec struct {
 	// Name declares the name by which a parameter is referenced.
+	// +optional
 	Name string `json:"name"`
 	// Description is a user-facing description of the parameter that may be
 	// used to populate a UI.
@@ -16,6 +17,10 @@ type ParamSpec struct {
 
 // Param defines a string value to be used for a ParamSpec with the same name.
 type Param struct {
-	Name  string `json:"name"`
+	// Name is the name of the parameter.
+	// +optional
+	Name string `json:"name"`
+	// Value is the parameter value.
+	// +optional
 	Value string `json:"value"`
 }
